@@ -1,3 +1,5 @@
+compiler = clang-5.0
+
 all:
-	clang++ -std=c++11 main.cpp -o program `sdl2-config --cflags --libs`
-	./program
+	@$(compiler) -std=c++11 -Wall -Wconversion -Wdouble-promotion main.cpp -o engine -lGLEW -lGL `sdl2-config --cflags --libs` 
+	@./engine
