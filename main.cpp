@@ -58,13 +58,18 @@ Init(SDL_Window** Window)
 }
 
 void
-setupDrawTriangle(GLuint *VAO, GLuint *shaderProgram)
+setupDrawSquare(GLuint *VAO, GLuint *shaderProgram)
 {
-  // Triangle vertices
+  // Square vertices
   GLfloat vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-    0.0f, 0.5f, 0.0f
+    -0.5f,  0.5f, 0.0f,  //Top left
+    -0.5f, -0.5f, 0.0f,  //Bottom left
+     0.5f, -0.5f, 0.0f,  //Bottom right
+     0.5f,  0.5f, 0.0f   //Top right
+  };
+  GLuint indices[] = {
+    0, 1, 2,
+    0, 2, 3
   };
 
   //Vertex shader source code
@@ -83,6 +88,12 @@ setupDrawTriangle(GLuint *VAO, GLuint *shaderProgram)
   glGenBuffers(1, &VBO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+  //Setting up element buffer object
+  GLuint EBO;
+  glGenBuffers(1, &EBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
   //Setting up vertex shader
   GLuint vertexShader;
@@ -124,9 +135,11 @@ setupDrawTriangle(GLuint *VAO, GLuint *shaderProgram)
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
 
+  //Setting vertex attribute pointers
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid *)0);
   glEnableVertexAttribArray(0);
 
+  //Unbind VAO
   glBindVertexArray(0);
 }
 
@@ -145,7 +158,7 @@ main(int argc, char* argv[])
 
   GLuint VAO;
   GLuint shaderProgram;
-  setupDrawTriangle(&VAO, &shaderProgram);
+  setupDrawSquare(&VAO, &shaderProgram);
   
   // Main loop
   while (true)
@@ -162,10 +175,10 @@ main(int argc, char* argv[])
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    //Drawing triangle
+    //Drawing square 
     glUseProgram(shaderProgram);
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 
     SDL_GL_SwapWindow(Window);
