@@ -81,9 +81,7 @@ setupDrawSquare(GLuint* VAO, GLuint* ShaderProgram)
 */
   GLuint Indices[] = { 0, 1, 2, 0, 2, 3 };
 
-  const char* VertexShaderPath = "./shaders/shader.vert";
-
-  const char* FragmentShaderPath = "./shaders/shader.frag";
+  const char* ShaderPath = "./shaders/shader";
 
   // Setting up vertex array object
   glGenVertexArrays(1, VAO);
@@ -101,8 +99,11 @@ setupDrawSquare(GLuint* VAO, GLuint* ShaderProgram)
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices), Indices, GL_STATIC_DRAW);
 
-  LoadShader(ShaderProgram, VertexShaderPath, FragmentShaderPath);
-
+  int Success = LoadShader(ShaderProgram, ShaderPath);
+  if(!Success)
+  {
+    printf("Shader loading failed!\n");
+  }
   // Setting vertex attribute pointers
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
   glEnableVertexAttribArray(0);

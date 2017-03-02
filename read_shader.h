@@ -5,14 +5,14 @@
 #include <GL/glew.h>
 
 GLchar*
-ReadShader(const char* FileName)
+ReadShader(const char* FileName, GLint* Success)
 {
   FILE* FilePointer = fopen(FileName, "r");
 
   if(!FilePointer)
   {
     printf("File could not be opened!\n");
-    return 0;
+    *Success = 0;
   }
 
   fseek(FilePointer, 0, SEEK_END);
@@ -22,14 +22,14 @@ ReadShader(const char* FileName)
   if(!FileSize)
   {
     printf("File is empty!\n");
-    return 0;
+    *Success = 0;
   }
 
-  GLchar* ShaderCode = (GLchar*)malloc(FileSize * sizeof(GLchar));
+  GLchar* ShaderCode = (GLchar*)malloc(FileSize * sizeof(GLchar) + 1);
   if(!ShaderCode)
   {
     printf("Memory for shader could not be allocated!\n");
-    return 0;
+    *Success = 0;
   }
 
   for(int i = 0; i < FileSize; i++)
@@ -37,44 +37,73 @@ ReadShader(const char* FileName)
     ShaderCode[i] = (char)fgetc(FilePointer);
   }
 
+  ShaderCode[FileSize] = '\0';
+  fclose(FilePointer);
   return ShaderCode;
 }
 
-void
-SetShader(GLuint* Shader, GLint* Success, GLchar* InfoLog, const char* ShaderPath,
-          GLenum ShaderType)
+GLint
+LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
 {
-  const GLchar* ShaderSource = ReadShader(ShaderPath);
-  if(!ShaderSource)
-  {
-    printf("Shader at %s is empty!\n", ShaderPath);
-  }
+  char* VertexShaderPath = (char*)malloc(strlen(ShaderPath) + 6);
+  strcpy(VertexShaderPath, ShaderPath);
+  strcat(VertexShaderPath, ".vert\0");
 
-  // Setting up shader
-  *Shader = glCreateShader(ShaderType);
-  glShaderSource(*Shader, 1, &ShaderSource, NULL);
-  glCompileShader(*Shader);
+  char* FragmentShaderPath = (char*)malloc(strlen(ShaderPath) + 6);
+  strcpy(FragmentShaderPath, ShaderPath);
+  strcat(FragmentShaderPath, ".frag\0");
 
-  // Checking if shader compiled successfully
-  glGetShaderiv(*Shader, GL_COMPILE_STATUS, Success);
-  if(!*Success)
-  {
-    glGetShaderInfoLog(*Shader, 512, NULL, InfoLog);
-    printf("Shader at %s compilation failed!\n%s\n", ShaderPath, InfoLog);
-  }
-}
-
-void
-LoadShader(GLuint* ShaderProgram, const char* VertexShaderPath, const char* FragmentShaderPath)
-{
-  GLint  Success;
+  GLint  Success = 1;
   GLchar InfoLog[512];
 
   GLuint VertexShader;
-  SetShader(&VertexShader, &Success, InfoLog, VertexShaderPath, GL_VERTEX_SHADER);
-
   GLuint FragmentShader;
-  SetShader(&FragmentShader, &Success, InfoLog, FragmentShaderPath, GL_FRAGMENT_SHADER);
+
+  GLchar* VertexShaderSource = ReadShader(VertexShaderPath, &Success);
+  if(!Success)
+  {
+    printf("Shader at %s could not be read!\n", VertexShaderPath);
+    return 0;
+  }
+
+  // Setting up shader
+  VertexShader = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(VertexShader, 1, &VertexShaderSource, NULL);
+  glCompileShader(VertexShader);
+  free(VertexShaderSource);
+
+  // Checking if shader compiled successfully
+  glGetShaderiv(VertexShader, GL_COMPILE_STATUS, &Success);
+  if(!Success)
+  {
+    glGetShaderInfoLog(VertexShader, 512, NULL, InfoLog);
+    printf("Shader at %s compilation failed!\n%s\n", VertexShaderPath, InfoLog);
+    return 0;
+  }
+  free(VertexShaderPath);
+
+  GLchar* FragmentShaderSource = ReadShader(FragmentShaderPath, &Success);
+  if(!Success)
+  {
+    printf("Shader at %s could not be read!\n", FragmentShaderPath);
+    return 0;
+  }
+
+  // Setting up fragment shader
+  FragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(FragmentShader, 1, &FragmentShaderSource, NULL);
+  glCompileShader(FragmentShader);
+  free(FragmentShaderSource);
+
+  // Checking if fragment shader compiled successfully
+  glGetShaderiv(FragmentShader, GL_COMPILE_STATUS, &Success);
+  if(!Success)
+  {
+    glGetShaderInfoLog(FragmentShader, 512, NULL, InfoLog);
+    printf("Shader at %s compilation failed!\n%s\n", FragmentShaderPath, InfoLog);
+    return 0;
+  }
+  free(FragmentShaderPath);
 
   // Setting up shader program
   *ShaderProgram = glCreateProgram();
@@ -88,9 +117,12 @@ LoadShader(GLuint* ShaderProgram, const char* VertexShaderPath, const char* Frag
   {
     glGetProgramInfoLog(*ShaderProgram, 512, NULL, InfoLog);
     printf("Shader linking failed!\n%s\n", InfoLog);
+    return 0;
   }
 
   // Deleting linked shaders
   glDeleteShader(VertexShader);
   glDeleteShader(FragmentShader);
+
+  return Success;
 }
