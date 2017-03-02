@@ -4,6 +4,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "read_mesh_obj.h"
+
 bool
 Init(SDL_Window** Window)
 {
@@ -63,10 +65,16 @@ setupDrawSquare(GLuint* VAO, GLuint* shaderProgram)
 {
   // Square vertices
   GLfloat vertices[] = {
-    -0.5f, 0.5f,  0.0f, // Top left
+    -0.5f, 0.5f, 0.0f,  // Top left
     -0.5f, -0.5f, 0.0f, // Bottom left
-    0.5f,  -0.5f, 0.0f, // Bottom right
-    0.5f,  0.5f,  0.0f  // Top right
+    0.5f, -0.5f, 0.0f,  // Bottom right
+    0.5f, 0.5f, 0.0f,   // Top right
+
+    // Backface
+    0.5f, 0.5f, -1.0f,   // Top right
+    0.5f, -0.5f, -1.0f,  // Bottom right
+    -0.5f, -0.5f, -1.0f, // Bottom left
+    -0.5f, 0.5f, -1.0f   // Top left
   };
   GLuint indices[] = { 0, 1, 2, 0, 2, 3 };
 
@@ -159,6 +167,13 @@ main(int argc, char* argv[])
   {
     return -1;
   }
+
+  mesh Mesh = ReadOBJMesh("./cube.obj");
+  if(!Mesh.VerticeCount){
+    printf("ReadOBJ erro: no vertices read\n");
+  }
+
+  
   printf("Everything went well...!\n");
   glViewport(0, 0, 640, 480);
 
