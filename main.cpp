@@ -4,8 +4,8 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "read_mesh_obj.h"
-#include "read_shader.h"
+#include "load_obj.h"
+#include "load_shader.h"
 
 bool
 Init(SDL_Window** Window)
@@ -25,7 +25,7 @@ Init(SDL_Window** Window)
 
     // Create an SDL window
     *Window =
-      SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, 640, 480, SDL_WINDOW_OPENGL);
+      SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, 1080, 820, SDL_WINDOW_OPENGL);
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());
@@ -62,25 +62,8 @@ Init(SDL_Window** Window)
 }
 
 void
-setupDrawSquare(GLuint* VAO, GLuint* ShaderProgram)
+SetUpDrawing(GLuint* VAO, GLuint* ShaderProgram, Mesh::mesh* Mesh)
 {
-  // Square vertices
-  GLfloat Vertices[] = {
-    -0.5f, 0.5f,  0.0f, 1.0f, 0.0f, 0.0f, // Top left
-    -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, // Bottom left
-    0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Bottom right
-    0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f  // Top right
-  };
-  /*
-  // Backface
-  0.5f, 0.5f, -1.0f,   // Top right
-  0.5f, -0.5f, -1.0f,  // Bottom right
-  -0.5f, -0.5f, -1.0f, // Bottom left
-  -0.5f, 0.5f, -1.0f   // Top left
-};
-*/
-  GLuint Indices[] = { 0, 1, 2, 0, 2, 3 };
-
   const char* ShaderPath = "./shaders/shader";
 
   // Setting up vertex array object
@@ -91,13 +74,15 @@ setupDrawSquare(GLuint* VAO, GLuint* ShaderProgram)
   GLuint VBO;
   glGenBuffers(1, &VBO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, Mesh->VerticeCount * Mesh->FloatsPerVertex * sizeof(float),
+               Mesh->Floats, GL_STATIC_DRAW);
 
   // Setting up element buffer object
   GLuint EBO;
   glGenBuffers(1, &EBO);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices), Indices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, Mesh->IndiceCount * sizeof(uint32_t), Mesh->Indices,
+               GL_STATIC_DRAW);
 
   int Success = LoadShader(ShaderProgram, ShaderPath);
   if(!Success)
@@ -105,10 +90,12 @@ setupDrawSquare(GLuint* VAO, GLuint* ShaderProgram)
     printf("Shader loading failed!\n");
   }
   // Setting vertex attribute pointers
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, Mesh->FloatsPerVertex * sizeof(float),
+                        (GLvoid*)(uint64_t)(Mesh->Offsets[0] * sizeof(float)));
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
-                        (GLvoid*)(3 * sizeof(GLfloat)));
+
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, Mesh->FloatsPerVertex * sizeof(float),
+                        (GLvoid*)(uint64_t)(Mesh->Offsets[2] * sizeof(float)));
   glEnableVertexAttribArray(1);
 
   // Unbind VAO
@@ -124,20 +111,20 @@ main(int argc, char* argv[])
     return -1;
   }
 
-  mesh Mesh = ReadOBJMesh("./cube.obj");
+  Mesh::mesh Mesh = Mesh::LoadOBJMesh("./armadillo.obj\0", false, true, false);
+
   if(!Mesh.VerticeCount)
   {
-    printf("ReadOBJ erro: no vertices read\n");
+    printf("ReadOBJ error: no vertices read\n");
   }
-
-  printf("Everything went well...!\n");
-  glViewport(0, 0, 640, 480);
 
   SDL_Event Event;
 
   GLuint VAO;
   GLuint shaderProgram;
-  setupDrawSquare(&VAO, &shaderProgram);
+  SetUpDrawing(&VAO, &shaderProgram, &Mesh);
+	glEnable(GL_DEPTH_TEST);
+	
 
   // Main loop
   while(true)
@@ -152,20 +139,13 @@ main(int argc, char* argv[])
       break;
     }
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
 
-    /*
-    unsigned int timeValue           = SDL_GetTicks();
-    float        greenValue          = 0.5f * sinf((float)timeValue / 250.0f) + 0.5f;
-    GLint        vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
-    glUniform4f(vertexColorLocation, 0.4f, greenValue, 1.0f - greenValue, 1.0f);
-    */
-
     // Drawing square
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, Mesh.IndiceCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 
     SDL_GL_SwapWindow(Window);

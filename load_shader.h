@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 
-GLchar*
-ReadShader(const char* FileName, GLint* Success)
+static GLchar*
+ReadASCIIFileIntoMemory(const char* FileName, GLint* Success)
 {
   FILE* FilePointer = fopen(FileName, "r");
 
@@ -21,14 +21,17 @@ ReadShader(const char* FileName, GLint* Success)
 
   if(!FileSize)
   {
-    printf("File is empty!\n");
+    printf("ASCII file read error: %s is empty!\n", FileName);
     *Success = 0;
   }
 
-  GLchar* ShaderCode = (GLchar*)malloc(FileSize * sizeof(GLchar) + 1);
+  const size_t TextSizeInBytes = (size_t)FileSize * sizeof(GLchar) + 1;
+
+  GLchar* ShaderCode = (GLchar*)malloc(TextSizeInBytes);
   if(!ShaderCode)
   {
-    printf("Memory for shader could not be allocated!\n");
+    printf("ASCII file read error: failed to allocate %lu bytes for %s!\n", TextSizeInBytes,
+           FileName);
     *Success = 0;
   }
 
@@ -59,7 +62,7 @@ LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
   GLuint VertexShader;
   GLuint FragmentShader;
 
-  GLchar* VertexShaderSource = ReadShader(VertexShaderPath, &Success);
+  GLchar* VertexShaderSource = ReadASCIIFileIntoMemory(VertexShaderPath, &Success);
   if(!Success)
   {
     printf("Shader at %s could not be read!\n", VertexShaderPath);
@@ -82,7 +85,7 @@ LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
   }
   free(VertexShaderPath);
 
-  GLchar* FragmentShaderSource = ReadShader(FragmentShaderPath, &Success);
+  GLchar* FragmentShaderSource = ReadASCIIFileIntoMemory(FragmentShaderPath, &Success);
   if(!Success)
   {
     printf("Shader at %s could not be read!\n", FragmentShaderPath);
