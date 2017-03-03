@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "read_mesh_obj.h"
+#include "read_shader.h"
 
 bool
 Init(SDL_Window** Window)
@@ -61,39 +62,26 @@ Init(SDL_Window** Window)
 }
 
 void
-setupDrawSquare(GLuint* VAO, GLuint* shaderProgram)
+setupDrawSquare(GLuint* VAO, GLuint* ShaderProgram)
 {
   // Square vertices
-  GLfloat vertices[] = {
-    -0.5f, 0.5f, 0.0f,  // Top left
-    -0.5f, -0.5f, 0.0f, // Bottom left
-    0.5f, -0.5f, 0.0f,  // Bottom right
-    0.5f, 0.5f, 0.0f,   // Top right
-
-    // Backface
-    0.5f, 0.5f, -1.0f,   // Top right
-    0.5f, -0.5f, -1.0f,  // Bottom right
-    -0.5f, -0.5f, -1.0f, // Bottom left
-    -0.5f, 0.5f, -1.0f   // Top left
+  GLfloat Vertices[] = {
+    -0.5f, 0.5f,  0.0f, 1.0f, 0.0f, 0.0f, // Top left
+    -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, // Bottom left
+    0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // Bottom right
+    0.5f,  0.5f,  0.0f, 0.0f, 1.0f, 1.0f  // Top right
   };
-  GLuint indices[] = { 0, 1, 2, 0, 2, 3 };
+  /*
+  // Backface
+  0.5f, 0.5f, -1.0f,   // Top right
+  0.5f, -0.5f, -1.0f,  // Bottom right
+  -0.5f, -0.5f, -1.0f, // Bottom left
+  -0.5f, 0.5f, -1.0f   // Top left
+};
+*/
+  GLuint Indices[] = { 0, 1, 2, 0, 2, 3 };
 
-  // Vertex shader source code
-  const GLchar* vertexShaderSource = "#version 330 core\n\n \
-                                      layout (location = 0) in vec3 position;\n\n \
-                                      void main()\n \
-                                      {\n \
-                                        gl_Position = vec4(position, 1.0f);\n \
-                                      }";
-
-  // Fragment shader source code
-  const GLchar* fragmentShaderSource = "#version 330 core\n\n \
-                                        out vec4 color;\n\n \
-                                        uniform vec4 ourColor;\n\n \
-                                        void main()\n \
-                                        {\n \
-                                          color = ourColor;\n \
-                                        }";
+  const char* ShaderPath = "./shaders/shader";
 
   // Setting up vertex array object
   glGenVertexArrays(1, VAO);
@@ -103,57 +91,25 @@ setupDrawSquare(GLuint* VAO, GLuint* shaderProgram)
   GLuint VBO;
   glGenBuffers(1, &VBO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
 
   // Setting up element buffer object
   GLuint EBO;
   glGenBuffers(1, &EBO);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices), Indices, GL_STATIC_DRAW);
 
-  // Setting up vertex shader
-  GLuint vertexShader;
-  vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-  glCompileShader(vertexShader);
-
-  // Checking if vertex shader compiled successfully
-  GLint  success;
-  GLchar infoLog[512];
-  glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-  if(!success)
+  int Success = LoadShader(ShaderProgram, ShaderPath);
+  if(!Success)
   {
-    glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-    printf("Shader compilation failed!\n");
+    printf("Shader loading failed!\n");
   }
-
-  // Setting up fragment shader
-  GLuint fragmentShader;
-  fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-  glCompileShader(fragmentShader);
-
-  // Checking if fragment shader compiled successfully
-  glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-  if(!success)
-  {
-    glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-    printf("Shader compilation failed!\n");
-  }
-
-  // Setting up shader program
-  *shaderProgram = glCreateProgram();
-  glAttachShader(*shaderProgram, vertexShader);
-  glAttachShader(*shaderProgram, fragmentShader);
-  glLinkProgram(*shaderProgram);
-
-  // Deleting linked shaders
-  glDeleteShader(vertexShader);
-  glDeleteShader(fragmentShader);
-
   // Setting vertex attribute pointers
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
   glEnableVertexAttribArray(0);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat),
+                        (GLvoid*)(3 * sizeof(GLfloat)));
+  glEnableVertexAttribArray(1);
 
   // Unbind VAO
   glBindVertexArray(0);
@@ -169,11 +125,11 @@ main(int argc, char* argv[])
   }
 
   mesh Mesh = ReadOBJMesh("./cube.obj");
-  if(!Mesh.VerticeCount){
+  if(!Mesh.VerticeCount)
+  {
     printf("ReadOBJ erro: no vertices read\n");
   }
 
-  
   printf("Everything went well...!\n");
   glViewport(0, 0, 640, 480);
 
@@ -200,10 +156,12 @@ main(int argc, char* argv[])
 
     glUseProgram(shaderProgram);
 
+    /*
     unsigned int timeValue           = SDL_GetTicks();
     float        greenValue          = 0.5f * sinf((float)timeValue / 250.0f) + 0.5f;
     GLint        vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
     glUniform4f(vertexColorLocation, 0.4f, greenValue, 1.0f - greenValue, 1.0f);
+    */
 
     // Drawing square
     glBindVertexArray(VAO);
