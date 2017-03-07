@@ -11,7 +11,7 @@ ReadASCIIFileIntoMemory(const char* FileName, GLint* Success)
 
   if(!FilePointer)
   {
-    printf("File could not be opened!\n");
+    printf("ASCII file read error: %s could not be opened!\n", FileName);
     *Success = 0;
   }
 
@@ -46,7 +46,7 @@ ReadASCIIFileIntoMemory(const char* FileName, GLint* Success)
 }
 
 GLint
-LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
+LoadShader(const char* ShaderPath)
 {
   char* VertexShaderPath = (char*)malloc(strlen(ShaderPath) + 6);
   strcpy(VertexShaderPath, ShaderPath);
@@ -56,7 +56,7 @@ LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
   strcpy(FragmentShaderPath, ShaderPath);
   strcat(FragmentShaderPath, ".frag\0");
 
-  GLint  Success = 1;
+  int    Success = 1;
   GLchar InfoLog[512];
 
   GLuint VertexShader;
@@ -66,7 +66,7 @@ LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
   if(!Success)
   {
     printf("Shader at %s could not be read!\n", VertexShaderPath);
-    return 0;
+    return -1;
   }
 
   // Setting up shader
@@ -81,7 +81,7 @@ LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
   {
     glGetShaderInfoLog(VertexShader, 512, NULL, InfoLog);
     printf("Shader at %s compilation failed!\n%s\n", VertexShaderPath, InfoLog);
-    return 0;
+    return -1;
   }
   free(VertexShaderPath);
 
@@ -89,7 +89,7 @@ LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
   if(!Success)
   {
     printf("Shader at %s could not be read!\n", FragmentShaderPath);
-    return 0;
+    return -1;
   }
 
   // Setting up fragment shader
@@ -103,29 +103,36 @@ LoadShader(GLuint* ShaderProgram, const char* ShaderPath)
   if(!Success)
   {
     glGetShaderInfoLog(FragmentShader, 512, NULL, InfoLog);
-    printf("Shader at %s compilation failed!\n%s\n", FragmentShaderPath, InfoLog);
-    return 0;
+    printf("Shader file %s compilation error: \n%s\n", FragmentShaderPath, InfoLog);
+    return -1;
   }
   free(FragmentShaderPath);
 
   // Setting up shader program
-  *ShaderProgram = glCreateProgram();
-  glAttachShader(*ShaderProgram, VertexShader);
-  glAttachShader(*ShaderProgram, FragmentShader);
+  GLuint ShaderProgram = glCreateProgram();
+  glAttachShader(ShaderProgram, VertexShader);
+  glAttachShader(ShaderProgram, FragmentShader);
 
   // Linking shader program
-  glLinkProgram(*ShaderProgram);
-  glGetProgramiv(*ShaderProgram, GL_LINK_STATUS, &Success);
+  glLinkProgram(ShaderProgram);
+  glGetProgramiv(ShaderProgram, GL_LINK_STATUS, &Success);
   if(!Success)
   {
-    glGetProgramInfoLog(*ShaderProgram, 512, NULL, InfoLog);
-    printf("Shader linking failed!\n%s\n", InfoLog);
-    return 0;
+    glGetProgramInfoLog(ShaderProgram, 512, NULL, InfoLog);
+    printf("Shader linker error: \n%s\n", InfoLog);
+    return -1;
   }
 
   // Deleting linked shaders
   glDeleteShader(VertexShader);
   glDeleteShader(FragmentShader);
 
-  return Success;
+  if(Success)
+  {
+    return ShaderProgram;
+  }
+  else
+  {
+    return -1;
+  }
 }

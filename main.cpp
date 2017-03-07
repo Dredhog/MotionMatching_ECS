@@ -6,11 +6,13 @@
 
 #include "load_obj.h"
 #include "load_shader.h"
+#include "linear_math/vector.h"
+#include "linear_math/matrix.h"
 
 bool
 Init(SDL_Window** Window)
 {
-  bool Success = true; // Init SDL
+  bool Success = true;
   if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
   {
     printf("SDL error: init failed. %s\n", SDL_GetError());
@@ -25,7 +27,7 @@ Init(SDL_Window** Window)
 
     // Create an SDL window
     *Window =
-      SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, 1080, 820, SDL_WINDOW_OPENGL);
+      SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, 1024, 800, SDL_WINDOW_OPENGL);
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());
@@ -62,38 +64,28 @@ Init(SDL_Window** Window)
 }
 
 void
-SetUpDrawing(GLuint* VAO, GLuint* ShaderProgram, Mesh::mesh* Mesh)
+SetUpMesh(Mesh::mesh* Mesh)
 {
-  const char* ShaderPath = "./shaders/shader";
-
   // Setting up vertex array object
-  glGenVertexArrays(1, VAO);
-  glBindVertexArray(*VAO);
+  glGenVertexArrays(1, &Mesh->VAO);
+  glBindVertexArray(Mesh->VAO);
 
   // Setting up vertex buffer object
-  GLuint VBO;
-  glGenBuffers(1, &VBO);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glGenBuffers(1, &Mesh->VBO);
+  glBindBuffer(GL_ARRAY_BUFFER, Mesh->VBO);
   glBufferData(GL_ARRAY_BUFFER, Mesh->VerticeCount * Mesh->FloatsPerVertex * sizeof(float),
                Mesh->Floats, GL_STATIC_DRAW);
 
   // Setting up element buffer object
-  GLuint EBO;
-  glGenBuffers(1, &EBO);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glGenBuffers(1, &Mesh->EBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Mesh->EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, Mesh->IndiceCount * sizeof(uint32_t), Mesh->Indices,
                GL_STATIC_DRAW);
 
-  int Success = LoadShader(ShaderProgram, ShaderPath);
-  if(!Success)
-  {
-    printf("Shader loading failed!\n");
-  }
   // Setting vertex attribute pointers
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, Mesh->FloatsPerVertex * sizeof(float),
                         (GLvoid*)(uint64_t)(Mesh->Offsets[0] * sizeof(float)));
   glEnableVertexAttribArray(0);
-
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, Mesh->FloatsPerVertex * sizeof(float),
                         (GLvoid*)(uint64_t)(Mesh->Offsets[2] * sizeof(float)));
   glEnableVertexAttribArray(1);
@@ -111,24 +103,44 @@ main(int argc, char* argv[])
     return -1;
   }
 
-  Mesh::mesh Mesh = Mesh::LoadOBJMesh("./armadillo.obj\0", false, true, false);
-
+  // Asset loading
+  Mesh::mesh Mesh = Mesh::LoadOBJMesh("./data/suzane.obj\0", false, true, false);
   if(!Mesh.VerticeCount)
   {
     printf("ReadOBJ error: no vertices read\n");
+    return -1;
   }
+  else
+  {
+    SetUpMesh(&Mesh);
+  }
+
+  int ShaderVertexColor = LoadShader("./shaders/color");
+  if(ShaderVertexColor < 0)
+  {
+    printf("Shader loading failed!\n");
+  }
+
+  int ShaderWireframe = LoadShader("./shaders/wireframe");
+  if(ShaderVertexColor < 0)
+  {
+    printf("Shader loading failed!\n");
+  }
+
+  // \Asset loading
 
   SDL_Event Event;
 
-  GLuint VAO;
-  GLuint shaderProgram;
-  SetUpDrawing(&VAO, &shaderProgram, &Mesh);
-	glEnable(GL_DEPTH_TEST);
-	
+  glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+  glEnable(GL_DEPTH_TEST);
+  // glFrontFace(GL_CCW);
+  glEnable(GL_CULL_FACE);
 
+  float AngleDeg = 0.0f;
   // Main loop
   while(true)
   {
+    // Input polling
     SDL_PollEvent(&Event);
     if(Event.type == SDL_QUIT)
     {
@@ -138,18 +150,44 @@ main(int argc, char* argv[])
     {
       break;
     }
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+
+    // Update
+    mat4 ModelMatrix   = Math::MulMat4(Math::Mat4RotateY(AngleDeg * 0.2f), Math::Mat4Scale(0.25f));
+    mat4 CameraMatrix  = Math::Mat4Camera({ 0, 0, 1 }, { 0, 0, -1 }, { 0, 1, 0 });
+    mat4 ProjectMatrix = Math::Mat4Perspective(60.f, 1028 / 800, 0.1f, 100.0f);
+    mat4 MVPMatrix     = Math::MulMat4(ProjectMatrix, Math::MulMat4(CameraMatrix, ModelMatrix));
+
+    // Rendering
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(shaderProgram);
+    glBindVertexArray(Mesh.VAO);
 
-    // Drawing square
-    glBindVertexArray(VAO);
+    // Switch to normal color shader
+    glUseProgram(ShaderVertexColor);
+#if 1
+    glUniformMatrix4fv(glGetUniformLocation(ShaderVertexColor, "mat_mvp"), 1, GL_FALSE,
+                       &MVPMatrix.e[0]);
+
+    // draw model
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDrawElements(GL_TRIANGLES, Mesh.IndiceCount, GL_UNSIGNED_INT, 0);
+#endif
+
+#if 1
+    // Switch to wireframe shader
+    glUseProgram(ShaderWireframe);
+    glUniformMatrix4fv(glGetUniformLocation(ShaderVertexColor, "mat_mvp"), 1, GL_FALSE,
+                       &MVPMatrix.e[0]);
+
+    // draw wireframe
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawElements(GL_TRIANGLES, Mesh.IndiceCount, GL_UNSIGNED_INT, 0);
+#endif
     glBindVertexArray(0);
 
     SDL_GL_SwapWindow(Window);
     SDL_Delay(16);
+    AngleDeg++;
   }
 
   SDL_DestroyWindow(Window);

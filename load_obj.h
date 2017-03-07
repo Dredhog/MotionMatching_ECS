@@ -10,6 +10,11 @@ namespace Mesh
 
   struct mesh
   {
+    uint32_t VAO;
+
+    uint32_t VBO;
+    uint32_t EBO;
+
     float*    Floats;
     uint32_t* Indices;
 
@@ -23,8 +28,8 @@ namespace Mesh
     bool    UseNormals;
   };
 
-  mesh LoadOBJMesh(const char* FileName, const bool UseUVs, const bool UseNormals,
-                   const bool ReverseZ)
+  mesh
+  LoadOBJMesh(const char* FileName, const bool UseUVs, const bool UseNormals, const bool ReverseZ)
   {
     const int MaxAttributesPerIndex = 3;
     FILE*     FileHandle            = fopen(FileName, "r");
@@ -218,7 +223,8 @@ namespace Mesh
     return Mesh;
   }
 
-  void PrintMesh(const mesh* Mesh)
+  void
+  PrintMesh(const mesh* Mesh)
   {
     printf("VertCount : %d, IndCount: %d\n", Mesh->VerticeCount, Mesh->IndiceCount);
     printf("UseUVs    : %d,	UseNormals : %d\n", Mesh->UseUVs, Mesh->UseNormals);
