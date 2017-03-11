@@ -4,10 +4,10 @@
 #include <cstdio>
 #include <cassert>
 
+#include "stack_allocator.h"
+
 namespace Mesh
 {
-  const int MAX_FLOAT_COUNT = 10000000;
-
   struct mesh
   {
     uint32_t VAO;
@@ -28,8 +28,17 @@ namespace Mesh
     bool    UseNormals;
   };
 
+  enum mesh_attribute_mask
+  {
+    MAM_UseNormals = 1,
+    MAM_UseUVs     = 2,
+    MAM_FlipZ      = 4,
+  };
+
   mesh
-  LoadOBJMesh(const char* FileName, const bool UseUVs, const bool UseNormals, const bool ReverseZ)
+  LoadOBJMesh(Memory::stack_allocator* ScratchAllocator,
+              Memory::stack_allocator* PersistentMemAllocator, const char* FileName,
+              uint32_t AttributeMask)
   {
     const int MaxAttributesPerIndex = 3;
     FILE*     FileHandle            = fopen(FileName, "r");
@@ -39,17 +48,14 @@ namespace Mesh
       return {};
     }
 
-    float* Floats = (float*)malloc(MAX_FLOAT_COUNT * sizeof(float));
-    if(!Floats)
-    {
-      printf("Parse OBJ error: could not allocate %lu bytes", MAX_FLOAT_COUNT * sizeof(float));
-      return {};
-    }
-
-    float*    Positions = Floats;
-    float*    Normals   = Floats + (MAX_FLOAT_COUNT / 4);
-    float*    UVs       = Floats + 2 * (MAX_FLOAT_COUNT / 4);
-    uint32_t* Indices   = (uint32_t*)Floats + 3 * (MAX_FLOAT_COUNT / 4);
+    // DANGER!! Memory corruption if model is too large
+    float* Positions =
+      (float*)ScratchAllocator->AlignedAlloc(ScratchAllocator->GetCapacity() / 5, 16);
+    float* Normals =
+      (float*)ScratchAllocator->AlignedAlloc(ScratchAllocator->GetCapacity() / 5, 16);
+    float*    UVs = (float*)ScratchAllocator->AlignedAlloc(ScratchAllocator->GetCapacity() / 5, 16);
+    uint32_t* Indices =
+      (uint32_t*)ScratchAllocator->AlignedAlloc(ScratchAllocator->GetCapacity() / 4, 16);
 
     int PositionCount = 0;
     int NormalCount   = 0;
@@ -57,14 +63,14 @@ namespace Mesh
     int IndiceCount   = 0;
 
     mesh Mesh       = {};
-    Mesh.UseUVs     = UseUVs;
-    Mesh.UseNormals = UseNormals;
+    Mesh.UseUVs     = AttributeMask & MAM_UseUVs;
+    Mesh.UseNormals = AttributeMask & MAM_UseNormals;
 
     Mesh.FloatsPerVertex     = 3;
     Mesh.AttributesPerVertex = 1;
     Mesh.Offsets[0]          = 0;
 
-    if(UseUVs && UseNormals)
+    if(Mesh.UseUVs && Mesh.UseNormals)
     {
       Mesh.FloatsPerVertex     = 8;
       Mesh.AttributesPerVertex = 3;
@@ -74,14 +80,14 @@ namespace Mesh
     }
     else
     {
-      if(UseUVs)
+      if(Mesh.UseUVs)
       {
         Mesh.FloatsPerVertex += 2;
         ++Mesh.AttributesPerVertex;
         Mesh.Offsets[1] = 3;
         Mesh.Offsets[2] = -10;
       }
-      else if(UseNormals)
+      else if(Mesh.UseNormals)
       {
         Mesh.FloatsPerVertex += 3;
         ++Mesh.AttributesPerVertex;
@@ -107,7 +113,7 @@ namespace Mesh
         {
           sscanf(&ReadLine[2], "%f %f %f ", &Positions[3 * PositionCount],
                  &Positions[3 * PositionCount + 1], &Positions[3 * PositionCount + 2]);
-          if(ReverseZ)
+          if(AttributeMask & MAM_FlipZ)
           {
             Positions[3 * PositionCount + 2] *= -1;
           }
@@ -131,17 +137,17 @@ namespace Mesh
         int V1[3];
         int V2[3];
         int V3[3];
-        if(UseUVs && UseNormals)
+        if(Mesh.UseUVs && Mesh.UseNormals)
         {
           sscanf(&ReadLine[2], " %d/%d/%d %d/%d/%d %d/%d/%d ", &V1[0], &V1[1], &V1[2], &V2[0],
                  &V2[1], &V2[2], &V3[0], &V3[1], &V3[2]);
         }
-        else if(!UseUVs && UseNormals)
+        else if(!Mesh.UseUVs && Mesh.UseNormals)
         {
           sscanf(&ReadLine[2], " %d//%d %d//%d %d//%d ", &V1[0], &V1[2], &V2[0], &V2[2], &V3[0],
                  &V3[2]);
         }
-        else if(UseUVs && !UseNormals)
+        else if(Mesh.UseUVs && !Mesh.UseNormals)
         {
           sscanf(&ReadLine[2], " %d/%d/ %d/%d/ %d/%d/ ", &V1[0], &V1[1], &V2[0], &V2[1], &V3[0],
                  &V3[1]);
@@ -169,19 +175,12 @@ namespace Mesh
 
     Mesh.VerticeCount = IndiceCount;
     Mesh.IndiceCount  = IndiceCount;
-    float* MeshMemory = (float*)malloc(Mesh.VerticeCount * Mesh.FloatsPerVertex * sizeof(float) +
-                                       Mesh.IndiceCount * sizeof(uint32_t));
-    if(!MeshMemory)
-    {
-      printf("Read OBJ error: failed to allocate %lu bytes for final vertice memory\n",
-             Mesh.VerticeCount * Mesh.FloatsPerVertex * sizeof(float) +
-               Mesh.IndiceCount * sizeof(uint32_t));
-      fclose(FileHandle);
-      free(Floats);
-      return {};
-    }
-    Mesh.Floats  = MeshMemory;
-    Mesh.Indices = (uint32_t*)(MeshMemory + Mesh.VerticeCount * Mesh.FloatsPerVertex);
+    Mesh.Floats =
+      (float*)PersistentMemAllocator->AlignedAlloc(Mesh.VerticeCount * Mesh.FloatsPerVertex *
+                                                     sizeof(float),
+                                                   4);
+    Mesh.Indices =
+      (uint32_t*)PersistentMemAllocator->AlignedAlloc(Mesh.IndiceCount * sizeof(uint32_t), 4);
 
     // Write vertices packed to final buffer i.e: ||p.x p.y p.z|u v|n.x n.y n.z||
     for(int i = 0; i < Mesh.IndiceCount; i++)
@@ -194,14 +193,14 @@ namespace Mesh
         Positions[3 * (Indices[IndexTripletIndex] - 1) + 1];
       Mesh.Floats[i * Mesh.FloatsPerVertex + Mesh.Offsets[0] + 2] =
         Positions[3 * (Indices[IndexTripletIndex] - 1) + 2];
-      if(UseUVs)
+      if(Mesh.UseUVs)
       {
         Mesh.Floats[i * Mesh.FloatsPerVertex + Mesh.Offsets[1] + 0] =
           UVs[2 * (Indices[IndexTripletIndex + 1] - 1) + 0];
         Mesh.Floats[i * Mesh.FloatsPerVertex + Mesh.Offsets[1] + 1] =
           UVs[2 * (Indices[IndexTripletIndex + 1] - 1) + 1];
       }
-      if(UseNormals)
+      if(Mesh.UseNormals)
       {
         Mesh.Floats[i * Mesh.FloatsPerVertex + Mesh.Offsets[2] + 0] =
           Normals[3 * (Indices[IndexTripletIndex + 2] - 1) + 0];
@@ -218,7 +217,6 @@ namespace Mesh
     }
 
     fclose(FileHandle);
-    free(Floats);
 
     return Mesh;
   }
