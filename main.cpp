@@ -8,6 +8,7 @@
 #include "load_shader.h"
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
+#include "stack_allocator.h"
 
 struct sdl_audio_ring_buffer
 {
@@ -177,8 +178,19 @@ main(int argc, char* argv[])
   }
   SDL_PauseAudioDevice(AudioDevice, 0);
 
-  // Asset loading
-  Mesh::mesh Mesh = Mesh::LoadOBJMesh("./data/armadillo.obj\0", false, true, false);
+  void*                    TemporaryMemory = malloc(Mibibytes(20));
+  Memory::stack_allocator* TemporaryMemStack =
+    Memory::CreateStackAllocatorInPlace(TemporaryMemory, Mibibytes(20));
+
+  void*                    PersistentMemory = malloc(Mibibytes(20));
+  Memory::stack_allocator* PersistentMemStack =
+    Memory::CreateStackAllocatorInPlace(PersistentMemory, Mibibytes(20));
+
+  // BEGIN ASSET LOADING
+  Memory::marker LoadStart = TemporaryMemStack->GetMarker();
+  Mesh::mesh     Mesh      = Mesh::LoadOBJMesh(TemporaryMemStack, PersistentMemStack,
+                                      "./data/armadillo.obj\0", Mesh::MAM_UseNormals);
+
   if(!Mesh.VerticeCount)
   {
     printf("ReadOBJ error: no vertices read\n");
@@ -188,20 +200,26 @@ main(int argc, char* argv[])
   {
     SetUpMesh(&Mesh);
   }
+  TemporaryMemStack->FreeToMarker(LoadStart);
 
-  int ShaderVertexColor = Shader::LoadShader("./shaders/color");
+
+  LoadStart             = TemporaryMemStack->GetMarker();
+  int ShaderVertexColor = LoadShader(TemporaryMemStack, "./shaders/color");
+  TemporaryMemStack->FreeToMarker(LoadStart);
   if(ShaderVertexColor < 0)
   {
     printf("Shader loading failed!\n");
   }
 
-  int ShaderWireframe = Shader::LoadShader("./shaders/wireframe");
+  LoadStart           = TemporaryMemStack->GetMarker();
+  int ShaderWireframe = LoadShader(TemporaryMemStack, "./shaders/wireframe");
+  TemporaryMemStack->FreeToMarker(LoadStart);
   if(ShaderVertexColor < 0)
   {
     printf("Shader loading failed!\n");
   }
 
-  // \Asset loading
+  // END ASSET LOADING
 
   SDL_Event Event;
 
@@ -280,8 +298,7 @@ main(int argc, char* argv[])
     }
 
     // Update
-    mat4 ModelMatrix =
-      Math::MulMat4(Math::Mat4RotateY(180 + AngleDeg * 0.2f), Math::Mat4Scale(0.25f));
+    mat4 ModelMatrix   = Math::MulMat4(Math::Mat4RotateY(AngleDeg), Math::Mat4Scale(0.25f));
     mat4 CameraMatrix  = Math::Mat4Camera({ 0, 0, 1 }, { 0, 0, -1 }, { 0, 1, 0 });
     mat4 ProjectMatrix = Math::Mat4Perspective(60.f, 1028 / 800, 0.1f, 100.0f);
     mat4 MVPMatrix     = Math::MulMat4(ProjectMatrix, Math::MulMat4(CameraMatrix, ModelMatrix));
@@ -320,6 +337,8 @@ main(int argc, char* argv[])
   }
 
   SDL_CloseAudioDevice(AudioDevice);
+  free(TemporaryMemory);
+  free(PersistentMemory);
   SDL_DestroyWindow(Window);
   SDL_Quit();
   return 0;
