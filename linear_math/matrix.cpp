@@ -25,6 +25,37 @@ namespace Math
     return Result;
   }
 
+  mat3
+  Mat4ToMat3(mat4 Mat4)
+  {
+    mat3 Result;
+
+    for(int i = 0; i < 3; i++)
+    {
+      for(int j = 0; j < 3; j++)
+      {
+        Result.e[i * 3 + j] = Mat4.e[i * 4 + j];
+      }
+    }
+    return Result;
+  }
+
+  mat4
+  Mat3ToMat4(mat3 Mat3)
+  {
+    mat4 Result = {};
+
+    for(int i = 0; i < 3; i++)
+    {
+      for(int j = 0; j < 3; j++)
+      {
+        Result.e[i * 4 + j] = Mat3.e[i * 3 + j];
+      }
+    }
+    Result.e[15] = 1;
+    return Result;
+  }
+
   inline mat4
   MulMat4(mat4 A, mat4 B)
   {
@@ -48,8 +79,8 @@ namespace Math
   {
     vec3 Result;
     Result.X = Mat._11 * Vec.X + Mat._12 * Vec.Y + Mat._13 * Vec.Z;
-    Result.X = Mat._21 * Vec.X + Mat._22 * Vec.Y + Mat._23 * Vec.Z;
-    Result.X = Mat._31 * Vec.X + Mat._32 * Vec.Y + Mat._33 * Vec.Z;
+    Result.Y = Mat._21 * Vec.X + Mat._22 * Vec.Y + Mat._23 * Vec.Z;
+    Result.Z = Mat._31 * Vec.X + Mat._32 * Vec.Y + Mat._33 * Vec.Z;
     return Result;
   }
 
@@ -58,9 +89,9 @@ namespace Math
   {
     vec4 Result;
     Result.X = Mat._11 * Vec.X + Mat._12 * Vec.Y + Mat._13 * Vec.Z + Mat._14 * Vec.W;
-    Result.X = Mat._21 * Vec.X + Mat._22 * Vec.Y + Mat._23 * Vec.Z + Mat._24 * Vec.W;
-    Result.X = Mat._31 * Vec.X + Mat._32 * Vec.Y + Mat._33 * Vec.Z + Mat._34 * Vec.W;
-    Result.X = Mat._41 * Vec.X + Mat._42 * Vec.Y + Mat._43 * Vec.Z + Mat._44 * Vec.W;
+    Result.Y = Mat._21 * Vec.X + Mat._22 * Vec.Y + Mat._23 * Vec.Z + Mat._24 * Vec.W;
+    Result.Z = Mat._31 * Vec.X + Mat._32 * Vec.Y + Mat._33 * Vec.Z + Mat._34 * Vec.W;
+    Result.W = Mat._41 * Vec.X + Mat._42 * Vec.Y + Mat._43 * Vec.Z + Mat._44 * Vec.W;
     return Result;
   }
 
@@ -155,8 +186,8 @@ namespace Math
   mat4
   Mat4Rotate(vec3 EulerAngles)
   {
-    return MulMat4(MulMat4(Mat4RotateZ(EulerAngles.Z), Mat4RotateY(EulerAngles.Y)),
-                   Mat4RotateX(EulerAngles.X));
+    return MulMat4(Mat4RotateZ(EulerAngles.Z), MulMat4(Mat4RotateY(EulerAngles.Y),
+                   Mat4RotateX(EulerAngles.X)));
   }
 
   mat4

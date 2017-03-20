@@ -27,6 +27,8 @@ namespace Math
   mat3 Mat3Ident();
   mat4 Mat4Ident();
   mat3 MulMat3(mat3 A, mat3 B);
+  mat3 Mat4ToMat3(mat4 Mat4);
+  mat4 Mat3ToMat4(mat3 Mat3);
   mat4 MulMat4(mat4 A, mat4 B);
   vec3 MulMat3Vec3(mat3 Mat, vec3 Vec);
   vec4 MulMat4Vec4(mat4 Mat, vec4 Vec);

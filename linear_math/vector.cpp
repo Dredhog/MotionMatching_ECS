@@ -2,37 +2,37 @@
 #include "math.h"
 
 vec3
-Math::operator-(const vec3& V)
+operator-(const vec3& V)
 {
   return vec3{ -V.X, -V.Y, -V.Z };
 }
 
 vec3
-Math::operator+(const vec3& A, const vec3& B)
+operator+(const vec3& A, const vec3& B)
 {
   return vec3{ A.X + B.X, A.Y + B.Y, A.Z + B.Z };
 }
 
 vec3
-Math::operator-(const vec3& A, const vec3& B)
+operator-(const vec3& A, const vec3& B)
 {
   return vec3{ A.X - B.X, A.Y - B.Y, A.Z - B.Z };
 }
 
 bool
-Math::operator==(const vec3& A, const vec3& B)
+operator==(const vec3& A, const vec3& B)
 {
   return (A.X == B.X && A.Y == B.Y && A.Z == B.Z);
 }
 
 bool
-Math::operator!=(const vec3& A, const vec3& B)
+operator!=(const vec3& A, const vec3& B)
 {
   return (A.X != B.X || A.Y != B.Y || A.Z != B.Z);
 }
 
 vec3&
-Math::operator+=(vec3& A, const vec3& B)
+operator+=(vec3& A, const vec3& B)
 {
   A.X += B.X;
   A.Y += B.Y;
@@ -41,7 +41,7 @@ Math::operator+=(vec3& A, const vec3& B)
 }
 
 vec3&
-Math::operator-=(vec3& A, const vec3& B)
+operator-=(vec3& A, const vec3& B)
 {
   A.X -= B.X;
   A.Y -= B.Y;
@@ -49,30 +49,30 @@ Math::operator-=(vec3& A, const vec3& B)
   return A;
 }
 
-vec3 Math::operator*(const vec3& A, float s)
+vec3 operator*(const vec3& A, float s)
 {
   return vec3{ A.X * s, A.Y * s, A.Z * s };
 }
 
-vec3 Math::operator*(float s, const vec3& A)
+vec3 operator*(float s, const vec3& A)
 {
   return A * s;
 }
 
 vec3
-Math::operator/(const vec3 A, float s)
+operator/(const vec3 A, float s)
 {
   return vec3{ A.X / s, A.Y / s, A.Z / s };
 }
 
 vec3
-Math::operator/(float s, const vec3 A)
+operator/(float s, const vec3 A)
 {
   return A / s;
 }
 
 vec3&
-Math::operator*=(vec3& A, float s)
+operator*=(vec3& A, float s)
 {
   A.X *= s;
   A.Y *= s;
@@ -81,7 +81,7 @@ Math::operator*=(vec3& A, float s)
 }
 
 vec3&
-Math::operator/=(vec3& A, float s)
+operator/=(vec3& A, float s)
 {
   A.X /= s;
   A.Y /= s;
@@ -114,36 +114,36 @@ Math::Cross(vec3 A, vec3 B)
 }
 
 vec4
-Math::operator-(const vec4& V)
+operator-(const vec4& V)
 {
   return vec4{ -V.X, -V.Y, -V.Z, -V.W };
 }
 
 vec4
-Math::operator+(const vec4& A, const vec4& B)
+operator+(const vec4& A, const vec4& B)
 {
   return vec4{ A.X + B.X, A.Y + B.Y, A.Z + B.Z, A.W + B.W };
 }
 vec4
-Math::operator-(const vec4& A, const vec4& B)
+operator-(const vec4& A, const vec4& B)
 {
   return vec4{ A.X - B.X, A.Y - B.Y, A.Z - B.Z, A.W - B.W };
 }
 
 bool
-Math::operator==(const vec4& A, const vec4& B)
+operator==(const vec4& A, const vec4& B)
 {
   return (A.X == B.X && A.Y == B.Y && A.Z == B.Z && A.W == B.W);
 }
 
 bool
-Math::operator!=(const vec4& A, const vec4& B)
+operator!=(const vec4& A, const vec4& B)
 {
   return (A.X != B.X || A.Y != B.Y || A.Z != B.Z || A.W != B.W);
 }
 
 vec4&
-Math::operator+=(vec4& A, const vec4& B)
+operator+=(vec4& A, const vec4& B)
 {
   A.X += B.X;
   A.Y += B.Y;
@@ -153,7 +153,7 @@ Math::operator+=(vec4& A, const vec4& B)
 }
 
 vec4&
-Math::operator-=(vec4& A, const vec4& B)
+operator-=(vec4& A, const vec4& B)
 {
   A.X -= B.X;
   A.Y -= B.Y;
@@ -162,30 +162,30 @@ Math::operator-=(vec4& A, const vec4& B)
   return A;
 }
 
-vec4 Math::operator*(const vec4& A, float s)
+vec4 operator*(const vec4& A, float s)
 {
   return vec4{ A.X * s, A.Y * s, A.Z * s, A.W * s };
 }
 
-vec4 Math::operator*(float s, const vec4& A)
+vec4 operator*(float s, const vec4& A)
 {
   return A * s;
 }
 
 vec4
-Math::operator/(const vec4& A, float s)
+operator/(const vec4& A, float s)
 {
   return vec4{ A.X / s, A.Y / s, A.Z / s, A.W * s };
 }
 
 vec4
-Math::operator/(float s, const vec4& A)
+operator/(float s, const vec4& A)
 {
   return A / s;
 }
 
 vec4&
-Math::operator*=(vec4& A, float s)
+operator*=(vec4& A, float s)
 {
   A.X *= s;
   A.Y *= s;
@@ -195,7 +195,7 @@ Math::operator*=(vec4& A, float s)
 }
 
 vec4&
-Math::operator/=(vec4& A, float s)
+operator/=(vec4& A, float s)
 {
   A.X /= s;
   A.Y /= s;

@@ -30,11 +30,16 @@ struct game_input
 {
   int32_t MouseX;
   int32_t MouseY;
+  int32_t dMouseX;
+  int32_t dMouseY;
+  float   dt;
 
   union {
-    game_button_state Buttons[17];
+    game_button_state Buttons[21];
     struct
     {
+      game_button_state a;
+      game_button_state d;
       game_button_state e;
       game_button_state g;
       game_button_state m;
@@ -44,6 +49,7 @@ struct game_input
       game_button_state r;
       game_button_state s;
       game_button_state t;
+      game_button_state w;
       game_button_state LeftCtrl;
       game_button_state Space;
       game_button_state ArrowUp;
@@ -57,6 +63,20 @@ struct game_input
   };
 };
 
+struct camera
+{
+  vec3 P;
+  vec3 Up;
+  vec3 Right;
+  vec3 Forward;
+
+  vec3 Rotation;
+
+  float Speed;
+
+  vec3 FieldOfView;
+};
+
 struct game_state
 {
   Memory::stack_allocator* PersistentMemStack;
@@ -68,8 +88,10 @@ struct game_state
   int ShaderVertexColor;
 
   uint32_t MagicChecksum;
-	vec3 MeshEulerAngles;
-	vec3 MeshScale;
+  vec3     MeshEulerAngles;
+  vec3     MeshScale;
+
+  camera Camera;
 };
 
 struct game_memory

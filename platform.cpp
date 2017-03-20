@@ -18,7 +18,12 @@
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
 #include "stack_allocator.h"
+
+#define SCREEN_WIDTH 1024
+#define SCREEN_HEIGHT 512
+
 #include "game.h"
+
 
 uint32_t
 SafeTruncateUint64(uint64_t Value)
@@ -54,6 +59,14 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         else if(Event->key.keysym.sym == SDLK_LCTRL)
         {
           NewInput->LeftCtrl.EndedDown = true;
+        }
+        else if(Event->key.keysym.sym == SDLK_a)
+        {
+          NewInput->a.EndedDown = true;
+        }
+        else if(Event->key.keysym.sym == SDLK_d)
+        {
+          NewInput->d.EndedDown = true;
         }
         else if(Event->key.keysym.sym == SDLK_e)
         {
@@ -91,6 +104,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->o.EndedDown = true;
         }
+        else if(Event->key.keysym.sym == SDLK_w)
+        {
+          NewInput->w.EndedDown = true;
+        }
         else if(Event->key.keysym.sym == SDLK_UP)
         {
           NewInput->ArrowUp.EndedDown = true;
@@ -118,6 +135,14 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         else if(Event->key.keysym.sym == SDLK_LCTRL)
         {
           NewInput->LeftCtrl.EndedDown = false;
+        }
+        else if(Event->key.keysym.sym == SDLK_a)
+        {
+          NewInput->a.EndedDown = false;
+        }
+        else if(Event->key.keysym.sym == SDLK_d)
+        {
+          NewInput->d.EndedDown = false;
         }
         else if(Event->key.keysym.sym == SDLK_e)
         {
@@ -154,6 +179,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         else if(Event->key.keysym.sym == SDLK_o)
         {
           NewInput->o.EndedDown = false;
+        }
+        else if(Event->key.keysym.sym == SDLK_w)
+        {
+          NewInput->w.EndedDown = false;
         }
         else if(Event->key.keysym.sym == SDLK_UP)
         {
@@ -200,6 +229,8 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
     }
   }
   SDL_GetMouseState(&NewInput->MouseX, &NewInput->MouseY);
+  NewInput->dMouseX = NewInput->MouseX - SCREEN_WIDTH / 2;
+  NewInput->dMouseY = NewInput->MouseY - SCREEN_HEIGHT / 2;
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {
@@ -329,8 +360,9 @@ Init(SDL_Window** Window)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     // Create an SDL window
-    *Window =
-      SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, 1024, 800, SDL_WINDOW_OPENGL);
+    SDL_ShowCursor(SDL_DISABLE);
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+                               SDL_WINDOW_OPENGL );
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());
@@ -395,19 +427,27 @@ main(int argc, char* argv[])
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
 
-  SDL_Event  Event;
+  SDL_Event Event;
+
   game_input OldInput = {};
   game_input NewInput = {};
+  SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+  ProcessInput(&OldInput, &NewInput, &Event);
+  OldInput = NewInput;
 
   // Main loop
   while(true)
   {
+
     ProcessInput(&OldInput, &NewInput, &Event);
+    SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
     if(NewInput.Escape.EndedDown)
     {
       break;
     }
 
+    NewInput.dt = 1.0f / 60.0f;
     GameUpdateAndRender(GameMemory, &GameState, &AssetsHaveLoaded, &NewInput);
 
     SDL_GL_SwapWindow(Window);
