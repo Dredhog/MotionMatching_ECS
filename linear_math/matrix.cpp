@@ -141,6 +141,7 @@ namespace Math
 
     return mat4{ Cos, Sin, 0, 0, -Sin, Cos, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
   }
+
   mat4
   Mat4RotateX(float Angle)
   {
@@ -149,6 +150,13 @@ namespace Math
     float Cos = cosf(Angle);
 
     return mat4{ 1, 0, 0, 0, 0, Cos, Sin, 0, 0, -Sin, Cos, 0, 0, 0, 0, 1 };
+  }
+
+  mat4
+  Mat4Rotate(vec3 EulerAngles)
+  {
+    return MulMat4(MulMat4(Mat4RotateZ(EulerAngles.Z), Mat4RotateY(EulerAngles.Y)),
+                   Mat4RotateX(EulerAngles.X));
   }
 
   mat4

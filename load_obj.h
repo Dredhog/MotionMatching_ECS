@@ -5,37 +5,12 @@
 #include <cassert>
 
 #include "stack_allocator.h"
+#include "mesh.h"
 
-namespace Mesh
+namespace Loader
 {
-  struct mesh
-  {
-    uint32_t VAO;
 
-    uint32_t VBO;
-    uint32_t EBO;
-
-    float*    Floats;
-    uint32_t* Indices;
-
-    int32_t VerticeCount;
-    int32_t IndiceCount;
-
-    int32_t Offsets[3];
-    int32_t FloatsPerVertex;
-    int32_t AttributesPerVertex;
-    bool    UseUVs;
-    bool    UseNormals;
-  };
-
-  enum mesh_attribute_mask
-  {
-    MAM_UseNormals = 1,
-    MAM_UseUVs     = 2,
-    MAM_FlipZ      = 4,
-  };
-
-  mesh
+	Mesh::mesh
   LoadOBJMesh(Memory::stack_allocator* ScratchAllocator,
               Memory::stack_allocator* PersistentMemAllocator, const char* FileName,
               uint32_t AttributeMask)
@@ -62,9 +37,9 @@ namespace Mesh
     int UVCount       = 0;
     int IndiceCount   = 0;
 
-    mesh Mesh       = {};
-    Mesh.UseUVs     = AttributeMask & MAM_UseUVs;
-    Mesh.UseNormals = AttributeMask & MAM_UseNormals;
+    Mesh::mesh Mesh = {};
+    Mesh.UseUVs     = AttributeMask & Mesh::MAM_UseUVs;
+    Mesh.UseNormals = AttributeMask & Mesh::MAM_UseNormals;
 
     Mesh.FloatsPerVertex     = 3;
     Mesh.AttributesPerVertex = 1;
@@ -113,7 +88,7 @@ namespace Mesh
         {
           sscanf(&ReadLine[2], "%f %f %f ", &Positions[3 * PositionCount],
                  &Positions[3 * PositionCount + 1], &Positions[3 * PositionCount + 2]);
-          if(AttributeMask & MAM_FlipZ)
+          if(AttributeMask & Mesh::MAM_FlipZ)
           {
             Positions[3 * PositionCount + 2] *= -1;
           }
@@ -219,41 +194,5 @@ namespace Mesh
     fclose(FileHandle);
 
     return Mesh;
-  }
-
-  void
-  PrintMesh(const mesh* Mesh)
-  {
-    printf("VertCount : %d, IndCount: %d\n", Mesh->VerticeCount, Mesh->IndiceCount);
-    printf("UseUVs    : %d,	UseNormals : %d\n", Mesh->UseUVs, Mesh->UseNormals);
-    printf("FloatsPerV: %d, AttribsPerV: %d\n", Mesh->FloatsPerVertex, Mesh->AttributesPerVertex);
-    printf("PosOffset : %d, UVOffset : %d, NormOffset: %d\n", Mesh->Offsets[0], Mesh->Offsets[1],
-           Mesh->Offsets[2]);
-    for(int i = 0; i < Mesh->VerticeCount; i++)
-    {
-      int VertexStartFloat = i * Mesh->FloatsPerVertex;
-
-      printf("%d: P:{ %5.2f %5.2f %5.2f }\t", i,
-             (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[0]],
-             (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[0] + 1],
-             (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[0] + 2]);
-      if(Mesh->UseUVs)
-      {
-        printf("UV:{ %5.2f %5.2f }\t", (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[1]],
-               (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[1] + 1]);
-      }
-      if(Mesh->UseNormals)
-      {
-        printf("N:{ %5.2f %5.2f %5.2f }\n",
-               (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[2]],
-               (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[2] + 1],
-               (double)Mesh->Floats[VertexStartFloat + Mesh->Offsets[2] + 2]);
-      }
-    }
-    printf("INDICES\n");
-    for(int i = 0; i < Mesh->IndiceCount; i++)
-    {
-      printf("%d: %d\n", i, Mesh->Indices[i]);
-    }
   }
 }
