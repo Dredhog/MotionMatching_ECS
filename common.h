@@ -35,7 +35,7 @@ struct game_input
   float   dt;
 
   union {
-    game_button_state Buttons[21];
+    game_button_state Buttons[22];
     struct
     {
       game_button_state a;
@@ -51,6 +51,7 @@ struct game_input
       game_button_state t;
       game_button_state w;
       game_button_state LeftCtrl;
+      game_button_state LeftShift;
       game_button_state Space;
       game_button_state ArrowUp;
       game_button_state ArrowDown;

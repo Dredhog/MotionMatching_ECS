@@ -19,8 +19,8 @@
 #include "linear_math/matrix.h"
 #include "stack_allocator.h"
 
-#define SCREEN_WIDTH 1024
-#define SCREEN_HEIGHT 512
+#define SCREEN_WIDTH 1920
+#define SCREEN_HEIGHT 1080
 
 #include "game.h"
 
@@ -59,6 +59,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         else if(Event->key.keysym.sym == SDLK_LCTRL)
         {
           NewInput->LeftCtrl.EndedDown = true;
+        }
+        else if(Event->key.keysym.sym == SDLK_LSHIFT)
+        {
+          NewInput->LeftShift.EndedDown = true;
         }
         else if(Event->key.keysym.sym == SDLK_a)
         {
@@ -135,6 +139,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         else if(Event->key.keysym.sym == SDLK_LCTRL)
         {
           NewInput->LeftCtrl.EndedDown = false;
+        }
+        else if(Event->key.keysym.sym == SDLK_LSHIFT)
+        {
+          NewInput->LeftShift.EndedDown = false;
         }
         else if(Event->key.keysym.sym == SDLK_a)
         {
@@ -362,7 +370,7 @@ Init(SDL_Window** Window)
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
-                               SDL_WINDOW_OPENGL );
+                               SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());
