@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "mesh.h"
+#include "model.h"
 #include "linear_math/vector.h"
 #include "stack_allocator.h"
 
@@ -12,12 +12,6 @@ struct loaded_bitmap
   void*   Texels;
   int32_t Width;
   int32_t Height;
-};
-
-struct debug_read_file_result
-{
-  void*    Contents;
-  uint32_t ContentsSize;
 };
 
 struct game_button_state
@@ -83,7 +77,7 @@ struct game_state
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
 
-  Mesh::mesh Mesh;
+	Render::model *Model;
 
   int ShaderWireframe;
   int ShaderVertexColor;
@@ -107,22 +101,11 @@ struct game_memory
 };
 
 #define GAME_UPDATE_AND_RENDER(name)                                                               \
-  void name(game_memory GameMemory, game_state* GameState, bool* AssetsHaveLoaded,                 \
-            const game_input* const Input)
+  void name(game_memory GameMemory, game_state* GameState, const game_input* const Input)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
 GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
 {
 }
-
-#define PLATFORM_READ_ENTIRE_FILE(name) debug_read_file_result name(char* Filename)
-typedef PLATFORM_READ_ENTIRE_FILE(platform_read_entire_file);
-
-#define PLATFORM_FREE_FILE_MEMORY(name) void name(debug_read_file_result FileHandle)
-typedef PLATFORM_FREE_FILE_MEMORY(platform_free_file_memory);
-
-#define PLATFORM_WRITE_ENTIRE_FILE(name)                                                           \
-  int32_t name(char* Filename, uint64_t MemorySize, void* Memory)
-typedef PLATFORM_WRITE_ENTIRE_FILE(platform_write_entire_file);
 
 #define PLATFORM_LOAD_BITMAP_FROM_FILE(name) loaded_bitmap name(char* Filename)
 typedef PLATFORM_LOAD_BITMAP_FROM_FILE(platform_load_bitmap_from_file);

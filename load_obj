@@ -10,7 +10,7 @@
 namespace Loader
 {
 
-	Mesh::mesh
+	Render::mesh
   LoadOBJMesh(Memory::stack_allocator* ScratchAllocator,
               Memory::stack_allocator* PersistentMemAllocator, const char* FileName,
               uint32_t AttributeMask)
@@ -37,9 +37,9 @@ namespace Loader
     int UVCount       = 0;
     int IndiceCount   = 0;
 
-    Mesh::mesh Mesh = {};
-    Mesh.UseUVs     = AttributeMask & Mesh::MAM_UseUVs;
-    Mesh.UseNormals = AttributeMask & Mesh::MAM_UseNormals;
+    Render::mesh Mesh = {};
+    Mesh.UseUVs     = AttributeMask & Render::MAM_UseUVs;
+    Mesh.UseNormals = AttributeMask & Render::MAM_UseNormals;
 
     Mesh.FloatsPerVertex     = 3;
     Mesh.AttributesPerVertex = 1;
@@ -88,7 +88,7 @@ namespace Loader
         {
           sscanf(&ReadLine[2], "%f %f %f ", &Positions[3 * PositionCount],
                  &Positions[3 * PositionCount + 1], &Positions[3 * PositionCount + 2]);
-          if(AttributeMask & Mesh::MAM_FlipZ)
+          if(AttributeMask & Render::MAM_FlipZ)
           {
             Positions[3 * PositionCount + 2] *= -1;
           }

@@ -32,7 +32,7 @@ namespace Memory
   uint8_t*
   Memory::stack_allocator::Alloc(uint32_t SizeBytes)
   {
-    assert(((m_Top + SizeBytes) - m_Base) < m_CapacityBytes);
+    assert(((m_Top + SizeBytes) - m_Base) <= m_CapacityBytes);
 
     uint8_t* Result = m_Top;
     m_Top += SizeBytes;
@@ -87,7 +87,7 @@ namespace Memory
   int32_t
   Memory::stack_allocator::GetUsedSize() const
   {
-    assert(m_Base == m_Top);
+    assert(m_Base <= m_Top);
     if(m_Top == m_Base)
     {
       return 0;

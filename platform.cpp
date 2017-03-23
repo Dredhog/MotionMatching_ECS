@@ -4,16 +4,11 @@
 #include <math.h>
 #include <stdio.h>
 
-// snakebird, may not all be necessary
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-
 // Memory
 #include <sys/mman.h>
 
+#include "file_io.h"
 #include "common.h"
-#include "load_obj.h"
 #include "load_shader.h"
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
@@ -24,14 +19,6 @@
 
 #include "game.h"
 
-
-uint32_t
-SafeTruncateUint64(uint64_t Value)
-{
-  assert(Value <= 0xffffffff);
-  uint32_t Result = (uint32_t)Value;
-  return Result;
-}
 
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
@@ -248,78 +235,6 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
   return true;
 }
 
-debug_read_file_result
-PlatformReadEntireFile(char* FileName)
-{
-  debug_read_file_result Result     = {};
-  int                    FileHandle = open(FileName, O_RDONLY);
-  if(FileHandle == -1)
-  {
-    return Result;
-  }
-
-  struct stat FileStatus;
-  if(fstat(FileHandle, &FileStatus) == -1)
-  {
-    close(FileHandle);
-    return Result;
-  }
-  Result.ContentsSize = SafeTruncateUint64(FileStatus.st_size);
-
-  Result.Contents = malloc(Result.ContentsSize);
-  if(!Result.Contents)
-  {
-    Result.ContentsSize = 0;
-    close(FileHandle);
-    return Result;
-  }
-
-  uint64_t BytesStoread     = Result.ContentsSize;
-  uint8_t* NextByteLocation = (uint8_t*)Result.Contents;
-  while(BytesStoread)
-  {
-    int64_t BytesRead = read(FileHandle, NextByteLocation, BytesStoread);
-    if(BytesRead == -1)
-    {
-      free(Result.Contents);
-      Result.Contents     = 0;
-      Result.ContentsSize = 0;
-      close(FileHandle);
-      return Result;
-    }
-    BytesStoread -= BytesRead;
-    NextByteLocation += BytesRead;
-  }
-  close(FileHandle);
-  return Result;
-}
-
-bool
-PlatformWriteEntireFile(char* Filename, uint64_t MemorySize, void* Memory)
-{
-  int FileHandle = open(Filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-  if(FileHandle == -1)
-  {
-    return false;
-  }
-
-  uint64_t BytesToWrite     = MemorySize;
-  uint8_t* NextByteLocation = (uint8_t*)Memory;
-  while(BytesToWrite)
-  {
-    int64_t BytesWritten = write(FileHandle, NextByteLocation, BytesToWrite);
-    if(BytesWritten == -1)
-    {
-      close(FileHandle);
-      return false;
-    }
-    BytesToWrite -= BytesWritten;
-    NextByteLocation += BytesWritten;
-  }
-  close(FileHandle);
-  return true;
-}
 
 loaded_bitmap
 PlatformLoadBitmapFromFile(char* FileName)
@@ -363,8 +278,8 @@ Init(SDL_Window** Window)
   else
   {
     // Set Opengl contet version to 3.3 core
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     // Create an SDL window
@@ -421,19 +336,16 @@ main(int argc, char* argv[])
   game_memory GameMemory;
   {
     GameMemory.TemporaryMemory  = malloc(Mibibytes(20));
-    GameMemory.PersistentMemory = malloc(Mibibytes(20));
+    GameMemory.PersistentMemory = malloc(Mibibytes(40));
 
     if(GameMemory.TemporaryMemory && GameMemory.PersistentMemory)
     {
       GameMemory.HasBeenInitialized   = true;
       GameMemory.TemporaryMemorySize  = Mibibytes(20);
-      GameMemory.PersistentMemorySize = Mibibytes(20);
+      GameMemory.PersistentMemorySize = Mibibytes(40);
     }
   }
 
-  glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_CULL_FACE);
 
   SDL_Event Event;
 
@@ -456,7 +368,7 @@ main(int argc, char* argv[])
     }
 
     NewInput.dt = 1.0f / 60.0f;
-    GameUpdateAndRender(GameMemory, &GameState, &AssetsHaveLoaded, &NewInput);
+    GameUpdateAndRender(GameMemory, &GameState, &NewInput);
 
     SDL_GL_SwapWindow(Window);
     SDL_Delay(16);
