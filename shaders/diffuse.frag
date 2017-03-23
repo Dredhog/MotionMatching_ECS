@@ -5,7 +5,8 @@ in vec3 frag_normal;
 
 out vec4 out_color;
 
-void main()
+void
+main()
 {
- out_color = vec4(vec3(dot(normalize(frag_normal), normalize(vec3(0.25, 1, 0.25)))), 1.0f);
+  out_color = vec4(vec3(dot(normalize(frag_normal), normalize(vec3(0.25, 1, 0.25)))), 1.0f);
 }

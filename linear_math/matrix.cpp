@@ -148,6 +148,12 @@ namespace Math
     return mat4{ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, Tx, Ty, Tz, 1 };
   }
 
+  vec3
+  GetTranslationVec3(mat4 Mat4)
+  {
+    return { Mat4._14, Mat4._24, Mat4._34 };
+  }
+
   mat4
   Mat4Translate(vec3 T)
   {
@@ -186,8 +192,8 @@ namespace Math
   mat4
   Mat4Rotate(vec3 EulerAngles)
   {
-    return MulMat4(Mat4RotateZ(EulerAngles.Z), MulMat4(Mat4RotateY(EulerAngles.Y),
-                   Mat4RotateX(EulerAngles.X)));
+    return MulMat4(Mat4RotateZ(EulerAngles.Z),
+                   MulMat4(Mat4RotateY(EulerAngles.Y), Mat4RotateX(EulerAngles.X)));
   }
 
   mat4

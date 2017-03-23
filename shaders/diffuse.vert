@@ -12,6 +12,6 @@ void
 main()
 {
   vert_color  = color;
-	frag_normal = color;
+  frag_normal = color;
   gl_Position = mat_mvp * vec4(position, 1.0f);
 }

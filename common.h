@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "model.h"
 #include "linear_math/vector.h"
+#include "linear_math/matrix.h"
 #include "stack_allocator.h"
 
 #define ArrayCount(Array) sizeof((Array)) / sizeof(Array[0])
@@ -65,11 +66,17 @@ struct camera
   vec3 Right;
   vec3 Forward;
 
-  vec3 Rotation;
+  float NearClipPlane;
+  float FarClipPlane;
+  float FieldOfView;
 
   float Speed;
+  float MaxTiltAngle;
 
-  vec3 FieldOfView;
+  vec3 Rotation;
+  mat4 ViewMatrix;
+  mat4 ProjectionMatrix;
+  mat4 VPMatrix;
 };
 
 struct game_state
@@ -77,10 +84,12 @@ struct game_state
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
 
-	Render::model *Model;
+  Render::model* Model;
+  Render::model* GizmoModel;
 
   int ShaderWireframe;
-  int ShaderVertexColor;
+  int ShaderDiffuse;
+  int ShaderGizmo;
 
   uint32_t MagicChecksum;
   vec3     MeshEulerAngles;

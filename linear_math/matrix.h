@@ -36,6 +36,7 @@ namespace Math
   void PrintMat4(mat4 Mat);
   mat4 Mat4Translate(float Tx, float Ty, float Tz);
   mat4 Mat4Translate(vec3 T);
+  vec3 GetTranslationVec3(mat4 Mat4);
   mat4 Mat4RotateY(float Angle);
   mat4 Mat4RotateZ(float Angle);
   mat4 Mat4RotateX(float Angle);
