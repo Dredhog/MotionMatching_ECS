@@ -60,7 +60,7 @@ namespace Anim
       {
         printf("  ");
       }
-      printf("%d: %s #%d, child of #%d\n", i, Bone->Name, Bone->Index, Bone->ParentIndex);
+      printf("%d: %s\n", i, Bone->Name);
     }
   }
 

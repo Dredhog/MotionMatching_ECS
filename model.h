@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <stdint.h>
 #include <stdio.h>
@@ -15,16 +15,21 @@ namespace Render
   };
 
   void
-  PrintModel(Render::model* Model)
+  PrintModelHeader(Render::model* Model)
   {
     printf("MODEL HEADER\n");
     printf("MeshCount: %d\n", Model->MeshCount);
+  }
 
-		assert(Model->MeshCount >= 0);
+  void
+  PrintModel(Render::model* Model)
+  {
+    PrintModelHeader(Model);
 
-		for(int i = 0; i < Model->MeshCount; i++)
-		{
+    assert(Model->MeshCount >= 0);
+    for(int i = 0; i < Model->MeshCount; i++)
+    {
       Render::PrintMeshHeader(Model->Meshes[i], i);
-		}
+    }
   }
 }

@@ -304,12 +304,12 @@ main(int ArgCount, char** Args)
     assert(Allocator.GetUsedSize() == TotalOutputFileSize - sizeof(Anim::skeleton));
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
 
-		Render::PrintModel((Render::model*)AssetHeader->Model);
+    printf("writing: %s\n", ModelName);
+    PrintModelHeader((Render::model*)AssetHeader->Model);
     PackAsset(AssetHeader, TotalOutputFileSize - sizeof(Anim::skeleton));
     WriteEntireFile(ModelName, TotalOutputFileSize - sizeof(Anim::skeleton), FileMemory);
 
     UnpackAsset(AssetHeader);
-		Render::PrintModel((Render::model*)AssetHeader->Model);
 
     // write '.actor'
     Anim::skeleton* SkeletonPtr = PushStruct(&Allocator, Anim::skeleton);
@@ -318,6 +318,9 @@ main(int ArgCount, char** Args)
     AssetHeader->AssetType      = (uint32_t)Asset::ASSET_Actor;
     assert(Allocator.GetUsedSize() == TotalOutputFileSize);
 
+    printf("writing: %s\n", ActorName);
+    PrintSkeleton((Anim::skeleton*)AssetHeader->Skeleton);
+    printf("\n");
     PackAsset(AssetHeader, TotalOutputFileSize);
     WriteEntireFile(ActorName, TotalOutputFileSize, FileMemory);
   }
@@ -328,7 +331,9 @@ main(int ArgCount, char** Args)
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
     AssetHeader->TotalSize = TotalOutputFileSize;
 
-		Render::PrintModel((Render::model*)AssetHeader->Model);
+    printf("writing: %s\n", ModelName);
+    Render::PrintModelHeader((Render::model*)AssetHeader->Model);
+		printf("\n");
     PackAsset(AssetHeader, TotalOutputFileSize);
     WriteEntireFile(ModelName, TotalOutputFileSize, FileMemory);
   }
