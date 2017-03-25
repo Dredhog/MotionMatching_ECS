@@ -6,3 +6,6 @@ header_dirs = ../
 
 all:
 	@$(compiler) $(common_flags) $(linker_flags) -I $(header_dirs) /usr/lib/x86_64-linux-gnu/libassimp.so main.cpp -o builder 
+
+build: 
+	./builder turner_skinned.dae turner_skinned.model

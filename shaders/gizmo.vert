@@ -7,11 +7,13 @@ uniform float depth;
 
 out vec3 frag_position;
 
+const float gizmo_scale = 0.1;
+
 void
 main()
 {
   frag_position = vert_position;
 
-  vec3 scaled = vert_position * (-depth);
+  vec3 scaled = vert_position * (-depth) * gizmo_scale;
   gl_Position = mat_mvp * vec4(scaled, 1.0f);
 }

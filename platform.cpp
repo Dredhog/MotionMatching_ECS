@@ -16,9 +16,9 @@
 
 #define SCREEN_WIDTH 900
 #define SCREEN_HEIGHT 600
+#define FRAME_RATE 60
 
 #include "game.h"
-
 
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
@@ -235,7 +235,6 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
   return true;
 }
 
-
 loaded_bitmap
 PlatformLoadBitmapFromFile(char* FileName)
 {
@@ -284,8 +283,8 @@ Init(SDL_Window** Window)
 
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
-    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
-                               SDL_WINDOW_OPENGL /*| SDL_WINDOW_FULLSCREEN*/);
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL /*| SDL_WINDOW_FULLSCREEN*/);
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());
@@ -335,17 +334,22 @@ main(int argc, char* argv[])
   game_state  GameState = {};
   game_memory GameMemory;
   {
-    GameMemory.TemporaryMemory  = malloc(Mibibytes(20));
-    GameMemory.PersistentMemory = malloc(Mibibytes(40));
+    GameMemory.TemporaryMemorySize  = Mibibytes(50);
+    GameMemory.PersistentMemorySize = Mibibytes(50);
+
+    GameMemory.TemporaryMemory  = malloc(GameMemory.TemporaryMemorySize);
+    GameMemory.PersistentMemory = malloc(GameMemory.PersistentMemorySize);
 
     if(GameMemory.TemporaryMemory && GameMemory.PersistentMemory)
     {
-      GameMemory.HasBeenInitialized   = true;
-      GameMemory.TemporaryMemorySize  = Mibibytes(20);
-      GameMemory.PersistentMemorySize = Mibibytes(40);
+      GameMemory.HasBeenInitialized = true;
+    }
+    else
+    {
+      GameMemory.TemporaryMemorySize  = 0;
+      GameMemory.PersistentMemorySize = 0;
     }
   }
-
 
   SDL_Event Event;
 
@@ -367,11 +371,11 @@ main(int argc, char* argv[])
       break;
     }
 
-    NewInput.dt = 1.0f / 60.0f;
+    NewInput.dt = 1.0f / 120;
     GameUpdateAndRender(GameMemory, &GameState, &NewInput);
 
     SDL_GL_SwapWindow(Window);
-    SDL_Delay(16);
+    SDL_Delay((int32_t)((float)1000 / (float)120));
 
     OldInput = NewInput;
   }

@@ -17,9 +17,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     GameState->MagicChecksum = 123456;
     GameState->TemporaryMemStack =
-      Memory::CreateStackAllocatorInPlace(GameMemory.TemporaryMemory, Mibibytes(20));
+      Memory::CreateStackAllocatorInPlace(GameMemory.TemporaryMemory, GameMemory.TemporaryMemorySize);
     GameState->PersistentMemStack =
-      Memory::CreateStackAllocatorInPlace(GameMemory.PersistentMemory, Mibibytes(40));
+      Memory::CreateStackAllocatorInPlace(GameMemory.PersistentMemory, GameMemory.PersistentMemorySize);
 
     // -------BEGIN ASSET LOADING
     Memory::stack_allocator* TemporaryMemStack  = GameState->TemporaryMemStack;
@@ -30,29 +30,27 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     assert(AssetReadResult.Contents);
     Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
-    assert(AssetHeader->Checksum == 12345);
 
-    GameState->GizmoModel = (Render::model*)((uint8_t*)AssetHeader + AssetHeader->HeaderOffset);
-    UnpackModel(GameState->GizmoModel);
+    //assert(0);
+    UnpackAsset(AssetHeader);
+    GameState->GizmoModel = (Render::model*)AssetHeader->Model;
     for(int i = 0; i < GameState->GizmoModel->MeshCount; i++)
     {
       SetUpMesh(GameState->GizmoModel->Meshes[i]);
     }
 
     // Set Up Model
-    AssetReadResult = ReadEntireFile(PersistentMemStack, "data/bunny.model");
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "data/sponza.model");
 
     assert(AssetReadResult.Contents);
     AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
-    assert(AssetHeader->Checksum == 12345);
-
-    GameState->Model = (Render::model*)((uint8_t*)AssetHeader + AssetHeader->HeaderOffset);
-    UnpackModel(GameState->Model);
-    PrintModel(GameState->Model);
+    UnpackAsset(AssetHeader);
+    GameState->Model = (Render::model*)AssetHeader->Model;
     for(int i = 0; i < GameState->Model->MeshCount; i++)
     {
       SetUpMesh(GameState->Model->Meshes[i]);
     }
+     //GameState->Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
     // Set Up Sahders
     Memory::marker LoadStart = TemporaryMemStack->GetMarker();
@@ -78,6 +76,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // -------InitGameState
     GameState->MeshEulerAngles      = { 0, 0, 0 };
@@ -95,16 +94,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Update
   UpdateCamera(&GameState->Camera, Input);
-  GameState->MeshEulerAngles.Y += 45.0f * Input->dt;
+  GameState->MeshEulerAngles.Y += 2.0f * Input->dt;
   mat4 ModelMatrix =
-    Math::MulMat4(Math::Mat4Rotate(GameState->MeshEulerAngles), Math::Mat4Scale(0.3f));
+    Math::MulMat4(Math::Mat4Rotate(GameState->MeshEulerAngles), Math::Mat4Scale(0.002f));
   mat4 MVPMatrix = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
 
   // Rendering
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   // Regular Shader
   glUseProgram(GameState->ShaderDiffuse);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
   // Draw model
   for(int i = 0; i < GameState->Model->MeshCount; i++)
@@ -116,6 +114,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindVertexArray(0);
   }
 
+#if 0
+  mat4 BoneGizmos[SKELETON_MAX_BONE_COUNT];
+  for(int i = 0; i < GameState->Skeleton->BoneCount; i++)
+  {
+		BoneGizmos[i] = Math::MulMat4(ModelMatrix, GameState->Skeleton->Bones[i].BindPose);
+  }
+
   DEBUGDrawGizmo(GameState, &ModelMatrix, 1);
+  DEBUGDrawGizmo(GameState, BoneGizmos, GameState->Skeleton->BoneCount);
+#endif
 }
 

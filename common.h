@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "model.h"
+#include "anim.h"
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
 #include "stack_allocator.h"
@@ -84,8 +85,9 @@ struct game_state
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
 
-  Render::model* Model;
-  Render::model* GizmoModel;
+  Render::model*  Model;
+  Anim::skeleton* Skeleton;
+  Render::model*  GizmoModel;
 
   int ShaderWireframe;
   int ShaderDiffuse;
