@@ -7,7 +7,7 @@ uniform float depth;
 
 out vec3 frag_position;
 
-const float gizmo_scale = 0.1;
+const float gizmo_scale = 0.05;
 
 void
 main()

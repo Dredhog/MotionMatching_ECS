@@ -23,7 +23,7 @@ void
 InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight)
 {
   int SmallestIndex = 0;
-  for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+  for(int i = 1; i < VERTEX_MAX_BONE_COUNT; i++)
   {
     if(Vertex->BoneWeights[i] < Vertex->BoneWeights[SmallestIndex])
     {
@@ -41,19 +41,19 @@ void
 NormalizeVertexBoneWeights(Render::vertex* Vertex)
 {
   float WeightSum = 0.0f;
-  for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+  for(int i = 0; i < VERTEX_MAX_BONE_COUNT; i++)
   {
     WeightSum += Vertex->BoneWeights[i];
   }
 
   if(WeightSum > 0.0f)
   {
-    for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+    for(int i = 0; i < VERTEX_MAX_BONE_COUNT; i++)
     {
       Vertex->BoneWeights[i] /= WeightSum;
     }
     float checksum = 0.0f;
-    for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+    for(int i = 0; i < VERTEX_MAX_BONE_COUNT; i++)
     {
       checksum += Vertex->BoneWeights[i];
     }

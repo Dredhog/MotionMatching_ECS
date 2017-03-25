@@ -1,79 +1,31 @@
 #pragma once
 
 #include <stdint.h>
-#include <stdio.h>
 
 #include "linear_math/matrix.h"
+#include "linear_math/vector.h"
 
-#define BONE_NAME_LENGTH 20
-#define SKELETON_MAX_BONE_COUNT 20
+#include "skeleton.h"
 
 namespace Anim
 {
-  struct bone
+  struct transform
   {
-    char Name[BONE_NAME_LENGTH];
-    mat4 BindPose;
-    mat4 InverseBindPose;
-
-    int32_t ParentIndex;
-    int32_t Index;
+    vec3 Rotation;
+    vec3 Translation;
+    vec3 Scale;
   };
 
-  struct skeleton // root is always the 0'th bone
+  struct keyframe
   {
-    int32_t BoneCount;
-    bone    Bones[SKELETON_MAX_BONE_COUNT];
+    transform Transforms[SKELETON_MAX_BONE_COUNT];
+    int32_t   TransformCout;
   };
 
-  void
-  AddBone(Anim::skeleton* Skeleton, Anim::bone Bone)
-  {
-    assert(Skeleton->BoneCount < SKELETON_MAX_BONE_COUNT);
-    assert(Skeleton->BoneCount >= 0);
-
-    Skeleton->Bones[Skeleton->BoneCount++] = Bone;
-  }
-
-  int
-  r_GetBoneDepth(const skeleton* Skeleton, int BoneIndex)
-  {
-    assert(BoneIndex >= 0 && BoneIndex < Skeleton->BoneCount);
-
-    int ParentIndex = Skeleton->Bones[BoneIndex].ParentIndex;
-    if(ParentIndex < 0)
-    {
-      return 0;
-    }
-    return 1 + r_GetBoneDepth(Skeleton, ParentIndex);
-  }
-
-  void
-  PrintSkeleton(const skeleton* Skeleton)
-  {
-    for(int i = 0; i < Skeleton->BoneCount; i++)
-    {
-      const bone* Bone = &Skeleton->Bones[i];
-
-      int BoneDepth = r_GetBoneDepth(Skeleton, i);
-      for(int d = 0; d < BoneDepth; d++)
-      {
-        printf("  ");
-      }
-      printf("%d: %s\n", i, Bone->Name);
-    }
-  }
-
-  int32_t
-  GetBoneIndexFromName(const skeleton* Skeleton, const char* Name)
-  {
-    for(int i = 0; i < Skeleton->BoneCount; i++)
-    {
-      if(strcmp(Skeleton->Bones[i].Name, Name) == 0)
-      {
-        return i;
-      }
-    }
-    return -1;
-  }
+  void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,
+                             int32_t Count);
+  void ComputeModelSpacePoses(mat4* ModelSpacePoses, const mat4* BoneSpaceMatrices,
+                              const Anim::skeleton* Skeleton);
+  void ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSpaceMatrices,
+                                     const Anim::skeleton* Skeleton);
 }
