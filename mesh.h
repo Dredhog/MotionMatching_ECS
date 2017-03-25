@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "linear_math/vector.h"
+
 #define MESH_MAX_BONE_COUNT 3
 
 namespace Render
@@ -33,9 +34,9 @@ namespace Render
     int32_t VerticeCount;
     int32_t IndiceCount;
 
-    bool HasUVs;
-		bool HasBones;
-		int32_t BoneCount;
+    bool    HasUVs;
+    bool    HasBones;
+    int32_t BoneCount;
   };
 
   struct skinned_mesh
@@ -57,6 +58,7 @@ namespace Render
     bool    UseNormals;
   };
 
+  void SetUpMesh(Render::mesh* Mesh);
   void PrintMesh(const mesh* Mesh);
 
   inline void
@@ -74,5 +76,4 @@ namespace Render
     printf("VerticeCount: %d\n", Mesh->VerticeCount);
     printf("IndiceCount: %d\n", Mesh->IndiceCount);
   }
-  void SetUpMesh(Render::mesh* Mesh);
 }

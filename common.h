@@ -89,6 +89,7 @@ struct game_state
   Anim::skeleton* Skeleton;
   Render::model*  GizmoModel;
 
+  int ShaderBoneColor;
   int ShaderWireframe;
   int ShaderDiffuse;
   int ShaderGizmo;

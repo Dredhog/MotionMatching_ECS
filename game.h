@@ -10,6 +10,14 @@
 #include "builder/pack.h"
 #include "camera_gizmo.h"
 
+static const vec3 g_BoneColors[] = {
+  { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.53f }, { 0.96f, 0.24f, 0.15f },
+  { 0.20f, 0.34f, 0.44f }, { 0.37f, 0.34f, 0.14f }, { 0.22f, 0.99f, 0.77f }, { 0.80f, 0.70f, 0.11f },
+  { 0.81f, 0.92f, 0.18f }, { 0.51f, 0.86f, 0.13f }, { 0.80f, 0.94f, 0.10f }, { 0.70f, 0.42f, 0.52f },
+  { 0.26f, 0.50f, 0.61f }, { 0.10f, 0.21f, 0.81f }, { 0.96f, 0.22f, 0.63f }, { 0.77f, 0.22f, 0.79f },
+  { 0.30f, 0.00f, 0.07f }, { 0.98f, 0.28f, 0.02f }, { 0.92f, 0.42f, 0.14f }, { 0.47f, 0.31f, 0.72f },
+};
+
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
   assert(GameMemory.HasBeenInitialized);
@@ -23,7 +31,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       Memory::CreateStackAllocatorInPlace(GameMemory.PersistentMemory,
                                           GameMemory.PersistentMemorySize);
 
-    // -------BEGIN ASSET MODELS AND ACTORS
+    // -------BEGIN ASSETS 
     Memory::stack_allocator* TemporaryMemStack  = GameState->TemporaryMemStack;
     Memory::stack_allocator* PersistentMemStack = GameState->PersistentMemStack;
 
@@ -33,7 +41,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(AssetReadResult.Contents);
     Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
 
-    // assert(0);
     UnpackAsset(AssetHeader);
     GameState->GizmoModel = (Render::model*)AssetHeader->Model;
     for(int i = 0; i < GameState->GizmoModel->MeshCount; i++)
@@ -57,7 +64,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
     // -------BEGIN LOADING SHADERS
-    // Set Up Sahders
+    // Diffuse
     Memory::marker LoadStart = TemporaryMemStack->GetMarker();
     GameState->ShaderDiffuse = LoadShader(TemporaryMemStack, "shaders/diffuse");
     TemporaryMemStack->FreeToMarker(LoadStart);
@@ -66,8 +73,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       printf("Shader loading failed!\n");
       assert(false);
     }
+    // Bone Color
+    LoadStart                  = TemporaryMemStack->GetMarker();
+    GameState->ShaderBoneColor = LoadShader(TemporaryMemStack, "shaders/bone_color");
+    TemporaryMemStack->FreeToMarker(LoadStart);
+    if(GameState->ShaderBoneColor < 0)
+    {
+      printf("Shader loading failed!\n");
+      assert(false);
+    }
 
-    // Set Up Sahders
+    // Wireframe
     LoadStart                  = TemporaryMemStack->GetMarker();
     GameState->ShaderWireframe = LoadShader(TemporaryMemStack, "shaders/wireframe");
     TemporaryMemStack->FreeToMarker(LoadStart);
@@ -117,7 +133,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // Rendering
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-#if 1
+#if 0
   // Regular Shader
   glUseProgram(GameState->ShaderDiffuse);
   for(int i = 0; i < GameState->Model->MeshCount; i++)
@@ -131,6 +147,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #endif
 
 #if 1
+  // Bone Color Shader
+  glUseProgram(GameState->ShaderBoneColor);
+  for(int i = 0; i < GameState->Model->MeshCount; i++)
+  {
+    glBindVertexArray(GameState->Model->Meshes[i]->VAO);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderBoneColor, "mat_mvp"), 1, GL_FALSE,
+                       MVPMatrix.e);
+    glUniformMatrix3fv(glGetUniformLocation(GameState->ShaderBoneColor, "g_bone_colors"), 20,
+                       GL_FALSE, (float*)&g_BoneColors);
+    glDrawElements(GL_TRIANGLES, GameState->Model->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+  }
+#endif
+
+#if 0
   // WireframeShader Shader
   glUseProgram(GameState->ShaderWireframe);
   glDisable(GL_DEPTH_TEST);

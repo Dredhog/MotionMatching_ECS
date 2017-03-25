@@ -1,8 +1,7 @@
 void
 DEBUGDrawGizmo(game_state* GameState, mat4* GizmoBases, int32_t GizmoCount)
 {
-  glDisable(GL_DEPTH_TEST);
-
+	glClear(GL_DEPTH_BUFFER_BIT);
   glUseProgram(GameState->ShaderGizmo);
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   for(int g = 0; g < GizmoCount; g++)
@@ -22,7 +21,6 @@ DEBUGDrawGizmo(game_state* GameState, mat4* GizmoBases, int32_t GizmoCount)
     }
   }
   glBindVertexArray(0);
-  glEnable(GL_DEPTH_TEST);
 }
 
 static float
