@@ -13,6 +13,7 @@
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
 #include "stack_allocator.h"
+#include "texture.h"
 
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
@@ -249,27 +250,6 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
       (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
   }
   return true;
-}
-
-loaded_bitmap
-PlatformLoadBitmapFromFile(char* FileName)
-{
-  loaded_bitmap Result       = {};
-  SDL_Surface*  ImageSurface = SDL_LoadBMP(FileName);
-  if(ImageSurface)
-  {
-    Result.Texels = ImageSurface->pixels;
-    Result.Width  = ImageSurface->w;
-    Result.Height = ImageSurface->h;
-
-    assert(Result.Width > 0 && Result.Height > 0);
-  }
-  else
-  {
-    printf("Platform: bitmap load error: %s\n", SDL_GetError());
-  }
-
-  return Result;
 }
 
 void

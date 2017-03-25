@@ -38,7 +38,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Memory::stack_allocator* PersistentMemStack = GameState->PersistentMemStack;
 
     // Set Up Gizmo
-    debug_read_file_result AssetReadResult = ReadEntireFile(PersistentMemStack, "data/gizmo.model");
+    debug_read_file_result AssetReadResult =
+      ReadEntireFile(PersistentMemStack, "./data/gizmo.model");
 
     assert(AssetReadResult.Contents);
     Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
@@ -51,7 +52,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     // Set Up Model
-    AssetReadResult = ReadEntireFile(PersistentMemStack, "data/crysis_soldier.actor");
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/crysis_soldier.actor");
 
     assert(AssetReadResult.Contents);
     AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
@@ -65,10 +66,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
+    // Set Up Texture
+    GameState->Texture = Texture::LoadTexture("./textures/test.bmp"); // No actual .bmp file yet.
+
     // -------BEGIN LOADING SHADERS
     // Diffuse
     Memory::marker LoadStart = TemporaryMemStack->GetMarker();
-    GameState->ShaderDiffuse = LoadShader(TemporaryMemStack, "shaders/diffuse");
+    GameState->ShaderDiffuse = Shader::LoadShader(TemporaryMemStack, "./shaders/diffuse");
     TemporaryMemStack->FreeToMarker(LoadStart);
     if(GameState->ShaderDiffuse < 0)
     {
@@ -77,7 +81,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     // Bone Color
     LoadStart                  = TemporaryMemStack->GetMarker();
-    GameState->ShaderBoneColor = LoadShader(TemporaryMemStack, "shaders/bone_color");
+    GameState->ShaderBoneColor = Shader::LoadShader(TemporaryMemStack, "./shaders/bone_color");
     TemporaryMemStack->FreeToMarker(LoadStart);
     if(GameState->ShaderBoneColor < 0)
     {
@@ -87,7 +91,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // Wireframe
     LoadStart                  = TemporaryMemStack->GetMarker();
-    GameState->ShaderWireframe = LoadShader(TemporaryMemStack, "shaders/wireframe");
+    GameState->ShaderWireframe = Shader::LoadShader(TemporaryMemStack, "./shaders/wireframe");
     TemporaryMemStack->FreeToMarker(LoadStart);
     if(GameState->ShaderWireframe < 0)
     {
@@ -95,8 +99,18 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       assert(false);
     }
 
+    // Texture
+    LoadStart                = TemporaryMemStack->GetMarker();
+    GameState->ShaderTexture = Shader::LoadShader(TemporaryMemStack, "./shaders/texture");
+    TemporaryMemStack->FreeToMarker(LoadStart);
+    if(GameState->ShaderTexture < 0)
+    {
+      printf("Shader loading failed!\n");
+      assert(false);
+    }
+
     LoadStart              = TemporaryMemStack->GetMarker();
-    GameState->ShaderGizmo = LoadShader(TemporaryMemStack, "./shaders/gizmo");
+    GameState->ShaderGizmo = Shader::LoadShader(TemporaryMemStack, "./shaders/gizmo");
     TemporaryMemStack->FreeToMarker(LoadStart);
     if(GameState->ShaderGizmo < 0)
     {
@@ -178,6 +192,22 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glDrawElements(GL_TRIANGLES, GameState->Model->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
       glBindVertexArray(0);
     }
+  }
+
+  if(GameState->ShaderTexture)
+  {
+    // Texture Shader
+    glUseProgram(GameState->ShaderTexture);
+    glBindTexture(GL_TEXTURE_2D, GameState->Texture);
+    for(int i = 0; i < GameState->Model->MeshCount; i++)
+    {
+      glBindVertexArray(GameState->Model->Meshes[i]->VAO);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderTexture, "mat_mvp"), 1, GL_FALSE,
+                         MVPMatrix.e);
+      glDrawElements(GL_TRIANGLES, GameState->Model->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
+      glBindVertexArray(0);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
   }
 
   if(GameState->DrawWireframe)

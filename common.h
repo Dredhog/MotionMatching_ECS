@@ -9,13 +9,6 @@
 
 #define ArrayCount(Array) sizeof((Array)) / sizeof(Array[0])
 
-struct loaded_bitmap
-{
-  void*   Texels;
-  int32_t Width;
-  int32_t Height;
-};
-
 struct game_button_state
 {
   uint8_t EndedDown;
@@ -90,19 +83,21 @@ struct game_state
   Render::model*  Model;
   Anim::skeleton* Skeleton;
   Render::model*  GizmoModel;
+  uint32_t        Texture;
 
   int ShaderBoneColor;
   int ShaderWireframe;
   int ShaderDiffuse;
+  int ShaderTexture;
   int ShaderGizmo;
 
   uint32_t MagicChecksum;
   vec3     MeshEulerAngles;
   vec3     MeshScale;
 
-	bool DrawWireframe;
-	bool DrawBoneWeights;
-	bool DrawGizmos;
+  bool DrawWireframe;
+  bool DrawBoneWeights;
+  bool DrawGizmos;
 
   camera Camera;
 };
@@ -124,6 +119,3 @@ typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
 GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
 {
 }
-
-#define PLATFORM_LOAD_BITMAP_FROM_FILE(name) loaded_bitmap name(char* Filename)
-typedef PLATFORM_LOAD_BITMAP_FROM_FILE(platform_load_bitmap_from_file);
