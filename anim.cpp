@@ -33,6 +33,6 @@ Anim::ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSp
   for(int i = 1; i < Skeleton->BoneCount; i++)
   {
     FinalPoseMatrices[i] =
-      Math::MulMat4(ModelSpaceMatrices[i], FinalPoseMatrices[Skeleton->Bones[i].ParentIndex]);
+      Math::MulMat4(FinalPoseMatrices[Skeleton->Bones[i].ParentIndex], ModelSpaceMatrices[i]);
   }
 }

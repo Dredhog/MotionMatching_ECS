@@ -133,11 +133,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->DrawBoneWeights = false;
     GameState->DrawGizmos      = false;
   }
-  GameState->SkeletonPoseKeyframe.Transforms[4].Rotation.X +=  cosf(Input->dt);
-
   //---------------------END INIT -------------------------
 
   //----------------------UPDATE------------------------
+  GameState->SkeletonPoseKeyframe.Transforms[5].Rotation.X += cosf(Input->dt);
+  GameState->SkeletonPoseKeyframe.Transforms[7].Rotation.X += cosf(Input->dt);
+  GameState->SkeletonPoseKeyframe.Transforms[8].Rotation.X += cosf(Input->dt);
+
   UpdateCamera(&GameState->Camera, Input);
   if(Input->b.EndedDown && Input->b.Changed)
   {
