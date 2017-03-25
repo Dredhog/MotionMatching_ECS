@@ -31,12 +31,14 @@ struct game_input
   float   dt;
 
   union {
-    game_button_state Buttons[22];
+    game_button_state Buttons[24];
     struct
     {
       game_button_state a;
+      game_button_state b;
       game_button_state d;
       game_button_state e;
+      game_button_state f;
       game_button_state g;
       game_button_state m;
       game_button_state n;
@@ -89,6 +91,7 @@ struct game_state
   Anim::skeleton* Skeleton;
   Render::model*  GizmoModel;
 
+  int ShaderBoneColor;
   int ShaderWireframe;
   int ShaderDiffuse;
   int ShaderGizmo;
@@ -96,6 +99,10 @@ struct game_state
   uint32_t MagicChecksum;
   vec3     MeshEulerAngles;
   vec3     MeshScale;
+
+	bool DrawWireframe;
+	bool DrawBoneWeights;
+	bool DrawGizmos;
 
   camera Camera;
 };

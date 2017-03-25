@@ -14,8 +14,8 @@
 #include "linear_math/matrix.h"
 #include "stack_allocator.h"
 
-#define SCREEN_WIDTH 900
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 1920
+#define SCREEN_HEIGHT 1080
 #define FRAME_RATE 60
 
 #include "game.h"
@@ -55,6 +55,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->a.EndedDown = true;
         }
+        else if(Event->key.keysym.sym == SDLK_b)
+        {
+          NewInput->b.EndedDown = true;
+        }
         else if(Event->key.keysym.sym == SDLK_d)
         {
           NewInput->d.EndedDown = true;
@@ -62,6 +66,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         else if(Event->key.keysym.sym == SDLK_e)
         {
           NewInput->e.EndedDown = true;
+        }
+        else if(Event->key.keysym.sym == SDLK_f)
+        {
+          NewInput->f.EndedDown = true;
         }
         else if(Event->key.keysym.sym == SDLK_g)
         {
@@ -135,6 +143,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->a.EndedDown = false;
         }
+        else if(Event->key.keysym.sym == SDLK_b)
+        {
+          NewInput->b.EndedDown = false;
+        }
         else if(Event->key.keysym.sym == SDLK_d)
         {
           NewInput->d.EndedDown = false;
@@ -142,6 +154,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         else if(Event->key.keysym.sym == SDLK_e)
         {
           NewInput->e.EndedDown = false;
+        }
+        else if(Event->key.keysym.sym == SDLK_f)
+        {
+          NewInput->f.EndedDown = false;
         }
         else if(Event->key.keysym.sym == SDLK_g)
         {
@@ -284,7 +300,7 @@ Init(SDL_Window** Window)
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
-                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL /*| SDL_WINDOW_FULLSCREEN*/);
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());

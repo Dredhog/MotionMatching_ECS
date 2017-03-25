@@ -1,7 +1,6 @@
-#include "mesh.h"
-
 #include <GL/glew.h>
-#include <stdio.h>
+#include <cassert>
+
 #include "mesh.h"
 
 void
@@ -35,6 +34,15 @@ Render::SetUpMesh(Render::mesh* Mesh)
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Render::vertex),
                           (GLvoid*)(offsetof(Render::vertex, UV)));
+  }
+  if(Mesh->BoneCount > 0)
+  {
+    glEnableVertexAttribArray(4);
+    glVertexAttribIPointer(4, MESH_MAX_BONE_COUNT, GL_INT, sizeof(Render::vertex),
+                           (GLvoid*)(offsetof(Render::vertex, BoneIndices)));
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, MESH_MAX_BONE_COUNT, GL_FLOAT, GL_FALSE, sizeof(Render::vertex),
+                          (GLvoid*)(offsetof(Render::vertex, BoneWeights)));
   }
 
   // Unbind VAO

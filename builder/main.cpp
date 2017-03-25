@@ -16,6 +16,51 @@
 #include "file_io.h"
 #include "pack.h"
 
+void InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight);
+void NormalizeVertexBoneWeights(Render::vertex* Verte);
+
+void
+InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight)
+{
+  int SmallestIndex = 0;
+  for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+  {
+    if(Vertex->BoneWeights[i] < Vertex->BoneWeights[SmallestIndex])
+    {
+      SmallestIndex = i;
+    }
+  }
+  if(Vertex->BoneWeights[SmallestIndex] < BoneWeight)
+  {
+    Vertex->BoneIndices[SmallestIndex] = BoneIndex;
+    Vertex->BoneWeights[SmallestIndex] = BoneWeight;
+  }
+}
+
+void
+NormalizeVertexBoneWeights(Render::vertex* Vertex)
+{
+  float WeightSum = 0.0f;
+  for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+  {
+    WeightSum += Vertex->BoneWeights[i];
+  }
+
+  if(WeightSum > 0.0f)
+  {
+    for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+    {
+      Vertex->BoneWeights[i] /= WeightSum;
+    }
+    float checksum = 0.0f;
+    for(int i = 0; i < MESH_MAX_BONE_COUNT; i++)
+    {
+      checksum += Vertex->BoneWeights[i];
+    }
+    assert(0.99f < checksum && checksum < 1.01f);
+  }
+}
+
 mat4
 Convert_aiMatrix4x4_To_mat4(aiMatrix4x4t<float> AssimpMat)
 {
@@ -96,10 +141,10 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
   Mesh.Vertices = PushArray(Alloc, Mesh.VerticeCount, Render::vertex);
   for(int i = 0; i < Mesh.VerticeCount; i++)
   {
-    Render::vertex Vertex;
-    Vertex.Position.X = AssimpMesh->mVertices[i].x;
-    Vertex.Position.Y = AssimpMesh->mVertices[i].y;
-    Vertex.Position.Z = AssimpMesh->mVertices[i].z;
+    Render::vertex Vertex = {};
+    Vertex.Position.X     = AssimpMesh->mVertices[i].x;
+    Vertex.Position.Y     = AssimpMesh->mVertices[i].y;
+    Vertex.Position.Z     = AssimpMesh->mVertices[i].z;
 
     Vertex.Normal.X = AssimpMesh->mNormals[i].x;
     Vertex.Normal.Y = AssimpMesh->mNormals[i].y;
@@ -119,7 +164,8 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
   }
   if(AssimpMesh->HasBones() && Skeleton->BoneCount > 0)
   {
-    Mesh.HasBones  = true;
+    Mesh.HasBones = true;
+    // CURRENTLY ONLY ONE BONE
     Mesh.BoneCount = AssimpMesh->mNumBones;
     for(int i = 0; i < AssimpMesh->mNumBones; i++)
     {
@@ -133,12 +179,15 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
       AssimpBone->mOffsetMatrix.Inverse();
 
       Skeleton->Bones[BoneIndex].BindPose = Convert_aiMatrix4x4_To_mat4(AssimpBone->mOffsetMatrix);
-#if 0
       for(int j = 0; j < AssimpBone->mNumWeights; j++)
       {
-        Mesh.Vertices[j].BoneIndicesi[];
+        InsertBoneIntoVertex(&Mesh.Vertices[AssimpBone->mWeights[j].mVertexId], BoneIndex,
+                             AssimpBone->mWeights[j].mWeight);
       }
-#endif
+    }
+    for(int i = 0; i < Mesh.VerticeCount; i++)
+    {
+      NormalizeVertexBoneWeights(&Mesh.Vertices[i]);
     }
   }
 
@@ -333,7 +382,7 @@ main(int ArgCount, char** Args)
 
     printf("writing: %s\n", ModelName);
     Render::PrintModelHeader((Render::model*)AssetHeader->Model);
-		printf("\n");
+    printf("\n");
     PackAsset(AssetHeader, TotalOutputFileSize);
     WriteEntireFile(ModelName, TotalOutputFileSize, FileMemory);
   }
