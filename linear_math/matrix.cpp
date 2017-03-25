@@ -203,6 +203,12 @@ namespace Math
   }
 
   mat4
+  Mat4Scale(vec3 S)
+  {
+    return mat4{ S.X, 0, 0, 0, 0, S.Y, 0, 0, 0, 0, S.Z, 0, 0, 0, 0, 1 };
+  }
+
+  mat4
   Mat4Scale(float S)
   {
     return mat4{ S, 0, 0, 0, 0, S, 0, 0, 0, 0, S, 0, 0, 0, 0, 1 };

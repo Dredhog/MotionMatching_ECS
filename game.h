@@ -20,9 +20,14 @@ static const vec3 g_BoneColors[] = {
   { 0.92f, 0.42f, 0.14f }, { 0.47f, 0.31f, 0.72f },
 };
 
+static mat4 g_BoneSpaceMatrices[SKELETON_MAX_BONE_COUNT]         = {};
+static mat4 g_ModelSpaceMatrices[SKELETON_MAX_BONE_COUNT]        = {};
+static mat4 g_FinalHierarchicalMatrices[SKELETON_MAX_BONE_COUNT] = {};
+
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
   assert(GameMemory.HasBeenInitialized);
+  //---------------------BEGIN INIT -------------------------
   if(GameState->MagicChecksum != 123456)
   {
     GameState->MagicChecksum = 123456;
@@ -142,8 +147,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->DrawBoneWeights = false;
     GameState->DrawGizmos      = false;
   }
+  //---------------------END INIT -------------------------
 
-  // Update
+  //----------------------UPDATE------------------------
+  GameState->SkeletonPoseKeyframe.Transforms[5].Rotation.X += cosf(Input->dt);
+  GameState->SkeletonPoseKeyframe.Transforms[7].Rotation.X += cosf(Input->dt);
+  GameState->SkeletonPoseKeyframe.Transforms[8].Rotation.X += cosf(Input->dt);
+
   UpdateCamera(&GameState->Camera, Input);
   if(Input->b.EndedDown && Input->b.Changed)
   {
@@ -162,7 +172,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Math::MulMat4(Math::Mat4Rotate(GameState->MeshEulerAngles), Math::Mat4Scale(1));
   mat4 MVPMatrix = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
 
-  // Rendering
+  // Update animation
+  Anim::ComputeBoneSpacePoses(g_BoneSpaceMatrices, GameState->SkeletonPoseKeyframe.Transforms,
+                              GameState->Skeleton->BoneCount);
+  Anim::ComputeModelSpacePoses(g_ModelSpaceMatrices, g_BoneSpaceMatrices, GameState->Skeleton);
+  Anim::ComputeFinalHierarchicalPoses(g_FinalHierarchicalMatrices, g_ModelSpaceMatrices,
+                                      GameState->Skeleton);
+
+  //---------------------RENDERING----------------------------
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   if(GameState->DrawBoneWeights)
@@ -171,8 +188,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glUseProgram(GameState->ShaderBoneColor);
     glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderBoneColor, "mat_mvp"), 1, GL_FALSE,
                        MVPMatrix.e);
-    glUniformMatrix3fv(glGetUniformLocation(GameState->ShaderBoneColor, "g_bone_colors"), 20,
-                       GL_FALSE, (float*)&g_BoneColors);
+    glUniform3fv(glGetUniformLocation(GameState->ShaderBoneColor, "g_bone_colors"), 20,
+                 (float*)&g_BoneColors);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderBoneColor, "g_bone_matrices"), 20,
+                       GL_FALSE, (float*)g_FinalHierarchicalMatrices);
     for(int i = 0; i < GameState->Model->MeshCount; i++)
     {
       glBindVertexArray(GameState->Model->Meshes[i]->VAO);
@@ -215,7 +234,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // WireframeShader Shader
     glUseProgram(GameState->ShaderWireframe);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glClear(GL_DEPTH_BUFFER_BIT);
+    // glClear(GL_DEPTH_BUFFER_BIT);
     glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderWireframe, "mat_mvp"), 1, GL_FALSE,
                        MVPMatrix.e);
     for(int i = 0; i < GameState->Model->MeshCount; i++)
@@ -232,7 +251,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     mat4 BoneGizmos[SKELETON_MAX_BONE_COUNT];
     for(int i = 0; i < GameState->Skeleton->BoneCount; i++)
     {
-      BoneGizmos[i] = Math::MulMat4(ModelMatrix, GameState->Skeleton->Bones[i].BindPose);
+      BoneGizmos[i] =
+        Math::MulMat4(ModelMatrix, Math::MulMat4(g_FinalHierarchicalMatrices[i],
+                                                 GameState->Skeleton->Bones[i].BindPose));
     }
 
     DEBUGDrawGizmo(GameState, &ModelMatrix, 1);

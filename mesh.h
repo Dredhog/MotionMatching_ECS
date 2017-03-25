@@ -5,7 +5,7 @@
 
 #include "linear_math/vector.h"
 
-#define MESH_MAX_BONE_COUNT 3
+#define VERTEX_MAX_BONE_COUNT 4
 
 namespace Render
 {
@@ -18,8 +18,8 @@ namespace Render
       float U;
       float V;
     } UV;
-    float   BoneWeights[MESH_MAX_BONE_COUNT];
-    int32_t BoneIndices[MESH_MAX_BONE_COUNT];
+    float   BoneWeights[VERTEX_MAX_BONE_COUNT];
+    int32_t BoneIndices[VERTEX_MAX_BONE_COUNT];
   };
 
   struct mesh

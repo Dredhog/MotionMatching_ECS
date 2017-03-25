@@ -84,6 +84,7 @@ struct game_state
   Anim::skeleton* Skeleton;
   Render::model*  GizmoModel;
   uint32_t        Texture;
+	Anim::keyframe SkeletonPoseKeyframe;
 
   int ShaderBoneColor;
   int ShaderWireframe;

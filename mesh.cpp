@@ -38,10 +38,10 @@ Render::SetUpMesh(Render::mesh* Mesh)
   if(Mesh->BoneCount > 0)
   {
     glEnableVertexAttribArray(4);
-    glVertexAttribIPointer(4, MESH_MAX_BONE_COUNT, GL_INT, sizeof(Render::vertex),
+    glVertexAttribIPointer(4, VERTEX_MAX_BONE_COUNT, GL_INT, sizeof(Render::vertex),
                            (GLvoid*)(offsetof(Render::vertex, BoneIndices)));
     glEnableVertexAttribArray(5);
-    glVertexAttribPointer(5, MESH_MAX_BONE_COUNT, GL_FLOAT, GL_FALSE, sizeof(Render::vertex),
+    glVertexAttribPointer(5, VERTEX_MAX_BONE_COUNT, GL_FLOAT, GL_FALSE, sizeof(Render::vertex),
                           (GLvoid*)(offsetof(Render::vertex, BoneWeights)));
   }
 
