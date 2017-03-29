@@ -16,9 +16,12 @@ namespace Texture
     SDL_Surface*  ImageSurface = SDL_LoadBMP(FileName);
     if(ImageSurface)
     {
-      Result.Texels = ImageSurface->pixels;
-      Result.Width  = ImageSurface->w;
-      Result.Height = ImageSurface->h;
+      SDL_Surface* DestSurface =
+        SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ARGB8888, 0);
+      Result.Texels = DestSurface->pixels;
+      Result.Width  = DestSurface->w;
+      Result.Height = DestSurface->h;
+      free(DestSurface);
 
       assert(Result.Width > 0 && Result.Height > 0);
     }
@@ -26,6 +29,7 @@ namespace Texture
     {
       printf("Platform: bitmap load error: %s\n", SDL_GetError());
     }
+    free(ImageSurface);
 
     return Result;
   }
@@ -37,8 +41,8 @@ namespace Texture
     uint32_t      Texture;
     glGenTextures(1, &Texture);
     glBindTexture(GL_TEXTURE_2D, Texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Bitmap.Width, Bitmap.Height, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 Bitmap.Texels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Bitmap.Width, Bitmap.Height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, Bitmap.Texels);
     glGenerateMipmap(GL_TEXTURE_2D);
     free(Bitmap.Texels);
     glBindTexture(GL_TEXTURE_2D, 0);

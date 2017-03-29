@@ -84,7 +84,7 @@ struct game_state
   Anim::skeleton* Skeleton;
   Render::model*  GizmoModel;
   uint32_t        Texture;
-	Anim::keyframe SkeletonPoseKeyframe;
+  Anim::keyframe  SkeletonPoseKeyframe;
 
   int ShaderBoneColor;
   int ShaderWireframe;
@@ -95,6 +95,10 @@ struct game_state
   uint32_t MagicChecksum;
   vec3     MeshEulerAngles;
   vec3     MeshScale;
+  vec3     LightPosition;
+  vec3     LightColor;
+  float    AmbientStrength;
+  float    SpecularStrength;
 
   bool DrawWireframe;
   bool DrawBoneWeights;

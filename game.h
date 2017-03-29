@@ -72,7 +72,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
     // Set Up Texture
-    GameState->Texture = Texture::LoadTexture("./textures/test.bmp"); // No actual .bmp file yet.
+    GameState->Texture = Texture::LoadTexture("./data/body_dif.bmp");
 
     // -------BEGIN LOADING SHADERS
     // Diffuse
@@ -99,16 +99,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->ShaderWireframe = Shader::LoadShader(TemporaryMemStack, "./shaders/wireframe");
     TemporaryMemStack->FreeToMarker(LoadStart);
     if(GameState->ShaderWireframe < 0)
-    {
-      printf("Shader loading failed!\n");
-      assert(false);
-    }
-
-    // Texture
-    LoadStart                = TemporaryMemStack->GetMarker();
-    GameState->ShaderTexture = Shader::LoadShader(TemporaryMemStack, "./shaders/texture");
-    TemporaryMemStack->FreeToMarker(LoadStart);
-    if(GameState->ShaderTexture < 0)
     {
       printf("Shader loading failed!\n");
       assert(false);
@@ -142,6 +132,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Camera.NearClipPlane = 0.001f;
     GameState->Camera.FarClipPlane  = 100.0f;
     GameState->Camera.MaxTiltAngle  = 90.0f;
+    GameState->LightPosition        = { 2.25f, 1.0f, 1.0f };
+    GameState->LightColor           = { 1.0f, 0.8f, 0.8f };
+    GameState->AmbientStrength      = 0.2f;
+    GameState->SpecularStrength     = 0.6f;
 
     GameState->DrawWireframe   = false;
     GameState->DrawBoneWeights = false;
@@ -203,26 +197,25 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     // Regular Shader
     glUseProgram(GameState->ShaderDiffuse);
+    glBindTexture(GL_TEXTURE_2D, GameState->Texture);
     for(int i = 0; i < GameState->Model->MeshCount; i++)
     {
       glBindVertexArray(GameState->Model->Meshes[i]->VAO);
       glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_mvp"), 1, GL_FALSE,
                          MVPMatrix.e);
-      glDrawElements(GL_TRIANGLES, GameState->Model->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
-      glBindVertexArray(0);
-    }
-  }
-
-  if(GameState->ShaderTexture)
-  {
-    // Texture Shader
-    glUseProgram(GameState->ShaderTexture);
-    glBindTexture(GL_TEXTURE_2D, GameState->Texture);
-    for(int i = 0; i < GameState->Model->MeshCount; i++)
-    {
-      glBindVertexArray(GameState->Model->Meshes[i]->VAO);
-      glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderTexture, "mat_mvp"), 1, GL_FALSE,
-                         MVPMatrix.e);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_model"), 1, GL_FALSE,
+                         ModelMatrix.e);
+      glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "ambient_strength"),
+                  GameState->AmbientStrength);
+      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_position"),
+                  GameState->LightPosition.X, GameState->LightPosition.Y,
+                  GameState->LightPosition.Z);
+      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_color"),
+                  GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
+      glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "specular_strength"),
+                  GameState->SpecularStrength);
+      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "camera_position"),
+                  GameState->Camera.P.X, GameState->Camera.P.Y, GameState->Camera.P.Z);
       glDrawElements(GL_TRIANGLES, GameState->Model->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
       glBindVertexArray(0);
     }
