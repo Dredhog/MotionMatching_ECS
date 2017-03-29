@@ -1,3 +1,7 @@
+#pragma once
+
+#include "misc.h"
+
 void
 DEBUGDrawGizmo(game_state* GameState, mat4* GizmoBases, int32_t GizmoCount)
 {
@@ -21,20 +25,6 @@ DEBUGDrawGizmo(game_state* GameState, mat4* GizmoBases, int32_t GizmoCount)
     }
   }
   glBindVertexArray(0);
-}
-
-static float
-ClampFloat(float Min, float T, float Max)
-{
-  if(T < Min)
-  {
-    return Min;
-  }
-  if(T > Max)
-  {
-    return Max;
-  }
-  return T;
 }
 
 void

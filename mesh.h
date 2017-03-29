@@ -39,25 +39,6 @@ namespace Render
     int32_t BoneCount;
   };
 
-  struct skinned_mesh
-  {
-    uint32_t VAO;
-    uint32_t VBO;
-    uint32_t EBO;
-
-    float*    Floats;
-    uint32_t* Indices;
-
-    int32_t VerticeCount;
-    int32_t IndiceCount;
-
-    int32_t Offsets[3];
-    int32_t FloatsPerVertex;
-    int32_t AttributesPerVertex;
-    bool    UseUVs;
-    bool    UseNormals;
-  };
-
   void SetUpMesh(Render::mesh* Mesh);
   void PrintMesh(const mesh* Mesh);
 

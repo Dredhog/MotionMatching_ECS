@@ -7,19 +7,13 @@
 // Memory
 #include <sys/mman.h>
 
-#include "file_io.h"
 #include "common.h"
-#include "load_shader.h"
-#include "linear_math/vector.h"
-#include "linear_math/matrix.h"
-#include "stack_allocator.h"
-#include "texture.h"
 
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
-#define FRAME_RATE 60
+#define SCREEN_WIDTH 900
+#define SCREEN_HEIGHT 800
+#define FRAME_TIME_MS 16
 
-#include "game.h"
+#include "update_render.h"
 
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
@@ -40,87 +34,103 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
           NewInput->Escape.EndedDown = true;
           return false;
         }
-        else if(Event->key.keysym.sym == SDLK_SPACE)
+        if(Event->key.keysym.sym == SDLK_SPACE)
         {
           NewInput->Space.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_LCTRL)
+        if(Event->key.keysym.sym == SDLK_DELETE)
+        {
+          NewInput->Delete.EndedDown = true;
+        }
+        if(Event->key.keysym.sym == SDLK_LCTRL)
         {
           NewInput->LeftCtrl.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_LSHIFT)
+        if(Event->key.keysym.sym == SDLK_LSHIFT)
         {
           NewInput->LeftShift.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_a)
+        if(Event->key.keysym.sym == SDLK_a)
         {
           NewInput->a.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_b)
+        if(Event->key.keysym.sym == SDLK_b)
         {
           NewInput->b.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_d)
+        if(Event->key.keysym.sym == SDLK_d)
         {
           NewInput->d.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_e)
+        if(Event->key.keysym.sym == SDLK_e)
         {
           NewInput->e.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_f)
+        if(Event->key.keysym.sym == SDLK_f)
         {
           NewInput->f.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_g)
+        if(Event->key.keysym.sym == SDLK_g)
         {
           NewInput->g.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_p)
+        if(Event->key.keysym.sym == SDLK_h)
+        {
+          NewInput->h.EndedDown = true;
+        }
+        if(Event->key.keysym.sym == SDLK_i)
+        {
+          NewInput->i.EndedDown = true;
+        }
+        if(Event->key.keysym.sym == SDLK_p)
         {
           NewInput->p.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_r)
+        if(Event->key.keysym.sym == SDLK_r)
         {
           NewInput->r.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_s)
+        if(Event->key.keysym.sym == SDLK_s)
         {
           NewInput->s.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_t)
+        if(Event->key.keysym.sym == SDLK_t)
         {
           NewInput->t.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_m)
+        if(Event->key.keysym.sym == SDLK_m)
         {
           NewInput->m.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_n)
+        if(Event->key.keysym.sym == SDLK_n)
         {
           NewInput->n.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_o)
+        if(Event->key.keysym.sym == SDLK_o)
         {
           NewInput->o.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_w)
+        if(Event->key.keysym.sym == SDLK_w)
         {
           NewInput->w.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_UP)
+        if(Event->key.keysym.sym == SDLK_x)
+        {
+          NewInput->x.EndedDown = true;
+        }
+        if(Event->key.keysym.sym == SDLK_UP)
         {
           NewInput->ArrowUp.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_DOWN)
+        if(Event->key.keysym.sym == SDLK_DOWN)
         {
           NewInput->ArrowDown.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_RIGHT)
+        if(Event->key.keysym.sym == SDLK_RIGHT)
         {
           NewInput->ArrowRight.EndedDown = true;
         }
-        else if(Event->key.keysym.sym == SDLK_LEFT)
+        if(Event->key.keysym.sym == SDLK_LEFT)
         {
           NewInput->ArrowLeft.EndedDown = true;
         }
@@ -132,83 +142,99 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->Space.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_LCTRL)
+        if(Event->key.keysym.sym == SDLK_DELETE)
+        {
+          NewInput->Delete.EndedDown = false;
+        }
+        if(Event->key.keysym.sym == SDLK_LCTRL)
         {
           NewInput->LeftCtrl.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_LSHIFT)
+        if(Event->key.keysym.sym == SDLK_LSHIFT)
         {
           NewInput->LeftShift.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_a)
+        if(Event->key.keysym.sym == SDLK_a)
         {
           NewInput->a.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_b)
+        if(Event->key.keysym.sym == SDLK_b)
         {
           NewInput->b.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_d)
+        if(Event->key.keysym.sym == SDLK_d)
         {
           NewInput->d.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_e)
+        if(Event->key.keysym.sym == SDLK_e)
         {
           NewInput->e.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_f)
+        if(Event->key.keysym.sym == SDLK_f)
         {
           NewInput->f.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_g)
+        if(Event->key.keysym.sym == SDLK_g)
         {
           NewInput->g.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_p)
+        if(Event->key.keysym.sym == SDLK_h)
+        {
+          NewInput->h.EndedDown = false;
+        }
+        if(Event->key.keysym.sym == SDLK_i)
+        {
+          NewInput->i.EndedDown = false;
+        }
+        if(Event->key.keysym.sym == SDLK_p)
         {
           NewInput->p.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_r)
+        if(Event->key.keysym.sym == SDLK_r)
         {
           NewInput->r.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_s)
+        if(Event->key.keysym.sym == SDLK_s)
         {
           NewInput->s.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_t)
+        if(Event->key.keysym.sym == SDLK_t)
         {
           NewInput->t.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_m)
+        if(Event->key.keysym.sym == SDLK_m)
         {
           NewInput->m.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_n)
+        if(Event->key.keysym.sym == SDLK_n)
         {
           NewInput->n.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_o)
+        if(Event->key.keysym.sym == SDLK_o)
         {
           NewInput->o.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_w)
+        if(Event->key.keysym.sym == SDLK_w)
         {
           NewInput->w.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_UP)
+        if(Event->key.keysym.sym == SDLK_x)
+        {
+          NewInput->x.EndedDown = false;
+        }
+        if(Event->key.keysym.sym == SDLK_UP)
         {
           NewInput->ArrowUp.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_DOWN)
+        if(Event->key.keysym.sym == SDLK_DOWN)
         {
           NewInput->ArrowDown.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_RIGHT)
+        if(Event->key.keysym.sym == SDLK_RIGHT)
         {
           NewInput->ArrowRight.EndedDown = false;
         }
-        else if(Event->key.keysym.sym == SDLK_LEFT)
+        if(Event->key.keysym.sym == SDLK_LEFT)
         {
           NewInput->ArrowLeft.EndedDown = false;
         }
@@ -220,7 +246,7 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->MouseLeft.EndedDown = true;
         }
-        else if(Event->button.button == SDL_BUTTON_RIGHT)
+        if(Event->button.button == SDL_BUTTON_RIGHT)
         {
           NewInput->MouseRight.EndedDown = true;
         }
@@ -232,7 +258,7 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->MouseLeft.EndedDown = false;
         }
-        else if(Event->button.button == SDL_BUTTON_RIGHT)
+        if(Event->button.button == SDL_BUTTON_RIGHT)
         {
           NewInput->MouseRight.EndedDown = false;
         }
@@ -250,15 +276,6 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
       (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
   }
   return true;
-}
-
-void
-PlatformFreeFileMemory(debug_read_file_result FileHandle)
-{
-  if(FileHandle.ContentsSize)
-  {
-    free(FileHandle.Contents);
-  }
 }
 
 bool
@@ -280,7 +297,7 @@ Init(SDL_Window** Window)
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
-                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL /*| SDL_WINDOW_FULLSCREEN*/);
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());
@@ -325,9 +342,6 @@ main(int argc, char* argv[])
     return -1;
   }
 
-  bool AssetsHaveLoaded = false;
-
-  game_state  GameState = {};
   game_memory GameMemory;
   {
     GameMemory.TemporaryMemorySize  = Mibibytes(10);
@@ -342,8 +356,10 @@ main(int argc, char* argv[])
     }
     else
     {
+      assert("error: unable to initialize memory" && 0);
       GameMemory.TemporaryMemorySize  = 0;
       GameMemory.PersistentMemorySize = 0;
+      GameMemory.HasBeenInitialized   = true;
     }
   }
 
@@ -367,11 +383,11 @@ main(int argc, char* argv[])
       break;
     }
 
-    NewInput.dt = 1.0f / 120;
-    GameUpdateAndRender(GameMemory, &GameState, &NewInput);
+    NewInput.dt = 0.001f * (float)FRAME_TIME_MS;
+    GameUpdateAndRender(GameMemory, &NewInput);
 
     SDL_GL_SwapWindow(Window);
-    SDL_Delay((int32_t)((float)1000 / (float)120));
+    SDL_Delay(FRAME_TIME_MS);
 
     OldInput = NewInput;
   }

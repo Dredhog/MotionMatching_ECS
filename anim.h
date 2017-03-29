@@ -16,10 +16,25 @@ namespace Anim
     vec3 Scale;
   };
 
-  struct keyframe
+  struct animation
   {
-    transform Transforms[SKELETON_MAX_BONE_COUNT];
-    int32_t   TransformCout;
+    transform* Transforms;
+    float*     SampleTimesSec;
+    int32_t    KeyframeCount;
+    int32_t    BonesPerPose;
+  };
+
+  struct animation_state
+  {
+    float StartTimeSec;
+    float playbackRateSec;
+  };
+
+  struct animation_controller
+  {
+    animation**       Animations;
+    animation_state* AnimationStates;
+    skeleton*         Skeleton;
   };
 
   void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,

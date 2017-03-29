@@ -9,6 +9,7 @@ layout(location = 5) in vec4 a_bone_weights;
 uniform mat4 mat_mvp;
 uniform vec3 g_bone_colors[20];
 uniform mat4 g_bone_matrices[20];
+uniform int  g_selected_bone_index;
 
 out vec3 frag_color;
 out vec3 frag_normal;
@@ -20,6 +21,7 @@ main()
                     g_bone_colors[a_bone_indices.y] * a_bone_weights.y +
                     g_bone_colors[a_bone_indices.z] * a_bone_weights.z +
                     g_bone_colors[a_bone_indices.w] * a_bone_weights.w);
+
   frag_normal = a_normal;
 
   mat4 final_pose_matrix = g_bone_matrices[a_bone_indices.x] * a_bone_weights.x +
