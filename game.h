@@ -42,16 +42,21 @@ struct game_state
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
 
+  GLint                           Texture;
   EditAnimation::animation_editor AnimEditor;
-  Anim::skeleton*              Skeleton;
-  Render::model*               CharacterModel;
-  Render::model*               GizmoModel;
+  Anim::skeleton*                 Skeleton;
+  Render::model*                  CharacterModel;
+  Render::model*                  GizmoModel;
 
   int ShaderBoneColor;
   int ShaderWireframe;
   int ShaderDiffuse;
-  int ShaderTexture;
   int ShaderGizmo;
+
+  vec3  LightPosition;
+  vec3  LightColor;
+  float AmbientStrength;
+  float SpecularStrength;
 
   uint32_t MagicChecksum;
   vec3     MeshEulerAngles;

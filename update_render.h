@@ -10,6 +10,7 @@
 #include "file_io.h"
 #include "asset.h"
 #include "builder/pack.h"
+#include "texture.h"
 
 #include "game.h"
 #include "camera_gizmo.h"
@@ -75,6 +76,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // PrintSkeleton(GameState->Skeleton);
     GameState->AnimEditor.Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
+    // Set Up Texture
+    GameState->Texture = Texture::LoadTexture("./data/body_dif.bmp");
+    assert(GameState->Texture);
+
     // -------BEGIN LOADING SHADERS
     // Diffuse
     Memory::marker LoadStart = TemporaryMemStack->GetMarker();
@@ -105,16 +110,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       assert(false);
     }
 
-    // Texture
-    LoadStart                = TemporaryMemStack->GetMarker();
-    GameState->ShaderTexture = Shader::LoadShader(TemporaryMemStack, "./shaders/texture");
-    TemporaryMemStack->FreeToMarker(LoadStart);
-    if(GameState->ShaderTexture < 0)
-    {
-      printf("Shader loading failed!\n");
-      assert(false);
-    }
-
     LoadStart              = TemporaryMemStack->GetMarker();
     GameState->ShaderGizmo = Shader::LoadShader(TemporaryMemStack, "./shaders/gizmo");
     TemporaryMemStack->FreeToMarker(LoadStart);
@@ -133,7 +128,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // -------InitGameState
     GameState->MeshEulerAngles      = { 0, 0, 0 };
-    GameState->MeshScale            = { 1.0f, 1.0f, 1.0f };
     GameState->Camera.P             = { 0, 0.5f, 1 };
     GameState->Camera.Up            = { 0, 1, 0 };
     GameState->Camera.Forward       = { 0, 0, -1 };
@@ -143,6 +137,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Camera.NearClipPlane = 0.001f;
     GameState->Camera.FarClipPlane  = 100.0f;
     GameState->Camera.MaxTiltAngle  = 90.0f;
+
+    GameState->LightPosition    = { 2.25f, 1.0f, 1.0f };
+    GameState->LightColor       = { 1.0f, 0.8f, 0.8f };
+    GameState->AmbientStrength  = 0.5f;
+    GameState->SpecularStrength = 0.6f;
 
     GameState->DrawWireframe   = false;
     GameState->DrawBoneWeights = false;
@@ -259,6 +258,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   else
   {
+#if 0
     // Regular Shader
     glUseProgram(GameState->ShaderDiffuse);
     glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_mvp"), 1, GL_FALSE,
@@ -270,6 +270,33 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                      GL_UNSIGNED_INT, 0);
       glBindVertexArray(0);
     }
+#endif
+    // Regular Shader
+    glUseProgram(GameState->ShaderDiffuse);
+    glBindTexture(GL_TEXTURE_2D, GameState->Texture);
+    for(int i = 0; i < GameState->CharacterModel->MeshCount; i++)
+    {
+      glBindVertexArray(GameState->CharacterModel->Meshes[i]->VAO);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_mvp"), 1, GL_FALSE,
+                         MVPMatrix.e);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_model"), 1, GL_FALSE,
+                         ModelMatrix.e);
+      glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "ambient_strength"),
+                  GameState->AmbientStrength);
+      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_position"),
+                  GameState->LightPosition.X, GameState->LightPosition.Y,
+                  GameState->LightPosition.Z);
+      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_color"),
+                  GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
+      glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "specular_strength"),
+                  GameState->SpecularStrength);
+      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "camera_position"),
+                  GameState->Camera.P.X, GameState->Camera.P.Y, GameState->Camera.P.Z);
+      glDrawElements(GL_TRIANGLES, GameState->CharacterModel->Meshes[i]->IndiceCount,
+                     GL_UNSIGNED_INT, 0);
+      glBindVertexArray(0);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
   }
   if(GameState->DrawWireframe)
   {
