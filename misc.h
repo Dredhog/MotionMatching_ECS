@@ -3,6 +3,23 @@
 #include <stdint.h>
 
 inline float
+MaxFloat(float A, float B)
+{
+	if(A > B){
+		return A;
+	}
+	return B;
+}
+
+inline float
+MinFloat(float A, float B)
+{
+	if(A < B){
+		return A;
+	}
+	return B;
+}
+inline float
 ClampFloat(float Min, float T, float Max)
 {
   if(T < Min)

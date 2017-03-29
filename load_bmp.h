@@ -37,7 +37,7 @@ namespace Texture
   }
 
   uint32_t
-  LoadTexture(char* FileName)
+  LoadBMPTexture(char* FileName)
   {
     loaded_bitmap Bitmap = LoadBitmapFromFile(FileName);
     if(Bitmap.Texels)

@@ -5,6 +5,7 @@
 #include "anim.h"
 #include "skeleton.h"
 
+static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 0.1f;
 #define EDITOR_ANIM_MAX_KEYFRAME_COUNT 20
 
 struct editor_keyframe
@@ -47,4 +48,5 @@ namespace EditAnimation
   void JumpToNextKeyframe(animation_editor* Editor);
   void JumpToPreviousKeyframe(animation_editor* Editor);
   void PrintAnimEditorState(const animation_editor* Editor);
+  float GetTimelinePercentage(const animation_editor* Editor, float Time);
 }

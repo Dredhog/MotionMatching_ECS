@@ -3,31 +3,6 @@
 #include "misc.h"
 
 void
-DEBUGDrawGizmo(game_state* GameState, mat4* GizmoBases, int32_t GizmoCount)
-{
-	glClear(GL_DEPTH_BUFFER_BIT);
-  glUseProgram(GameState->ShaderGizmo);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  for(int g = 0; g < GizmoCount; g++)
-  {
-    mat4  MVMatrix   = Math::MulMat4(GameState->Camera.ViewMatrix, GizmoBases[g]);
-    float GizmoDepth = Math::GetTranslationVec3(MVMatrix).Z;
-
-    mat4 MVPMatrix = Math::MulMat4(GameState->Camera.ProjectionMatrix, MVMatrix);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderGizmo, "mat_mvp"), 1, GL_FALSE,
-                       MVPMatrix.e);
-    glUniform1f(glGetUniformLocation(GameState->ShaderGizmo, "depth"), GizmoDepth);
-    for(int i = 0; i < GameState->GizmoModel->MeshCount; i++)
-    {
-      glBindVertexArray(GameState->GizmoModel->Meshes[i]->VAO);
-      glDrawElements(GL_TRIANGLES, GameState->GizmoModel->Meshes[i]->IndiceCount, GL_UNSIGNED_INT,
-                     0);
-    }
-  }
-  glBindVertexArray(0);
-}
-
-void
 UpdateCamera(camera* Camera, const game_input* Input)
 {
   Camera->Speed = 2.0f;

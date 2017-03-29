@@ -10,10 +10,17 @@
 #include "stack_allocator.h"
 #include "edit_animation.h"
 
+struct eul_transform
+{
+  vec3 Rotation;
+  vec3 Translation;
+  vec3 Scale;
+};
+
 struct entity
 {
   Render::model*              Model;
-  Anim::transform             Transform;
+  eul_transform               Transform;
   Anim::animation_controller* AnimController;
 };
 
@@ -42,25 +49,29 @@ struct game_state
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
 
-  GLint                           Texture;
   EditAnimation::animation_editor AnimEditor;
-  Anim::skeleton*                 Skeleton;
-  Render::model*                  CharacterModel;
-  Render::model*                  GizmoModel;
 
-  int ShaderBoneColor;
-  int ShaderWireframe;
-  int ShaderDiffuse;
-  int ShaderGizmo;
+  Anim::skeleton* Skeleton;
+  Render::model*  QuadModel;
+  Render::model*  PlaybackCursorModel;
+  Render::model*  CharacterModel;
+  Render::model*  GizmoModel;
 
-  vec3  LightPosition;
-  vec3  LightColor;
-  float AmbientStrength;
-  float SpecularStrength;
+  GLint   Texture;
+  int32_t ShaderBoneColor;
+  int32_t ShaderWireframe;
+  int32_t ShaderDiffuse;
+  int32_t ShaderGizmo;
+  int32_t ShaderQuad;
+  int32_t ShaderTexturedQuad;
 
-  uint32_t MagicChecksum;
-  vec3     MeshEulerAngles;
-  vec3     MeshScale;
+    vec3 LightPosition;
+  vec3   LightColor;
+  float  AmbientStrength;
+  float  SpecularStrength;
+
+  uint32_t      MagicChecksum;
+  eul_transform ModelTransform;
 
   bool DrawWireframe;
   bool DrawBoneWeights;

@@ -1,8 +1,6 @@
 #include "edit_animation.h"
 #include "misc.h"
 
-static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 0.1f;
-
 void
 EditAnimation::LerpTransforms(Anim::transform* Result, const Anim::transform* A, float t,
                               const Anim::transform* B)

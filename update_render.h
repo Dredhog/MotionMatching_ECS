@@ -10,10 +10,12 @@
 #include "file_io.h"
 #include "asset.h"
 #include "builder/pack.h"
-#include "texture.h"
+#include "load_bmp.h"
+#include "misc.h"
 
 #include "game.h"
-#include "camera_gizmo.h"
+#include "debug_drawing.h"
+#include "camera.h"
 
 static const vec3 g_BoneColors[] = {
   { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.77f },
@@ -24,6 +26,7 @@ static const vec3 g_BoneColors[] = {
   { 0.77f, 0.22f, 0.79f }, { 0.30f, 0.00f, 0.07f }, { 0.98f, 0.28f, 0.02f },
   { 0.92f, 0.42f, 0.14f }, { 0.47f, 0.31f, 0.72f },
 };
+static const float EDITOR_BONE_ROTATION_SPEED_DEG = 60.0f;
 
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
@@ -59,6 +62,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       SetUpMesh(GameState->GizmoModel->Meshes[i]);
     }
 
+    // Set Up Gizmo
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/debug_meshes.model");
+
+    assert(AssetReadResult.Contents);
+    AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
+
+    UnpackAsset(AssetHeader);
+    GameState->QuadModel = (Render::model*)AssetHeader->Model;
+    for(int i = 0; i < GameState->QuadModel->MeshCount; i++)
+    {
+      SetUpMesh(GameState->QuadModel->Meshes[i]);
+    }
+
     // Set Up Model
     AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/crysis_soldier.actor");
 
@@ -77,7 +93,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->AnimEditor.Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
     // Set Up Texture
-    GameState->Texture = Texture::LoadTexture("./data/body_dif.bmp");
+    GameState->Texture = Texture::LoadBMPTexture("./data/body_dif.bmp");
     assert(GameState->Texture);
 
     // -------BEGIN LOADING SHADERS
@@ -118,28 +134,48 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       printf("Shader loading failed!\n");
       assert(false);
     }
+    //
+    // debug_ui
+    LoadStart             = TemporaryMemStack->GetMarker();
+    GameState->ShaderQuad = Shader::LoadShader(TemporaryMemStack, "./shaders/debug_quad");
+    TemporaryMemStack->FreeToMarker(LoadStart);
+    if(GameState->ShaderQuad < 0)
+    {
+      printf("Shader loading failed!\n");
+      assert(false);
+    }
+    LoadStart = TemporaryMemStack->GetMarker();
+    GameState->ShaderTexturedQuad =
+      Shader::LoadShader(TemporaryMemStack, "./shaders/debug_textured_quad");
+    TemporaryMemStack->FreeToMarker(LoadStart);
+    if(GameState->ShaderTexturedQuad < 0)
+    {
+      printf("Shader loading failed!\n");
+      assert(false);
+    }
 
     // -------END ASSET LOADING
     // ======Set GL state
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    // glEnable(GL_CULL_FACE);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // -------InitGameState
-    GameState->MeshEulerAngles      = { 0, 0, 0 };
-    GameState->Camera.P             = { 0, 0.5f, 1 };
-    GameState->Camera.Up            = { 0, 1, 0 };
-    GameState->Camera.Forward       = { 0, 0, -1 };
-    GameState->Camera.Right         = { 1, 0, 0 };
-    GameState->Camera.Rotation      = {};
-    GameState->Camera.FieldOfView   = 90.0f;
-    GameState->Camera.NearClipPlane = 0.001f;
-    GameState->Camera.FarClipPlane  = 100.0f;
-    GameState->Camera.MaxTiltAngle  = 90.0f;
+    GameState->ModelTransform.Rotation = { 0, 0, 0 };
+    GameState->ModelTransform.Scale    = { 1, 1, 1 };
+    GameState->Camera.P                = { 0, 0.5f, 1 };
+    GameState->Camera.Up               = { 0, 1, 0 };
+    GameState->Camera.Forward          = { 0, 0, -1 };
+    GameState->Camera.Right            = { 1, 0, 0 };
+    GameState->Camera.Rotation         = {};
+    GameState->Camera.FieldOfView      = 90.0f;
+    GameState->Camera.NearClipPlane    = 0.001f;
+    GameState->Camera.FarClipPlane     = 100.0f;
+    GameState->Camera.MaxTiltAngle     = 90.0f;
 
     GameState->LightPosition    = { 2.25f, 1.0f, 1.0f };
-    GameState->LightColor       = { 1.0f, 0.8f, 0.8f };
+    GameState->LightColor       = { 0.7f, 0.7f, 0.75f };
     GameState->AmbientStrength  = 0.5f;
     GameState->SpecularStrength = 0.6f;
 
@@ -153,8 +189,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   GameState->GameTime += Input->dt;
 
   UpdateCamera(&GameState->Camera, Input);
-  mat4 ModelMatrix =
-    Math::MulMat4(Math::Mat4Rotate(GameState->MeshEulerAngles), Math::Mat4Scale(1));
+  mat4 ModelMatrix = Math::MulMat4(Math::Mat4Rotate(GameState->ModelTransform.Rotation),
+                                   Math::Mat4Scale(GameState->ModelTransform.Scale));
   mat4 MVPMatrix = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
   //--------------ANIMAITION UPDATE
 
@@ -168,7 +204,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
         .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.X -= 30 * Input->dt;
+        .Rotation.X -= EDITOR_BONE_ROTATION_SPEED_DEG  * Input->dt;
     }
     if(Input->n.EndedDown && Input->n.Changed)
     {
@@ -189,7 +225,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
         .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.X += 30 * Input->dt;
+        .Rotation.X += EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
     }
     if(Input->n.EndedDown && Input->n.Changed)
     {
@@ -258,44 +294,30 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   else
   {
-#if 0
-    // Regular Shader
-    glUseProgram(GameState->ShaderDiffuse);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_mvp"), 1, GL_FALSE,
-                       MVPMatrix.e);
-    for(int i = 0; i < GameState->CharacterModel->MeshCount; i++)
-    {
-      glBindVertexArray(GameState->CharacterModel->Meshes[i]->VAO);
-      glDrawElements(GL_TRIANGLES, GameState->CharacterModel->Meshes[i]->IndiceCount,
-                     GL_UNSIGNED_INT, 0);
-      glBindVertexArray(0);
-    }
-#endif
     // Regular Shader
     glUseProgram(GameState->ShaderDiffuse);
     glBindTexture(GL_TEXTURE_2D, GameState->Texture);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_mvp"), 1, GL_FALSE,
+                       MVPMatrix.e);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_model"), 1, GL_FALSE,
+                       ModelMatrix.e);
+    glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "ambient_strength"),
+                GameState->AmbientStrength);
+    glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_position"),
+                GameState->LightPosition.X, GameState->LightPosition.Y, GameState->LightPosition.Z);
+    glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_color"),
+                GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
+    glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "specular_strength"),
+                GameState->SpecularStrength);
+    glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "camera_position"),
+                GameState->Camera.P.X, GameState->Camera.P.Y, GameState->Camera.P.Z);
     for(int i = 0; i < GameState->CharacterModel->MeshCount; i++)
     {
       glBindVertexArray(GameState->CharacterModel->Meshes[i]->VAO);
-      glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_mvp"), 1, GL_FALSE,
-                         MVPMatrix.e);
-      glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_model"), 1, GL_FALSE,
-                         ModelMatrix.e);
-      glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "ambient_strength"),
-                  GameState->AmbientStrength);
-      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_position"),
-                  GameState->LightPosition.X, GameState->LightPosition.Y,
-                  GameState->LightPosition.Z);
-      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_color"),
-                  GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
-      glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "specular_strength"),
-                  GameState->SpecularStrength);
-      glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "camera_position"),
-                  GameState->Camera.P.X, GameState->Camera.P.Y, GameState->Camera.P.Z);
       glDrawElements(GL_TRIANGLES, GameState->CharacterModel->Meshes[i]->IndiceCount,
                      GL_UNSIGNED_INT, 0);
-      glBindVertexArray(0);
     }
+    glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
   }
   if(GameState->DrawWireframe)
@@ -326,8 +348,52 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                     GameState->Skeleton->Bones[i].BindPose));
     }
 
-    DEBUGDrawGizmo(GameState, &ModelMatrix, 1);
-    DEBUGDrawGizmo(GameState, BoneGizmos, GameState->Skeleton->BoneCount);
+    DEBUGDrawGizmos(GameState, &ModelMatrix, 1);
+    DEBUGDrawGizmos(GameState, BoneGizmos, GameState->Skeleton->BoneCount);
+  }
+
+  // Drawing animation editor timeline
+  {
+    const int KeyframeCount = GameState->AnimEditor.KeyframeCount;
+    if(KeyframeCount > 0)
+    {
+      const EditAnimation::animation_editor* Editor = &GameState->AnimEditor;
+
+      const float TimelineStartX = 0.20f;
+      const float TimelineStartY = 0.1f;
+      const float TimelineWidth  = 0.6f;
+      const float TimelineHeight = 0.05f;
+      const float FirstTime      = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
+      const float LastTime =
+        MaxFloat(Editor->PlayHeadTime, Editor->SampleTimes[Editor->KeyframeCount - 1]);
+      float KeyframeSpacing = KEYFRAME_MIN_TIME_DIFFERENCE_APART; // seconds
+
+      float TimeDiff = MaxFloat((LastTime - FirstTime), 1.0f);
+
+      float KeyframeWidth = KeyframeSpacing / TimeDiff;
+
+      DEBUGDrawQuad(GameState, vec3{ TimelineStartX, TimelineStartY }, TimelineWidth,
+                    TimelineHeight);
+      for(int i = 0; i < KeyframeCount; i++)
+      {
+        float PosPercentage = (Editor->SampleTimes[i] - FirstTime) / TimeDiff;
+        DEBUGDrawCenteredQuad(GameState,
+                              vec3{ TimelineStartX + PosPercentage * TimelineWidth,
+                                    TimelineStartY + TimelineHeight * 0.5f },
+                              KeyframeWidth, 0.05f, { 0.5f, 0.3f, 0.3f });
+      }
+      float CurrentPercentage =
+        (Editor->SampleTimes[Editor->CurrentKeyframe] - FirstTime) / TimeDiff;
+      DEBUGDrawCenteredQuad(GameState,
+                            vec3{ TimelineStartX + CurrentPercentage * TimelineWidth,
+                                  TimelineStartY + TimelineHeight * 0.5f },
+                            0.003f, 0.05f, { 0.5f, 0.5f, 0.5f });
+      float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
+      DEBUGDrawCenteredQuad(GameState,
+                            vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth,
+                                  TimelineStartY + TimelineHeight * 0.5f },
+                            0.003f, 0.05f, { 1, 0, 0 });
+    }
   }
 }
 
