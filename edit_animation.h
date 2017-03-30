@@ -47,6 +47,8 @@ namespace EditAnimation
   void AdvancePlayHead(animation_editor* Editor, float dt);
   void JumpToNextKeyframe(animation_editor* Editor);
   void JumpToPreviousKeyframe(animation_editor* Editor);
+  void MoveKeyframeToPlayHead(animation_editor* Editor, int index);
+  void MoveCurrentKeyframeToPlayHead(animation_editor* Editor);
   void PrintAnimEditorState(const animation_editor* Editor);
   float GetTimelinePercentage(const animation_editor* Editor, float Time);
 }

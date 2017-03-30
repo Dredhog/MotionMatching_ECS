@@ -14,31 +14,31 @@ UpdateCamera(camera* Camera, const game_input* Input)
   {
     if(Input->w.EndedDown)
     {
-      Camera->P += Input->dt * Camera->Speed * Camera->Up;
+      Camera->Position += Input->dt * Camera->Speed * Camera->Up;
     }
     if(Input->s.EndedDown)
     {
-      Camera->P -= Input->dt * Camera->Speed * Camera->Up;
+      Camera->Position -= Input->dt * Camera->Speed * Camera->Up;
     }
   }
   else
   {
     if(Input->w.EndedDown)
     {
-      Camera->P += Input->dt * Camera->Speed * Camera->Forward;
+      Camera->Position += Input->dt * Camera->Speed * Camera->Forward;
     }
     if(Input->s.EndedDown)
     {
-      Camera->P -= Input->dt * Camera->Speed * Camera->Forward;
+      Camera->Position -= Input->dt * Camera->Speed * Camera->Forward;
     }
   }
   if(Input->a.EndedDown)
   {
-    Camera->P -= Input->dt * Camera->Speed * Camera->Right;
+    Camera->Position -= Input->dt * Camera->Speed * Camera->Right;
   }
   if(Input->d.EndedDown)
   {
-    Camera->P += Input->dt * Camera->Speed * Camera->Right;
+    Camera->Position += Input->dt * Camera->Speed * Camera->Right;
   }
   Camera->Rotation.X -= 0.05f * (float)Input->dMouseY;
   Camera->Rotation.Y -= 0.05f * (float)Input->dMouseX;
@@ -51,7 +51,7 @@ UpdateCamera(camera* Camera, const game_input* Input)
   Camera->Right   = Math::Normalized(Camera->Right);
   Camera->Up      = Math::Normalized(Camera->Up);
 
-  Camera->ViewMatrix = Math::Mat4Camera(Camera->P, Camera->Forward, Camera->Up);
+  Camera->ViewMatrix = Math::Mat4Camera(Camera->Position, Camera->Forward, Camera->Up);
   Camera->ProjectionMatrix =
     Math::Mat4Perspective(Camera->FieldOfView, (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
                           Camera->NearClipPlane, Camera->FarClipPlane);

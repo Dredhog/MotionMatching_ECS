@@ -35,7 +35,7 @@ void
 EditAnimation::ClampedLinearKeyframeSample(animation_editor* Editor, float Time,
                                            editor_keyframe* Result)
 {
-  assert(Editor->KeyframeCount >= 2);
+  assert(Editor->KeyframeCount > 1);
 
   Time = ClampFloat(Editor->SampleTimes[0], Editor->PlayHeadTime,
                     Editor->SampleTimes[Editor->KeyframeCount - 1]);
@@ -135,6 +135,7 @@ void
 DeleteKeyframeAtIndex(EditAnimation::animation_editor* Editor, int32_t Index)
 {
   assert(0 <= Index && Index <= Editor->KeyframeCount);
+  assert(0 < Editor->KeyframeCount);
   for(int i = Index; i < Editor->KeyframeCount - 1; i++)
   {
     Editor->Keyframes[i]   = Editor->Keyframes[i + 1];
@@ -239,6 +240,25 @@ EditAnimation::JumpToPreviousKeyframe(animation_editor* Editor)
     Editor->CurrentKeyframe =
       ClampInt32InIn(0, Editor->CurrentKeyframe - 1, Editor->KeyframeCount - 1);
     Editor->PlayHeadTime = Editor->SampleTimes[Editor->CurrentKeyframe];
+  }
+}
+
+void
+EditAnimation::MoveKeyframeToPlayHead(animation_editor* Editor, int Index)
+{
+  assert(0 <= Index && Index <= Editor->KeyframeCount);
+  assert(0 < Editor->KeyframeCount);
+  editor_keyframe Keyframe = Editor->Keyframes[Index];
+  DeleteKeyframeAtIndex(Editor, Index);
+  EditAnimation::InsertKeyframeAtTime(Editor, &Keyframe, Editor->PlayHeadTime);
+}
+
+void
+EditAnimation::MoveCurrentKeyframeToPlayHead(animation_editor* Editor)
+{
+  if(Editor->KeyframeCount > 0)
+  {
+    EditAnimation::MoveKeyframeToPlayHead(Editor, Editor->CurrentKeyframe);
   }
 }
 

@@ -9,8 +9,8 @@
 
 #include "common.h"
 
-#define SCREEN_WIDTH 1920
-#define SCREEN_HEIGHT 1080
+#define SCREEN_WIDTH 900
+#define SCREEN_HEIGHT 900
 #define FRAME_TIME_MS 16
 
 #include "update_render.h"
@@ -297,7 +297,7 @@ Init(SDL_Window** Window)
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
-                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL /*| SDL_WINDOW_FULLSCREEN*/);
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());

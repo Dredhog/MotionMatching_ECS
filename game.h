@@ -10,23 +10,16 @@
 #include "stack_allocator.h"
 #include "edit_animation.h"
 
-struct eul_transform
-{
-  vec3 Rotation;
-  vec3 Translation;
-  vec3 Scale;
-};
-
 struct entity
 {
   Render::model*              Model;
-  eul_transform               Transform;
+  Anim::transform             Transform;
   Anim::animation_controller* AnimController;
 };
 
 struct camera
 {
-  vec3 P;
+  vec3 Position;
   vec3 Up;
   vec3 Right;
   vec3 Forward;
@@ -44,6 +37,16 @@ struct camera
   mat4 VPMatrix;
 };
 
+enum engine_mode
+{
+  MODE_AnimationEditor,
+  MODE_EntityCreation,
+  MODE_EditorMenu,
+  MODE_MainMenu,
+  MODE_Gameplay,
+  MODE_FlyCam,
+};
+
 struct game_state
 {
   Memory::stack_allocator* PersistentMemStack;
@@ -57,26 +60,29 @@ struct game_state
   Render::model*  CharacterModel;
   Render::model*  GizmoModel;
 
-  GLint   Texture;
-  int32_t ShaderBoneColor;
+  int32_t Texture;
+
+  int32_t Shaders;
+  int32_t ShaderSkeletalBoneColor;
   int32_t ShaderWireframe;
-  int32_t ShaderDiffuse;
+  int32_t ShaderSkeletalPhong;
   int32_t ShaderGizmo;
   int32_t ShaderQuad;
   int32_t ShaderTexturedQuad;
 
-    vec3 LightPosition;
-  vec3   LightColor;
-  float  AmbientStrength;
-  float  SpecularStrength;
+  vec3  LightPosition;
+  vec3  LightColor;
+  float AmbientStrength;
+  float SpecularStrength;
 
-  uint32_t      MagicChecksum;
-  eul_transform ModelTransform;
+  uint32_t        MagicChecksum;
+  Anim::transform ModelTransform;
 
   bool DrawWireframe;
   bool DrawBoneWeights;
   bool DrawGizmos;
 
-  camera Camera;
-  float  GameTime;
+  camera   Camera;
+  uint32_t EngineMode;
+  float    GameTime;
 };

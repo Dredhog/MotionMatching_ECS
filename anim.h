@@ -19,9 +19,10 @@ namespace Anim
   struct animation
   {
     transform* Transforms;
-    float*     SampleTimesSec;
+    float*     SampleTimes;
     int32_t    KeyframeCount;
-    int32_t    BonesPerPose;
+    int32_t    ChannelCount;
+    uint8_t    IsLooping;
   };
 
   struct animation_state
@@ -32,9 +33,9 @@ namespace Anim
 
   struct animation_controller
   {
-    animation**       Animations;
+    animation**      Animations;
     animation_state* AnimationStates;
-    skeleton*         Skeleton;
+    skeleton*        Skeleton;
   };
 
   void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,

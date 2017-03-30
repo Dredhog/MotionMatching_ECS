@@ -26,7 +26,7 @@ static const vec3 g_BoneColors[] = {
   { 0.77f, 0.22f, 0.79f }, { 0.30f, 0.00f, 0.07f }, { 0.98f, 0.28f, 0.02f },
   { 0.92f, 0.42f, 0.14f }, { 0.47f, 0.31f, 0.72f },
 };
-static const float EDITOR_BONE_ROTATION_SPEED_DEG = 60.0f;
+static const float EDITOR_BONE_ROTATION_SPEED_DEG = 45.0f;
 
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
@@ -99,18 +99,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // -------BEGIN LOADING SHADERS
     // Diffuse
     Memory::marker LoadStart = TemporaryMemStack->GetMarker();
-    GameState->ShaderDiffuse = Shader::LoadShader(TemporaryMemStack, "./shaders/diffuse");
+    GameState->ShaderSkeletalPhong =
+      Shader::LoadShader(TemporaryMemStack, "./shaders/skeletal_phong");
     TemporaryMemStack->FreeToMarker(LoadStart);
-    if(GameState->ShaderDiffuse < 0)
+    if(GameState->ShaderSkeletalPhong < 0)
     {
       printf("Shader loading failed!\n");
       assert(false);
     }
     // Bone Color
-    LoadStart                  = TemporaryMemStack->GetMarker();
-    GameState->ShaderBoneColor = Shader::LoadShader(TemporaryMemStack, "./shaders/bone_color");
+    LoadStart = TemporaryMemStack->GetMarker();
+    GameState->ShaderSkeletalBoneColor =
+      Shader::LoadShader(TemporaryMemStack, "./shaders/skeletal_bone_color");
     TemporaryMemStack->FreeToMarker(LoadStart);
-    if(GameState->ShaderBoneColor < 0)
+    if(GameState->ShaderSkeletalBoneColor < 0)
     {
       printf("Shader loading failed!\n");
       assert(false);
@@ -164,7 +166,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // -------InitGameState
     GameState->ModelTransform.Rotation = { 0, 0, 0 };
     GameState->ModelTransform.Scale    = { 1, 1, 1 };
-    GameState->Camera.P                = { 0, 0.5f, 1 };
+    GameState->Camera.Position         = { 0, 0.5f, 1 };
     GameState->Camera.Up               = { 0, 1, 0 };
     GameState->Camera.Forward          = { 0, 0, -1 };
     GameState->Camera.Right            = { 1, 0, 0 };
@@ -204,7 +206,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
         .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.X -= EDITOR_BONE_ROTATION_SPEED_DEG  * Input->dt;
+        .Rotation.X -= EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
     }
     if(Input->n.EndedDown && Input->n.Changed)
     {
@@ -240,6 +242,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EditAnimation::AdvancePlayHead(&GameState->AnimEditor, +0.01f); // * Input->dt;
     }
   }
+  if(Input->m.EndedDown && Input->m.Changed)
+  {
+    EditAnimation::MoveCurrentKeyframeToPlayHead(&GameState->AnimEditor);
+  }
   if(Input->Delete.EndedDown && Input->Delete.Changed)
   {
     EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
@@ -272,17 +278,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   if(GameState->DrawBoneWeights)
   {
-#if 1
     // Bone Color Shader
-    glUseProgram(GameState->ShaderBoneColor);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderBoneColor, "mat_mvp"), 1, GL_FALSE,
-                       MVPMatrix.e);
-    glUniform3fv(glGetUniformLocation(GameState->ShaderBoneColor, "g_bone_colors"), 20,
+    glUseProgram(GameState->ShaderSkeletalBoneColor);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalBoneColor, "mat_mvp"), 1,
+                       GL_FALSE, MVPMatrix.e);
+    glUniform3fv(glGetUniformLocation(GameState->ShaderSkeletalBoneColor, "g_bone_colors"), 20,
                  (float*)&g_BoneColors);
-    glUniform1i(glGetUniformLocation(GameState->ShaderBoneColor, "g_selected_bone_index"),
+    glUniform1i(glGetUniformLocation(GameState->ShaderSkeletalBoneColor, "g_selected_bone_index"),
                 GameState->AnimEditor.CurrentBone);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderBoneColor, "g_bone_matrices"), 20,
-                       GL_FALSE, (float*)GameState->AnimEditor.HierarchicalModelSpaceMatrices);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalBoneColor, "g_bone_matrices"),
+                       20, GL_FALSE, (float*)GameState->AnimEditor.HierarchicalModelSpaceMatrices);
     for(int i = 0; i < GameState->CharacterModel->MeshCount; i++)
     {
       glBindVertexArray(GameState->CharacterModel->Meshes[i]->VAO);
@@ -290,27 +295,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                      GL_UNSIGNED_INT, 0);
       glBindVertexArray(0);
     }
-#endif
   }
   else
   {
     // Regular Shader
-    glUseProgram(GameState->ShaderDiffuse);
+    glUseProgram(GameState->ShaderSkeletalPhong);
     glBindTexture(GL_TEXTURE_2D, GameState->Texture);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_mvp"), 1, GL_FALSE,
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalPhong, "g_bone_matrices"), 20,
+                       GL_FALSE, (float*)GameState->AnimEditor.HierarchicalModelSpaceMatrices);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalPhong, "mat_mvp"), 1, GL_FALSE,
                        MVPMatrix.e);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderDiffuse, "mat_model"), 1, GL_FALSE,
-                       ModelMatrix.e);
-    glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "ambient_strength"),
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalPhong, "mat_model"), 1,
+                       GL_FALSE, ModelMatrix.e);
+    glUniform1f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "ambient_strength"),
                 GameState->AmbientStrength);
-    glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_position"),
-                GameState->LightPosition.X, GameState->LightPosition.Y, GameState->LightPosition.Z);
-    glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "light_color"),
-                GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
-    glUniform1f(glGetUniformLocation(GameState->ShaderDiffuse, "specular_strength"),
+    glUniform1f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "specular_strength"),
                 GameState->SpecularStrength);
-    glUniform3f(glGetUniformLocation(GameState->ShaderDiffuse, "camera_position"),
-                GameState->Camera.P.X, GameState->Camera.P.Y, GameState->Camera.P.Z);
+    glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "light_position"),
+                GameState->LightPosition.X, GameState->LightPosition.Y, GameState->LightPosition.Z);
+    glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "light_color"),
+                GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
+    glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "camera_position"),
+                GameState->Camera.Position.X, GameState->Camera.Position.Y, GameState->Camera.Position.Z);
     for(int i = 0; i < GameState->CharacterModel->MeshCount; i++)
     {
       glBindVertexArray(GameState->CharacterModel->Meshes[i]->VAO);
@@ -366,7 +372,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       const float FirstTime      = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
       const float LastTime =
         MaxFloat(Editor->PlayHeadTime, Editor->SampleTimes[Editor->KeyframeCount - 1]);
-      float KeyframeSpacing = KEYFRAME_MIN_TIME_DIFFERENCE_APART; // seconds
+      float KeyframeSpacing = KEYFRAME_MIN_TIME_DIFFERENCE_APART * 0.5f; // seconds
 
       float TimeDiff = MaxFloat((LastTime - FirstTime), 1.0f);
 
@@ -382,17 +388,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                     TimelineStartY + TimelineHeight * 0.5f },
                               KeyframeWidth, 0.05f, { 0.5f, 0.3f, 0.3f });
       }
+      float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
+      DEBUGDrawCenteredQuad(GameState,
+                            vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth,
+                                  TimelineStartY + TimelineHeight * 0.5f },
+                            KeyframeWidth, 0.05f, { 1, 0, 0 });
       float CurrentPercentage =
         (Editor->SampleTimes[Editor->CurrentKeyframe] - FirstTime) / TimeDiff;
       DEBUGDrawCenteredQuad(GameState,
                             vec3{ TimelineStartX + CurrentPercentage * TimelineWidth,
                                   TimelineStartY + TimelineHeight * 0.5f },
                             0.003f, 0.05f, { 0.5f, 0.5f, 0.5f });
-      float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
-      DEBUGDrawCenteredQuad(GameState,
-                            vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth,
-                                  TimelineStartY + TimelineHeight * 0.5f },
-                            0.003f, 0.05f, { 1, 0, 0 });
     }
   }
 }
