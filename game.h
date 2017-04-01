@@ -37,6 +37,13 @@ struct camera
   mat4 VPMatrix;
 };
 
+struct loaded_wav
+{
+  int16_t* AudioData;
+  uint32_t AudioLength;
+  uint32_t AudioSampleIndex;
+};
+
 enum engine_mode
 {
   MODE_AnimationEditor,
@@ -85,4 +92,7 @@ struct game_state
   camera   Camera;
   uint32_t EngineMode;
   float    GameTime;
+
+  loaded_wav AudioBuffer;
+  bool       WAVLoaded;
 };

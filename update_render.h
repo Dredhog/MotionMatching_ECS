@@ -13,7 +13,6 @@
 #include "load_bmp.h"
 #include "misc.h"
 
-#include "game.h"
 #include "debug_drawing.h"
 #include "camera.h"
 
@@ -35,6 +34,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //---------------------BEGIN INIT -------------------------
   if(GameState->MagicChecksum != 123456)
   {
+    GameState->WAVLoaded = false;
     GameState->MagicChecksum = 123456;
     GameState->PersistentMemStack =
       Memory::CreateStackAllocatorInPlace((uint8_t*)GameMemory.PersistentMemory +

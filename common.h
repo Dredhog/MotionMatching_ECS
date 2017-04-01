@@ -4,6 +4,13 @@
 
 #define ArrayCount(Array) sizeof((Array)) / sizeof(Array[0])
 
+struct game_sound_output_buffer
+{
+  int      SamplesPerSecond;
+  int      SampleCount;
+  int16_t* Samples;
+};
+
 struct game_button_state
 {
   uint8_t EndedDown;
@@ -69,5 +76,12 @@ struct game_memory
   void name(game_memory GameMemory, const game_input* const Input)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
 GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
+{
+}
+
+#define GAME_GET_SOUND_SAMPLES(name)                                                               \
+  void name(game_memory GameMemory, game_sound_output_buffer* SoundBuffer)
+typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
+GAME_GET_SOUND_SAMPLES(GameGetSoundSamplesStub)
 {
 }

@@ -13,6 +13,7 @@
 #define SCREEN_HEIGHT 900
 #define FRAME_TIME_MS 16
 
+#include "sound_samples.h"
 #include "update_render.h"
 
 static bool
@@ -333,6 +334,94 @@ Init(SDL_Window** Window)
   return Success;
 }
 
+bool
+InitAudio(SDL_AudioDeviceID* AudioDevice, Audio::audio_ring_buffer* AudioRingBuffer,
+          int SamplesPerSecond, int BufferSize)
+{
+  AudioRingBuffer->Size        = BufferSize;
+  AudioRingBuffer->Data        = malloc(AudioRingBuffer->Size);
+  AudioRingBuffer->PlayCursor  = 0;
+  AudioRingBuffer->WriteCursor = 0;
+
+  SDL_AudioSpec AudioSettings = { 0 };
+
+  AudioSettings.freq     = SamplesPerSecond;
+  AudioSettings.format   = AUDIO_S16LSB;
+  AudioSettings.channels = 2;
+  AudioSettings.samples  = 1024;
+  AudioSettings.callback = &Audio::SDLAudioCallback;
+  AudioSettings.userdata = AudioRingBuffer;
+
+  *AudioDevice = SDL_OpenAudioDevice(NULL, 0, &AudioSettings, 0, 0);
+
+  if(*AudioDevice == 0)
+  {
+    printf("Failed to get an audio device: %s\n", SDL_GetError());
+    return false;
+  }
+  return true;
+}
+
+void
+ClearSoundBuffer(Audio::audio_ring_buffer* AudioRingBuffer, int ByteToLock, int BytesToWrite)
+{
+  void* Region1     = (uint8_t*)AudioRingBuffer->Data + ByteToLock;
+  int   Region1Size = BytesToWrite;
+  if(Region1Size + ByteToLock > AudioRingBuffer->Size)
+  {
+    Region1Size = AudioRingBuffer->Size - ByteToLock;
+  }
+  void* Region2     = AudioRingBuffer->Data;
+  int   Region2Size = BytesToWrite - Region1Size;
+
+  uint8_t* DestSample = (uint8_t*)Region1;
+  for(int ByteIndex = 0; ByteIndex < Region1Size; ByteIndex++)
+  {
+    *DestSample++ = 0;
+  }
+
+  DestSample = (uint8_t*)Region2;
+  for(int ByteIndex = 0; ByteIndex < Region2Size; ByteIndex++)
+  {
+    *DestSample++ = 0;
+  }
+}
+
+void
+FillSoundBuffer(Audio::audio_ring_buffer* AudioRingBuffer, Audio::sound_output* SoundOutput,
+                int ByteToLock, int BytesToWrite, game_sound_output_buffer* SourceBuffer)
+{
+  void* Region1     = (uint8_t*)AudioRingBuffer->Data + ByteToLock;
+  int   Region1Size = BytesToWrite;
+  if(Region1Size + ByteToLock > AudioRingBuffer->Size)
+  {
+    Region1Size = AudioRingBuffer->Size - ByteToLock;
+  }
+  void* Region2     = AudioRingBuffer->Data;
+  int   Region2Size = BytesToWrite - Region1Size;
+
+  int16_t* DestSample         = (int16_t*)Region1;
+  int16_t* SourceSample       = SourceBuffer->Samples;
+  int      Region1SampleCount = Region1Size / SoundOutput->BytesPerSample;
+
+  for(int i = 0; i < Region1SampleCount; i++)
+  {
+    *DestSample++ = *SourceSample++;
+    *DestSample++ = *SourceSample++;
+    SoundOutput->RunningSampleIndex++;
+  }
+
+  DestSample             = (int16_t*)Region2;
+  int Region2SampleCount = Region2Size / SoundOutput->BytesPerSample;
+
+  for(int i = 0; i < Region2SampleCount; i++)
+  {
+    *DestSample++ = *SourceSample++;
+    *DestSample++ = *SourceSample++;
+    SoundOutput->RunningSampleIndex++;
+  }
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -372,10 +461,31 @@ main(int argc, char* argv[])
   ProcessInput(&OldInput, &NewInput, &Event);
   OldInput = NewInput;
 
+  // Audio preparation
+
+  Audio::sound_output SoundOutput = {};
+
+  SoundOutput.SamplesPerSecond    = 48000;
+  SoundOutput.ToneVolume          = 1000;
+  SoundOutput.BytesPerSample      = sizeof(int16_t) * 2;
+  SoundOutput.SecondaryBufferSize = SoundOutput.SamplesPerSecond * SoundOutput.BytesPerSample;
+  SoundOutput.LatencySampleCount  = SoundOutput.SamplesPerSecond / 30;
+
+  SDL_AudioDeviceID        AudioDevice;
+  Audio::audio_ring_buffer AudioRingBuffer;
+  if(!InitAudio(&AudioDevice, &AudioRingBuffer, SoundOutput.SamplesPerSecond,
+                SoundOutput.SecondaryBufferSize))
+  {
+    return -1;
+  }
+  ClearSoundBuffer(&AudioRingBuffer, 0, SoundOutput.SecondaryBufferSize);
+  SDL_PauseAudioDevice(AudioDevice, 0);
+  SoundOutput.RunningSampleIndex = AudioRingBuffer.WriteCursor / SoundOutput.BytesPerSample;
+
   // Main loop
+  // TODO(Rytis): Clean up audio preparation and computation code
   while(true)
   {
-
     ProcessInput(&OldInput, &NewInput, &Event);
     SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
     if(NewInput.Escape.EndedDown)
@@ -383,8 +493,39 @@ main(int argc, char* argv[])
       break;
     }
 
+    // Audio computation
+    int ByteToLock =
+      (SoundOutput.RunningSampleIndex * SoundOutput.BytesPerSample) % AudioRingBuffer.Size;
+    int TargetCursor = ((AudioRingBuffer.PlayCursor +
+                         (SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample)) %
+                        AudioRingBuffer.Size);
+    int BytesToWrite;
+
+    if(ByteToLock > TargetCursor)
+    {
+      BytesToWrite = AudioRingBuffer.Size - ByteToLock;
+      BytesToWrite += TargetCursor;
+    }
+    else
+    {
+      BytesToWrite = TargetCursor - ByteToLock;
+    }
+
+    int16_t                  Samples[48000 * 2];
+    game_sound_output_buffer SoundBuffer = {};
+
+    SoundBuffer.SamplesPerSecond = SoundOutput.SamplesPerSecond;
+    SoundBuffer.SampleCount      = BytesToWrite / SoundOutput.BytesPerSample;
+    SoundBuffer.Samples          = Samples;
+    // Audio computation done
+
     NewInput.dt = 0.001f * (float)FRAME_TIME_MS;
     GameUpdateAndRender(GameMemory, &NewInput);
+    GameGetSoundSamples(GameMemory, &SoundBuffer);
+
+    SDL_LockAudioDevice(AudioDevice);
+    FillSoundBuffer(&AudioRingBuffer, &SoundOutput, ByteToLock, BytesToWrite, &SoundBuffer);
+    SDL_UnlockAudioDevice(AudioDevice);
 
     SDL_GL_SwapWindow(Window);
     SDL_Delay(FRAME_TIME_MS);
@@ -392,6 +533,7 @@ main(int argc, char* argv[])
     OldInput = NewInput;
   }
 
+  SDL_CloseAudioDevice(AudioDevice);
   free(GameMemory.TemporaryMemory);
   free(GameMemory.PersistentMemory);
   SDL_DestroyWindow(Window);
