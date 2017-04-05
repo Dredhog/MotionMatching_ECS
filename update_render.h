@@ -15,6 +15,7 @@
 
 #include "debug_drawing.h"
 #include "camera.h"
+#define demo 1
 
 static const vec3 g_BoneColors[] = {
   { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.77f },
@@ -34,7 +35,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //---------------------BEGIN INIT -------------------------
   if(GameState->MagicChecksum != 123456)
   {
-    GameState->WAVLoaded = false;
+    GameState->WAVLoaded     = false;
     GameState->MagicChecksum = 123456;
     GameState->PersistentMemStack =
       Memory::CreateStackAllocatorInPlace((uint8_t*)GameMemory.PersistentMemory +
@@ -62,7 +63,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       SetUpMesh(GameState->GizmoModel->Meshes[i]);
     }
 
-    // Set Up Gizmo
+// Set Up Gizmo
     AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/debug_meshes.model");
 
     assert(AssetReadResult.Contents);
@@ -76,7 +77,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     // Set Up Model
+#if demo
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/soldier_test0.actor");
+#else
     AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/crysis_soldier.actor");
+#endif
 
     assert(AssetReadResult.Contents);
     AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
@@ -86,15 +91,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       SetUpMesh(GameState->CharacterModel->Meshes[i]);
     }
+    Render::PrintModelHeader(GameState->CharacterModel);
 
-    GameState->Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
-    // PrintModel(GameState->CharacterModel);
-    // PrintSkeleton(GameState->Skeleton);
+    GameState->Skeleton            = (Anim::skeleton*)AssetHeader->Skeleton;
     GameState->AnimEditor.Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
-    // Set Up Texture
-    GameState->Texture = Texture::LoadBMPTexture("./data/body_dif.bmp");
-    assert(GameState->Texture);
+// Set Up Texture
+#if demo
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/hand_dif.bmp"));
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/helmet_diff.bmp"));
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/glass_dif.bmp"));
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/body_dif.bmp"));
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/leg_dif.bmp"));
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/arm_dif.bmp"));
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/body_dif.bmp"));
+#else
+    AddTexture(GameState, Texture::LoadBMPTexture("./data/body_dif.bmp"));
+#endif
 
     // -------BEGIN LOADING SHADERS
     // Diffuse
@@ -160,25 +173,25 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // ======Set GL state
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glEnable(GL_DEPTH_TEST);
-    // glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // -------InitGameState
     GameState->ModelTransform.Rotation = { 0, 0, 0 };
     GameState->ModelTransform.Scale    = { 1, 1, 1 };
-    GameState->Camera.Position         = { 0, 0.5f, 1 };
+    GameState->Camera.Position         = { 0, 1, 2 };
     GameState->Camera.Up               = { 0, 1, 0 };
     GameState->Camera.Forward          = { 0, 0, -1 };
     GameState->Camera.Right            = { 1, 0, 0 };
     GameState->Camera.Rotation         = {};
-    GameState->Camera.FieldOfView      = 90.0f;
+    GameState->Camera.FieldOfView      = 70.0f;
     GameState->Camera.NearClipPlane    = 0.001f;
     GameState->Camera.FarClipPlane     = 100.0f;
     GameState->Camera.MaxTiltAngle     = 90.0f;
 
     GameState->LightPosition    = { 2.25f, 1.0f, 1.0f };
     GameState->LightColor       = { 0.7f, 0.7f, 0.75f };
-    GameState->AmbientStrength  = 0.5f;
+    GameState->AmbientStrength  = 0.7f;
     GameState->SpecularStrength = 0.6f;
 
     GameState->DrawWireframe   = false;
@@ -191,6 +204,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   GameState->GameTime += Input->dt;
 
   UpdateCamera(&GameState->Camera, Input);
+	GameState->ModelTransform.Rotation.Y += 45.0f * Input->dt;
   mat4 ModelMatrix = Math::MulMat4(Math::Mat4Rotate(GameState->ModelTransform.Rotation),
                                    Math::Mat4Scale(GameState->ModelTransform.Scale));
   mat4 MVPMatrix = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
@@ -300,7 +314,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     // Regular Shader
     glUseProgram(GameState->ShaderSkeletalPhong);
-    glBindTexture(GL_TEXTURE_2D, GameState->Texture);
     glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalPhong, "g_bone_matrices"), 20,
                        GL_FALSE, (float*)GameState->AnimEditor.HierarchicalModelSpaceMatrices);
     glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalPhong, "mat_mvp"), 1, GL_FALSE,
@@ -316,15 +329,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "light_color"),
                 GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
     glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "camera_position"),
-                GameState->Camera.Position.X, GameState->Camera.Position.Y, GameState->Camera.Position.Z);
+                GameState->Camera.Position.X, GameState->Camera.Position.Y,
+                GameState->Camera.Position.Z);
     for(int i = 0; i < GameState->CharacterModel->MeshCount; i++)
     {
+      glBindTexture(GL_TEXTURE_2D, GameState->Textures[i]);
       glBindVertexArray(GameState->CharacterModel->Meshes[i]->VAO);
       glDrawElements(GL_TRIANGLES, GameState->CharacterModel->Meshes[i]->IndiceCount,
                      GL_UNSIGNED_INT, 0);
     }
-    glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+    glBindVertexArray(0);
   }
   if(GameState->DrawWireframe)
   {

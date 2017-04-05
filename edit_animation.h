@@ -6,7 +6,7 @@
 #include "skeleton.h"
 
 static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 0.1f;
-#define EDITOR_ANIM_MAX_KEYFRAME_COUNT 20
+#define EDITOR_ANIM_MAX_KEYFRAME_COUNT 30
 
 struct editor_keyframe
 {
@@ -39,16 +39,19 @@ namespace EditAnimation
   void CalculateHierarchicalmatricesAtTime(animation_editor* Editor);
   void InsertKeyframeAtTime(animation_editor* Editor, const editor_keyframe* NewKeyframe,
                             float Time);
+
   void InsertIdleKeyframeAtTime(animation_editor* Editor, float Time);
   void InsertBlendedKeyframeAtTime(animation_editor* Editor, float Time);
   void DeleteCurrentKeyframe(animation_editor* Editor);
-  void EditNextBone(animation_editor* Editor);
-  void EditPreviousBone(animation_editor* Editor);
-  void AdvancePlayHead(animation_editor* Editor, float dt);
-  void JumpToNextKeyframe(animation_editor* Editor);
-  void JumpToPreviousKeyframe(animation_editor* Editor);
   void MoveKeyframeToPlayHead(animation_editor* Editor, int index);
   void MoveCurrentKeyframeToPlayHead(animation_editor* Editor);
+
+  void EditNextBone(animation_editor* Editor);
+  void EditPreviousBone(animation_editor* Editor);
+  void JumpToNextKeyframe(animation_editor* Editor);
+  void JumpToPreviousKeyframe(animation_editor* Editor);
+
+  void AdvancePlayHead(animation_editor* Editor, float dt);
   void PrintAnimEditorState(const animation_editor* Editor);
   float GetTimelinePercentage(const animation_editor* Editor, float Time);
 }

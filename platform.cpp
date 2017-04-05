@@ -10,7 +10,7 @@
 #include "common.h"
 
 #define SCREEN_WIDTH 900
-#define SCREEN_HEIGHT 900
+#define SCREEN_HEIGHT 800
 #define FRAME_TIME_MS 16
 
 #include "sound_samples.h"
@@ -291,8 +291,8 @@ Init(SDL_Window** Window)
   else
   {
     // Set Opengl contet version to 3.3 core
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     // Create an SDL window
@@ -466,7 +466,7 @@ main(int argc, char* argv[])
   Audio::sound_output SoundOutput = {};
 
   SoundOutput.SamplesPerSecond    = 48000;
-  SoundOutput.ToneVolume          = 1000;
+  SoundOutput.ToneVolume          = 0;
   SoundOutput.BytesPerSample      = sizeof(int16_t) * 2;
   SoundOutput.SecondaryBufferSize = SoundOutput.SamplesPerSecond * SoundOutput.BytesPerSample;
   SoundOutput.LatencySampleCount  = SoundOutput.SamplesPerSecond / 30;

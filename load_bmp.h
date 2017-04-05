@@ -18,7 +18,7 @@ namespace Texture
     if(ImageSurface)
     {
       SDL_Surface* DestSurface =
-        SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ARGB8888, 0);
+        SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ABGR8888, 0);
       Result.Texels = DestSurface->pixels;
       Result.Width  = DestSurface->w;
       Result.Height = DestSurface->h;

@@ -76,12 +76,17 @@ namespace Audio
   void
   GameOutputSound(game_sound_output_buffer* SoundBuffer, loaded_wav* AudioSource)
   {
-
+    assert(SoundBuffer->SampleCount % 2 == 0);
     int16_t* SampleOut = SoundBuffer->Samples;
+
+    int32_t SouceAudioSampleCount = AudioSource->AudioLength / sizeof(int16_t);
     for(int SampleIndex = 0; SampleIndex < SoundBuffer->SampleCount; SampleIndex++)
     {
-      *SampleOut++ = AudioSource->AudioData[AudioSource->AudioSampleIndex++];
-      *SampleOut++ = AudioSource->AudioData[AudioSource->AudioSampleIndex++];
+      *SampleOut       = AudioSource->AudioData[AudioSource->AudioSampleIndex];
+      *(SampleOut + 1) = AudioSource->AudioData[AudioSource->AudioSampleIndex + 1];
+
+      AudioSource->AudioSampleIndex = (AudioSource->AudioSampleIndex + 2) % SouceAudioSampleCount;
+      SampleOut += 2;
     }
   }
 }
