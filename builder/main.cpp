@@ -304,7 +304,7 @@ main(int ArgCount, char** Args)
 
   Assimp::Importer Importer;
   const aiScene*   Scene = Importer.ReadFile(Args[1], aiProcess_SplitLargeMeshes |
-                                                      aiProcess_Triangulate | aiProcess_GenNormals);
+                                                      aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FlipUVs);
   if(!Scene || Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !Scene->mRootNode)
   {
     printf("error::assimp: %s\n", Importer.GetErrorString());

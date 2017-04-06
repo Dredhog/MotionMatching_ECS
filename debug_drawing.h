@@ -81,6 +81,9 @@ DEBUGDrawTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, 
     glClear(GL_DEPTH_BUFFER_BIT);
   }
 
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
   glBindTexture(GL_TEXTURE_2D, TextureID);
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
   LowerLeft *= 2.0f;
@@ -93,4 +96,6 @@ DEBUGDrawTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, 
   glDrawElements(GL_TRIANGLES, GameState->QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
   glBindVertexArray(0);
   glBindTexture(GL_TEXTURE_2D, 0);
+
+  glDisable(GL_BLEND);
 }

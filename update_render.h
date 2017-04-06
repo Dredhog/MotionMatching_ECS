@@ -15,7 +15,7 @@
 
 #include "debug_drawing.h"
 #include "camera.h"
-#define demo 1
+#define demo 0
 
 static const vec3 g_BoneColors[] = {
   { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.77f },
@@ -63,7 +63,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       SetUpMesh(GameState->GizmoModel->Meshes[i]);
     }
 
-// Set Up Gizmo
+    // Set Up Gizmo
     AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/debug_meshes.model");
 
     assert(AssetReadResult.Contents);
@@ -76,7 +76,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       SetUpMesh(GameState->QuadModel->Meshes[i]);
     }
 
-    // Set Up Model
+// Set Up Model
 #if demo
     AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/soldier_test0.actor");
 #else
@@ -96,6 +96,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Skeleton            = (Anim::skeleton*)AssetHeader->Skeleton;
     GameState->AnimEditor.Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
+    SDL_Color Color;
+    Color.a = 255;
+    Color.r = 255;
+    Color.g = 255;
+    Color.b = 255;
+    GameState->TextTexture =
+      Texture::LoadTextTexture("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+                               32, "Testing Text Texture", Color);
 // Set Up Texture
 #if demo
     AddTexture(GameState, Texture::LoadBMPTexture("./data/hand_dif.bmp"));
@@ -204,7 +212,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   GameState->GameTime += Input->dt;
 
   UpdateCamera(&GameState->Camera, Input);
-	GameState->ModelTransform.Rotation.Y += 45.0f * Input->dt;
+  GameState->ModelTransform.Rotation.Y += 45.0f * Input->dt;
   mat4 ModelMatrix = Math::MulMat4(Math::Mat4Rotate(GameState->ModelTransform.Rotation),
                                    Math::Mat4Scale(GameState->ModelTransform.Scale));
   mat4 MVPMatrix = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
@@ -340,6 +348,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
+
+    DEBUGDrawTexturedQuad(GameState, GameState->TextTexture, vec3{ 0.0f, 0.0f, 0.0f }, 0.5f, 0.1f);
   }
   if(GameState->DrawWireframe)
   {

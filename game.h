@@ -98,6 +98,8 @@ struct game_state
 
   loaded_wav AudioBuffer;
   bool       WAVLoaded;
+
+  uint32_t TextTexture;
 };
 
 void
