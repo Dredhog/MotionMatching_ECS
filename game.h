@@ -71,8 +71,8 @@ struct game_state
 
   int32_t Textures[TEXTURE_MAX_COUNT];
   int32_t TextureCount;
-	int32_t CollapsedTexture;
-	int32_t ExpandedTexture;
+  int32_t CollapsedTexture;
+  int32_t ExpandedTexture;
 
   int32_t Shaders;
   int32_t ShaderSkeletalBoneColor;
@@ -93,6 +93,7 @@ struct game_state
   bool DrawWireframe;
   bool DrawBoneWeights;
   bool DrawGizmos;
+  bool DisplayText;
   bool IsModelSpinning;
 
   camera   Camera;
@@ -101,4 +102,6 @@ struct game_state
 
   loaded_wav AudioBuffer;
   bool       WAVLoaded;
+
+  uint32_t TextTexture;
 };

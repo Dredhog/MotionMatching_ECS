@@ -106,6 +106,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Skeleton            = (Anim::skeleton*)AssetHeader->Skeleton;
     GameState->AnimEditor.Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
+    SDL_Color Color;
+    Color.a = 255;
+    Color.r = 255;
+    Color.g = 255;
+    Color.b = 255;
+    GameState->TextTexture =
+      Texture::LoadTextTexture("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+                               32, "Testing Text Texture", Color);
 // Set Up Texture
 #if demo
     AddTexture(GameState, Texture::LoadBMPTexture("./data/hand_dif.bmp"));
@@ -215,6 +223,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->DrawWireframe   = false;
     GameState->DrawBoneWeights = false;
     GameState->DrawGizmos      = false;
+    GameState->DisplayText     = false;
 
     EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
                                                GameState->AnimEditor.PlayHeadTime);
@@ -365,6 +374,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
   }
+  if(GameState->DisplayText)
+  {
+    DEBUGDrawTexturedQuad(GameState, GameState->TextTexture, vec3{ 0.0f, 0.0f, 0.4f }, 0.3f, 0.05f);
+  }
   if(GameState->DrawWireframe)
   {
     // WireframeShader Shader
@@ -472,7 +485,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         GameState->ModelTransform.Rotation.Y += 110.0f * Input->dt;
       }
-      UI::_Row(&Layout, 4, "Toggleables");
+      UI::_Row(&Layout, 5, "Toggleables");
+      UI::_BoolButton(&Layout, Input, "Toggle Text Display", &GameState->DisplayText);
       UI::_BoolButton(&Layout, Input, "Toggle Wireframe", &GameState->DrawWireframe);
       UI::_BoolButton(&Layout, Input, "Toggle Gizmos", &GameState->DrawGizmos);
       UI::_BoolButton(&Layout, Input, "Toggle BWeights", &GameState->DrawBoneWeights);

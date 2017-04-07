@@ -1,6 +1,6 @@
 compiler = clang-5.0
 warning_flags = -Wall -Wconversion -Wno-sign-conversion -Wno-missing-braces -Wdouble-promotion -Wno-writable-strings -Wno-unused-variable
-linker_flags = -lGLEW -lGL `sdl2-config --cflags --libs` -lm
+linker_flags = -lGLEW -lGL `sdl2-config --cflags --libs` -lm -lSDL2_ttf
 
 
 all:

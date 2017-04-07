@@ -1,6 +1,7 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -451,6 +452,13 @@ main(int argc, char* argv[])
     return -1;
   }
 
+  //Init TrueType Font API
+  if(TTF_Init() == -1)
+  {
+    printf("TrueType Fonts could not be initialized!\n");
+    return -1;
+  }
+
   game_memory GameMemory;
   {
     GameMemory.TemporaryMemorySize  = Mibibytes(10);
@@ -590,6 +598,7 @@ main(int argc, char* argv[])
   SDL_CloseAudioDevice(AudioDevice);
   free(GameMemory.TemporaryMemory);
   free(GameMemory.PersistentMemory);
+  TTF_Quit();
   SDL_DestroyWindow(Window);
   SDL_Quit();
 
