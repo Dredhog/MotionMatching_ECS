@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cassert>
-
 #include "game.h"
+
 #include "load_wav.h"
 
 GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
@@ -14,5 +14,5 @@ GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
     Audio::LoadWAV(&GameState->AudioBuffer, "./data/Intruder_Alert.wav");
   }
 
-  Audio::GameOutputSound(SoundBuffer, &GameState->AudioBuffer);
+  //Audio::GameOutputSound(SoundBuffer, &GameState->AudioBuffer);
 }

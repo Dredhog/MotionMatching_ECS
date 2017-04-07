@@ -25,8 +25,15 @@ struct game_input
   int32_t dMouseY;
   float   dt;
 
+  float   NormMouseX;
+  float   NormMouseY;
+  float   NormdMouseX;
+  float   NormdMouseY;
+
+  bool IsMouseInEditorMode;
+
   union {
-    game_button_state Buttons[28];
+    game_button_state Buttons[29];
     struct
     {
       game_button_state a;
@@ -49,6 +56,7 @@ struct game_input
       game_button_state LeftCtrl;
       game_button_state LeftShift;
       game_button_state Space;
+      game_button_state Tab;
       game_button_state Delete;
       game_button_state ArrowUp;
       game_button_state ArrowDown;
@@ -75,13 +83,7 @@ struct game_memory
 #define GAME_UPDATE_AND_RENDER(name)                                                               \
   void name(game_memory GameMemory, const game_input* const Input)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
-GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub)
-{
-}
 
 #define GAME_GET_SOUND_SAMPLES(name)                                                               \
   void name(game_memory GameMemory, game_sound_output_buffer* SoundBuffer)
 typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
-GAME_GET_SOUND_SAMPLES(GameGetSoundSamplesStub)
-{
-}

@@ -19,12 +19,12 @@ void
 main()
 {
   frag_texCoord = a_texCoord;
-  frag_normal   = mat3(transpose(inverse(mat_model))) * a_normal;
 
   mat4 final_pose_matrix = g_bone_matrices[a_bone_indices.x] * a_bone_weights.x +
                            g_bone_matrices[a_bone_indices.y] * a_bone_weights.y +
                            g_bone_matrices[a_bone_indices.z] * a_bone_weights.z +
                            g_bone_matrices[a_bone_indices.w] * a_bone_weights.w;
+  frag_normal = mat3(transpose(inverse(mat_model * final_pose_matrix))) * a_normal;
 
   frag_position = vec3(mat_model * final_pose_matrix * vec4(a_position, 1.0f));
   gl_Position   = mat_mvp * final_pose_matrix * vec4(a_position, 1.0f);

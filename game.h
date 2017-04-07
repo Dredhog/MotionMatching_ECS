@@ -70,8 +70,10 @@ struct game_state
   Render::model*  GizmoModel;
   Render::model*  Cubemap;
 
-  GLuint  Textures[TEXTURE_MAX_COUNT];
+  int32_t Textures[TEXTURE_MAX_COUNT];
   int32_t TextureCount;
+  int32_t CollapsedTexture;
+  int32_t ExpandedTexture;
 
   int32_t Shaders;
   int32_t ShaderSkeletalBoneColor;
@@ -93,6 +95,8 @@ struct game_state
   bool DrawWireframe;
   bool DrawBoneWeights;
   bool DrawGizmos;
+  bool DisplayText;
+  bool IsModelSpinning;
 
   camera   Camera;
   uint32_t EngineMode;
@@ -104,11 +108,3 @@ struct game_state
   GLuint TextTexture;
   GLuint CubemapTexture;
 };
-
-void
-AddTexture(game_state* GameState, GLuint TextureID)
-{
-  assert(TextureID);
-  assert(0 <= GameState->TextureCount && GameState->TextureCount < TEXTURE_MAX_COUNT);
-  GameState->Textures[GameState->TextureCount++] = TextureID;
-}

@@ -3,11 +3,11 @@
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
 
-uniform vec3 g_color;
+uniform vec4 g_color;
 uniform vec3 g_position;
 uniform vec2 g_dimension;
 
-out vec3 frag_color;
+out vec4 frag_color;
 
 void
 main()

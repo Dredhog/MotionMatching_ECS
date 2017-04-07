@@ -5,19 +5,21 @@
 inline float
 MaxFloat(float A, float B)
 {
-	if(A > B){
-		return A;
-	}
-	return B;
+  if(A > B)
+  {
+    return A;
+  }
+  return B;
 }
 
 inline float
 MinFloat(float A, float B)
 {
-	if(A < B){
-		return A;
-	}
-	return B;
+  if(A < B)
+  {
+    return A;
+  }
+  return B;
 }
 inline float
 ClampFloat(float Min, float T, float Max)
@@ -43,6 +45,16 @@ ClampInt32InIn(int32_t Min, int32_t T, int32_t Max)
   if(T > Max)
   {
     return Max;
+  }
+  return T;
+}
+
+inline int32_t
+ClampMinInt32(int32_t Min, int32_t T)
+{
+  if(T < Min)
+  {
+    return Min;
   }
   return T;
 }

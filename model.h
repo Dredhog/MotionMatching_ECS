@@ -14,14 +14,14 @@ namespace Render
     Render::mesh** Meshes;
   };
 
-  void
+  inline void
   PrintModelHeader(Render::model* Model)
   {
     printf("MODEL HEADER\n");
     printf("MeshCount: %d\n", Model->MeshCount);
   }
 
-  void
+  inline void
   PrintModel(Render::model* Model)
   {
     PrintModelHeader(Model);
