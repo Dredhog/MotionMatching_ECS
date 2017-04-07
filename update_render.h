@@ -5,6 +5,7 @@
 #include "linear_math/matrix.h"
 #include "linear_math/vector.h"
 
+#include "game.h"
 #include "mesh.h"
 #include "model.h"
 #include "file_io.h"
@@ -12,6 +13,7 @@
 #include "builder/pack.h"
 #include "load_bmp.h"
 #include "misc.h"
+#include "ui.h"
 
 #include "debug_drawing.h"
 #include "camera.h"
@@ -27,6 +29,14 @@ static const vec3 g_BoneColors[] = {
   { 0.92f, 0.42f, 0.14f }, { 0.47f, 0.31f, 0.72f },
 };
 static const float EDITOR_BONE_ROTATION_SPEED_DEG = 45.0f;
+
+void
+AddTexture(game_state* GameState, int32_t TextureID)
+{
+  assert(TextureID);
+  assert(0 <= GameState->TextureCount && GameState->TextureCount < TEXTURE_MAX_COUNT);
+  GameState->Textures[GameState->TextureCount++] = TextureID;
+}
 
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
@@ -63,7 +73,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       SetUpMesh(GameState->GizmoModel->Meshes[i]);
     }
 
-// Set Up Gizmo
+    // Set Up Gizmo
     AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/debug_meshes.model");
 
     assert(AssetReadResult.Contents);
@@ -76,7 +86,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       SetUpMesh(GameState->QuadModel->Meshes[i]);
     }
 
-    // Set Up Model
+// Set Up Model
 #if demo
     AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/soldier_test0.actor");
 #else
@@ -108,6 +118,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #else
     AddTexture(GameState, Texture::LoadBMPTexture("./data/body_dif.bmp"));
 #endif
+    GameState->CollapsedTexture = Texture::LoadBMPTexture("./data/collapsed.bmp");
+    GameState->ExpandedTexture  = Texture::LoadBMPTexture("./data/expanded.bmp");
+    assert(GameState->CollapsedTexture);
+    assert(GameState->ExpandedTexture);
 
     // -------BEGIN LOADING SHADERS
     // Diffuse
@@ -174,16 +188,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+    // glEnable(GL_BLEND);
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    // glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // -------InitGameState
+    GameState->IsModelSpinning         = true;
     GameState->ModelTransform.Rotation = { 0, 0, 0 };
     GameState->ModelTransform.Scale    = { 1, 1, 1 };
-    GameState->Camera.Position         = { 0, 1, 2 };
+    GameState->Camera.Position         = { 0, 1.3f, 1.3f };
     GameState->Camera.Up               = { 0, 1, 0 };
     GameState->Camera.Forward          = { 0, 0, -1 };
     GameState->Camera.Right            = { 1, 0, 0 };
-    GameState->Camera.Rotation         = {};
+    GameState->Camera.Rotation         = { -20 };
     GameState->Camera.FieldOfView      = 70.0f;
     GameState->Camera.NearClipPlane    = 0.001f;
     GameState->Camera.FarClipPlane     = 100.0f;
@@ -197,6 +215,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->DrawWireframe   = false;
     GameState->DrawBoneWeights = false;
     GameState->DrawGizmos      = false;
+
+    EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
+                                               GameState->AnimEditor.PlayHeadTime);
   }
   //---------------------END INIT -------------------------
 
@@ -204,7 +225,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   GameState->GameTime += Input->dt;
 
   UpdateCamera(&GameState->Camera, Input);
-	GameState->ModelTransform.Rotation.Y += 45.0f * Input->dt;
+  if(GameState->IsModelSpinning)
+  {
+    GameState->ModelTransform.Rotation.Y += 45.0f * Input->dt;
+  }
   mat4 ModelMatrix = Math::MulMat4(Math::Mat4Rotate(GameState->ModelTransform.Rotation),
                                    Math::Mat4Scale(GameState->ModelTransform.Scale));
   mat4 MVPMatrix = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
@@ -249,11 +273,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     if(Input->ArrowLeft.EndedDown)
     {
-      EditAnimation::AdvancePlayHead(&GameState->AnimEditor, -0.01f); // * Input->dt;
+      EditAnimation::AdvancePlayHead(&GameState->AnimEditor, -1 * Input->dt);
     }
     if(Input->ArrowRight.EndedDown)
     {
-      EditAnimation::AdvancePlayHead(&GameState->AnimEditor, +0.01f); // * Input->dt;
+      EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 1 * Input->dt);
     }
   }
   if(Input->m.EndedDown && Input->m.Changed)
@@ -416,5 +440,106 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                             0.003f, 0.05f, { 0.5f, 0.5f, 0.5f });
     }
   }
-}
+  if(Input->IsMouseInEditorMode)
+  {
+    // Humble beginnings of the UI system
+    const float   TEXT_HEIGHT    = 0.03f;
+    const float   StartX         = 0.6f;
+    const float   StartY         = 0.9f;
+    const float   YPadding       = 0.02f;
+    const float   LayoutWidth    = 0.35f;
+    const float   RowHeight      = 0.05f;
+    const float   SliderWidth    = 0.05f;
+    const int32_t ScrollRowCount = 4;
 
+    static int32_t g_TotalRowCount     = 4;
+    static bool    g_ShowDisplaySet    = false;
+    static bool    g_ShowAnimSetings   = false;
+    static bool    g_ShowScrollSection = false;
+    static float   g_ScrollK           = 0.0f;
+
+    UI::im_layout Layout = UI::NewLayout(StartX, StartY, LayoutWidth, RowHeight);
+
+    UI::Row(&Layout);
+    if(UI::_ExpandableButton(&Layout, Input, "Display Settings", &g_ShowDisplaySet))
+    {
+      UI::Row(&Layout, 2);
+      if(UI::_HoldButton(&Layout, Input, "PlayHead CW"))
+      {
+        GameState->ModelTransform.Rotation.Y -= 110.0f * Input->dt;
+      }
+      if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
+      {
+        GameState->ModelTransform.Rotation.Y += 110.0f * Input->dt;
+      }
+      UI::_Row(&Layout, 4, "Toggleables");
+      UI::_BoolButton(&Layout, Input, "Toggle Wireframe", &GameState->DrawWireframe);
+      UI::_BoolButton(&Layout, Input, "Toggle Gizmos", &GameState->DrawGizmos);
+      UI::_BoolButton(&Layout, Input, "Toggle BWeights", &GameState->DrawBoneWeights);
+      UI::_BoolButton(&Layout, Input, "Toggle Spinning", &GameState->IsModelSpinning);
+    }
+    UI::Row(&Layout);
+    if(UI::_ExpandableButton(&Layout, Input, "Animation Settings", &g_ShowAnimSetings))
+    {
+      UI::Row(&Layout);
+      if(UI::PushButton(GameState, &Layout, Input, "Delete keyframe", { 0.6f, 0.4f, 0.4f, 1.0f }))
+      {
+        EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
+      }
+      UI::Row(&Layout);
+      if(UI::_PushButton(&Layout, Input, "Insert keyframe"))
+      {
+        EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
+                                                   GameState->AnimEditor.PlayHeadTime);
+      }
+      UI::Row(&Layout, 2);
+      if(UI::_HoldButton(&Layout, Input, "PlayHead Left"))
+      {
+        EditAnimation::AdvancePlayHead(&GameState->AnimEditor, -1 * Input->dt);
+      }
+      if(UI::_HoldButton(&Layout, Input, "PlayHead Right"))
+      {
+        EditAnimation::AdvancePlayHead(&GameState->AnimEditor, +1 * Input->dt);
+      }
+    }
+    UI::Row(&Layout);
+    if(UI::_ExpandableButton(&Layout, Input, "Scrollbar Section", &g_ShowScrollSection))
+    {
+      UI::Row(&Layout);
+      if(UI::_PushButton(&Layout, Input, "Add Entry"))
+      {
+        ++g_TotalRowCount;
+      }
+      UI::Row(&Layout);
+      if(UI::PushButton(GameState, &Layout, Input, "Delete Last Entry", { 0.6f, 0.4f, 0.4f, 1.0f }))
+      {
+        --g_TotalRowCount;
+      }
+      UI::Row(&Layout, 2);
+      if(UI::_HoldButton(&Layout, Input, "Scroll Up"))
+      {
+        g_ScrollK -= 0.5f * Input->dt;
+      }
+      if(UI::_HoldButton(&Layout, Input, "Scroll Down"))
+      {
+        g_ScrollK += 0.5f * Input->dt;
+      }
+      g_ScrollK = ClampFloat(0.0f, g_ScrollK, 1.0f);
+      int StartRow =
+        UI::_BeginScrollableList(&Layout, Input, g_TotalRowCount, ScrollRowCount, g_ScrollK);
+      {
+        for(int i = StartRow; i < StartRow + ScrollRowCount; i++)
+        {
+          UI::Row(&Layout);
+          g_TotalRowCount      = ClampMinInt32(0, g_TotalRowCount);
+          float RowCoefficient = (float)i / (float)g_TotalRowCount;
+          UI::PushButton(GameState, &Layout, Input, "Name",
+                         { 0.8f + 0.2f * cosf((3 + RowCoefficient) * 315),
+                           0.8f + 0.2f * cosf((3 + RowCoefficient) * 250),
+                           0.8f + 0.2f * cosf((3 + RowCoefficient) * 480), 1.0f });
+        }
+      }
+      UI::EndScrollableList(&Layout);
+    }
+  }
+}

@@ -70,7 +70,9 @@ struct game_state
   Render::model*  GizmoModel;
 
   int32_t Textures[TEXTURE_MAX_COUNT];
-	int32_t TextureCount;
+  int32_t TextureCount;
+	int32_t CollapsedTexture;
+	int32_t ExpandedTexture;
 
   int32_t Shaders;
   int32_t ShaderSkeletalBoneColor;
@@ -91,6 +93,7 @@ struct game_state
   bool DrawWireframe;
   bool DrawBoneWeights;
   bool DrawGizmos;
+  bool IsModelSpinning;
 
   camera   Camera;
   uint32_t EngineMode;
@@ -99,11 +102,3 @@ struct game_state
   loaded_wav AudioBuffer;
   bool       WAVLoaded;
 };
-
-void
-AddTexture(game_state* GameState, int32_t TextureID)
-{
-  assert(TextureID);
-  assert(0 <= GameState->TextureCount && GameState->TextureCount < TEXTURE_MAX_COUNT);
-  GameState->Textures[GameState->TextureCount++] = TextureID;
-}

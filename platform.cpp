@@ -10,11 +10,12 @@
 #include "common.h"
 
 #define SCREEN_WIDTH 900
-#define SCREEN_HEIGHT 800
+#define SCREEN_HEIGHT 900
 #define FRAME_TIME_MS 16
+#define SLOW_MOTION_COEFFICIENT 0.2f
 
-#include "sound_samples.h"
 #include "update_render.h"
+#include "sound_samples.h"
 
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
@@ -38,6 +39,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         if(Event->key.keysym.sym == SDLK_SPACE)
         {
           NewInput->Space.EndedDown = true;
+        }
+        if(Event->key.keysym.sym == SDLK_TAB)
+        {
+          NewInput->Tab.EndedDown = true;
         }
         if(Event->key.keysym.sym == SDLK_DELETE)
         {
@@ -142,6 +147,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         if(Event->key.keysym.sym == SDLK_SPACE)
         {
           NewInput->Space.EndedDown = false;
+        }
+        if(Event->key.keysym.sym == SDLK_TAB)
+        {
+          NewInput->Tab.EndedDown = false;
         }
         if(Event->key.keysym.sym == SDLK_DELETE)
         {
@@ -267,15 +276,26 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
       }
     }
   }
+
   SDL_GetMouseState(&NewInput->MouseX, &NewInput->MouseY);
-  NewInput->dMouseX = NewInput->MouseX - SCREEN_WIDTH / 2;
-  NewInput->dMouseY = NewInput->MouseY - SCREEN_HEIGHT / 2;
+  NewInput->MouseY = SCREEN_HEIGHT - NewInput->MouseY;
+  if(!NewInput->IsMouseInEditorMode)
+  {
+    NewInput->dMouseX = NewInput->MouseX - SCREEN_WIDTH / 2;
+    NewInput->dMouseY = NewInput->MouseY - SCREEN_HEIGHT / 2;
+  }
+  else
+  {
+    NewInput->dMouseX = 0.0f;
+    NewInput->dMouseY = 0.0f;
+  }
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {
     NewInput->Buttons[Index].Changed =
       (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
   }
+
   return true;
 }
 
@@ -456,7 +476,10 @@ main(int argc, char* argv[])
 
   game_input OldInput = {};
   game_input NewInput = {};
-  SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+  if(!NewInput.IsMouseInEditorMode)
+  {
+    SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+  }
 
   ProcessInput(&OldInput, &NewInput, &Event);
   OldInput = NewInput;
@@ -486,12 +509,38 @@ main(int argc, char* argv[])
   // TODO(Rytis): Clean up audio preparation and computation code
   while(true)
   {
+    //---------INPUT MANAGEMENT
     ProcessInput(&OldInput, &NewInput, &Event);
-    SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
     if(NewInput.Escape.EndedDown)
     {
       break;
     }
+    if(NewInput.Tab.EndedDown && NewInput.Tab.Changed)
+    {
+      NewInput.IsMouseInEditorMode = !NewInput.IsMouseInEditorMode;
+      if(NewInput.IsMouseInEditorMode)
+      {
+        SDL_ShowCursor(SDL_ENABLE);
+      }
+      else
+      {
+        SDL_ShowCursor(SDL_DISABLE);
+      }
+    }
+    // Should go after mouse mode switch to avoid jerking the camera
+    if(!NewInput.IsMouseInEditorMode)
+    {
+      SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+    }
+    // Set noramlised mouse after all mouse editing is done
+    {
+      // 0.0f-1.0f mouse coords
+      NewInput.NormMouseX  = (float)NewInput.MouseX / (float)(SCREEN_WIDTH);
+      NewInput.NormMouseY  = (float)NewInput.MouseY / (float)(SCREEN_HEIGHT);
+      NewInput.NormdMouseX = (float)NewInput.dMouseX / (float)(SCREEN_WIDTH);
+      NewInput.NormdMouseY = (float)NewInput.dMouseY / (float)(SCREEN_HEIGHT);
+    }
+    //---------END INPUT MANAGEMENT
 
     // Audio computation
     int ByteToLock =
@@ -520,6 +569,11 @@ main(int argc, char* argv[])
     // Audio computation done
 
     NewInput.dt = 0.001f * (float)FRAME_TIME_MS;
+    if(NewInput.LeftCtrl.EndedDown)
+    {
+      NewInput.dt *= SLOW_MOTION_COEFFICIENT;
+    }
+
     GameUpdateAndRender(GameMemory, &NewInput);
     GameGetSoundSamples(GameMemory, &SoundBuffer);
 
