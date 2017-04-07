@@ -96,6 +96,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Skeleton            = (Anim::skeleton*)AssetHeader->Skeleton;
     GameState->AnimEditor.Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
+    // Set Up Cubemap
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/cube.model");
+    assert(AssetReadResult.Contents);
+    AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
+    UnpackAsset(AssetHeader);
+    GameState->Cubemap = (Render::model*)AssetHeader->Model;
+    for(int i = 0; i < GameState->Cubemap->MeshCount; i++)
+    {
+      SetUpMesh(GameState->Cubemap->Meshes[i]);
+    }
+
     SDL_Color Color;
     Color.a = 255;
     Color.r = 255;
@@ -104,17 +115,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->TextTexture =
       Texture::LoadTextTexture("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
                                32, "Testing Text Texture", Color);
+    GameState->CubemapTexture = Texture::LoadCubemap(TemporaryMemStack, "./data/iceflats", "tga");
 // Set Up Texture
 #if demo
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/hand_dif.bmp"));
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/helmet_diff.bmp"));
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/glass_dif.bmp"));
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/body_dif.bmp"));
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/leg_dif.bmp"));
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/arm_dif.bmp"));
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/body_dif.bmp"));
+    AddTexture(GameState, Texture::LoadModelTexture("./data/hand_dif.png"));
+    AddTexture(GameState, Texture::LoadModelTexture("./data/helmet_diff.png"));
+    AddTexture(GameState, Texture::LoadModelTexture("./data/glass_dif.png"));
+    AddTexture(GameState, Texture::LoadModelTexture("./data/body_dif.png"));
+    AddTexture(GameState, Texture::LoadModelTexture("./data/leg_dif.png"));
+    AddTexture(GameState, Texture::LoadModelTexture("./data/arm_dif.png"));
 #else
-    AddTexture(GameState, Texture::LoadBMPTexture("./data/body_dif.bmp"));
+    AddTexture(GameState, Texture::LoadModelTexture("./data/body_dif.png"));
 #endif
 
     // -------BEGIN LOADING SHADERS
@@ -134,6 +145,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       Shader::LoadShader(TemporaryMemStack, "./shaders/skeletal_bone_color");
     TemporaryMemStack->FreeToMarker(LoadStart);
     if(GameState->ShaderSkeletalBoneColor < 0)
+    {
+      printf("Shader loading failed!\n");
+      assert(false);
+    }
+    // Cubemap
+    LoadStart                = TemporaryMemStack->GetMarker();
+    GameState->ShaderCubemap = Shader::LoadShader(TemporaryMemStack, "./shaders/cubemap");
+    TemporaryMemStack->FreeToMarker(LoadStart);
+    if(GameState->ShaderCubemap < 0)
     {
       printf("Shader loading failed!\n");
       assert(false);
@@ -181,6 +201,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // ======Set GL state
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
     glEnable(GL_CULL_FACE);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -296,6 +317,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     GameState->DrawWireframe = !GameState->DrawWireframe;
   }
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   if(GameState->DrawBoneWeights)
@@ -382,6 +404,22 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DEBUGDrawGizmos(GameState, &ModelMatrix, 1);
     DEBUGDrawGizmos(GameState, BoneGizmos, GameState->Skeleton->BoneCount);
   }
+
+  glDepthFunc(GL_LEQUAL);
+  glUseProgram(GameState->ShaderCubemap);
+  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_projection"), 1, GL_FALSE,
+                     GameState->Camera.ProjectionMatrix.e);
+  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_view"), 1, GL_FALSE,
+                     Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->CubemapTexture);
+  for(int i = 0; i < GameState->Cubemap->MeshCount; i++)
+  {
+    glBindVertexArray(GameState->Cubemap->Meshes[i]->VAO);
+    glDrawElements(GL_TRIANGLES, GameState->Cubemap->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
+  }
+  glBindVertexArray(0);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+  glDepthFunc(GL_LESS);
 
   // Drawing animation editor timeline
   {

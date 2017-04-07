@@ -48,12 +48,12 @@ namespace Shader
   LoadShader(Memory::stack_allocator* const Allocator, const char* ShaderPath)
   {
     char* VertexShaderPath =
-      (char*)Allocator->Alloc(Memory::SafeTrucate_size_t_To_uint32_t((strlen(ShaderPath) + 6)));
+      (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t((strlen(ShaderPath) + 6)));
     strcpy(VertexShaderPath, ShaderPath);
     strcat(VertexShaderPath, ".vert\0");
 
     char* FragmentShaderPath =
-      (char*)Allocator->Alloc(Memory::SafeTrucate_size_t_To_uint32_t(strlen(ShaderPath) + 6));
+      (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen(ShaderPath) + 6));
     strcpy(FragmentShaderPath, ShaderPath);
     strcat(FragmentShaderPath, ".frag\0");
 

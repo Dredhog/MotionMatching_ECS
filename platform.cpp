@@ -1,6 +1,7 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <stdio.h>
@@ -432,7 +433,13 @@ main(int argc, char* argv[])
     return -1;
   }
 
-  //Init TrueType Font API
+  if(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) != (IMG_INIT_PNG | IMG_INIT_JPG |
+     IMG_INIT_TIF))
+  {
+    printf("Image loading could not be initialized!\nError: %s\n", SDL_GetError());
+  }
+
+  // Init TrueType Font API
   if(TTF_Init() == -1)
   {
     printf("TrueType Fonts could not be initialized!\n");
@@ -544,6 +551,7 @@ main(int argc, char* argv[])
   SDL_CloseAudioDevice(AudioDevice);
   free(GameMemory.TemporaryMemory);
   free(GameMemory.PersistentMemory);
+  IMG_Quit();
   TTF_Quit();
   SDL_DestroyWindow(Window);
   SDL_Quit();

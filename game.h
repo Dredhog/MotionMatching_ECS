@@ -68,9 +68,10 @@ struct game_state
   Render::model*  PlaybackCursorModel;
   Render::model*  CharacterModel;
   Render::model*  GizmoModel;
+  Render::model*  Cubemap;
 
-  int32_t Textures[TEXTURE_MAX_COUNT];
-	int32_t TextureCount;
+  GLuint  Textures[TEXTURE_MAX_COUNT];
+  int32_t TextureCount;
 
   int32_t Shaders;
   int32_t ShaderSkeletalBoneColor;
@@ -79,6 +80,7 @@ struct game_state
   int32_t ShaderGizmo;
   int32_t ShaderQuad;
   int32_t ShaderTexturedQuad;
+  int32_t ShaderCubemap;
 
   vec3  LightPosition;
   vec3  LightColor;
@@ -99,11 +101,12 @@ struct game_state
   loaded_wav AudioBuffer;
   bool       WAVLoaded;
 
-  uint32_t TextTexture;
+  GLuint TextTexture;
+  GLuint CubemapTexture;
 };
 
 void
-AddTexture(game_state* GameState, int32_t TextureID)
+AddTexture(game_state* GameState, GLuint TextureID)
 {
   assert(TextureID);
   assert(0 <= GameState->TextureCount && GameState->TextureCount < TEXTURE_MAX_COUNT);

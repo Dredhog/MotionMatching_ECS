@@ -55,7 +55,7 @@ namespace Memory
 
   stack_allocator* CreateStackAllocatorInPlace(void* Base, uint32_t Capacity);
   inline uint32_t
-  SafeTrucate_size_t_To_uint32_t(size_t Value)
+  SafeTruncate_size_t_To_uint32_t(size_t Value)
   {
     assert(Value < SIZE_MAX);
     return (uint32_t)Value;
