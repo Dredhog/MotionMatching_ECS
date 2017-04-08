@@ -3,7 +3,7 @@
 namespace Texture
 {
   GLuint
-  LoadModelTexture(char* FileName)
+  LoadTexture(char* FileName)
   {
     SDL_Surface* ImageSurface = IMG_Load(FileName);
     if(ImageSurface)

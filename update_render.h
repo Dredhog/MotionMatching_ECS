@@ -11,7 +11,7 @@
 #include "file_io.h"
 #include "asset.h"
 #include "builder/pack.h"
-#include "load_bmp.h"
+#include "load_texture.h"
 #include "misc.h"
 #include "ui.h"
 
@@ -61,7 +61,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // Set Up Gizmo
     debug_read_file_result AssetReadResult =
-      ReadEntireFile(PersistentMemStack, "./data/gizmo.model");
+      ReadEntireFile(PersistentMemStack, "./data/built/gizmo.model");
 
     assert(AssetReadResult.Contents);
     Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
@@ -74,7 +74,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     // Set Up Gizmo
-    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/debug_meshes.model");
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/built/debug_meshes.model");
 
     assert(AssetReadResult.Contents);
     AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
@@ -88,9 +88,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 // Set Up Model
 #if demo
-    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/soldier_test0.actor");
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/built/multimesh_soldier.actor");
 #else
-    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/crysis_soldier.actor");
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/built/crysis_soldier.actor");
 #endif
 
     assert(AssetReadResult.Contents);
@@ -107,7 +107,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->AnimEditor.Skeleton = (Anim::skeleton*)AssetHeader->Skeleton;
 
     // Set Up Cubemap
-    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/cube.model");
+    AssetReadResult = ReadEntireFile(PersistentMemStack, "./data/built/inverse_cube.model");
     assert(AssetReadResult.Contents);
     AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
     UnpackAsset(AssetHeader);
@@ -125,20 +125,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->TextTexture =
       Texture::LoadTextTexture("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
                                32, "Testing Text Texture", Color);
-    GameState->CubemapTexture = Texture::LoadCubemap(TemporaryMemStack, "./data/iceflats", "tga");
+    GameState->CubemapTexture =
+      Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
 // Set Up Texture
 #if demo
-    AddTexture(GameState, Texture::LoadModelTexture("./data/hand_dif.png"));
-    AddTexture(GameState, Texture::LoadModelTexture("./data/helmet_diff.png"));
-    AddTexture(GameState, Texture::LoadModelTexture("./data/glass_dif.png"));
-    AddTexture(GameState, Texture::LoadModelTexture("./data/body_dif.png"));
-    AddTexture(GameState, Texture::LoadModelTexture("./data/leg_dif.png"));
-    AddTexture(GameState, Texture::LoadModelTexture("./data/arm_dif.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/hand_dif.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/helmet_diff.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/glass_dif.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/body_dif.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/leg_dif.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/arm_dif.png"));
 #else
-    AddTexture(GameState, Texture::LoadModelTexture("./data/body_dif.png"));
+    AddTexture(GameState, Texture : LoadTexture("./data/textures/body_dif.png"));
 #endif
-    GameState->CollapsedTexture = Texture::LoadBMPTexture("./data/collapsed.bmp");
-    GameState->ExpandedTexture  = Texture::LoadBMPTexture("./data/expanded.bmp");
+    GameState->CollapsedTexture = Texture::LoadTexture("./data/textures/collapsed.bmp");
+    GameState->ExpandedTexture  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTexture);
     assert(GameState->ExpandedTexture);
 
@@ -238,7 +239,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->LightPosition    = { 2.25f, 1.0f, 1.0f };
     GameState->LightColor       = { 0.7f, 0.7f, 0.75f };
-    GameState->AmbientStrength  = 0.7f;
+    GameState->AmbientStrength  = 0.8f;
     GameState->SpecularStrength = 0.6f;
 
     GameState->DrawWireframe   = false;

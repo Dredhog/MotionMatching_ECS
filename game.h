@@ -105,6 +105,6 @@ struct game_state
   loaded_wav AudioBuffer;
   bool       WAVLoaded;
 
-  GLuint TextTexture;
-  GLuint CubemapTexture;
+  int32_t TextTexture;
+  int32_t CubemapTexture;
 };
