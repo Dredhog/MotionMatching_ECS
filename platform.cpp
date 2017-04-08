@@ -66,6 +66,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->b.EndedDown = true;
         }
+        if(Event->key.keysym.sym == SDLK_c)
+        {
+          NewInput->c.EndedDown = true;
+        }
         if(Event->key.keysym.sym == SDLK_d)
         {
           NewInput->d.EndedDown = true;
@@ -117,6 +121,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         if(Event->key.keysym.sym == SDLK_o)
         {
           NewInput->o.EndedDown = true;
+        }
+        if(Event->key.keysym.sym == SDLK_v)
+        {
+          NewInput->v.EndedDown = true;
         }
         if(Event->key.keysym.sym == SDLK_w)
         {
@@ -174,6 +182,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->b.EndedDown = false;
         }
+        if(Event->key.keysym.sym == SDLK_c)
+        {
+          NewInput->c.EndedDown = false;
+        }
         if(Event->key.keysym.sym == SDLK_d)
         {
           NewInput->d.EndedDown = false;
@@ -225,6 +237,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         if(Event->key.keysym.sym == SDLK_o)
         {
           NewInput->o.EndedDown = false;
+        }
+        if(Event->key.keysym.sym == SDLK_v)
+        {
+          NewInput->v.EndedDown = false;
         }
         if(Event->key.keysym.sym == SDLK_w)
         {

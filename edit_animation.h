@@ -18,6 +18,7 @@ namespace EditAnimation
   struct animation_editor
   {
     editor_keyframe Keyframes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
+    editor_keyframe ClipboardKeyframe;
     float           SampleTimes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
     Anim::skeleton* Skeleton;
 
@@ -44,7 +45,8 @@ namespace EditAnimation
   void InsertBlendedKeyframeAtTime(animation_editor* Editor, float Time);
   void DeleteCurrentKeyframe(animation_editor* Editor);
   void MoveKeyframeToPlayHead(animation_editor* Editor, int index);
-  void MoveCurrentKeyframeToPlayHead(animation_editor* Editor);
+  void CopyKeyframeToClipboard(animation_editor* Editor, int Index);
+  void InsertKeyframeFromClipboardAtTime(animation_editor* Editor, float Time);
 
   void EditNextBone(animation_editor* Editor);
   void EditPreviousBone(animation_editor* Editor);
@@ -52,6 +54,7 @@ namespace EditAnimation
   void JumpToPreviousKeyframe(animation_editor* Editor);
 
   void AdvancePlayHead(animation_editor* Editor, float dt);
+  void PlayAnimation(animation_editor* Editor, float dt);
   void PrintAnimEditorState(const animation_editor* Editor);
   float GetTimelinePercentage(const animation_editor* Editor, float Time);
 }

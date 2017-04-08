@@ -44,10 +44,11 @@ UI::Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const cha
   Layout->X = Layout->TopLeft[0];
   Layout->Y -= Layout->RowHeight;
 
+  Layout->ColumnWidth = ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
   UI::DrawTextBox(GameState, Layout, Text, { 0.4f, 0.6f, 0.4f, 1.0f });
+  assert(ANOTATION_WIDTH_PERCENTAGE < 1.0f);
   Layout->X += ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
   assert(ColumnCount >= 1);
-  assert(ANOTATION_WIDTH_PERCENTAGE < 1.0f);
   Layout->ColumnWidth = (1.0f - ANOTATION_WIDTH_PERCENTAGE) * Layout->Width / (float)ColumnCount;
 }
 

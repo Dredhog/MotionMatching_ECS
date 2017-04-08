@@ -97,6 +97,7 @@ struct game_state
   bool DrawGizmos;
   bool DisplayText;
   bool IsModelSpinning;
+  bool IsAnimationPlaying;
 
   camera   Camera;
   uint32_t EngineMode;

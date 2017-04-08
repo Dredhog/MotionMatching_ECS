@@ -17,7 +17,7 @@
 
 #include "debug_drawing.h"
 #include "camera.h"
-#define demo 1
+#define demo 0
 
 static const vec3 g_BoneColors[] = {
   { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.77f },
@@ -61,7 +61,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // Set Up Gizmo
     debug_read_file_result AssetReadResult =
-      ReadEntireFile(PersistentMemStack, "./data/built/gizmo.model");
+      ReadEntireFile(PersistentMemStack, "./data/built/gizmo1.model");
 
     assert(AssetReadResult.Contents);
     Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
@@ -135,8 +135,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     AddTexture(GameState, Texture::LoadTexture("./data/textures/body_dif.png"));
     AddTexture(GameState, Texture::LoadTexture("./data/textures/leg_dif.png"));
     AddTexture(GameState, Texture::LoadTexture("./data/textures/arm_dif.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/body_dif.png"));
 #else
-    AddTexture(GameState, Texture : LoadTexture("./data/textures/body_dif.png"));
+    AddTexture(GameState, Texture::LoadTexture("./data/textures/body_dif.png"));
 #endif
     GameState->CollapsedTexture = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTexture  = Texture::LoadTexture("./data/textures/expanded.bmp");
@@ -244,7 +245,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->DrawWireframe   = false;
     GameState->DrawBoneWeights = false;
-    GameState->DrawGizmos      = false;
+    GameState->DrawGizmos      = true;
     GameState->DisplayText     = false;
 
     EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
@@ -265,18 +266,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   mat4 MVPMatrix = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
   //--------------ANIMAITION UPDATE
 
+  if(Input->Space.EndedDown && Input->Space.Changed)
+  {
+    GameState->IsAnimationPlaying = !GameState->IsAnimationPlaying;
+  }
+  if(GameState->IsAnimationPlaying)
+  {
+    EditAnimation::PlayAnimation(&GameState->AnimEditor, Input->dt);
+  }
   if(Input->i.EndedDown && Input->i.Changed)
   {
     InsertBlendedKeyframeAtTime(&GameState->AnimEditor, GameState->AnimEditor.PlayHeadTime);
   }
   if(Input->LeftShift.EndedDown)
   {
-    if(Input->x.EndedDown)
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.X -= EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
-    }
     if(Input->n.EndedDown && Input->n.Changed)
     {
       EditAnimation::EditPreviousBone(&GameState->AnimEditor);
@@ -292,12 +295,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   else
   {
-    if(Input->x.EndedDown)
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.X += EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
-    }
     if(Input->n.EndedDown && Input->n.Changed)
     {
       EditAnimation::EditNextBone(&GameState->AnimEditor);
@@ -311,24 +308,36 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 1 * Input->dt);
     }
   }
-  if(Input->m.EndedDown && Input->m.Changed)
+  if(Input->LeftCtrl.EndedDown)
   {
-    EditAnimation::MoveCurrentKeyframeToPlayHead(&GameState->AnimEditor);
+    if(Input->c.EndedDown && Input->c.Changed)
+    {
+      EditAnimation::CopyKeyframeToClipboard(&GameState->AnimEditor,
+                                             GameState->AnimEditor.CurrentKeyframe);
+    }
+    else if(Input->x.EndedDown && Input->x.Changed)
+    {
+      EditAnimation::CopyKeyframeToClipboard(&GameState->AnimEditor,
+                                             GameState->AnimEditor.CurrentKeyframe);
+      DeleteCurrentKeyframe(&GameState->AnimEditor);
+    }
+    else if(Input->v.EndedDown && Input->v.Changed)
+    {
+      EditAnimation::InsertKeyframeFromClipboardAtTime(&GameState->AnimEditor,
+                                                       GameState->AnimEditor.PlayHeadTime);
+    }
   }
   if(Input->Delete.EndedDown && Input->Delete.Changed)
   {
     EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
   }
 
-  PrintAnimEditorState(&GameState->AnimEditor);
+  // PrintAnimEditorState(&GameState->AnimEditor);
 
   if(GameState->AnimEditor.KeyframeCount > 0)
   {
     EditAnimation::CalculateHierarchicalmatricesAtTime(&GameState->AnimEditor);
   }
-
-#if 1
-#endif
 
   //---------------------RENDERING----------------------------
   if(Input->b.EndedDown && Input->b.Changed)
@@ -345,6 +354,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  {
+    glDepthFunc(GL_LEQUAL);
+    glUseProgram(GameState->ShaderCubemap);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_projection"), 1,
+                       GL_FALSE, GameState->Camera.ProjectionMatrix.e);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_view"), 1, GL_FALSE,
+                       Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->CubemapTexture);
+    for(int i = 0; i < GameState->Cubemap->MeshCount; i++)
+    {
+      glBindVertexArray(GameState->Cubemap->Meshes[i]->VAO);
+      glDrawElements(GL_TRIANGLES, GameState->Cubemap->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
+    }
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glDepthFunc(GL_LESS);
+  }
 
   if(GameState->DrawBoneWeights)
   {
@@ -400,6 +427,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if(GameState->DisplayText)
   {
     DEBUGDrawTexturedQuad(GameState, GameState->TextTexture, vec3{ 0.0f, 0.0f, 0.4f }, 0.3f, 0.05f);
+    // Drawing Texture
   }
   if(GameState->DrawWireframe)
   {
@@ -429,26 +457,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                     GameState->Skeleton->Bones[i].BindPose));
     }
 
-    DEBUGDrawGizmos(GameState, &ModelMatrix, 1);
-    DEBUGDrawGizmos(GameState, BoneGizmos, GameState->Skeleton->BoneCount);
+    // DEBUGDrawGizmos(GameState, &ModelMatrix, 1);
+    DEBUGDrawGizmos(GameState, &BoneGizmos[GameState->AnimEditor.CurrentBone], 1);
+    // DEBUGDrawGizmos(GameState, BoneGizmos, GameState->Skeleton->BoneCount);
   }
-
-  glDepthFunc(GL_LEQUAL);
-  glUseProgram(GameState->ShaderCubemap);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_projection"), 1, GL_FALSE,
-                     GameState->Camera.ProjectionMatrix.e);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_view"), 1, GL_FALSE,
-                     Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->CubemapTexture);
-  for(int i = 0; i < GameState->Cubemap->MeshCount; i++)
-  {
-    glBindVertexArray(GameState->Cubemap->Meshes[i]->VAO);
-    glDrawElements(GL_TRIANGLES, GameState->Cubemap->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
-  }
-  glBindVertexArray(0);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-  glDepthFunc(GL_LESS);
-
   // Drawing animation editor timeline
   {
     const int KeyframeCount = GameState->AnimEditor.KeyframeCount;
@@ -494,7 +506,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   if(Input->IsMouseInEditorMode)
   {
-    // Humble beginnings of the UI system
+    // Humble beginnings of the editor GUI system
     const float   TEXT_HEIGHT    = 0.03f;
     const float   StartX         = 0.6f;
     const float   StartY         = 0.9f;
@@ -502,18 +514,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     const float   LayoutWidth    = 0.35f;
     const float   RowHeight      = 0.05f;
     const float   SliderWidth    = 0.05f;
-    const int32_t ScrollRowCount = 4;
+    const int32_t ScrollRowCount = 2;
 
-    static int32_t g_TotalRowCount     = 4;
-    static bool    g_ShowDisplaySet    = false;
-    static bool    g_ShowAnimSetings   = false;
-    static bool    g_ShowScrollSection = false;
-    static float   g_ScrollK           = 0.0f;
+    static int32_t g_TotalRowCount          = 4;
+    static bool    g_ShowDisplaySet         = false;
+    static bool    g_ShowTransformSettign   = false;
+    static bool    g_ShowTranslationButtons = false;
+    static bool    g_ShowAnimSetings        = false;
+    static bool    g_ShowScrollSection      = false;
+    static float   g_ScrollK                = 0.0f;
 
     UI::im_layout Layout = UI::NewLayout(StartX, StartY, LayoutWidth, RowHeight);
 
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Display Settings", &g_ShowDisplaySet))
+    if(UI::_ExpandableButton(&Layout, Input, "Rendering", &g_ShowDisplaySet))
     {
       UI::Row(&Layout, 2);
       if(UI::_HoldButton(&Layout, Input, "PlayHead CW"))
@@ -530,6 +544,101 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       UI::_BoolButton(&Layout, Input, "Toggle Gizmos", &GameState->DrawGizmos);
       UI::_BoolButton(&Layout, Input, "Toggle BWeights", &GameState->DrawBoneWeights);
       UI::_BoolButton(&Layout, Input, "Toggle Spinning", &GameState->IsModelSpinning);
+    }
+    UI::Row(&Layout);
+    if(UI::_ExpandableButton(&Layout, Input, "Transform", &g_ShowTranslationButtons))
+    {
+      UI::Row(&Layout, 2);
+      if(UI::_PushButton(&Layout, Input, "Previous Bone"))
+      {
+        EditAnimation::EditPreviousBone(&GameState->AnimEditor);
+      }
+      if(UI::_PushButton(&Layout, Input, "Next Bone"))
+      {
+        EditAnimation::EditNextBone(&GameState->AnimEditor);
+      }
+      UI::_Row(&Layout, 2, "X rotation");
+      if(UI::_HoldButton(&Layout, Input, "PlayHead CW"))
+      {
+        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+          .Transforms[GameState->AnimEditor.CurrentBone]
+          .Rotation.X -= EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
+      }
+      if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
+      {
+        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+          .Transforms[GameState->AnimEditor.CurrentBone]
+          .Rotation.X += EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
+      }
+      UI::_Row(&Layout, 2, "Y rotation");
+      if(UI::_HoldButton(&Layout, Input, "Rotate CW"))
+      {
+        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+          .Transforms[GameState->AnimEditor.CurrentBone]
+          .Rotation.Y -= EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
+      }
+      if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
+      {
+        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+          .Transforms[GameState->AnimEditor.CurrentBone]
+          .Rotation.Y += EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
+      }
+      UI::_Row(&Layout, 2, "Z rotation");
+      if(UI::_HoldButton(&Layout, Input, "Rotate CW"))
+      {
+        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+          .Transforms[GameState->AnimEditor.CurrentBone]
+          .Rotation.Z -= EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
+      }
+      if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
+      {
+        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+          .Transforms[GameState->AnimEditor.CurrentBone]
+          .Rotation.Z += EDITOR_BONE_ROTATION_SPEED_DEG * Input->dt;
+      }
+      UI::Row(&Layout);
+      if(UI::_ExpandableButton(&Layout, Input, "Position", &g_ShowTransformSettign))
+      {
+        UI::_Row(&Layout, 2, "X Position");
+        if(UI::_HoldButton(&Layout, Input, "-"))
+        {
+          GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+            .Transforms[GameState->AnimEditor.CurrentBone]
+            .Translation.X -= Input->dt;
+        }
+        if(UI::_HoldButton(&Layout, Input, "+"))
+        {
+          GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+            .Transforms[GameState->AnimEditor.CurrentBone]
+            .Translation.X += Input->dt;
+        }
+        UI::_Row(&Layout, 2, "Y Position");
+        if(UI::_HoldButton(&Layout, Input, "-"))
+        {
+          GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+            .Transforms[GameState->AnimEditor.CurrentBone]
+            .Translation.Y -= Input->dt;
+        }
+        if(UI::_HoldButton(&Layout, Input, "+"))
+        {
+          GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+            .Transforms[GameState->AnimEditor.CurrentBone]
+            .Translation.Y += Input->dt;
+        }
+        UI::_Row(&Layout, 2, "Z Position");
+        if(UI::_HoldButton(&Layout, Input, "-"))
+        {
+          GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+            .Transforms[GameState->AnimEditor.CurrentBone]
+            .Translation.Z -= Input->dt;
+        }
+        if(UI::_HoldButton(&Layout, Input, "+"))
+        {
+          GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+            .Transforms[GameState->AnimEditor.CurrentBone]
+            .Translation.Z += Input->dt;
+        }
+      }
     }
     UI::Row(&Layout);
     if(UI::_ExpandableButton(&Layout, Input, "Animation Settings", &g_ShowAnimSetings))
@@ -554,6 +663,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         EditAnimation::AdvancePlayHead(&GameState->AnimEditor, +1 * Input->dt);
       }
+      UI::Row(&Layout);
+      UI::_BoolButton(&Layout, Input, "Play Animation", &GameState->IsAnimationPlaying);
     }
     UI::Row(&Layout);
     if(UI::_ExpandableButton(&Layout, Input, "Scrollbar Section", &g_ShowScrollSection))

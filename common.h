@@ -33,11 +33,12 @@ struct game_input
   bool IsMouseInEditorMode;
 
   union {
-    game_button_state Buttons[29];
+    game_button_state Buttons[31];
     struct
     {
       game_button_state a;
       game_button_state b;
+      game_button_state c;
       game_button_state d;
       game_button_state e;
       game_button_state f;
@@ -51,6 +52,7 @@ struct game_input
       game_button_state r;
       game_button_state s;
       game_button_state t;
+      game_button_state v;
       game_button_state w;
       game_button_state x;
       game_button_state LeftCtrl;

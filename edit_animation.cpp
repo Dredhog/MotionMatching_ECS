@@ -244,21 +244,31 @@ EditAnimation::JumpToPreviousKeyframe(animation_editor* Editor)
 }
 
 void
-EditAnimation::MoveKeyframeToPlayHead(animation_editor* Editor, int Index)
+EditAnimation::CopyKeyframeToClipboard(animation_editor* Editor, int Index)
 {
   assert(0 <= Index && Index <= Editor->KeyframeCount);
   assert(0 < Editor->KeyframeCount);
-  editor_keyframe Keyframe = Editor->Keyframes[Index];
-  DeleteKeyframeAtIndex(Editor, Index);
-  EditAnimation::InsertKeyframeAtTime(Editor, &Keyframe, Editor->PlayHeadTime);
+  Editor->ClipboardKeyframe = Editor->Keyframes[Index];
 }
 
 void
-EditAnimation::MoveCurrentKeyframeToPlayHead(animation_editor* Editor)
+EditAnimation::InsertKeyframeFromClipboardAtTime(animation_editor* Editor, float Time)
 {
-  if(Editor->KeyframeCount > 0)
+  EditAnimation::InsertKeyframeAtTime(Editor, &Editor->ClipboardKeyframe, Editor->PlayHeadTime);
+}
+
+void
+EditAnimation::PlayAnimation(animation_editor* Editor, float dt)
+{
+  if(Editor->KeyframeCount > 1)
   {
-    EditAnimation::MoveKeyframeToPlayHead(Editor, Editor->CurrentKeyframe);
+    EditAnimation::AdvancePlayHead(Editor, 1 * dt);
+    if(Editor->PlayHeadTime < Editor->SampleTimes[0] ||
+       Editor->SampleTimes[Editor->KeyframeCount - 1] < Editor->PlayHeadTime)
+    {
+      Editor->PlayHeadTime = Editor->SampleTimes[0];
+      EditAnimation::AdvancePlayHead(Editor, 0);
+    }
   }
 }
 
