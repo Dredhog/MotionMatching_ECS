@@ -215,6 +215,13 @@ EditAnimation::EditPreviousBone(animation_editor* Editor)
 }
 
 void
+EditAnimation::EditBoneAtIndex(animation_editor* Editor, int BoneIndex)
+{
+  assert(0 <= BoneIndex && BoneIndex < Editor->Skeleton->BoneCount);
+  Editor->CurrentBone = BoneIndex;
+}
+
+void
 EditAnimation::AdvancePlayHead(animation_editor* Editor, float dt)
 {
   Editor->PlayHeadTime += dt;

@@ -15,9 +15,13 @@ namespace UI
     float ColumnWidth;
     float TopLeft[2];
     float ScrollbarWidth;
+    float ButtonBorder;
+    float TextPadding;
+    float AspectRatio;
   };
 
-  im_layout NewLayout(float X, float Y, float Width, float RowHeight, float ScrollbarWidth = 0.05f);
+  im_layout NewLayout(float X, float Y, float Width, float RowHeight, float AspectRatio,
+                      float ScrollbarWidth = 0.05f);
   void Row(im_layout* Layout, int ColumnCount = 1);
   void Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text);
 
@@ -25,6 +29,8 @@ namespace UI
                vec4 BorderColor);
   void DrawBox(game_state* GameState, im_layout* Layout, vec4 InnerColor, vec4 BorderColor);
 
+  void DrawBox(game_state* GameState, float X, float Y, float Width, float Height, vec4 InnerColor,
+               vec4 BorderColor = { 0.1f, 0.1f, 0.1f, 1 });
   void DrawTextBox(game_state* GameState, float X, float Y, float Width, float Height,
                    const char* Text, vec4 InnerColor, vec4 BorderColor = { 0.1f, 0.1f, 0.1f, 1 });
   void DrawTextBox(game_state* GameState, im_layout* Layout, const char* Text, vec4 InnerColor,

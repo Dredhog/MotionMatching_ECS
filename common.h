@@ -3,6 +3,8 @@
 #include <stdint.h>
 
 #define ArrayCount(Array) sizeof((Array)) / sizeof(Array[0])
+#define SCREEN_WIDTH 1920
+#define SCREEN_HEIGHT 1080
 
 struct game_sound_output_buffer
 {
@@ -25,10 +27,10 @@ struct game_input
   int32_t dMouseY;
   float   dt;
 
-  float   NormMouseX;
-  float   NormMouseY;
-  float   NormdMouseX;
-  float   NormdMouseY;
+  float NormMouseX;
+  float NormMouseY;
+  float NormdMouseX;
+  float NormdMouseY;
 
   bool IsMouseInEditorMode;
 

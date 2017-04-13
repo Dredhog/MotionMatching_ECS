@@ -353,6 +353,7 @@ main(int ArgCount, char** Args)
     // write '.model'
     assert(Allocator.GetUsedSize() == TotalOutputFileSize - sizeof(Anim::skeleton));
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
+		AssetHeader->Skeleton = 0;
 
     printf("writing: %s\n", ModelName);
     PrintModelHeader((Render::model*)AssetHeader->Model);
@@ -380,6 +381,7 @@ main(int ArgCount, char** Args)
     assert(Allocator.GetUsedSize() == TotalOutputFileSize);
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
     AssetHeader->TotalSize = TotalOutputFileSize;
+		AssetHeader->Skeleton = 0;
 
     printf("writing: %s\n", ModelName);
     Render::PrintModelHeader((Render::model*)AssetHeader->Model);

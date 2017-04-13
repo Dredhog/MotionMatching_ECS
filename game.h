@@ -9,6 +9,7 @@
 #include "linear_math/matrix.h"
 #include "stack_allocator.h"
 #include "edit_animation.h"
+#include "camera.h"
 
 static const int32_t TEXTURE_MAX_COUNT = 20;
 
@@ -17,26 +18,6 @@ struct entity
   Render::model*              Model;
   Anim::transform             Transform;
   Anim::animation_controller* AnimController;
-};
-
-struct camera
-{
-  vec3 Position;
-  vec3 Up;
-  vec3 Right;
-  vec3 Forward;
-
-  float NearClipPlane;
-  float FarClipPlane;
-  float FieldOfView;
-
-  float Speed;
-  float MaxTiltAngle;
-
-  vec3 Rotation;
-  mat4 ViewMatrix;
-  mat4 ProjectionMatrix;
-  mat4 VPMatrix;
 };
 
 struct loaded_wav
@@ -63,22 +44,23 @@ struct game_state
 
   EditAnimation::animation_editor AnimEditor;
 
-  Anim::skeleton* Skeleton;
-  Render::model*  QuadModel;
-  Render::model*  PlaybackCursorModel;
-  Render::model*  CharacterModel;
-  Render::model*  GizmoModel;
-  Render::model*  Cubemap;
+  Render::model* SphereModel;
+  Render::model* QuadModel;
+  Render::model* CharacterModel;
+  Render::model* GizmoModel;
+  Render::model* Cubemap;
 
   int32_t Textures[TEXTURE_MAX_COUNT];
   int32_t TextureCount;
   int32_t CollapsedTexture;
   int32_t ExpandedTexture;
 
-  int32_t Shaders;
+  // int32_t Shaders;
+  int32_t ShaderPhong;
+  int32_t ShaderSkeletalPhong;
   int32_t ShaderSkeletalBoneColor;
   int32_t ShaderWireframe;
-  int32_t ShaderSkeletalPhong;
+  int32_t ShaderColor;
   int32_t ShaderGizmo;
   int32_t ShaderQuad;
   int32_t ShaderTexturedQuad;
@@ -92,12 +74,15 @@ struct game_state
   uint32_t        MagicChecksum;
   Anim::transform ModelTransform;
 
-  bool DrawWireframe;
-  bool DrawBoneWeights;
-  bool DrawGizmos;
-  bool DisplayText;
-  bool IsModelSpinning;
-  bool IsAnimationPlaying;
+  bool  DrawWireframe;
+  bool  DrawCubemap;
+  bool  DrawBoneWeights;
+  bool  DrawTimeline;
+  bool  DrawGizmos;
+  bool  DrawText;
+  bool  IsModelSpinning;
+  bool  IsAnimationPlaying;
+  float EditorBoneRotationSpeed;
 
   camera   Camera;
   uint32_t EngineMode;

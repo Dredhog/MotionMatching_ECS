@@ -245,7 +245,7 @@ namespace Math
   }
 
   mat3
-  Transpose3(const mat3* Mat)
+  Transposed3(const mat3* Mat)
   {
     mat3 Transpose;
     for(int i = 0; i < 3; i++)
@@ -259,7 +259,7 @@ namespace Math
   }
 
   mat4
-  Transpose4(const mat4* Mat)
+  Transposed4(const mat4* Mat)
   {
     mat4 Transpose;
     for(int i = 0; i < 4; i++)
@@ -270,5 +270,112 @@ namespace Math
       }
     }
     return Transpose;
+  }
+
+  void
+  Transpose3(mat3* Mat)
+  {
+    mat3 Transpose;
+    for(int i = 0; i < 3; i++)
+    {
+      for(int j = 0; j < 3; j++)
+      {
+        Mat->e[3 * i + j] = Mat->e[3 * j + i];
+      }
+    }
+  }
+
+  void
+  Transpose4(mat4* Mat)
+  {
+    for(int i = 0; i < 4; i++)
+    {
+      for(int j = 0; j < 4; j++)
+      {
+        Mat->e[4 * i + j] = Mat->e[4 * j + i];
+      }
+    }
+  }
+
+#if 0
+  static void
+  NormalizeMat3(mat3* Mat3)
+  {
+    vec3 X       = { Mat3->_11, Mat3->_21, Mat3->_31 };
+    vec3 Y       = { Mat3->_12, Mat3->_22, Mat3->_32 };
+    vec3 Z       = { Mat3->_13, Mat3->_23, Mat3->_33 };
+    vec3 Lengths = { Length(X), Length(Y), Length(Z) };
+
+    Mat3->_11 /= Lengths.X;
+    Mat3->_21 /= Lengths.X;
+    Mat3->_31 /= Lengths.X;
+
+    Mat3->_12 /= Lengths.Y;
+    Mat3->_22 /= Lengths.Y;
+    Mat3->_32 /= Lengths.Y;
+
+    Mat3->_13 /= Lengths.Z;
+    Mat3->_23 /= Lengths.Z;
+    Mat3->_33 /= Lengths.Z;
+  }
+
+  static void
+  ScaleMat3ByVec3(mat3* Mat3, vec3 Scale)
+  {
+    Mat3->_11 *= Scale.X;
+    Mat3->_21 *= Scale.X;
+    Mat3->_31 *= Scale.X;
+
+    Mat3->_12 *= Scale.Y;
+    Mat3->_22 *= Scale.Y;
+    Mat3->_32 *= Scale.Y;
+
+    Mat3->_13 *= Scale.Z;
+    Mat3->_23 *= Scale.Z;
+    Mat3->_33 *= Scale.Z;
+  }
+#endif
+	vec3 GetMat4Translation(mat4 Mat4){
+		return {Mat4._14, Mat4._24, Mat4._34};
+	}
+
+  mat4
+  InvMat4(const mat4& M)
+  {
+    mat4 Result = mat4{
+      -M.e[7] * M.e[10] * M.e[13] + M.e[6] * M.e[11] * M.e[13] + M.e[7] * M.e[9] * M.e[14] -
+        M.e[5] * M.e[11] * M.e[14] - M.e[6] * M.e[9] * M.e[15] + M.e[5] * M.e[10] * M.e[15],
+      M.e[3] * M.e[10] * M.e[13] - M.e[2] * M.e[11] * M.e[13] - M.e[3] * M.e[9] * M.e[14] +
+        M.e[1] * M.e[11] * M.e[14] + M.e[2] * M.e[9] * M.e[15] - M.e[1] * M.e[10] * M.e[15],
+      -M.e[3] * M.e[6] * M.e[13] + M.e[2] * M.e[7] * M.e[13] + M.e[3] * M.e[5] * M.e[14] -
+        M.e[1] * M.e[7] * M.e[14] - M.e[2] * M.e[5] * M.e[15] + M.e[1] * M.e[6] * M.e[15],
+      M.e[3] * M.e[6] * M.e[9] - M.e[2] * M.e[7] * M.e[9] - M.e[3] * M.e[5] * M.e[10] +
+        M.e[1] * M.e[7] * M.e[10] + M.e[2] * M.e[5] * M.e[11] - M.e[1] * M.e[6] * M.e[11],
+      M.e[7] * M.e[10] * M.e[12] - M.e[6] * M.e[11] * M.e[12] - M.e[7] * M.e[8] * M.e[14] +
+        M.e[4] * M.e[11] * M.e[14] + M.e[6] * M.e[8] * M.e[15] - M.e[4] * M.e[10] * M.e[15],
+      -M.e[3] * M.e[10] * M.e[12] + M.e[2] * M.e[11] * M.e[12] + M.e[3] * M.e[8] * M.e[14] -
+        M.e[0] * M.e[11] * M.e[14] - M.e[2] * M.e[8] * M.e[15] + M.e[0] * M.e[10] * M.e[15],
+      M.e[3] * M.e[6] * M.e[12] - M.e[2] * M.e[7] * M.e[12] - M.e[3] * M.e[4] * M.e[14] +
+        M.e[0] * M.e[7] * M.e[14] + M.e[2] * M.e[4] * M.e[15] - M.e[0] * M.e[6] * M.e[15],
+      -M.e[3] * M.e[6] * M.e[8] + M.e[2] * M.e[7] * M.e[8] + M.e[3] * M.e[4] * M.e[10] -
+        M.e[0] * M.e[7] * M.e[10] - M.e[2] * M.e[4] * M.e[11] + M.e[0] * M.e[6] * M.e[11],
+      -M.e[7] * M.e[9] * M.e[12] + M.e[5] * M.e[11] * M.e[12] + M.e[7] * M.e[8] * M.e[13] -
+        M.e[4] * M.e[11] * M.e[13] - M.e[5] * M.e[8] * M.e[15] + M.e[4] * M.e[9] * M.e[15],
+      M.e[3] * M.e[9] * M.e[12] - M.e[1] * M.e[11] * M.e[12] - M.e[3] * M.e[8] * M.e[13] +
+        M.e[0] * M.e[11] * M.e[13] + M.e[1] * M.e[8] * M.e[15] - M.e[0] * M.e[9] * M.e[15],
+      -M.e[3] * M.e[5] * M.e[12] + M.e[1] * M.e[7] * M.e[12] + M.e[3] * M.e[4] * M.e[13] -
+        M.e[0] * M.e[7] * M.e[13] - M.e[1] * M.e[4] * M.e[15] + M.e[0] * M.e[5] * M.e[15],
+      M.e[3] * M.e[5] * M.e[8] - M.e[1] * M.e[7] * M.e[8] - M.e[3] * M.e[4] * M.e[9] +
+        M.e[0] * M.e[7] * M.e[9] + M.e[1] * M.e[4] * M.e[11] - M.e[0] * M.e[5] * M.e[11],
+      M.e[6] * M.e[9] * M.e[12] - M.e[5] * M.e[10] * M.e[12] - M.e[6] * M.e[8] * M.e[13] +
+        M.e[4] * M.e[10] * M.e[13] + M.e[5] * M.e[8] * M.e[14] - M.e[4] * M.e[9] * M.e[14],
+      -M.e[2] * M.e[9] * M.e[12] + M.e[1] * M.e[10] * M.e[12] + M.e[2] * M.e[8] * M.e[13] -
+        M.e[0] * M.e[10] * M.e[13] - M.e[1] * M.e[8] * M.e[14] + M.e[0] * M.e[9] * M.e[14],
+      M.e[2] * M.e[5] * M.e[12] - M.e[1] * M.e[6] * M.e[12] - M.e[2] * M.e[4] * M.e[13] +
+        M.e[0] * M.e[6] * M.e[13] + M.e[1] * M.e[4] * M.e[14] - M.e[0] * M.e[5] * M.e[14],
+      -M.e[2] * M.e[5] * M.e[8] + M.e[1] * M.e[6] * M.e[8] + M.e[2] * M.e[4] * M.e[9] -
+        M.e[0] * M.e[6] * M.e[9] - M.e[1] * M.e[4] * M.e[10] + M.e[0] * M.e[5] * M.e[10],
+    };
+    return Result;
   }
 }

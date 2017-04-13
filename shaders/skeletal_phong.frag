@@ -14,6 +14,16 @@ out vec4 out_color;
 
 uniform sampler2D Texture;
 
+float Near = 0.01;
+float Far  = 100.0;
+
+float
+LinearizeDepth(float Depth)
+{
+  float z = Depth * 2.0 - 1.0;
+  return (2.0 * Near * Far) / (Far + Near - z * (Far - Near));
+}
+
 void
 main()
 {
@@ -31,5 +41,5 @@ main()
   float spec     = pow(max(dot(view_dir, reflect_dir), 0.0), 32);
   vec3  specular = specular_strength * spec * light_color;
 
-  out_color = vec4(vec4((ambient + diffuse + specular), 1.0f) * texture(Texture, frag_texCoord));
+  out_color   =  vec4(vec4((ambient + diffuse + specular), 1.0f) * texture(Texture, frag_texCoord));
 }

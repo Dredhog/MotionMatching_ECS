@@ -50,6 +50,7 @@ namespace EditAnimation
 
   void EditNextBone(animation_editor* Editor);
   void EditPreviousBone(animation_editor* Editor);
+  void EditBoneAtIndex(animation_editor* Editor, int BoneIndex);
   void JumpToNextKeyframe(animation_editor* Editor);
   void JumpToPreviousKeyframe(animation_editor* Editor);
 

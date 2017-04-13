@@ -33,7 +33,7 @@ SafeTruncateUint64(uint64_t Value)
 }
 
 debug_read_file_result
-ReadEntireFile(Memory::stack_allocator *Allocator, char* FileName)
+ReadEntireFile(Memory::stack_allocator *Allocator, const char* FileName)
 {
 	assert(Allocator);
   debug_read_file_result Result     = {};

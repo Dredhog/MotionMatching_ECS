@@ -15,7 +15,8 @@
 static const float ANOTATION_WIDTH_PERCENTAGE = 0.4f;
 
 UI::im_layout
-UI::NewLayout(float X, float Y, float Width, float RowHeight, float ScrollbarWidth)
+UI::NewLayout(float X, float Y, float Width, float RowHeight, float AspectRatio,
+              float ScrollbarWidth)
 {
   im_layout Result      = {};
   Result.X              = X;
@@ -24,6 +25,7 @@ UI::NewLayout(float X, float Y, float Width, float RowHeight, float ScrollbarWid
   Result.TopLeft[1]     = Y;
   Result.Width          = Width;
   Result.RowHeight      = RowHeight;
+  Result.AspectRatio    = AspectRatio;
   Result.ScrollbarWidth = ScrollbarWidth;
   return Result;
 }
@@ -73,7 +75,11 @@ void
 UI::DrawTextBox(game_state* GameState, float X, float Y, float Width, float Height,
                 const char* Text, vec4 InnerColor, vec4 BorderColor)
 {
+  float TextPadding = 0.005f;
   UI::DrawBox(GameState, X, Y, Width, Height, InnerColor, BorderColor);
+  DEBUGDrawTopLeftTexturedQuad(GameState, GameState->TextTexture,
+                               vec3{ X + TextPadding, Y - TextPadding, 0.0f },
+                               Width - 2 * TextPadding, Height - 2 * TextPadding);
 }
 
 void
@@ -118,7 +124,7 @@ UI::DrawCollapsableButton(game_state* GameState, im_layout* Layout, const game_i
                           bool IsExpanded, const char* Text, vec4 InnerColor, vec4 BorderColor)
 {
   // draw square icon
-  float   IconWidthK = Layout->RowHeight / Layout->ColumnWidth;
+  float   IconWidthK = (Layout->RowHeight / Layout->AspectRatio) / Layout->ColumnWidth;
   int32_t TextureID  = (IsExpanded) ? GameState->ExpandedTexture : GameState->CollapsedTexture;
   DEBUGDrawTopLeftTexturedQuad(GameState, TextureID, vec3{ Layout->X, Layout->Y, 0.0f },
                                IconWidthK * Layout->ColumnWidth, Layout->RowHeight);
