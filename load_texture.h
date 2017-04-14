@@ -1,8 +1,11 @@
 #pragma once
 
+#include <GL/glew.h>
+#include <SDL2/SDL_image.h>
+
 namespace Texture
 {
-  GLuint
+  uint32_t
   LoadTexture(char* FileName)
   {
     SDL_Surface* ImageSurface = IMG_Load(FileName);
@@ -12,7 +15,7 @@ namespace Texture
         SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ABGR8888, 0);
       free(ImageSurface);
 
-      GLuint Texture;
+      uint32_t Texture;
       glGenTextures(1, &Texture);
       glBindTexture(GL_TEXTURE_2D, Texture);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DestSurface->w, DestSurface->h, 0, GL_RGBA,
@@ -32,47 +35,7 @@ namespace Texture
     }
   }
 
-  GLuint
-  LoadTextTexture(const char* FontName, int FontSize, const char* Text, SDL_Color Color)
-  {
-    TTF_Font* Font;
-    Font = TTF_OpenFont(FontName, FontSize);
-    if(!Font)
-    {
-      printf("Font was not loaded!\nError: %s\n", SDL_GetError());
-      return 0;
-    }
-
-    SDL_Surface* TextSurface = TTF_RenderUTF8_Blended(Font, Text, Color);
-    if(TextSurface)
-    {
-      free(Font);
-      SDL_Surface* DestSurface = SDL_ConvertSurfaceFormat(TextSurface, SDL_PIXELFORMAT_ABGR8888, 0);
-      free(TextSurface);
-
-      GLuint Texture;
-
-      glGenTextures(1, &Texture);
-      glBindTexture(GL_TEXTURE_2D, Texture);
-
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DestSurface->w, DestSurface->h, 0, GL_RGBA,
-                   GL_UNSIGNED_BYTE, DestSurface->pixels);
-      glGenerateMipmap(GL_TEXTURE_2D);
-      glBindTexture(GL_TEXTURE_2D, 0);
-
-      free(DestSurface->pixels);
-      free(DestSurface);
-
-      return Texture;
-    }
-    else
-    {
-      printf("Text surface was not created!\nError: %s\n", SDL_GetError());
-      return 0;
-    }
-  }
-
-  GLuint
+  uint32_t
   LoadCubemap(Memory::stack_allocator* const Allocator, char* CubemapPath, char* FileFormat)
   {
     char* CubemapFaces[6];
@@ -117,7 +80,7 @@ namespace Texture
       strcat(FileNames[i], "\0");
     }
 
-    GLuint Texture;
+    uint32_t Texture;
     glGenTextures(1, &Texture);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, Texture);

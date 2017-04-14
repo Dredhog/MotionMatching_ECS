@@ -16,6 +16,7 @@
 #include "intersection_testing.h"
 #include "editor_ui.h"
 #include "load_data.h"
+#include "text.h"
 
 #include "debug_drawing.h"
 #include "camera.h"
@@ -96,14 +97,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->CollapsedTexture);
     assert(GameState->ExpandedTexture);
 
-    SDL_Color Color;
-    Color.a = 255;
-    Color.r = 0;
-    Color.g = 0;
-    Color.b = 0;
-    GameState->TextTexture =
-      Texture::LoadTextTexture("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-                               32, "Testing Text", Color);
+    GameState->Font.Size = 32;
+    GameState->Font.Font =
+      Text::OpenFont("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+                     GameState->Font.Size);
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
     // -------END ASSET LOADING

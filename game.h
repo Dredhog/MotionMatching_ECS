@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SDL2/SDL_ttf.h>
 #include <stdint.h>
 
 #include "model.h"
@@ -18,6 +19,20 @@ struct entity
   Render::model*              Model;
   Anim::transform             Transform;
   Anim::animation_controller* AnimController;
+};
+
+struct text_texture
+{
+  char*   Text;
+  vec4    Color;
+  int32_t FontSize;
+  int32_t Texture;
+};
+
+struct sized_font
+{
+  TTF_Font* Font;
+  int32_t   Size;
 };
 
 struct loaded_wav
@@ -54,6 +69,14 @@ struct game_state
   int32_t TextureCount;
   int32_t CollapsedTexture;
   int32_t ExpandedTexture;
+
+  sized_font Font;
+
+  text_texture TextTextures[50];
+
+  char    TextBuffer[1024];
+  int32_t CurrentCharIndex;
+  int32_t TextTextureCount;
 
   // int32_t Shaders;
   int32_t ShaderPhong;

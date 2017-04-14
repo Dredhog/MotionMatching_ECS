@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "debug_drawing.h"
 #include "misc.h"
+#include "text.h"
 
 #define _LayoutIntersects(Layout, Input)                                                           \
   (((Layout)->X <= (Input)->NormMouseX) &&                                                         \
@@ -77,7 +78,8 @@ UI::DrawTextBox(game_state* GameState, float X, float Y, float Width, float Heig
 {
   float TextPadding = 0.005f;
   UI::DrawBox(GameState, X, Y, Width, Height, InnerColor, BorderColor);
-  DEBUGDrawTopLeftTexturedQuad(GameState, GameState->TextTexture,
+  int32_t TextureIndex = Text::CacheTextTexture(GameState, Text, vec4{ 0.0f, 0.0f, 0.0f, 1.0f });
+  DEBUGDrawTopLeftTexturedQuad(GameState, GameState->TextTextures[TextureIndex].Texture,
                                vec3{ X + TextPadding, Y - TextPadding, 0.0f },
                                Width - 2 * TextPadding, Height - 2 * TextPadding);
 }
