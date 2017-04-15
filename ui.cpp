@@ -78,7 +78,9 @@ UI::DrawTextBox(game_state* GameState, float X, float Y, float Width, float Heig
 {
   float TextPadding = 0.005f;
   UI::DrawBox(GameState, X, Y, Width, Height, InnerColor, BorderColor);
-  int32_t TextureIndex = Text::CacheTextTexture(GameState, Text, vec4{ 0.0f, 0.0f, 0.0f, 1.0f });
+  int32_t TextureIndex =
+    Text::CacheTextTexture(GameState, (int32_t)(10 * ((float)Width / (float)Height)), Text,
+                           vec4{ 0.0f, 0.0f, 0.0f, 1.0f });
   DEBUGDrawTopLeftTexturedQuad(GameState, GameState->TextTextures[TextureIndex].Texture,
                                vec3{ X + TextPadding, Y - TextPadding, 0.0f },
                                Width - 2 * TextPadding, Height - 2 * TextPadding);

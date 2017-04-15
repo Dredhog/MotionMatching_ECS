@@ -105,9 +105,29 @@ AppendTextBuffer(char* TextBuffer, int32_t* CurrentCharIndex, const char* Text)
 }
 
 int32_t
-Text::CacheTextTexture(game_state* GameState, const char* Text, vec4 Color)
+FindSizedFont(sized_font* Fonts, int32_t FontCount, int32_t FontSize)
 {
-  int32_t TextureIndex = FindTextTexture(Text, GameState->Font.Size, Color,
+  int Index   = 0;
+  int MinDiff = Fonts[0].Size - FontSize < 0 ? FontSize - Fonts[0].Size : Fonts[0].Size - FontSize;
+
+  for(int i = 1; i < FontCount; i++)
+  {
+    int Difference =
+      Fonts[i].Size - FontSize < 0 ? FontSize - Fonts[i].Size : Fonts[i].Size - FontSize;
+    if(Difference < MinDiff)
+    {
+      MinDiff = Difference;
+      Index   = i;
+    }
+  }
+  return Index;
+}
+
+int32_t
+Text::CacheTextTexture(game_state* GameState, int32_t FontSize, const char* Text, vec4 Color)
+{
+  int32_t MatchingFontIndex = FindSizedFont(GameState->Fonts, GameState->FontCount, FontSize);
+  int32_t TextureIndex      = FindTextTexture(Text, GameState->Fonts[MatchingFontIndex].Size, Color,
                                          GameState->TextTextureCount, GameState->TextTextures);
 
   if(TextureIndex == -1)
@@ -115,11 +135,11 @@ Text::CacheTextTexture(game_state* GameState, const char* Text, vec4 Color)
     TextureIndex = GameState->TextTextureCount++;
 
     GameState->TextTextures[TextureIndex].Texture =
-      LoadTextTexture(GameState->Font.Font, Text, Color);
+      LoadTextTexture(GameState->Fonts[MatchingFontIndex].Font, Text, Color);
     GameState->TextTextures[TextureIndex].Text =
       &GameState->TextBuffer[GameState->CurrentCharIndex];
     AppendTextBuffer(GameState->TextBuffer, &GameState->CurrentCharIndex, Text);
-    GameState->TextTextures[TextureIndex].FontSize = GameState->Font.Size;
+    GameState->TextTextures[TextureIndex].FontSize = GameState->Fonts[MatchingFontIndex].Size;
     GameState->TextTextures[TextureIndex].Color    = Color;
   }
 

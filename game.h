@@ -70,13 +70,14 @@ struct game_state
   int32_t CollapsedTexture;
   int32_t ExpandedTexture;
 
-  sized_font Font;
+  sized_font Fonts[10];
+  int32_t    FontCount;
 
   text_texture TextTextures[50];
+  int32_t      TextTextureCount;
 
   char    TextBuffer[1024];
   int32_t CurrentCharIndex;
-  int32_t TextTextureCount;
 
   // int32_t Shaders;
   int32_t ShaderPhong;

@@ -97,10 +97,18 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->CollapsedTexture);
     assert(GameState->ExpandedTexture);
 
-    GameState->Font.Size = 32;
-    GameState->Font.Font =
-      Text::OpenFont("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-                     GameState->Font.Size);
+    GameState->FontCount = 0;
+    for(int i = 0; i < 10; i++)
+    {
+      GameState->Fonts[i].Size = i * 5 + 5;
+      GameState->Fonts[i].Font =
+        Text::OpenFont("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+                       GameState->Fonts[i].Size);
+      GameState->FontCount++;
+    }
+    
+    GameState->TextTextureCount = 0;
+
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
     // -------END ASSET LOADING
