@@ -18,7 +18,7 @@ mat4    g_OverlayGizmoMatrices[GIZMO_MAX_COUNT];
 float   g_OverlayGizmoDepths[GIZMO_MAX_COUNT];
 int32_t g_OverlayGizmoCount;
 
-mat4 g_GizmoMatrices[GIZMO_MAX_COUNT];
+mat4    g_GizmoMatrices[GIZMO_MAX_COUNT];
 int32_t g_GizmoCount;
 
 mat4 g_OverlayTexturedQuadMatrices[TEXTURED_QUAD_MAX_COUNT];
@@ -64,12 +64,12 @@ DEBUGPushGizmo(const camera* Camera, const mat4* GizmoBase, bool Overlay)
 void
 DEBUGDrawGizmos(game_state* GameState)
 {
-  glUseProgram(GameState->ShaderGizmo);
+  glUseProgram(GameState->R.ShaderGizmo);
   for(int g = 0; g < g_OverlayGizmoCount; g++)
   {
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderGizmo, "mat_mvp"), 1, GL_FALSE,
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderGizmo, "mat_mvp"), 1, GL_FALSE,
                        g_OverlayGizmoMatrices[g].e);
-    glUniform1f(glGetUniformLocation(GameState->ShaderGizmo, "depth"), g_OverlayGizmoDepths[g]);
+    glUniform1f(glGetUniformLocation(GameState->R.ShaderGizmo, "depth"), g_OverlayGizmoDepths[g]);
     for(int i = 0; i < GameState->GizmoModel->MeshCount; i++)
     {
       glBindVertexArray(GameState->GizmoModel->Meshes[i]->VAO);
@@ -86,12 +86,12 @@ void
 DEBUGDrawWireframeSpheres(game_state* GameState)
 {
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  glUseProgram(GameState->ShaderColor);
+  glUseProgram(GameState->R.ShaderColor);
   for(int i = 0; i < g_SphereCount; i++)
   {
-    glUniform4fv(glGetUniformLocation(GameState->ShaderColor, "g_color"), 1,
+    glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
                  (float*)&g_SphereColors[i]);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderColor, "mat_mvp"), 1, GL_FALSE,
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
                        g_SphereMatrices[i].e);
     glBindVertexArray(GameState->SphereModel->Meshes[0]->VAO);
     glDrawElements(GL_TRIANGLES, GameState->SphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT,
@@ -114,10 +114,10 @@ DEBUGDrawQuad(game_state* GameState, vec3 LowerLeft, float Width, float Height, 
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
   LowerLeft *= 2.0f;
-  glUseProgram(GameState->ShaderQuad);
-  glUniform4fv(glGetUniformLocation(GameState->ShaderQuad, "g_color"), 1, (float*)&Color);
-  glUniform3fv(glGetUniformLocation(GameState->ShaderQuad, "g_position"), 1, (float*)&LowerLeft);
-  glUniform2fv(glGetUniformLocation(GameState->ShaderQuad, "g_dimension"), 1, (float*)&Dimension);
+  glUseProgram(GameState->R.ShaderQuad);
+  glUniform4fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_color"), 1, (float*)&Color);
+  glUniform3fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_position"), 1, (float*)&LowerLeft);
+  glUniform2fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_dimension"), 1, (float*)&Dimension);
   glBindVertexArray(GameState->QuadModel->Meshes[1]->VAO);
   glDrawElements(GL_TRIANGLES, GameState->QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
   glBindVertexArray(0);
@@ -134,10 +134,10 @@ DEBUGDrawTopLeftQuad(game_state* GameState, vec3 LowerLeft, float Width, float H
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
   LowerLeft *= 2.0f;
-  glUseProgram(GameState->ShaderQuad);
-  glUniform4fv(glGetUniformLocation(GameState->ShaderQuad, "g_color"), 1, (float*)&Color);
-  glUniform3fv(glGetUniformLocation(GameState->ShaderQuad, "g_position"), 1, (float*)&LowerLeft);
-  glUniform2fv(glGetUniformLocation(GameState->ShaderQuad, "g_dimension"), 1, (float*)&Dimension);
+  glUseProgram(GameState->R.ShaderQuad);
+  glUniform4fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_color"), 1, (float*)&Color);
+  glUniform3fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_position"), 1, (float*)&LowerLeft);
+  glUniform2fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_dimension"), 1, (float*)&Dimension);
   glBindVertexArray(GameState->QuadModel->Meshes[2]->VAO);
   glDrawElements(GL_TRIANGLES, GameState->QuadModel->Meshes[2]->IndiceCount, GL_UNSIGNED_INT, 0);
   glBindVertexArray(0);
@@ -154,10 +154,10 @@ DEBUGDrawCenteredQuad(game_state* GameState, vec3 Center, float Width, float Hei
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
   Center *= 2.0f;
-  glUseProgram(GameState->ShaderQuad);
-  glUniform4fv(glGetUniformLocation(GameState->ShaderQuad, "g_color"), 1, (float*)&Color);
-  glUniform3fv(glGetUniformLocation(GameState->ShaderQuad, "g_position"), 1, (float*)&Center);
-  glUniform2fv(glGetUniformLocation(GameState->ShaderQuad, "g_dimension"), 1, (float*)&Dimension);
+  glUseProgram(GameState->R.ShaderQuad);
+  glUniform4fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_color"), 1, (float*)&Color);
+  glUniform3fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_position"), 1, (float*)&Center);
+  glUniform2fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_dimension"), 1, (float*)&Dimension);
   glBindVertexArray(GameState->QuadModel->Meshes[0]->VAO);
   glDrawElements(GL_TRIANGLES, GameState->QuadModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
   glBindVertexArray(0);
@@ -177,10 +177,10 @@ DEBUGDrawTopLeftTexturedQuad(game_state* GameState, int32_t TextureID, vec3 Lowe
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBindTexture(GL_TEXTURE_2D, TextureID);
-  glUseProgram(GameState->ShaderTexturedQuad);
-  glUniform3fv(glGetUniformLocation(GameState->ShaderTexturedQuad, "g_position"), 1,
+  glUseProgram(GameState->R.ShaderTexturedQuad);
+  glUniform3fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_position"), 1,
                (float*)&LowerLeft);
-  glUniform2fv(glGetUniformLocation(GameState->ShaderTexturedQuad, "g_dimension"), 1,
+  glUniform2fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_dimension"), 1,
                (float*)&Dimension);
   glBindVertexArray(GameState->QuadModel->Meshes[2]->VAO);
   glDrawElements(GL_TRIANGLES, GameState->QuadModel->Meshes[2]->IndiceCount, GL_UNSIGNED_INT, 0);
@@ -203,13 +203,39 @@ DEBUGDrawTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBindTexture(GL_TEXTURE_2D, TextureID);
-  glUseProgram(GameState->ShaderTexturedQuad);
-  glUniform3fv(glGetUniformLocation(GameState->ShaderTexturedQuad, "g_position"), 1,
+  glUseProgram(GameState->R.ShaderTexturedQuad);
+  glUniform3fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_position"), 1,
                (float*)&LowerLeft);
-  glUniform2fv(glGetUniformLocation(GameState->ShaderTexturedQuad, "g_dimension"), 1,
+  glUniform2fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_dimension"), 1,
                (float*)&Dimension);
   glBindVertexArray(GameState->QuadModel->Meshes[1]->VAO);
   glDrawElements(GL_TRIANGLES, GameState->QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
+  glBindVertexArray(0);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_BLEND);
+}
+
+void
+DEBUGDrawUnflippedTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft,
+                               float Width, float Height, bool DepthEnabled)
+{
+  if(!DepthEnabled)
+  {
+    glClear(GL_DEPTH_BUFFER_BIT);
+  }
+
+  vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
+  LowerLeft *= 2.0f;
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBindTexture(GL_TEXTURE_2D, TextureID);
+  glUseProgram(GameState->R.ShaderTexturedQuad);
+  glUniform3fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_position"), 1,
+               (float*)&LowerLeft);
+  glUniform2fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_dimension"), 1,
+               (float*)&Dimension);
+  glBindVertexArray(GameState->QuadModel->Meshes[3]->VAO);
+  glDrawElements(GL_TRIANGLES, GameState->QuadModel->Meshes[3]->IndiceCount, GL_UNSIGNED_INT, 0);
   glBindVertexArray(0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_BLEND);

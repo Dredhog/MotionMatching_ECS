@@ -23,6 +23,7 @@ namespace UI
   im_layout NewLayout(float X, float Y, float Width, float RowHeight, float AspectRatio,
                       float ScrollbarWidth = 0.05f);
   void Row(im_layout* Layout, int ColumnCount = 1);
+  void SquareQuad(game_state* GameState, UI::im_layout* Layout, uint32_t TextureId);
   void Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text);
 
   void DrawBox(game_state* GameState, float X, float Y, float Width, float Height, vec4 InnerColor,

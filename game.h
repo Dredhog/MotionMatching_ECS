@@ -10,14 +10,16 @@
 #include "stack_allocator.h"
 #include "edit_animation.h"
 #include "camera.h"
+#include "render_data.h"
 
-static const int32_t TEXTURE_MAX_COUNT = 20;
+const int32_t        ENTITY_MAX_COUNT      = 400;
+static const int32_t ENTITY_MAX_MESH_COUNT = 100;
 
 struct entity
 {
-  Render::model*              Model;
-  Anim::transform             Transform;
-  Anim::animation_controller* AnimController;
+  Anim::transform Transform;
+  Render::model*  Model;
+  int32_t*        MaterialIndices;
 };
 
 struct loaded_wav
@@ -31,8 +33,7 @@ enum engine_mode
 {
   MODE_AnimationEditor,
   MODE_EntityCreation,
-  MODE_EditorMenu,
-  MODE_MainMenu,
+  MODE_MaterialEditor,
   MODE_Gameplay,
   MODE_FlyCam,
 };
@@ -42,38 +43,35 @@ struct game_state
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
 
+  render_data                     R;
   EditAnimation::animation_editor AnimEditor;
+  int32_t                         CurrentModel;
+  int32_t                         CurrentMaterial;
 
+  camera Camera;
+  camera PreviewCamera;
+
+  // Models
   Render::model* SphereModel;
+  Render::model* UVSphereModel;
   Render::model* QuadModel;
   Render::model* CharacterModel;
   Render::model* GizmoModel;
-  Render::model* Cubemap;
+  Render::model* CubemapModel;
 
-  int32_t Textures[TEXTURE_MAX_COUNT];
-  int32_t TextureCount;
+  // Temp textures (not their place)
   int32_t CollapsedTexture;
   int32_t ExpandedTexture;
+  int32_t TextTexture;
+  int32_t CubemapTexture;
 
-  // int32_t Shaders;
-  int32_t ShaderPhong;
-  int32_t ShaderSkeletalPhong;
-  int32_t ShaderSkeletalBoneColor;
-  int32_t ShaderWireframe;
-  int32_t ShaderColor;
-  int32_t ShaderGizmo;
-  int32_t ShaderQuad;
-  int32_t ShaderTexturedQuad;
-  int32_t ShaderCubemap;
+  // Entities
+  entity  Entities[ENTITY_MAX_COUNT];
+  int32_t EntityCount;
+  int32_t SelectedEntityIndex;
+  int32_t SelectedMeshIndex;
 
-  vec3  LightPosition;
-  vec3  LightColor;
-  float AmbientStrength;
-  float SpecularStrength;
-
-  uint32_t        MagicChecksum;
-  Anim::transform ModelTransform;
-
+  // Switches/Flags
   bool  DrawWireframe;
   bool  DrawCubemap;
   bool  DrawBoneWeights;
@@ -83,14 +81,17 @@ struct game_state
   bool  IsModelSpinning;
   bool  IsAnimationPlaying;
   float EditorBoneRotationSpeed;
+  bool  IsEntityCreationMode;
 
-  camera   Camera;
-  uint32_t EngineMode;
-  float    GameTime;
-
+  // Audio
   loaded_wav AudioBuffer;
   bool       WAVLoaded;
 
-  int32_t TextTexture;
-  int32_t CubemapTexture;
+  uint32_t MagicChecksum;
+  uint32_t EngineMode;
+
+  // ID buffer (selection)
+  uint32_t IndexFBO;
+  uint32_t DepthRBO;
+  uint32_t IDTexture;
 };

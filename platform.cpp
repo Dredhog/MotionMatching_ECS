@@ -330,16 +330,20 @@ Init(SDL_Window** Window)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#if 1
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+#endif
 
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
                                SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+
     if(!Window)
     {
       printf("SDL error: failed to load window. %s\n", SDL_GetError());
@@ -487,8 +491,8 @@ main(int argc, char* argv[])
 
   game_memory GameMemory;
   {
-    GameMemory.TemporaryMemorySize  = Mibibytes(40);
-    GameMemory.PersistentMemorySize = Mibibytes(40);
+    GameMemory.TemporaryMemorySize  = Mibibytes(80);
+    GameMemory.PersistentMemorySize = Mibibytes(80);
 
     GameMemory.TemporaryMemory  = malloc(GameMemory.TemporaryMemorySize);
     GameMemory.PersistentMemory = malloc(GameMemory.PersistentMemorySize);
@@ -616,7 +620,7 @@ main(int argc, char* argv[])
     SDL_UnlockAudioDevice(AudioDevice);
 
     SDL_GL_SwapWindow(Window);
-		SDL_Delay(FRAME_TIME_MS);
+    SDL_Delay(FRAME_TIME_MS);
 
     OldInput = NewInput;
   }

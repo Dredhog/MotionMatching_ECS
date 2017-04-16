@@ -2,6 +2,16 @@
 #include "debug_drawing.h"
 #include "misc.h"
 
+#if 0
+struct ui_id
+{
+  uintptr_t DataPrt;
+};
+
+static const ui_id g_Active;
+static const ui_id g_Hot;
+#endif
+
 #define _LayoutIntersects(Layout, Input)                                                           \
   (((Layout)->X <= (Input)->NormMouseX) &&                                                         \
    ((Input)->NormMouseX < (Layout)->X + (Layout)->ColumnWidth) &&                                  \
@@ -38,6 +48,22 @@ UI::Row(UI::im_layout* Layout, int ColumnCount)
 
   assert(ColumnCount >= 1);
   Layout->ColumnWidth = Layout->Width / (float)ColumnCount;
+}
+
+void
+UI::SquareQuad(game_state* GameState, UI::im_layout* Layout, uint32_t TextureID)
+{
+  float QuadWidth  = Layout->Width;
+  float QuadHeight = Layout->Width;// Layout->AspectRatio;
+
+  UI::Row(Layout);
+  Layout->X = Layout->TopLeft[0];
+  Layout->Y -= QuadHeight;
+
+  DEBUGDrawUnflippedTexturedQuad(GameState, TextureID, { Layout->X, Layout->Y }, QuadWidth,
+                                 QuadHeight);
+  Layout->ColumnWidth = Layout->Width;
+  Layout->Y += Layout->RowHeight;
 }
 
 void

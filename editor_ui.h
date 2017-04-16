@@ -20,6 +20,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   static bool    g_ShowDisplaySet         = false;
   static bool    g_ShowTransformSettign   = false;
   static bool    g_ShowTranslationButtons = false;
+  static bool    g_ShowEntityDrowpown     = false;
   static bool    g_ShowAnimSetings        = false;
   static bool    g_ShowScrollSection      = false;
   static float   g_ScrollK                = 0.0f;
@@ -33,11 +34,11 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::Row(&Layout, 2);
     if(UI::_HoldButton(&Layout, Input, "PlayHead CW"))
     {
-      GameState->ModelTransform.Rotation.Y -= 110.0f * Input->dt;
+      // GetSelectedEntity(GameState)->Transform.Rotation.Y -= 110.0f * Input->dt;
     }
     if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
     {
-      GameState->ModelTransform.Rotation.Y += 110.0f * Input->dt;
+      // GetSelectedEntity(GameState)->Transform.Rotation.Y += 110.0f * Input->dt;
     }
     UI::_Row(&Layout, 6, "Toggleables");
     UI::_BoolButton(&Layout, Input, "Toggle Timeline", &GameState->DrawTimeline);
@@ -143,6 +144,66 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     }
   }
   UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Entity Creation", &g_ShowEntityDrowpown))
+  {
+    UI::Row(&Layout, 2);
+    if(UI::_PushButton(&Layout, Input, "Previous Mesh"))
+    {
+      if(GameState->R.ModelCount > 0)
+      {
+        GameState->CurrentModel =
+          (GameState->CurrentModel + GameState->R.ModelCount - 1) % GameState->R.ModelCount;
+      }
+    }
+    if(UI::_PushButton(&Layout, Input, "Next Mesh"))
+    {
+      if(GameState->R.ModelCount > 0)
+      {
+        GameState->CurrentModel = (GameState->CurrentModel + 1) % GameState->R.ModelCount;
+      }
+    }
+    UI::Row(&Layout);
+    UI::_BoolButton(&Layout, Input, "Next Material", &GameState->IsEntityCreationMode);
+    UI::SquareQuad(GameState, &Layout, GameState->IDTexture);
+    UI::Row(&Layout, 2);
+    if(UI::_PushButton(&Layout, Input, "Previous Material"))
+    {
+      if(GameState->R.MaterialCount > 0)
+      {
+        GameState->CurrentMaterial = (GameState->CurrentMaterial + GameState->R.MaterialCount - 1) %
+                                     GameState->R.MaterialCount;
+      }
+    }
+    if(UI::_PushButton(&Layout, Input, "Next Material"))
+    {
+      if(GameState->R.MaterialCount > 0)
+      {
+        GameState->CurrentMaterial = (GameState->CurrentMaterial + 1) % GameState->R.MaterialCount;
+      }
+    }
+    UI::Row(&Layout);
+    if(UI::_PushButton(&Layout, Input, "Set maerial"))
+    {
+      if(GameState->R.ModelCount > 0)
+      {
+        if(0 <= GameState->SelectedEntityIndex &&
+           GameState->SelectedEntityIndex < GameState->EntityCount)
+        {
+          entity* Entity = &GameState->Entities[GameState->SelectedEntityIndex];
+          if(0 <= GameState->SelectedMeshIndex &&
+             GameState->SelectedMeshIndex < Entity->Model->MeshCount)
+          {
+            if(0 <= GameState->CurrentMaterial &&
+               GameState->CurrentMaterial < GameState->R.MaterialCount)
+            {
+              Entity->MaterialIndices[GameState->SelectedMeshIndex] = GameState->CurrentMaterial;
+            }
+          }
+        }
+      }
+    }
+  }
+  UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Animation Settings", &g_ShowAnimSetings))
   {
     UI::Row(&Layout);
@@ -206,5 +267,47 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       }
     }
     UI::EndScrollableList(&Layout);
+  }
+}
+
+void
+VisualizeTimeline(game_state* GameState)
+{
+  const int KeyframeCount = GameState->AnimEditor.KeyframeCount;
+  if(KeyframeCount > 0)
+  {
+    const EditAnimation::animation_editor* Editor = &GameState->AnimEditor;
+
+    const float TimelineStartX = 0.20f;
+    const float TimelineStartY = 0.1f;
+    const float TimelineWidth  = 0.6f;
+    const float TimelineHeight = 0.05f;
+    const float FirstTime      = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
+    const float LastTime =
+      MaxFloat(Editor->PlayHeadTime, Editor->SampleTimes[Editor->KeyframeCount - 1]);
+
+    float KeyframeSpacing = KEYFRAME_MIN_TIME_DIFFERENCE_APART * 0.5f; // seconds
+    float TimeDiff        = MaxFloat((LastTime - FirstTime), 1.0f);
+    float KeyframeWidth   = KeyframeSpacing / TimeDiff;
+
+    DEBUGDrawQuad(GameState, vec3{ TimelineStartX, TimelineStartY }, TimelineWidth, TimelineHeight);
+    for(int i = 0; i < KeyframeCount; i++)
+    {
+      float PosPercentage = (Editor->SampleTimes[i] - FirstTime) / TimeDiff;
+      DEBUGDrawCenteredQuad(GameState,
+                            vec3{ TimelineStartX + PosPercentage * TimelineWidth,
+                                  TimelineStartY + TimelineHeight * 0.5f },
+                            KeyframeWidth, 0.05f, { 0.5f, 0.3f, 0.3f });
+    }
+    float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
+    DEBUGDrawCenteredQuad(GameState,
+                          vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth,
+                                TimelineStartY + TimelineHeight * 0.5f },
+                          KeyframeWidth, 0.05f, { 1, 0, 0 });
+    float CurrentPercentage = (Editor->SampleTimes[Editor->CurrentKeyframe] - FirstTime) / TimeDiff;
+    DEBUGDrawCenteredQuad(GameState,
+                          vec3{ TimelineStartX + CurrentPercentage * TimelineWidth,
+                                TimelineStartY + TimelineHeight * 0.5f },
+                          0.003f, 0.05f, { 0.5f, 0.5f, 0.5f });
   }
 }

@@ -20,3 +20,5 @@ void DEBUGDrawTopLeftTexturedQuad(game_state* GameState, int32_t TextureID, vec3
                                   float Width, float Height, bool DepthEnabled = false);
 void DEBUGDrawTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, float Width,
                            float Height, bool DepthEnabled = false);
+void DEBUGDrawUnflippedTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, float Width,
+                           float Height, bool DepthEnabled = false);
