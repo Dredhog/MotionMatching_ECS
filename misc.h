@@ -65,6 +65,12 @@ AbsFloat(float F)
   return (F < 0) ? -F : F;
 }
 
+inline int32_t
+AbsInt32(int32_t T)
+{
+  return (T < 0) ? -T : T;
+}
+
 inline bool
 FloatsEqualByThreshold(float A, float B, float Threshold)
 {

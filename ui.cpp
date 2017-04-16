@@ -1,16 +1,7 @@
 #include "ui.h"
 #include "debug_drawing.h"
 #include "misc.h"
-
-#if 0
-struct ui_id
-{
-  uintptr_t DataPrt;
-};
-
-static const ui_id g_Active;
-static const ui_id g_Hot;
-#endif
+#include "text.h"
 
 #define _LayoutIntersects(Layout, Input)                                                           \
   (((Layout)->X <= (Input)->NormMouseX) &&                                                         \
@@ -23,6 +14,56 @@ static const ui_id g_Hot;
    ((Y) - (Height) < (Input)->NormMouseY) && ((Input)->NormMouseY <= (Y)))
 
 static const float ANOTATION_WIDTH_PERCENTAGE = 0.4f;
+
+struct ui_id
+{
+  uintptr_t DataPtr;
+  uintptr_t NamePtr;
+  uint32_t  SectionID;
+};
+
+#define NOT_ACTIVE                                                                                 \
+  ui_id { 1, 1, 1 }
+
+static ui_id g_Active = NOT_ACTIVE;
+static ui_id g_Hot    = NOT_ACTIVE;
+
+bool
+IsHot(ui_id ID)
+{
+  if((ID.DataPtr != g_Hot.DataPtr) || (ID.NamePtr != g_Hot.NamePtr) ||
+     (ID.SectionID != g_Hot.SectionID))
+  {
+    return false;
+  }
+  return true;
+}
+
+bool
+IsActive(ui_id ID)
+{
+  if((ID.DataPtr != g_Active.DataPtr) || (ID.NamePtr != g_Active.NamePtr) ||
+     (ID.SectionID != g_Active.SectionID))
+  {
+    return false;
+  }
+  return true;
+}
+
+void
+SetActive(ui_id ID)
+{
+  g_Active = ID;
+}
+
+void
+SetHot(ui_id ID)
+{
+  // if(IsActive(NOT_ACTIVE))
+  {
+    g_Hot = ID;
+  }
+}
 
 UI::im_layout
 UI::NewLayout(float X, float Y, float Width, float RowHeight, float AspectRatio,
@@ -51,10 +92,10 @@ UI::Row(UI::im_layout* Layout, int ColumnCount)
 }
 
 void
-UI::SquareQuad(game_state* GameState, UI::im_layout* Layout, uint32_t TextureID)
+UI::DrawSquareQuad(game_state* GameState, UI::im_layout* Layout, uint32_t TextureID)
 {
   float QuadWidth  = Layout->Width;
-  float QuadHeight = Layout->Width;// Layout->AspectRatio;
+  float QuadHeight = Layout->Width; // Layout->AspectRatio;
 
   UI::Row(Layout);
   Layout->X = Layout->TopLeft[0];
@@ -103,8 +144,10 @@ UI::DrawTextBox(game_state* GameState, float X, float Y, float Width, float Heig
 {
   float TextPadding = 0.005f;
   UI::DrawBox(GameState, X, Y, Width, Height, InnerColor, BorderColor);
-  DEBUGDrawTopLeftTexturedQuad(GameState, GameState->TextTexture,
-                               vec3{ X + TextPadding, Y - TextPadding, 0.0f },
+  uint32_t TextureID =
+    Text::GetTextTextureID(&GameState->Font, (int32_t)(10 * ((float)Width / (float)Height)), Text,
+                           vec4{ 0.0f, 1.0f, 0.0f, 1.0f });
+  DEBUGDrawTopLeftTexturedQuad(GameState, TextureID, vec3{ X + TextPadding, Y - TextPadding, 0.0f },
                                Width - 2 * TextPadding, Height - 2 * TextPadding);
 }
 
@@ -193,6 +236,9 @@ bool
 UI::PushButton(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
                vec4 InnerColor, vec4 BorderColor)
 {
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Text;
+
   bool Result = false;
   DrawTextBox(GameState, Layout, Text, InnerColor, BorderColor);
   if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed && _LayoutIntersects(Layout, Input))
@@ -207,6 +253,9 @@ bool
 UI::PushButton(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
                bool TestChanged)
 {
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Text;
+
   bool Result = false;
   DrawTextButton(GameState, Layout, Input, Text);
   if(Input->MouseLeft.EndedDown && (!TestChanged || (TestChanged && Input->MouseLeft.Changed)) &&
@@ -219,21 +268,100 @@ UI::PushButton(game_state* GameState, im_layout* Layout, const game_input* Input
 }
 
 void
+UI::SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
+                float* Var, float Min, float Max, float ScreenValue, vec4 InnerColor)
+{
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Var;
+  ID.NamePtr = (uintptr_t)Text;
+
+  if(_LayoutIntersects(Layout, Input))
+  {
+    SetHot(ID);
+  }
+
+  if(IsActive(ID))
+  {
+    *Var = Input->NormMouseX * ScreenValue;
+    if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(NOT_ACTIVE);
+    }
+  }
+  else if(IsHot(ID))
+  {
+    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(ID);
+    }
+  }
+  char FloatTextBuffer[20];
+
+  sprintf(FloatTextBuffer, "%.2f", (double)*Var);
+  UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor);
+  *Var = ClampFloat(Min, *Var, Max);
+}
+
+void
 UI::BoolButton(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
                bool* Toggle)
 {
+#if 1
+
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Toggle;
+
+  if(IsActive(ID))
+  {
+    // Mouse went up
+    if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      if(IsHot(ID))
+      {
+        *Toggle = !*Toggle;
+      }
+      SetActive(NOT_ACTIVE);
+    }
+  }
+  else if(IsHot(ID))
+  {
+    // Mouse went down
+    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(ID);
+    }
+  }
+
+  // Inside
+  if(_LayoutIntersects(Layout, Input))
+  {
+    SetHot(ID);
+  }
+  else if(IsHot(ID))
+  {
+    SetHot(NOT_ACTIVE);
+  }
+
+  DrawBoolButton(GameState, Layout, Input, Text, *Toggle);
+  Layout->X += Layout->ColumnWidth;
+
+#else
   if((Input->MouseLeft.EndedDown && Input->MouseLeft.Changed) && _LayoutIntersects(Layout, Input))
   {
     *Toggle = !*Toggle;
   }
   DrawBoolButton(GameState, Layout, Input, Text, *Toggle);
   Layout->X += Layout->ColumnWidth;
+#endif
 }
 
 bool
 UI::ExpandableButton(game_state* GameState, im_layout* Layout, const game_input* Input,
                      const char* Text, bool* IsExpanded)
 {
+  ui_id ID   = {};
+  ID.NamePtr = (uintptr_t)Text;
+
   if((Input->MouseLeft.EndedDown && Input->MouseLeft.Changed) && _LayoutIntersects(Layout, Input))
   {
     *IsExpanded = !*IsExpanded;

@@ -14,15 +14,15 @@
 #include "load_texture.h"
 #include "misc.h"
 #include "intersection_testing.h"
-#include "editor_ui.h"
 #include "load_asset.h"
 #include "render_data.h"
 #include "material_upload.h"
+#include "text.h"
 
 #include "debug_drawing.h"
 #include "camera.h"
 
-#include <algorithm>
+#include "editor_ui.h"
 
 static const vec3 g_BoneColors[] = {
   { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.77f },
@@ -51,45 +51,6 @@ GetMVPMatrix(game_state* GameState, int32_t EntityIndex)
   mat4 ModelMatrix = GetModelMatrix(GameState, EntityIndex);
   mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
   return MVPMatrix;
-}
-
-bool
-GetSelectedEntity(game_state* GameState, entity** OutputEntity)
-{
-  // GameState->SelectedEntityIndex = 0;
-  if(GameState->EntityCount > 0)
-  {
-    if(0 <= GameState->SelectedEntityIndex &&
-       GameState->SelectedEntityIndex < GameState->EntityCount)
-    {
-      *OutputEntity = &GameState->Entities[GameState->SelectedEntityIndex];
-      return true;
-    }
-    return false;
-  }
-  return false;
-}
-
-bool
-GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
-{
-  // GameState->SelectedMeshIndex = 3;
-  entity* Entity = NULL;
-  if(GetSelectedEntity(GameState, &Entity))
-  {
-
-    if(Entity->Model->MeshCount > 0)
-    {
-      if(0 <= GameState->SelectedMeshIndex &&
-         GameState->SelectedMeshIndex < Entity->Model->MeshCount)
-      {
-        *OutputMesh = GameState->Entities[GameState->SelectedEntityIndex]
-                        .Model->Meshes[GameState->SelectedMeshIndex];
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 void
@@ -170,14 +131,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->CollapsedTexture);
     assert(GameState->ExpandedTexture);
 
-    SDL_Color Color;
-    Color.a = 255;
-    Color.r = 0;
-    Color.g = 0;
-    Color.b = 0;
-    GameState->TextTexture =
-      Texture::LoadTextTexture("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-                               32, "Testing Text", Color);
+		GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", 10, 5, 6);
+    
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
     // -------END ASSET LOADING

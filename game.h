@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SDL2/SDL_ttf.h>
 #include <stdint.h>
 
 #include "model.h"
@@ -11,6 +12,7 @@
 #include "edit_animation.h"
 #include "camera.h"
 #include "render_data.h"
+#include "text.h"
 
 const int32_t        ENTITY_MAX_COUNT      = 400;
 static const int32_t ENTITY_MAX_MESH_COUNT = 100;
@@ -71,6 +73,9 @@ struct game_state
   int32_t SelectedEntityIndex;
   int32_t SelectedMeshIndex;
 
+  // Fonts/text
+	Text::font Font;
+
   // Switches/Flags
   bool  DrawWireframe;
   bool  DrawCubemap;
@@ -95,3 +100,42 @@ struct game_state
   uint32_t DepthRBO;
   uint32_t IDTexture;
 };
+
+inline bool
+GetSelectedEntity(game_state* GameState, entity** OutputEntity)
+{
+  // GameState->SelectedEntityIndex = 0;
+  if(GameState->EntityCount > 0)
+  {
+    if(0 <= GameState->SelectedEntityIndex &&
+       GameState->SelectedEntityIndex < GameState->EntityCount)
+    {
+      *OutputEntity = &GameState->Entities[GameState->SelectedEntityIndex];
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+inline bool
+GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
+{
+  // GameState->SelectedMeshIndex = 3;
+  entity* Entity = NULL;
+  if(GetSelectedEntity(GameState, &Entity))
+  {
+
+    if(Entity->Model->MeshCount > 0)
+    {
+      if(0 <= GameState->SelectedMeshIndex &&
+         GameState->SelectedMeshIndex < Entity->Model->MeshCount)
+      {
+        *OutputMesh = GameState->Entities[GameState->SelectedEntityIndex]
+                        .Model->Meshes[GameState->SelectedMeshIndex];
+        return true;
+      }
+    }
+  }
+  return false;
+}

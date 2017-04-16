@@ -31,7 +31,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Rendering", &g_ShowDisplaySet))
   {
-    UI::Row(&Layout, 2);
+#if 0
     if(UI::_HoldButton(&Layout, Input, "PlayHead CW"))
     {
       // GetSelectedEntity(GameState)->Transform.Rotation.Y -= 110.0f * Input->dt;
@@ -40,6 +40,15 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     {
       // GetSelectedEntity(GameState)->Transform.Rotation.Y += 110.0f * Input->dt;
     }
+#else
+    entity* SelectedEntity = {};
+    if(GetSelectedEntity(GameState, &SelectedEntity))
+    {
+      UI::Row(&Layout);
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &SelectedEntity->Transform.Rotation.Y,
+                      0, 360.0f, 720.0f);
+    }
+#endif
     UI::_Row(&Layout, 6, "Toggleables");
     UI::_BoolButton(&Layout, Input, "Toggle Timeline", &GameState->DrawTimeline);
     UI::_BoolButton(&Layout, Input, "Toggle Cubemap", &GameState->DrawCubemap);
@@ -122,7 +131,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           .Transforms[GameState->AnimEditor.CurrentBone]
           .Translation.Y -= Input->dt;
       }
-      if(UI::_HoldButton(&Layout, Input, "+"))
+      if(UI::_HoldButton(&Layout, Input, "  +  "))
       {
         GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
           .Transforms[GameState->AnimEditor.CurrentBone]
@@ -147,7 +156,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   if(UI::_ExpandableButton(&Layout, Input, "Entity Creation", &g_ShowEntityDrowpown))
   {
     UI::Row(&Layout, 2);
-    if(UI::_PushButton(&Layout, Input, "Previous Mesh"))
+    if(UI::_PushButton(&Layout, Input, "Previous Model"))
     {
       if(GameState->R.ModelCount > 0)
       {
@@ -155,7 +164,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           (GameState->CurrentModel + GameState->R.ModelCount - 1) % GameState->R.ModelCount;
       }
     }
-    if(UI::_PushButton(&Layout, Input, "Next Mesh"))
+    if(UI::_PushButton(&Layout, Input, "Next Model"))
     {
       if(GameState->R.ModelCount > 0)
       {
@@ -163,8 +172,12 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       }
     }
     UI::Row(&Layout);
-    UI::_BoolButton(&Layout, Input, "Next Material", &GameState->IsEntityCreationMode);
-    UI::SquareQuad(GameState, &Layout, GameState->IDTexture);
+    if(UI::_PushButton(&Layout, Input, "Create Entity"))
+    {
+      GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
+    }
+
+    UI::DrawSquareQuad(GameState, &Layout, GameState->IDTexture);
     UI::Row(&Layout, 2);
     if(UI::_PushButton(&Layout, Input, "Previous Material"))
     {
