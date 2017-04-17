@@ -3,15 +3,9 @@
 void
 UnsetMaterial(render_data* RenderData, int32_t MaterialIndex)
 {
-  uint32_t ShaderType = RenderData->Materials[MaterialIndex].Header.ShaderType;
-  switch(ShaderType)
-  {
-    case SHADER_Cubemap:
-    {
-      glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-      glDepthFunc(GL_LESS);
-    }
-  }
+  uint32_t ShaderType = RenderData->Materials[MaterialIndex].Common.ShaderType;
+  glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+  glDepthFunc(GL_LESS);
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindVertexArray(0);
 }
@@ -19,33 +13,47 @@ UnsetMaterial(render_data* RenderData, int32_t MaterialIndex)
 uint32_t
 SetMaterial(render_data* RenderData, camera* Camera, material* Material)
 {
-  assert(RenderData->Materials <= Material &&
-         Material < RenderData->Materials + RenderData->MaterialCount);
-  if(Material->Header.ShaderType == SHADER_Phong)
+  if(Material->Common.UseBlending)
+  {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  }
+  else
+  {
+    glDisable(GL_BLEND);
+  }
+
+  if(Material->Common.ShaderType == SHADER_Phong)
   {
     glUseProgram(RenderData->ShaderPhong);
     glUniform1f(glGetUniformLocation(RenderData->ShaderPhong, "ambient_strength"),
                 Material->Phong.AmbientStrength);
     glUniform1f(glGetUniformLocation(RenderData->ShaderPhong, "specular_strength"),
                 Material->Phong.SpecularStrength);
-    glUniform3f(glGetUniformLocation(RenderData->ShaderPhong, "light_position"),
-                RenderData->LightPosition.X, RenderData->LightPosition.Y,
-                RenderData->LightPosition.Z);
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "light_position"), 1,
+                 (float*)&RenderData->LightPosition);
     glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "light_color"), 1,
                  (float*)&RenderData->LightColor);
     glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "camera_position"), 1,
                  (float*)&Camera->Position);
     glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->Phong.TextureIndex0]);
-		return RenderData->ShaderPhong;
+    return RenderData->ShaderPhong;
   }
-  if(Material->Header.ShaderType == SHADER_Color)
+  else if(Material->Common.ShaderType == SHADER_Color)
   {
     glUseProgram(RenderData->ShaderColor);
     glUniform4fv(glGetUniformLocation(RenderData->ShaderColor, "g_color"), 1,
                  (float*)&Material->Color.Color);
-		return RenderData->ShaderColor;
+    return RenderData->ShaderColor;
   }
-	return -1;
+  return -1;
+}
+
+uint32_t
+SetMaterial(render_data* RenderData, camera* Camera, int32_t MaterialIndex)
+{
+  assert(0 <= MaterialIndex && MaterialIndex < RenderData->MaterialCount);
+  return SetMaterial(RenderData, Camera, &RenderData->Materials[MaterialIndex]);
 }
 
 #if 0

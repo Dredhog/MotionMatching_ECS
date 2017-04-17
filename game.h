@@ -14,8 +14,8 @@
 #include "render_data.h"
 #include "text.h"
 
-const int32_t        ENTITY_MAX_COUNT      = 400;
-static const int32_t ENTITY_MAX_MESH_COUNT = 100;
+const int32_t ENTITY_MAX_COUNT = 400;
+// static const int32_t ENTITY_MAX_MESH_COUNT = 100;
 
 struct entity
 {
@@ -31,15 +31,6 @@ struct loaded_wav
   uint32_t AudioSampleIndex;
 };
 
-enum engine_mode
-{
-  MODE_AnimationEditor,
-  MODE_EntityCreation,
-  MODE_MaterialEditor,
-  MODE_Gameplay,
-  MODE_FlyCam,
-};
-
 struct game_state
 {
   Memory::stack_allocator* PersistentMemStack;
@@ -49,6 +40,8 @@ struct game_state
   EditAnimation::animation_editor AnimEditor;
   int32_t                         CurrentModel;
   int32_t                         CurrentMaterial;
+
+  //material EditableMaterial;
 
   camera Camera;
   camera PreviewCamera;
@@ -74,7 +67,7 @@ struct game_state
   int32_t SelectedMeshIndex;
 
   // Fonts/text
-	Text::font Font;
+  Text::font Font;
 
   // Switches/Flags
   bool  DrawWireframe;
@@ -93,12 +86,19 @@ struct game_state
   bool       WAVLoaded;
 
   uint32_t MagicChecksum;
-  uint32_t EngineMode;
 
   // ID buffer (selection)
   uint32_t IndexFBO;
   uint32_t DepthRBO;
   uint32_t IDTexture;
+
+  // Material preview framebuffer
+#if 0
+  uint32_t PreviewFBO;
+  uint32_t PreviewDepthRBO;
+  uint32_t MaterialEditorPreviewTexture;
+  uint32_t MaterialPreviewTexture;
+#endif
 };
 
 inline bool

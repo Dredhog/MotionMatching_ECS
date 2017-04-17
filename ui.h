@@ -15,8 +15,6 @@ namespace UI
     float ColumnWidth;
     float TopLeft[2];
     float ScrollbarWidth;
-    float ButtonBorder;
-    float TextPadding;
     float AspectRatio;
   };
 
@@ -53,7 +51,14 @@ namespace UI
   bool PushButton(game_state* GameState, im_layout* Layout, const game_input* Input,
                   const char* Text, bool TestChanged = true);
   void SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
-                   float* Var, float Min, float Max, float ScreenValue, vec4 InnerColor = {0.4f, 0.4f, 0.4f, 1});
+                   float* Var, float Min, float Max, float ScreenValue,
+                   vec4 InnerColor = { 0.4f, 0.4f, 0.4f, 1 });
+  void SliderInt(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
+                 int32_t* Var, int32_t Min, int32_t Max, float ScreenValue,
+                 vec4 InnerColor = { 0.4f, 0.4f, 0.4f, 1 });
+  void SliderUint(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
+                      uint32_t* Var, uint32_t Min, uint32_t Max, float ScreenValue,
+                      vec4 InnerColor = { 0.4f, 0.4f, 0.4f, 1 });
   void DrawCollapsableButton(game_state* GameState, im_layout* Layout, const game_input* Input,
                              bool IsExpanded, const char* Text, vec4 InnerColor,
                              vec4 BorderColor = { 0.1f, 0.1f, 0.1f, 1 });

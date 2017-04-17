@@ -276,6 +276,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->MouseRight.EndedDown = true;
         }
+        if(Event->button.button == SDL_BUTTON_MIDDLE)
+        {
+          NewInput->MouseMiddle.EndedDown = true;
+        }
         break;
       }
       case SDL_MOUSEBUTTONUP:
@@ -287,6 +291,10 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         if(Event->button.button == SDL_BUTTON_RIGHT)
         {
           NewInput->MouseRight.EndedDown = false;
+        }
+        if(Event->button.button == SDL_BUTTON_MIDDLE)
+        {
+          NewInput->MouseMiddle.EndedDown = false;
         }
         break;
       }
@@ -302,8 +310,8 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
   }
   else
   {
-    NewInput->dMouseX = 0.0f;
-    NewInput->dMouseY = 0.0f;
+    NewInput->dMouseX = NewInput->MouseX - OldInput->MouseX;
+    NewInput->dMouseY = NewInput->MouseY - OldInput->MouseY;
   }
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
@@ -491,8 +499,8 @@ main(int argc, char* argv[])
 
   game_memory GameMemory;
   {
-    GameMemory.TemporaryMemorySize  = Mibibytes(80);
-    GameMemory.PersistentMemorySize = Mibibytes(80);
+    GameMemory.TemporaryMemorySize  = Mibibytes(150);
+    GameMemory.PersistentMemorySize = Mibibytes(150);
 
     GameMemory.TemporaryMemory  = malloc(GameMemory.TemporaryMemorySize);
     GameMemory.PersistentMemory = malloc(GameMemory.PersistentMemorySize);

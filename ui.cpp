@@ -59,7 +59,7 @@ SetActive(ui_id ID)
 void
 SetHot(ui_id ID)
 {
-  // if(IsActive(NOT_ACTIVE))
+  if(IsActive(NOT_ACTIVE))
   {
     g_Hot = ID;
   }
@@ -75,6 +75,7 @@ UI::NewLayout(float X, float Y, float Width, float RowHeight, float AspectRatio,
   Result.TopLeft[0]     = X;
   Result.TopLeft[1]     = Y;
   Result.Width          = Width;
+  Result.ColumnWidth    = Width;
   Result.RowHeight      = RowHeight;
   Result.AspectRatio    = AspectRatio;
   Result.ScrollbarWidth = ScrollbarWidth;
@@ -279,10 +280,14 @@ UI::SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Inpu
   {
     SetHot(ID);
   }
+  else if(IsHot(ID))
+  {
+    SetHot(NOT_ACTIVE);
+  }
 
   if(IsActive(ID))
   {
-    *Var = Input->NormMouseX * ScreenValue;
+    *Var += Input->NormdMouseX * ScreenValue;
     if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
     {
       SetActive(NOT_ACTIVE);
@@ -297,9 +302,91 @@ UI::SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Inpu
   }
   char FloatTextBuffer[20];
 
-  sprintf(FloatTextBuffer, "%.2f", (double)*Var);
-  UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor);
   *Var = ClampFloat(Min, *Var, Max);
+  sprintf(FloatTextBuffer, "%5.2f", (double)*Var);
+  UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor);
+  Layout->X += Layout->ColumnWidth;
+}
+
+void
+UI::SliderInt(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
+              int32_t* Var, int32_t Min, int32_t Max, float ScreenValue, vec4 InnerColor)
+{
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Var;
+  ID.NamePtr = (uintptr_t)Text;
+
+  if(_LayoutIntersects(Layout, Input))
+  {
+    SetHot(ID);
+  }
+  else if(IsHot(ID))
+  {
+    SetHot(NOT_ACTIVE);
+  }
+
+  if(IsActive(ID))
+  {
+    *Var += (int32_t)(Input->NormdMouseX * ScreenValue);
+    if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(NOT_ACTIVE);
+    }
+  }
+  else if(IsHot(ID))
+  {
+    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(ID);
+    }
+  }
+  char TextBuffer[20];
+
+  *Var = ClampInt32InIn(Min, *Var, Max);
+  sprintf(TextBuffer, "%d", *Var);
+  UI::DrawTextBox(GameState, Layout, TextBuffer, InnerColor);
+  Layout->X += Layout->ColumnWidth;
+}
+
+void
+UI::SliderUint(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
+               uint32_t* Var, uint32_t Min, uint32_t Max, float ScreenValue, vec4 InnerColor)
+{
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Var;
+  ID.NamePtr = (uintptr_t)Text;
+
+  if(_LayoutIntersects(Layout, Input))
+  {
+    SetHot(ID);
+  }
+  else if(IsHot(ID))
+  {
+    SetHot(NOT_ACTIVE);
+  }
+
+  if(IsActive(ID))
+  {
+    *Var += (uint32_t)(Input->dMouseX / ScreenValue);
+
+    if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(NOT_ACTIVE);
+    }
+  }
+  else if(IsHot(ID))
+  {
+    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(ID);
+    }
+  }
+  char TextBuffer[20];
+
+  *Var = ClampInt32InIn(Min, *Var, Max);
+  sprintf(TextBuffer, "%u", *Var);
+  UI::DrawTextBox(GameState, Layout, TextBuffer, InnerColor);
+  Layout->X += Layout->ColumnWidth;
 }
 
 void

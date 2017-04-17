@@ -3,7 +3,6 @@
 void
 UpdateCamera(camera* Camera, const game_input* Input)
 {
-  Camera->Speed = 2.0f;
   if(Input->LeftShift.EndedDown)
   {
     if(Input->w.EndedDown)
@@ -34,8 +33,11 @@ UpdateCamera(camera* Camera, const game_input* Input)
   {
     Camera->Position += Input->dt * Camera->Speed * Camera->Right;
   }
-  Camera->Rotation.X += 0.05f * (float)Input->dMouseY;
-  Camera->Rotation.Y -= 0.05f * (float)Input->dMouseX;
+  if(!Input->IsMouseInEditorMode)
+  {
+    Camera->Rotation.X += 0.05f * (float)Input->dMouseY;
+    Camera->Rotation.Y -= 0.05f * (float)Input->dMouseX;
+  }
 
   Camera->Rotation.X = ClampFloat(-Camera->MaxTiltAngle, Camera->Rotation.X, Camera->MaxTiltAngle);
   Camera->Forward =

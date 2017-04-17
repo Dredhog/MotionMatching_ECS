@@ -46,7 +46,7 @@ Text::LoadSizedFont(const char* FontName, int FontSize)
 Text::font
 Text::LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize)
 {
-  assert(0 < SizeCount && SizeCount < MAX_FONT_SIZE_COUNT);
+  assert(0 < SizeCount && SizeCount <= MAX_FONT_SIZE_COUNT);
   assert(0 < DeltaSize);
   assert(0 < MinSize);
   assert(FontName);

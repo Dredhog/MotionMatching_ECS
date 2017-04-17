@@ -109,7 +109,7 @@ DEBUGDrawQuad(game_state* GameState, vec3 LowerLeft, float Width, float Height, 
 {
   if(!DepthEnabled)
   {
-    glClear(GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_DEPTH_BUFFER_BIT);
   }
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
@@ -129,7 +129,7 @@ DEBUGDrawTopLeftQuad(game_state* GameState, vec3 LowerLeft, float Width, float H
 {
   if(!DepthEnabled)
   {
-    glClear(GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_DEPTH_BUFFER_BIT);
   }
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
@@ -149,7 +149,7 @@ DEBUGDrawCenteredQuad(game_state* GameState, vec3 Center, float Width, float Hei
 {
   if(!DepthEnabled)
   {
-    glClear(GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_DEPTH_BUFFER_BIT);
   }
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
@@ -169,7 +169,7 @@ DEBUGDrawTopLeftTexturedQuad(game_state* GameState, int32_t TextureID, vec3 Lowe
 {
   if(!DepthEnabled)
   {
-    glClear(GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_DEPTH_BUFFER_BIT);
   }
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
@@ -195,7 +195,7 @@ DEBUGDrawTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, 
 {
   if(!DepthEnabled)
   {
-    glClear(GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_DEPTH_BUFFER_BIT);
   }
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;
@@ -221,7 +221,7 @@ DEBUGDrawUnflippedTexturedQuad(game_state* GameState, int32_t TextureID, vec3 Lo
 {
   if(!DepthEnabled)
   {
-    glClear(GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_DEPTH_BUFFER_BIT);
   }
 
   vec3 Dimension = vec3{ Width, Height, 0 } * 2.0f;

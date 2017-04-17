@@ -1,54 +1,40 @@
 #include "game.h"
 #include "ui.h"
 #include "debug_drawing.h"
+#include "render_data.h"
+
+#include <limits>
 
 void
 DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
 {
   // Humble beginnings of the editor GUI system
   const float   TEXT_HEIGHT    = 0.03f;
-  const float   StartX         = 0.7f;
-  const float   StartY         = 0.9f;
+  const float   StartX         = 0.75f;
+  const float   StartY         = 0.95f;
   const float   YPadding       = 0.02f;
   const float   AspectRatio    = ((float)SCREEN_WIDTH / (float)SCREEN_HEIGHT);
-  const float   LayoutWidth    = 0.2f;
-  const float   RowHeight      = 0.05f;
+  const float   LayoutWidth    = 0.15f;
+  const float   RowHeight      = 0.04f;
   const float   SliderWidth    = 0.05f;
   const int32_t ScrollRowCount = 2;
 
-  static int32_t g_TotalRowCount          = 4;
-  static bool    g_ShowDisplaySet         = false;
-  static bool    g_ShowTransformSettign   = false;
-  static bool    g_ShowTranslationButtons = false;
-  static bool    g_ShowEntityDrowpown     = false;
-  static bool    g_ShowAnimSetings        = false;
-  static bool    g_ShowScrollSection      = false;
-  static float   g_ScrollK                = 0.0f;
+  static bool  g_ShowDisplaySet         = false;
+  static bool  g_ShowTransformSettign   = false;
+  static bool  g_ShowTranslationButtons = false;
+  static bool  g_ShowEntityDrowpown     = false;
+  static bool  g_ShowAnimSetings        = false;
+  static bool  g_ShowScrollSection      = false;
+  static bool  g_ShowMaterialEditor     = false;
+  static bool  g_ShowCameraSettings     = false;
+  static float g_ScrollK                = 0.0f;
 
   UI::im_layout Layout =
     UI::NewLayout(StartX, StartY, LayoutWidth, RowHeight, AspectRatio, SliderWidth);
 
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Rendering", &g_ShowDisplaySet))
+  // UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Render Settings", &g_ShowDisplaySet))
   {
-#if 0
-    if(UI::_HoldButton(&Layout, Input, "PlayHead CW"))
-    {
-      // GetSelectedEntity(GameState)->Transform.Rotation.Y -= 110.0f * Input->dt;
-    }
-    if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
-    {
-      // GetSelectedEntity(GameState)->Transform.Rotation.Y += 110.0f * Input->dt;
-    }
-#else
-    entity* SelectedEntity = {};
-    if(GetSelectedEntity(GameState, &SelectedEntity))
-    {
-      UI::Row(&Layout);
-      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &SelectedEntity->Transform.Rotation.Y,
-                      0, 360.0f, 720.0f);
-    }
-#endif
     UI::_Row(&Layout, 6, "Toggleables");
     UI::_BoolButton(&Layout, Input, "Toggle Timeline", &GameState->DrawTimeline);
     UI::_BoolButton(&Layout, Input, "Toggle Cubemap", &GameState->DrawCubemap);
@@ -57,100 +43,54 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::_BoolButton(&Layout, Input, "Toggle BWeights", &GameState->DrawBoneWeights);
     UI::_BoolButton(&Layout, Input, "Toggle Spinning", &GameState->IsModelSpinning);
   }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Transform", &g_ShowTranslationButtons))
+  entity* SelectedEntity = {};
+  if(GetSelectedEntity(GameState, &SelectedEntity))
   {
-    UI::Row(&Layout, 2);
-    if(UI::_PushButton(&Layout, Input, "Previous Bone"))
-    {
-      EditAnimation::EditPreviousBone(&GameState->AnimEditor);
-    }
-    if(UI::_PushButton(&Layout, Input, "Next Bone"))
-    {
-      EditAnimation::EditNextBone(&GameState->AnimEditor);
-    }
-    UI::_Row(&Layout, 2, "X rotation");
-    if(UI::_HoldButton(&Layout, Input, "PlayHead CW"))
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.X -= GameState->EditorBoneRotationSpeed * Input->dt;
-    }
-    if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.X += GameState->EditorBoneRotationSpeed * Input->dt;
-    }
-    UI::_Row(&Layout, 2, "Y rotation");
-    if(UI::_HoldButton(&Layout, Input, "Rotate CW"))
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.Y -= GameState->EditorBoneRotationSpeed * Input->dt;
-    }
-    if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.Y += GameState->EditorBoneRotationSpeed * Input->dt;
-    }
-    UI::_Row(&Layout, 2, "Z rotation");
-    if(UI::_HoldButton(&Layout, Input, "Rotate CW"))
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.Z -= GameState->EditorBoneRotationSpeed * Input->dt;
-    }
-    if(UI::_HoldButton(&Layout, Input, "Rotate CCW"))
-    {
-      GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-        .Transforms[GameState->AnimEditor.CurrentBone]
-        .Rotation.Z += GameState->EditorBoneRotationSpeed * Input->dt;
-    }
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Position", &g_ShowTransformSettign))
+    if(UI::_ExpandableButton(&Layout, Input, "Transform", &g_ShowTranslationButtons))
     {
-      UI::_Row(&Layout, 2, "X Position");
-      if(UI::_HoldButton(&Layout, Input, "-"))
-      {
-        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-          .Transforms[GameState->AnimEditor.CurrentBone]
-          .Translation.X -= Input->dt;
-      }
-      if(UI::_HoldButton(&Layout, Input, "+"))
-      {
-        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-          .Transforms[GameState->AnimEditor.CurrentBone]
-          .Translation.X += Input->dt;
-      }
-      UI::_Row(&Layout, 2, "Y Position");
-      if(UI::_HoldButton(&Layout, Input, "-"))
-      {
-        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-          .Transforms[GameState->AnimEditor.CurrentBone]
-          .Translation.Y -= Input->dt;
-      }
-      if(UI::_HoldButton(&Layout, Input, "  +  "))
-      {
-        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-          .Transforms[GameState->AnimEditor.CurrentBone]
-          .Translation.Y += Input->dt;
-      }
-      UI::_Row(&Layout, 2, "Z Position");
-      if(UI::_HoldButton(&Layout, Input, "-"))
-      {
-        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-          .Transforms[GameState->AnimEditor.CurrentBone]
-          .Translation.Z -= Input->dt;
-      }
-      if(UI::_HoldButton(&Layout, Input, "+"))
-      {
-        GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-          .Transforms[GameState->AnimEditor.CurrentBone]
-          .Translation.Z += Input->dt;
-      }
+
+      Anim::transform* Transform =
+        &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+           .Transforms[GameState->AnimEditor.CurrentBone];
+      UI::_Row(&Layout, 3, "Translation");
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.X, -INFINITY,
+                      INFINITY, 20.0f);
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Y, -INFINITY,
+                      INFINITY, 20.0f);
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Z, -INFINITY,
+                      INFINITY, 20.0f);
+      UI::_Row(&Layout, 3, "Rotation");
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.X, -360, 360.0f,
+                      720.0f);
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Y, -360, 360.0f,
+                      720.0f);
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Z, -360, 360.0f,
+                      720.0f);
+      UI::_Row(&Layout, 3, "Scale  ");
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Scale.X, 0, 100,
+                      10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Scale.Y, 0, 100,
+                      10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Scale.Z, 0, 100,
+                      10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
     }
+  }
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Camera     ", &g_ShowCameraSettings))
+  {
+    UI::_Row(&Layout, 1, "FOV    ");
+    UI::SliderFloat(GameState, &Layout, Input, "FieldOfView", &GameState->Camera.FieldOfView, 0,
+                    200.0f, 50.0f);
+    UI::_Row(&Layout, 1, "Near  ");
+    UI::SliderFloat(GameState, &Layout, Input, "Near Clip Plane", &GameState->Camera.NearClipPlane,
+                    0.001f, 1000, 50.0f);
+    UI::_Row(&Layout, 1, "Far   ");
+    UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.FarClipPlane,
+                    GameState->Camera.NearClipPlane, 1000, 50.0f);
+    UI::_Row(&Layout, 1, "Speed");
+    UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.Speed, 0, 200,
+                    50.0f);
   }
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Entity Creation", &g_ShowEntityDrowpown))
@@ -158,17 +98,16 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::Row(&Layout, 2);
     if(UI::_PushButton(&Layout, Input, "Previous Model"))
     {
-      if(GameState->R.ModelCount > 0)
+      if(0 < GameState->CurrentModel)
       {
-        GameState->CurrentModel =
-          (GameState->CurrentModel + GameState->R.ModelCount - 1) % GameState->R.ModelCount;
+        --GameState->CurrentModel;
       }
     }
     if(UI::_PushButton(&Layout, Input, "Next Model"))
     {
-      if(GameState->R.ModelCount > 0)
+      if(GameState->CurrentModel < GameState->R.ModelCount - 1)
       {
-        GameState->CurrentModel = (GameState->CurrentModel + 1) % GameState->R.ModelCount;
+        ++GameState->CurrentModel;
       }
     }
     UI::Row(&Layout);
@@ -176,26 +115,32 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     {
       GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
     }
-
+  }
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
+  {
     UI::DrawSquareQuad(GameState, &Layout, GameState->IDTexture);
-    UI::Row(&Layout, 2);
-    if(UI::_PushButton(&Layout, Input, "Previous Material"))
+    UI::_Row(&Layout, 2, "Material");
+    if(UI::_PushButton(&Layout, Input, "Previous"))
     {
-      if(GameState->R.MaterialCount > 0)
+      if(0 < GameState->CurrentMaterial)
       {
-        GameState->CurrentMaterial = (GameState->CurrentMaterial + GameState->R.MaterialCount - 1) %
-                                     GameState->R.MaterialCount;
+        --GameState->CurrentMaterial;
       }
     }
-    if(UI::_PushButton(&Layout, Input, "Next Material"))
+    if(UI::_PushButton(&Layout, Input, "  Next  "))
     {
-      if(GameState->R.MaterialCount > 0)
+      if(GameState->CurrentMaterial < GameState->R.MaterialCount - 1)
       {
-        GameState->CurrentMaterial = (GameState->CurrentMaterial + 1) % GameState->R.MaterialCount;
+        ++GameState->CurrentMaterial;
       }
     }
+
+    assert(GameState->R.MaterialCount > 0);
+    material* CurrentMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
+
     UI::Row(&Layout);
-    if(UI::_PushButton(&Layout, Input, "Set maerial"))
+    if(UI::_PushButton(&Layout, Input, "Apply To Selected"))
     {
       if(GameState->R.ModelCount > 0)
       {
@@ -215,10 +160,93 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         }
       }
     }
+
+    UI::Row(&Layout);
+    if(UI::_PushButton(&Layout, Input, "Reset Material"))
+    {
+      uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType;
+      *CurrentMaterial                    = {};
+      CurrentMaterial->Common.ShaderType = ShaderType;
+    }
+    UI::_Row(&Layout, 2, "Shader Type");
+    if(UI::_PushButton(&Layout, Input, "Previous"))
+    {
+      if(CurrentMaterial->Common.ShaderType > 0)
+      {
+        --CurrentMaterial->Common.ShaderType;
+      }
+    }
+    if(UI::_PushButton(&Layout, Input, "  Next  "))
+    {
+      CurrentMaterial->Common.ShaderType =
+        ClampInt32InIn(0, CurrentMaterial->Common.ShaderType + 1, SHADER_EnumCount - 1);
+    }
+
+    material* Material = &GameState->R.Materials[GameState->CurrentMaterial];
+    UI::Row(&Layout);
+    UI::_BoolButton(&Layout, Input, "Enable Blending", &CurrentMaterial->Common.UseBlending);
+
+    switch(Material->Common.ShaderType)
+    {
+      case SHADER_Phong:
+      {
+        UI::_Row(&Layout, 2, "Albedo");
+        UI::DrawTextBox(GameState, &Layout, "Number", { 0.4f, 0.4f, 0.4f, 1 });
+        if(UI::_PushButton(&Layout, Input, "Prev"))
+        {
+          if(CurrentMaterial->Phong.TextureIndex0 > 0)
+          {
+            --CurrentMaterial->Phong.TextureIndex0;
+          }
+        }
+        if(UI::_PushButton(&Layout, Input, "Next  "))
+        {
+          CurrentMaterial->Phong.TextureIndex0 =
+            (CurrentMaterial->Phong.TextureIndex0 + 1) % GameState->R.TextureCount;
+        }
+        UI::_Row(&Layout, 1, "Ambient");
+        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength, 0, 1.0f,
+                        5.0f);
+        UI::_Row(&Layout, 1, "Specular");
+        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength, 0,
+                        1.0f, 5.0f);
+      }
+      break;
+      case SHADER_Color:
+      {
+        UI::_Row(&Layout, 4, "Color");
+        UI::SliderFloat(GameState, &Layout, Input, "R", &Material->Color.Color.R, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "G", &Material->Color.Color.G, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "B", &Material->Color.Color.B, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "A", &Material->Color.Color.A, 0, 1.0f, 5.0f);
+      }
+      break;
+    }
+    UI::Row(&Layout);
+    if(UI::_PushButton(&Layout, Input, "Create New"))
+    {
+      AddMaterial(&GameState->R, {});
+      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+    }
+    UI::Row(&Layout);
+    if(UI::_PushButton(&Layout, Input, "Crete From Current"))
+    {
+      AddMaterial(&GameState->R, *CurrentMaterial);
+      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+    }
   }
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Animation Settings", &g_ShowAnimSetings))
   {
+    UI::Row(&Layout, 2);
+    if(UI::_PushButton(&Layout, Input, "Previous Bone"))
+    {
+      EditAnimation::EditPreviousBone(&GameState->AnimEditor);
+    }
+    if(UI::_PushButton(&Layout, Input, "Next Bone"))
+    {
+      EditAnimation::EditNextBone(&GameState->AnimEditor);
+    }
     UI::Row(&Layout);
     if(UI::PushButton(GameState, &Layout, Input, "Delete keyframe", { 0.6f, 0.4f, 0.4f, 1.0f }))
     {
@@ -242,6 +270,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::Row(&Layout);
     UI::_BoolButton(&Layout, Input, "Play Animation", &GameState->IsAnimationPlaying);
   }
+#if 0
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Scrollbar Section", &g_ShowScrollSection))
   {
@@ -281,6 +310,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     }
     UI::EndScrollableList(&Layout);
   }
+#endif
 }
 
 void

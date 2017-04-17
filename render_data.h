@@ -4,8 +4,9 @@ enum shader_type
 {
   SHADER_Phong,
   SHADER_Color,
-  SHADER_ID,
-  SHADER_Cubemap,
+  //  SHADER_ID,
+
+  SHADER_EnumCount,
 };
 
 union material {
@@ -13,19 +14,19 @@ union material {
   struct material_header
   {
     uint32_t ShaderType;
-    bool     IsSkeletal;
-  } Header;
+    bool     UseBlending;
+  } Common;
 
   struct
   {
-    material_header Header;
+    material_header Common;
     uint32_t        TextureIndex0;
     float           AmbientStrength;
     float           SpecularStrength;
   } Phong;
   struct
   {
-    material_header Header;
+    material_header Common;
     vec4            Color;
   } Color;
 };
@@ -86,9 +87,9 @@ inline material
 NewPhongMaterial()
 {
   material Material               = {};
-  Material.Header.ShaderType      = SHADER_Phong;
+  Material.Common.ShaderType      = SHADER_Phong;
+  Material.Common.UseBlending     = true;
   Material.Phong.TextureIndex0    = 0;
-  Material.Header.IsSkeletal      = false;
   Material.Phong.AmbientStrength  = 0.8f;
   Material.Phong.SpecularStrength = 0.6f;
   return Material;
@@ -97,10 +98,10 @@ NewPhongMaterial()
 inline material
 NewColorMaterial()
 {
-  material Material          = {};
-  Material.Header.ShaderType = SHADER_Color;
-  Material.Header.IsSkeletal = false;
-  Material.Color.Color       = vec4{ 1, 0.55f, 0.25f, 1 };
+  material Material           = {};
+  Material.Common.ShaderType  = SHADER_Color;
+  Material.Common.UseBlending = true;
+  Material.Color.Color        = vec4{ 1, 1, 0, 1 };
   return Material;
 }
 
