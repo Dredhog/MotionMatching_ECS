@@ -39,6 +39,33 @@ SetMaterial(render_data* RenderData, camera* Camera, material* Material)
     glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->Phong.TextureIndex0]);
     return RenderData->ShaderPhong;
   }
+  else if(Material->Common.ShaderType == SHADER_LightMapPhong)
+  {
+    //TODO(Rytis): Find out why ambient strength did not work (currently removed)
+    glUseProgram(RenderData->ShaderLightingMapPhong);
+    glUniform1i(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "material.diffuse"), 0);
+    glUniform1i(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "material.specular"), 1);
+    //NOTE: Shininess multiplier should not stay this way
+    glUniform1f(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "material.shininess"),
+                Material->LightMapPhong.Shininess * 128.0f);
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.position"), 1,
+                 (float*)&RenderData->LightPosition);
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.ambient"), 1,
+                 (float*)&RenderData->LightAmbientColor);
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.diffuse"), 1,
+                 (float*)&RenderData->LightDiffuseColor);
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.specular"), 1,
+                 (float*)&RenderData->LightSpecularColor);
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "camera_position"), 1,
+                 (float*)&Camera->Position);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->LightMapPhong.TextureIndex0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D,
+                  RenderData->SpecularMaps[Material->LightMapPhong.SpecularMapIndex]);
+    glActiveTexture(GL_TEXTURE0);
+    return RenderData->ShaderLightingMapPhong;
+  }
   else if(Material->Common.ShaderType == SHADER_Color)
   {
     glUseProgram(RenderData->ShaderColor);

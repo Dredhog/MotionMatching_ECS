@@ -35,6 +35,14 @@ Render::SetUpMesh(Render::mesh* Mesh)
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Render::vertex),
                           (GLvoid*)(offsetof(Render::vertex, UV)));
   }
+
+  if(Mesh->HasTangents)
+  {
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Render::vertex),
+                          (GLvoid*)(offsetof(Render::vertex, Tangent)));
+  }
+
   if(Mesh->BoneCount > 0)
   {
     glEnableVertexAttribArray(4);

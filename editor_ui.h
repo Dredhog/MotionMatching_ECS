@@ -119,7 +119,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
   {
-    UI::DrawSquareQuad(GameState, &Layout, GameState->IDTexture);
+    // UI::DrawSquareQuad(GameState, &Layout, GameState->IDTexture);
     UI::_Row(&Layout, 2, "Material");
     if(UI::_PushButton(&Layout, Input, "Previous"))
     {
@@ -164,8 +164,8 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::Row(&Layout);
     if(UI::_PushButton(&Layout, Input, "Reset Material"))
     {
-      uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType;
-      *CurrentMaterial                    = {};
+      uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
+      *CurrentMaterial                   = {};
       CurrentMaterial->Common.ShaderType = ShaderType;
     }
     UI::_Row(&Layout, 2, "Shader Type");
@@ -212,6 +212,28 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
                         1.0f, 5.0f);
       }
       break;
+      //TODO(Rytis): Fix bug involving specular map and different shader slider value change
+      case SHADER_LightMapPhong:
+      {
+        UI::_Row(&Layout, 2, "Albedo");
+        UI::DrawTextBox(GameState, &Layout, "Number", { 0.4f, 0.4f, 0.4f, 1 });
+        if(UI::_PushButton(&Layout, Input, "Prev"))
+        {
+          if(CurrentMaterial->LightMapPhong.TextureIndex0 > 0)
+          {
+            --CurrentMaterial->LightMapPhong.TextureIndex0;
+          }
+        }
+        if(UI::_PushButton(&Layout, Input, "Next  "))
+        {
+          CurrentMaterial->LightMapPhong.TextureIndex0 =
+            (CurrentMaterial->LightMapPhong.TextureIndex0 + 1) % GameState->R.TextureCount;
+        }
+        UI::_Row(&Layout, 1, "Shininess");
+        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->LightMapPhong.Shininess, 0,
+                        1.0f, 5.0f);
+      }
+      break;
       case SHADER_Color:
       {
         UI::_Row(&Layout, 4, "Color");
@@ -229,7 +251,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
     }
     UI::Row(&Layout);
-    if(UI::_PushButton(&Layout, Input, "Crete From Current"))
+    if(UI::_PushButton(&Layout, Input, "Create From Current"))
     {
       AddMaterial(&GameState->R, *CurrentMaterial);
       GameState->CurrentMaterial = GameState->R.MaterialCount - 1;

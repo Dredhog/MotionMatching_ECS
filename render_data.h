@@ -3,10 +3,20 @@
 enum shader_type
 {
   SHADER_Phong,
+  SHADER_LightMapPhong,
   SHADER_Color,
   //  SHADER_ID,
 
   SHADER_EnumCount,
+};
+
+enum texture_type
+{
+  TEXTURE_Diffuse,
+  TEXTURE_Specular,
+  TEXTURE_Normal,
+
+  TEXTURE_EnumCount,
 };
 
 union material {
@@ -24,6 +34,13 @@ union material {
     float           AmbientStrength;
     float           SpecularStrength;
   } Phong;
+  struct
+  {
+    material_header Common;
+    uint32_t        TextureIndex0;
+    uint32_t        SpecularMapIndex;
+    float           Shininess;
+  } LightMapPhong;
   struct
   {
     material_header Common;
@@ -58,9 +75,14 @@ struct render_data
   // Textures
   int32_t Textures[TEXTURE_MAX_COUNT];
   int32_t TextureCount;
+  int32_t SpecularMaps[TEXTURE_MAX_COUNT];
+  int32_t SpecularMapCount;
+  int32_t NormalMaps[TEXTURE_MAX_COUNT];
+  int32_t NormalMapCount;
 
   // Shaders
   uint32_t ShaderPhong;
+  uint32_t ShaderLightingMapPhong;
   uint32_t ShaderSkeletalPhong;
   uint32_t ShaderSkeletalBoneColor;
   uint32_t ShaderColor;
@@ -72,15 +94,43 @@ struct render_data
 
   // Light
   vec3 LightPosition;
+  //-----Testing Purposes-----
+  vec3 LightAmbientColor;
+  vec3 LightDiffuseColor;
+  vec3 LightSpecularColor;
+  //--------------------------
   vec3 LightColor;
 };
 
 inline void
-AddTexture(render_data* RenderData, int32_t TextureID)
+AddTexture(render_data* RenderData, int32_t TextureID, texture_type TextureType)
 {
   assert(TextureID);
-  assert(0 <= RenderData->TextureCount && RenderData->TextureCount < TEXTURE_MAX_COUNT);
-  RenderData->Textures[RenderData->TextureCount++] = TextureID;
+  switch(TextureType)
+  {
+    case TEXTURE_Diffuse:
+    {
+      assert(0 <= RenderData->TextureCount && RenderData->TextureCount < TEXTURE_MAX_COUNT);
+      RenderData->Textures[RenderData->TextureCount++] = TextureID;
+    }
+    break;
+    case TEXTURE_Specular:
+    {
+      assert(0 <= RenderData->SpecularMapCount && RenderData->SpecularMapCount < TEXTURE_MAX_COUNT);
+      RenderData->SpecularMaps[RenderData->SpecularMapCount++] = TextureID;
+    }
+    break;
+    case TEXTURE_Normal:
+    {
+      assert(0 <= RenderData->NormalMapCount && RenderData->NormalMapCount < TEXTURE_MAX_COUNT);
+      RenderData->NormalMaps[RenderData->NormalMapCount++] = TextureID;
+    }
+    break;
+    case TEXTURE_EnumCount:
+    {
+    }
+    break;
+  }
 }
 
 inline material
@@ -92,6 +142,18 @@ NewPhongMaterial()
   Material.Phong.TextureIndex0    = 0;
   Material.Phong.AmbientStrength  = 0.8f;
   Material.Phong.SpecularStrength = 0.6f;
+  return Material;
+}
+
+inline material
+NewLightMapPhongMaterial()
+{
+  material Material                       = {};
+  Material.Common.ShaderType              = SHADER_LightMapPhong;
+  Material.Common.UseBlending             = true;
+  Material.LightMapPhong.TextureIndex0    = 0;
+  Material.LightMapPhong.SpecularMapIndex = 0;
+  Material.LightMapPhong.Shininess        = 0;
   return Material;
 }
 

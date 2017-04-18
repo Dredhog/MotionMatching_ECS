@@ -139,6 +139,11 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
 
   // Write All Vertices
   Mesh.Vertices = PushArray(Alloc, Mesh.VerticeCount, Render::vertex);
+  if(AssimpMesh->mTextureCoords[0])
+  {
+    Mesh.HasUVs      = true;
+    Mesh.HasTangents = true;
+  }
   for(int i = 0; i < Mesh.VerticeCount; i++)
   {
     Render::vertex Vertex = {};
@@ -150,12 +155,17 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
     Vertex.Normal.Y = AssimpMesh->mNormals[i].y;
     Vertex.Normal.Z = AssimpMesh->mNormals[i].z;
 
+    if(Mesh.HasTangents)
+    {
+      Vertex.Tangent.X = AssimpMesh->mTangents[i].x;
+      Vertex.Tangent.Y = AssimpMesh->mTangents[i].y;
+      Vertex.Tangent.Z = AssimpMesh->mTangents[i].z;
+    }
+
     Mesh.Vertices[i] = Vertex;
   }
-  if(AssimpMesh->mTextureCoords[0])
+  if(Mesh.HasUVs)
   {
-    Mesh.HasUVs = true;
-
     for(int i = 0; i < Mesh.VerticeCount; i++)
     {
       Mesh.Vertices[i].UV.U = AssimpMesh->mTextureCoords[0][i].x;
@@ -305,7 +315,8 @@ main(int ArgCount, char** Args)
   Assimp::Importer Importer;
   const aiScene*   Scene =
     Importer.ReadFile(Args[1], aiProcess_SplitLargeMeshes | aiProcess_Triangulate |
-                                 aiProcess_GenNormals | aiProcess_FlipUVs);
+                                 aiProcess_GenNormals | aiProcess_FlipUVs |
+                                 aiProcess_CalcTangentSpace);
   if(!Scene || Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !Scene->mRootNode)
   {
     printf("error::assimp: %s\n", Importer.GetErrorString());
@@ -353,7 +364,7 @@ main(int ArgCount, char** Args)
     // write '.model'
     assert(Allocator.GetUsedSize() == TotalOutputFileSize - sizeof(Anim::skeleton));
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
-		AssetHeader->Skeleton = 0;
+    AssetHeader->Skeleton  = 0;
 
     printf("writing: %s\n", ModelName);
     PrintModelHeader((Render::model*)AssetHeader->Model);
@@ -381,7 +392,7 @@ main(int ArgCount, char** Args)
     assert(Allocator.GetUsedSize() == TotalOutputFileSize);
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
     AssetHeader->TotalSize = TotalOutputFileSize;
-		AssetHeader->Skeleton = 0;
+    AssetHeader->Skeleton  = 0;
 
     printf("writing: %s\n", ModelName);
     Render::PrintModelHeader((Render::model*)AssetHeader->Model);
