@@ -38,11 +38,7 @@ static const vec3 g_BoneColors[] = {
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
 {
-  mat4 ModelMatrix =
-    Math::MulMat4(Math::Mat4Translate(GameState->Entities[EntityIndex].Transform.Translation),
-                  Math::MulMat4(Math::Mat4Rotate(
-                                  GameState->Entities[EntityIndex].Transform.Rotation),
-                                Math::Mat4Scale(GameState->Entities[EntityIndex].Transform.Scale)));
+  mat4 ModelMatrix = TransformToMat4(&GameState->Entities[EntityIndex].Transform);
   return ModelMatrix;
 }
 
@@ -113,12 +109,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                              NULL);
     AddModel(&GameState->R, TempSponzaPtr);
 
-#if 0
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/dust2x2mod.model", &TempSponzaPtr,
-                             NULL);
-    AddModel(&GameState->R, TempSponzaPtr);
-#endif
-
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
     GameState->R.ShaderCubemap =
@@ -136,16 +126,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShaderID = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/id");
     //------------LOAD TEXTURES-----------
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/hand_dif.png"));
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/hand_dif.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/helmet_diff.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/glass_dif.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/body_dif.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/leg_dif.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/arm_dif.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/body_dif.png"));
-    GameState->CollapsedTexture = Texture::LoadTexture("./data/textures/collapsed.bmp");
-    GameState->ExpandedTexture  = Texture::LoadTexture("./data/textures/expanded.bmp");
-    assert(GameState->CollapsedTexture);
-    assert(GameState->ExpandedTexture);
+    GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
+    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
+    assert(GameState->CollapsedTextureID);
+    assert(GameState->ExpandedTextureID);
 
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12, 8, 2);
 
@@ -522,11 +513,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
     }
   }
-
-  DEBUGDrawWireframeSpheres(GameState);
-  glClear(GL_DEPTH_BUFFER_BIT);
-  DEBUGDrawGizmos(GameState);
-
   if(Input->IsMouseInEditorMode)
   {
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -584,4 +570,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
   }
+  DEBUGDrawWireframeSpheres(GameState);
+
+  glClear(GL_DEPTH_BUFFER_BIT);
+  DEBUGDrawGizmos(GameState);
 }

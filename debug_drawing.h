@@ -20,5 +20,13 @@ void DEBUGDrawTopLeftTexturedQuad(game_state* GameState, int32_t TextureID, vec3
                                   float Width, float Height, bool DepthEnabled = false);
 void DEBUGDrawTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, float Width,
                            float Height, bool DepthEnabled = false);
-void DEBUGDrawUnflippedTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft, float Width,
-                           float Height, bool DepthEnabled = false);
+void DEBUGDrawUnflippedTexturedQuad(game_state* GameState, int32_t TextureID, vec3 LowerLeft,
+                                    float Width, float Height, bool DepthEnabled = false);
+
+inline mat4
+TransformToGizmoMat4(const Anim::transform* Transform)
+{
+  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
+                              Math::Mat4Rotate(Transform->Rotation));
+	return Result;
+}

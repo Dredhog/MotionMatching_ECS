@@ -14,6 +14,6 @@ main()
 {
   frag_position = vert_position;
 
-  vec3 scaled = vert_position * (-depth) * gizmo_scale;
-  gl_Position = mat_mvp * vec4(scaled, 1.0f);
+  vec3 scaled  = vert_position * (-depth) * gizmo_scale;
+  gl_Position  = mat_mvp * vec4(scaled, 1.0f);
 }
