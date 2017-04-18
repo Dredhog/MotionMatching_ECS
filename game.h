@@ -41,7 +41,7 @@ struct game_state
   int32_t                         CurrentModel;
   int32_t                         CurrentMaterial;
 
-  //material EditableMaterial;
+  // material EditableMaterial;
 
   camera Camera;
   camera PreviewCamera;
@@ -55,8 +55,8 @@ struct game_state
   Render::model* CubemapModel;
 
   // Temp textures (not their place)
-  int32_t CollapsedTexture;
-  int32_t ExpandedTexture;
+  int32_t CollapsedTextureID;
+  int32_t ExpandedTextureID;
   int32_t TextTexture;
   int32_t CubemapTexture;
 
@@ -92,7 +92,7 @@ struct game_state
   uint32_t DepthRBO;
   uint32_t IDTexture;
 
-  // Material preview framebuffer
+// Material preview framebuffer
 #if 0
   uint32_t PreviewFBO;
   uint32_t PreviewDepthRBO;
@@ -138,4 +138,12 @@ GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
     }
   }
   return false;
+}
+inline mat4
+TransformToMat4(const Anim::transform* Transform)
+{
+  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
+                              Math::MulMat4(Math::Mat4Rotate(Transform->Rotation),
+                                            Math::Mat4Scale(Transform->Scale)));
+  return Result;
 }

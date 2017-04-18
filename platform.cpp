@@ -499,7 +499,7 @@ main(int argc, char* argv[])
 
   game_memory GameMemory;
   {
-    GameMemory.TemporaryMemorySize  = Mibibytes(150);
+    GameMemory.TemporaryMemorySize  = Mibibytes(50);
     GameMemory.PersistentMemorySize = Mibibytes(150);
 
     GameMemory.TemporaryMemory  = malloc(GameMemory.TemporaryMemorySize);

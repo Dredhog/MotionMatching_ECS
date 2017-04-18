@@ -38,11 +38,7 @@ static const vec3 g_BoneColors[] = {
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
 {
-  mat4 ModelMatrix =
-    Math::MulMat4(Math::Mat4Translate(GameState->Entities[EntityIndex].Transform.Translation),
-                  Math::MulMat4(Math::Mat4Rotate(
-                                  GameState->Entities[EntityIndex].Transform.Rotation),
-                                Math::Mat4Scale(GameState->Entities[EntityIndex].Transform.Scale)));
+  mat4 ModelMatrix = TransformToMat4(&GameState->Entities[EntityIndex].Transform);
   return ModelMatrix;
 }
 
@@ -115,12 +111,6 @@ CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/conference.model", &T
 AddModel(&GameState->R, TempSponzaPtr);
 */
 
-#if 0
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/dust2x2mod.model", &TempSponzaPtr,
-                             NULL);
-    AddModel(&GameState->R, TempSponzaPtr);
-#endif
-
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
     GameState->R.ShaderLightingMapPhong =
@@ -191,8 +181,8 @@ AddModel(&GameState->R, TempSponzaPtr);
                TEXTURE_Normal);
     GameState->CollapsedTexture = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTexture  = Texture::LoadTexture("./data/textures/expanded.bmp");
-    assert(GameState->CollapsedTexture);
-    assert(GameState->ExpandedTexture);
+    assert(GameState->CollapsedTextureID);
+    assert(GameState->ExpandedTextureID);
 
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12, 8, 2);
 
@@ -610,11 +600,6 @@ AddModel(&GameState->R, TempSponzaPtr);
       }
     }
   }
-
-  DEBUGDrawWireframeSpheres(GameState);
-  glClear(GL_DEPTH_BUFFER_BIT);
-  DEBUGDrawGizmos(GameState);
-
   if(Input->IsMouseInEditorMode)
   {
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -672,4 +657,8 @@ AddModel(&GameState->R, TempSponzaPtr);
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
   }
+  DEBUGDrawWireframeSpheres(GameState);
+
+  glClear(GL_DEPTH_BUFFER_BIT);
+  DEBUGDrawGizmos(GameState);
 }

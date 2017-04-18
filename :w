@@ -18,23 +18,41 @@ void DrawBox(game_state* GameState, vec3 TopLeft, float Width, float Height, vec
              vec4 BorderColor);
 void DrawBox(game_state* GameState, UI::im_layout* Layout, vec4 InnerColor, vec4 BorderColor);
 
+void DrawBox(game_state* GameState, vec3 TopLeft, float Width, float Height, vec4 InnerColor,
+             vec4 BorderColor = { 0.1f, 0.1f, 0.1f, 1 });
+void DrawTextButton(game_state* GameState, vec3 TopLeft, float Width, float Height,
+                    const game_input* Input, const char* Text);
+void DrawTextButton(game_state* GameState, UI::im_layout* Layout, const game_input* Input,
+                    const char* Text);
+void DrawBoolButton(game_state* GameState, vec3 TopLeft, float Width, float Height,
+                    const game_input* Input, const char* Text, bool Pushed);
+void DrawBoolButton(game_state* GameState, UI::im_layout* Layout, const game_input* Input,
+                    const char* Text, bool Pushed);
+void DrawCollapsableButton(game_state* GameState, UI::im_layout* Layout, const game_input* Input,
+                           bool IsExpanded, const char* Text, vec4 InnerColor,
+                           vec4 BorderColor = { 0.1f, 0.1f, 0.1f, 1 });
+
+// To be released
+void SliderInt(game_state* GameState, UI::im_layout* Layout, const game_input* Input, char* Text,
+               int32_t* Var, int32_t Min, int32_t Max, float ScreenValue,
+               vec4 InnerColor = { 0.4f, 0.4f, 0.4f, 1 });
+void SliderUint(game_state* GameState, UI::im_layout* Layout, const game_input* Input, char* Text,
+                uint32_t* Var, uint32_t Min, uint32_t Max, float ScreenValue,
+                vec4 InnerColor = { 0.4f, 0.4f, 0.4f, 1 });
+
 static const float ANOTATION_WIDTH_PERCENTAGE = 0.4f;
 
 struct ui_id
 {
   uintptr_t DataPtr;
   uintptr_t NamePtr;
-  uintptr_t OwnerPtr;
+  uintptr_t SectionID;
 };
 
-vec4 g_BorderColor        = { 0.1f, 0.1f, 0.1f, 1 };
-vec4 g_NormalColor        = { 0.4f, 0.4f, 0.4f, 1 };
-vec4 g_HighlightColor     = { 0.5f, 0.5f, 0.5f, 1 };
-vec4 g_PressedColor       = { 0.3f, 0.3f, 0.3f, 1 };
-vec4 g_BoolNormalColor    = { 0.3f, 0.3f, 0.3f, 1 };
-vec4 g_BoolPressedColor   = { 0.2f, 0.2f, 0.4f, 1 };
-vec4 g_BoolHighlightColor = { 0.3f, 0.3f, 0.5f, 1 };
-vec4 g_FontColor          = { 1.0f, 1.0f, 1.0f, 1 };
+static const vec4 g_BaseColor      = { 0.5f, 0.5f, 0.5f, 1 };
+static const vec4 g_BorderColor    = { 0.1f, 0.1f, 0.1f, 1 };
+static const vec4 g_HighlightColor = { 0.01f, 0.01f, 0.01f, 1 };
+static const vec4 g_HighlightColor = { 0.01f, 0.01f, 0.01f, 1 };
 
 #define NOT_ACTIVE                                                                                 \
   ui_id { 1, 1, 1 }
@@ -46,7 +64,7 @@ bool
 AreUI_IDsEqual(ui_id A, ui_id B)
 {
   bool Result =
-    ((A.DataPtr != B.DataPtr) || (A.NamePtr != B.NamePtr) || (A.OwnerPtr != B.OwnerPtr));
+    ((A.DataPtr != B.DataPtr) || (A.NamePtr != B.NamePtr) || (A.SectionID != B.SectionID));
   return Result;
 }
 
@@ -79,18 +97,9 @@ SetActive(ui_id ID)
 void
 SetHot(ui_id ID)
 {
-  if(IsActive(NOT_ACTIVE) || IsActive(ID))
+  if(IsActive(NOT_ACTIVE))
   {
     g_Hot = ID;
-  }
-}
-
-void
-UnsetHot(ui_id ID)
-{
-  if(IsActive(NOT_ACTIVE) || IsActive(ID))
-  {
-    g_Hot = NOT_ACTIVE;
   }
 }
 
@@ -118,21 +127,6 @@ UI::Row(UI::im_layout* Layout, int ColumnCount)
 }
 
 void
-UI::Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text,
-        vec4 DescrioptionBGColor)
-{
-  Layout->X = Layout->TopLeft.X;
-  Layout->Y -= Layout->RowHeight;
-
-  Layout->ColumnWidth = ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
-  UI::DrawTextBox(GameState, Layout, Text, DescrioptionBGColor);
-  assert(ANOTATION_WIDTH_PERCENTAGE < 1.0f);
-  Layout->X += ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
-  assert(ColumnCount >= 1);
-  Layout->ColumnWidth = (1.0f - ANOTATION_WIDTH_PERCENTAGE) * Layout->Width / (float)ColumnCount;
-}
-
-void
 UI::DrawSquareTexture(game_state* GameState, UI::im_layout* Layout, uint32_t TextureID)
 {
   float QuadWidth  = Layout->Width;
@@ -146,6 +140,20 @@ UI::DrawSquareTexture(game_state* GameState, UI::im_layout* Layout, uint32_t Tex
                                  QuadHeight);
   Layout->ColumnWidth = Layout->Width;
   Layout->Y += Layout->RowHeight;
+}
+
+void
+UI::Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text)
+{
+  Layout->X = Layout->TopLeft.X;
+  Layout->Y -= Layout->RowHeight;
+
+  Layout->ColumnWidth = ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
+  UI::DrawTextBox(GameState, Layout, Text, { 0.4f, 0.6f, 0.4f, 1.0f });
+  assert(ANOTATION_WIDTH_PERCENTAGE < 1.0f);
+  Layout->X += ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
+  assert(ColumnCount >= 1);
+  Layout->ColumnWidth = (1.0f - ANOTATION_WIDTH_PERCENTAGE) * Layout->Width / (float)ColumnCount;
 }
 
 void
@@ -174,7 +182,7 @@ UI::DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, 
   DrawBox(GameState, TopLeft, Width, Height, InnerColor, BorderColor);
   uint32_t TextureID =
     Text::GetTextTextureID(&GameState->Font, (int32_t)(10 * ((float)Width / (float)Height)), Text,
-                           g_FontColor);
+                           vec4{ 0.0f, 1.0f, 0.0f, 1.0f });
   DEBUGDrawTopLeftTexturedQuad(GameState, TextureID,
                                vec3{ TopLeft.X + TextPadding, TopLeft.Y - TextPadding, TopLeft.Z },
                                Width - 2 * TextPadding, Height - 2 * TextPadding);
@@ -188,13 +196,84 @@ UI::DrawTextBox(game_state* GameState, im_layout* Layout, const char* Text, vec4
                   InnerColor, BorderColor);
 }
 
+void
+DrawBoolButton(game_state* GameState, vec3 TopLeft, float Width, float Height,
+               const game_input* Input, const char* Text, bool Pushed)
+{
+  vec4 NormalColor   = { 0.3f, 0.3f, 0.3f, 1.0f };
+  vec4 HoveringColor = { 0.35f, 0.35f, 0.35f, 1.0f };
+  vec4 PushedColor   = { 0.3f, 0.3f, 0.7f, 1.0f };
+  if(Pushed)
+  {
+    UI::DrawTextBox(GameState, TopLeft, Width, Height, Text, PushedColor);
+  }
+  else if(_Intersects(TopLeft.X, TopLeft.Y, Width, Height, Input))
+  {
+    UI::DrawTextBox(GameState, TopLeft, Width, Height, Text, HoveringColor);
+  }
+  else
+  {
+    UI::DrawTextBox(GameState, TopLeft, Width, Height, Text, NormalColor);
+  }
+}
+
+void
+DrawBoolButton(game_state* GameState, UI::im_layout* Layout, const game_input* Input,
+               const char* Text, bool Pushed)
+{
+  DrawBoolButton(GameState, Layout->CurrentP, Layout->ColumnWidth, Layout->RowHeight, Input, Text,
+                 Pushed);
+}
+
+void
+DrawCollapsableButton(game_state* GameState, UI::im_layout* Layout, const game_input* Input,
+                      bool IsExpanded, const char* Text, vec4 InnerColor, vec4 BorderColor)
+{
+  // draw square icon
+  float   IconWidthK = (Layout->RowHeight / Layout->AspectRatio) / Layout->ColumnWidth;
+  int32_t TextureID  = (IsExpanded) ? GameState->ExpandedTextureID : GameState->CollapsedTextureID;
+  DEBUGDrawTopLeftTexturedQuad(GameState, TextureID, vec3{ Layout->X, Layout->Y, 0.0f },
+                               IconWidthK * Layout->ColumnWidth, Layout->RowHeight);
+
+  DrawBoolButton(GameState, { IconWidthK * Layout->ColumnWidth + Layout->X, Layout->Y },
+                 (1.0f - IconWidthK) * Layout->ColumnWidth, Layout->RowHeight, Input, Text,
+                 IsExpanded);
+}
+
+void
+DrawTextButton(game_state* GameState, vec3 TopLeft, float Width, float Height,
+               const game_input* Input, const char* Text)
+{
+  vec4 NormalColor   = { 0.4f, 0.4f, 0.4f, 1.0f };
+  vec4 HoveringColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+  vec4 PushedColor   = { 0.2f, 0.2f, 0.2f, 1.0f };
+  if(Input->MouseLeft.EndedDown && _Intersects(TopLeft.X, TopLeft.Y, Width, Height, Input))
+  {
+    UI::DrawTextBox(GameState, TopLeft, Width, Height, Text, PushedColor);
+  }
+  else if(_Intersects(TopLeft.X, TopLeft.Y, Width, Height, Input))
+  {
+    UI::DrawTextBox(GameState, TopLeft, Width, Height, Text, HoveringColor);
+  }
+  else
+  {
+    UI::DrawTextBox(GameState, TopLeft, Width, Height, Text, NormalColor);
+  }
+}
+
+void
+DrawTextButton(game_state* GameState, UI::im_layout* Layout, const game_input* Input,
+               const char* Text)
+{
+  DrawTextButton(GameState, Layout->CurrentP, Layout->ColumnWidth, Layout->RowHeight, Input, Text);
+}
+
 bool
 UI::PushButton(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
-               const void* OwnerID)
+               vec4 InnerColor, vec4 BorderColor)
 {
-  ui_id ID    = {};
-  ID.DataPtr  = (uintptr_t)Text;
-  ID.OwnerPtr = (uintptr_t)OwnerID;
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Text;
 
   if(_LayoutIntersects(Layout, Input))
   {
@@ -202,38 +281,46 @@ UI::PushButton(game_state* GameState, im_layout* Layout, const game_input* Input
   }
   else
   {
-    UnsetHot(ID);
+    SetHot(NOT_ACTIVE);
   }
 
   bool Result = false;
-  if(IsActive(ID))
-  {
-    if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
-    {
-      if(IsHot(ID))
-      {
-        Result = true;
-      }
-      SetActive(NOT_ACTIVE);
-    }
-  }
-  else if(IsHot(ID))
+  if(IsHot(ID) && IsActive(NOT_ACTIVE))
   {
     if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
     {
-      SetActive(ID);
+      Result = true;
     }
   }
-  vec4 InnerColor = IsActive(ID) ? g_PressedColor : (IsHot(ID) ? g_HighlightColor : g_NormalColor);
-  DrawTextBox(GameState, Layout, Text, InnerColor, g_BorderColor);
-  Layout->X += Layout->ColumnWidth;
 
+  DrawTextBox(GameState, Layout, Text, InnerColor, BorderColor);
+  Layout->X += Layout->ColumnWidth;
   return Result;
 }
 
+#if 0
+bool
+UI::PushButton(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
+               bool TestChanged)
+{
+  ui_id ID   = {};
+  ID.DataPtr = (uintptr_t)Text;
+
+  bool Result = false;
+  DrawTextButton(GameState, Layout, Input, Text);
+  if(Input->MouseLeft.EndedDown && (!TestChanged || (TestChanged && Input->MouseLeft.Changed)) &&
+     _LayoutIntersects(Layout, Input))
+  {
+    Result = true;
+  }
+  Layout->X += Layout->ColumnWidth;
+  return Result;
+}
+#endif
+
 void
 UI::SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
-                float* Var, float Min, float Max, float ScreenValue)
+                float* Var, float Min, float Max, float ScreenValue, vec4 InnerColor)
 {
   ui_id ID   = {};
   ID.DataPtr = (uintptr_t)Var;
@@ -267,9 +354,7 @@ UI::SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Inpu
 
   *Var = ClampFloat(Min, *Var, Max);
   sprintf(FloatTextBuffer, "%5.2f", (double)*Var);
-
-  vec4 InnerColor = IsActive(ID) ? g_PressedColor : (IsHot(ID) ? g_HighlightColor : g_NormalColor);
-  UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor, g_BorderColor);
+  UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor);
   Layout->X += Layout->ColumnWidth;
 }
 
@@ -278,35 +363,42 @@ UI::BoolButton(game_state* GameState, im_layout* Layout, const game_input* Input
                bool* Toggle)
 {
   ui_id ID   = {};
-  ID.NamePtr = (uintptr_t)Text;
   ID.DataPtr = (uintptr_t)Toggle;
 
+  int path0 = 0;
   if(_LayoutIntersects(Layout, Input))
   {
     SetHot(ID);
+    path0 = 1;
   }
   else
   {
-    UnsetHot(ID);
+    SetHot(NOT_ACTIVE);
+    path0 = 2;
   }
 
   if(IsActive(ID))
   {
-    SetActive(NOT_ACTIVE);
+    // Mouse went up
+    if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      if(IsHot(ID))
+      {
+        *Toggle = !*Toggle;
+      }
+      SetActive(NOT_ACTIVE);
+    }
   }
   else if(IsHot(ID))
   {
+    // Mouse went down
     if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
     {
       SetActive(ID);
-      *Toggle = !*Toggle;
     }
   }
 
-  vec4 InnerColor =
-    ((*Toggle) ? g_BoolPressedColor : (IsHot(ID) ? g_BoolHighlightColor : g_BoolNormalColor));
-
-  UI::DrawTextBox(GameState, Layout, Text, InnerColor, g_BorderColor);
+  DrawBoolButton(GameState, Layout, Input, Text, *Toggle);
   Layout->X += Layout->ColumnWidth;
 }
 
@@ -317,42 +409,13 @@ UI::ExpandableButton(game_state* GameState, im_layout* Layout, const game_input*
   ui_id ID   = {};
   ID.NamePtr = (uintptr_t)Text;
 
-  if(_LayoutIntersects(Layout, Input))
+  if((Input->MouseLeft.EndedDown && Input->MouseLeft.Changed) && _LayoutIntersects(Layout, Input))
   {
-    SetHot(ID);
+    *IsExpanded = !*IsExpanded;
   }
-  else
-  {
-    UnsetHot(ID);
-  }
-
-  if(IsActive(ID) && !Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
-  {
-    SetActive(NOT_ACTIVE);
-  }
-  else if(IsHot(ID))
-  {
-    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
-    {
-      SetActive(ID);
-      *IsExpanded = !*IsExpanded;
-    }
-  }
-
-  // draw square icon
-  float   IconWidthK = (Layout->RowHeight / Layout->AspectRatio) / Layout->ColumnWidth;
-  int32_t TextureID  = (IsExpanded) ? GameState->ExpandedTextureID : GameState->CollapsedTextureID;
-  DEBUGDrawTopLeftTexturedQuad(GameState, TextureID, vec3{ Layout->X, Layout->Y, 0.0f },
-                               IconWidthK * Layout->ColumnWidth, Layout->RowHeight);
-
-  vec4 InnerColor =
-    ((*IsExpanded) ? g_BoolPressedColor : (IsHot(ID) ? g_BoolHighlightColor : g_BoolNormalColor));
-  UI::DrawTextBox(GameState, { IconWidthK * Layout->ColumnWidth + Layout->X, Layout->Y },
-                  (1.0f - IconWidthK) * Layout->ColumnWidth, Layout->RowHeight, Text, InnerColor,
-                  g_BorderColor);
+  DrawCollapsableButton(GameState, Layout, Input, *IsExpanded, Text, { 0.3f, 0.3f, 0.3f, 1 });
   Layout->X += Layout->ColumnWidth;
 
-  Layout->X += Layout->ColumnWidth;
   return *IsExpanded;
 }
 
@@ -389,14 +452,13 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   }
   else
   {
-    UnsetHot(ID);
+    SetHot(NOT_ACTIVE);
   }
 
-  bool triggered = false;
   if(IsActive(ID))
   {
-    if(!_Intersects(Layout->X - IconWidth, Layout->Y, Layout->ColumnWidth + 2 * IconWidth,
-                    Layout->RowHeight * (ListLength + 1), Input))
+    if(!_Intersects(Layout->X, Layout->Y, Layout->ColumnWidth, Layout->RowHeight * (ListLength + 1),
+                    Input))
     {
       SetActive(NOT_ACTIVE);
     }
@@ -412,7 +474,6 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   {
     if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
     {
-      //triggered = true;
       SetActive(ID);
     }
   }
@@ -420,8 +481,8 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
 #define GetStringAtIndex(Index) (ElementToCharPtr((char*)ItemList + ElementSize * (Index)))
 
   // DrawCurrentElement
-  DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,
-              GetStringAtIndex(*ActiveIndex), g_NormalColor, g_BorderColor);
+  DrawBoolButton(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight, Input,
+                 GetStringAtIndex(*ActiveIndex), IsActive(ID));
   DEBUGDrawTopLeftTexturedQuad(GameState, GameState->ExpandedTextureID,
                                vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
                                Layout->RowHeight);
@@ -435,7 +496,7 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
     for(int i = 0; i < ListLength; i++)
     {
       UI::Row(&TempLayout);
-      if(UI::PushButton(GameState, &TempLayout, Input, GetStringAtIndex(i), &ID))
+      if(UI::PushButton(GameState, &TempLayout, Input, GetStringAtIndex(i)))
       {
         *ActiveIndex = i;
         SetActive(NOT_ACTIVE);
