@@ -420,6 +420,7 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
 {
   ui_id ID   = {};
   ID.DataPtr = (uintptr_t)ItemList;
+  ID.NamePtr = (uintptr_t)SectionHeight;
 
   float IconWidth       = Layout->RowHeight / Layout->AspectRatio;
   float TextRegionWidth = Layout->ColumnWidth - IconWidth;
@@ -467,24 +468,21 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   TempLayout.TopLeft.X  = TempLayout.CurrentP.X;
   TempLayout.Width      = TempLayout.ColumnWidth;
   TempLayout.CurrentP.Z = -0.1f;
+
   if(IsActive(ID))
   {
-    SetActive(NOT_ACTIVE);
-    bool PressedItem = false;
     for(int i = 0; i < ListLength; i++)
     {
       UI::Row(&TempLayout);
-      if(UI::PushButton(GameState, &TempLayout, Input, GetStringAtIndex(i), &ID))
+      vec4 BoxColor = g_NormalColor;
+      if(_LayoutIntersects(&TempLayout, Input))
       {
-        *ActiveIndex = i;
-        PressedItem  = true;
+        BoxColor = g_HighlightColor;
       }
-    }
-    if(!PressedItem)
-    {
-      SetActive(ID);
+      UI::DrawTextBox(GameState, &TempLayout, GetStringAtIndex(i), BoxColor);
     }
   }
+  Layout->X += Layout->ColumnWidth;
 #undef GetStringAtIndex
 }
 

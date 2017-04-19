@@ -13,6 +13,7 @@ namespace Render
   {
     vec3 Position;
     vec3 Normal;
+    vec3 Tangent;
     struct UV
     {
       float U;
@@ -35,6 +36,7 @@ namespace Render
     int32_t IndiceCount;
 
     bool    HasUVs;
+    bool    HasTangents;
     bool    HasBones;
     int32_t BoneCount;
   };

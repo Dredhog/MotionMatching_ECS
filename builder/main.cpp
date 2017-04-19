@@ -138,6 +138,11 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
 
   // Write All Vertices
   Mesh.Vertices = PushArray(Alloc, Mesh.VerticeCount, Render::vertex);
+  if(AssimpMesh->mTextureCoords[0])
+  {
+    Mesh.HasUVs      = true;
+    Mesh.HasTangents = true;
+  }
   for(int i = 0; i < Mesh.VerticeCount; i++)
   {
     Render::vertex Vertex = {};
@@ -149,12 +154,17 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
     Vertex.Normal.Y = AssimpMesh->mNormals[i].y;
     Vertex.Normal.Z = AssimpMesh->mNormals[i].z;
 
+    if(Mesh.HasTangents)
+    {
+      Vertex.Tangent.X = AssimpMesh->mTangents[i].x;
+      Vertex.Tangent.Y = AssimpMesh->mTangents[i].y;
+      Vertex.Tangent.Z = AssimpMesh->mTangents[i].z;
+    }
+
     Mesh.Vertices[i] = Vertex;
   }
-  if(AssimpMesh->mTextureCoords[0])
+  if(Mesh.HasUVs)
   {
-    Mesh.HasUVs = true;
-
     for(int i = 0; i < Mesh.VerticeCount; i++)
     {
       Mesh.Vertices[i].UV.U = AssimpMesh->mTextureCoords[0][i].x;

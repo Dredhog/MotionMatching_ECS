@@ -13,6 +13,12 @@ VoidPtrToCharPtr(void* NamePtr)
 }
 
 char*
+VoidPtrToTextureName(void* TextureName)
+{
+  return ((texture_name*)TextureName)->Name;
+}
+
+char*
 ElementToBoneName(void* Bone)
 {
   return ((Anim::bone*)Bone)->Name;
@@ -24,10 +30,10 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   // Humble beginnings of the editor GUI system
   const float   TEXT_HEIGHT    = 0.03f;
   const float   StartX         = 0.75f;
-  const float   StartY         = 0.95f;
+  const float   StartY         = 0.97f;
   const float   YPadding       = 0.02f;
-  const float   LayoutWidth    = 0.17f;
-  const float   RowHeight      = 0.04f;
+  const float   LayoutWidth    = 0.15f;
+  const float   RowHeight      = 0.035f;
   const float   SliderWidth    = 0.05f;
   const int32_t ScrollRowCount = 2;
 
@@ -44,7 +50,158 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
 
   UI::im_layout Layout = UI::NewLayout({ StartX, StartY }, LayoutWidth, RowHeight, SliderWidth);
 
-  // UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
+  {
+    UI::Row(GameState, &Layout, 2, "Material");
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "Material"))
+    {
+      if(0 < GameState->CurrentMaterial)
+      {
+        --GameState->CurrentMaterial;
+      }
+    }
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "Material"))
+    {
+      if(GameState->CurrentMaterial < GameState->R.MaterialCount - 1)
+      {
+        ++GameState->CurrentMaterial;
+      }
+    }
+    UI::DrawSquareTexture(GameState, &Layout, GameState->IDTexture);
+
+    assert(GameState->R.MaterialCount > 0);
+    material* CurrentMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
+
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Apply To Selected"))
+    {
+      if(GameState->R.ModelCount > 0)
+      {
+        if(0 <= GameState->SelectedEntityIndex &&
+           GameState->SelectedEntityIndex < GameState->EntityCount)
+        {
+          entity* Entity = &GameState->Entities[GameState->SelectedEntityIndex];
+          if(0 <= GameState->SelectedMeshIndex &&
+             GameState->SelectedMeshIndex < Entity->Model->MeshCount)
+          {
+            if(0 <= GameState->CurrentMaterial &&
+               GameState->CurrentMaterial < GameState->R.MaterialCount)
+            {
+              Entity->MaterialIndices[GameState->SelectedMeshIndex] = GameState->CurrentMaterial;
+            }
+          }
+        }
+      }
+    }
+
+    UI::Row(GameState, &Layout, 2, "Shader Type");
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Previous"))
+    {
+      if(CurrentMaterial->Common.ShaderType > 0)
+      {
+        uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
+        *CurrentMaterial                    = {};
+        CurrentMaterial->Common.ShaderType  = ShaderType;
+        CurrentMaterial->Common.UseBlending = true;
+      }
+    }
+    if(UI::ReleaseButton(GameState, &Layout, Input, "  Next  "))
+    {
+      if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
+      {
+        uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
+        *CurrentMaterial                    = {};
+        CurrentMaterial->Common.ShaderType  = ShaderType;
+        CurrentMaterial->Common.UseBlending = true;
+      }
+    }
+
+    material* Material = &GameState->R.Materials[GameState->CurrentMaterial];
+    UI::Row(GameState, &Layout, 1, "Blending");
+    UI::_BoolButton(&Layout, Input, "Toggle", &CurrentMaterial->Common.UseBlending);
+    switch(Material->Common.ShaderType)
+    {
+      case SHADER_Phong:
+      {
+        UI::Row(GameState, &Layout, 2, "Albedo");
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Prev"))
+        {
+          if(CurrentMaterial->Phong.DiffuseMapIndex > 0)
+          {
+            --CurrentMaterial->Phong.DiffuseMapIndex;
+          }
+        }
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Next  "))
+        {
+          if(CurrentMaterial->Phong.DiffuseMapIndex < GameState->R.TextureCount)
+          {
+            ++CurrentMaterial->Phong.DiffuseMapIndex;
+          }
+        }
+        UI::Row(GameState, &Layout, 1, "Ambient");
+        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength, 0, 1.0f,
+                        5.0f);
+        UI::Row(GameState, &Layout, 1, "Specular");
+        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength, 0,
+                        1.0f, 5.0f);
+      }
+      break;
+      // TODO(Rytis): Fix bug involving specular map and different shader slider value change
+      case SHADER_LightMapPhong:
+      {
+        UI::Row(GameState, &Layout, 1, "Diffuse");
+        {
+          int32_t ActiveDiffuseMapIndex = CurrentMaterial->LightMapPhong.DiffuseMapIndex;
+          UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames, GameState->R.TextureCount,
+                       GameState, &Layout, Input, 0.2f, &g_ScrollK, sizeof(texture_name),
+                       VoidPtrToTextureName);
+          CurrentMaterial->LightMapPhong.DiffuseMapIndex = ActiveDiffuseMapIndex;
+        }
+        UI::Row(GameState, &Layout, 1, "Specular");
+        {
+          int32_t ActiveSpecularMapIndex = CurrentMaterial->LightMapPhong.SpecularMapIndex;
+          UI::ComboBox(&ActiveSpecularMapIndex, GameState->R.TextureNames,
+                       GameState->R.TextureCount, GameState, &Layout, Input, 0.4f, &g_ScrollK,
+                       sizeof(texture_name), VoidPtrToTextureName);
+          CurrentMaterial->LightMapPhong.SpecularMapIndex = ActiveSpecularMapIndex;
+        }
+
+        UI::Row(GameState, &Layout, 1, "Shininess");
+        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->LightMapPhong.Shininess, 0,
+                        1.0f, 5.0f);
+      }
+      break;
+      case SHADER_Color:
+      {
+        UI::Row(GameState, &Layout, 4, "Color");
+        UI::SliderFloat(GameState, &Layout, Input, "R", &Material->Color.Color.R, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "G", &Material->Color.Color.G, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "B", &Material->Color.Color.B, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "A", &Material->Color.Color.A, 0, 1.0f, 5.0f);
+      }
+      break;
+    }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
+    {
+      uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
+      *CurrentMaterial                   = {};
+      CurrentMaterial->Common.ShaderType = ShaderType;
+    }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
+    {
+      AddMaterial(&GameState->R, {});
+      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+    }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Crete From Current"))
+    {
+      AddMaterial(&GameState->R, *CurrentMaterial);
+      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+    }
+  }
+  UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Render Settings", &g_ShowDisplaySet))
   {
     UI::Row(GameState, &Layout, 6, "Toggleables");
@@ -178,133 +335,6 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     {
       Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
                                   "data/animation_export_test");
-    }
-  }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
-  {
-    UI::Row(GameState, &Layout, 2, "Material");
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "Material"))
-    {
-      if(0 < GameState->CurrentMaterial)
-      {
-        --GameState->CurrentMaterial;
-      }
-    }
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "Material"))
-    {
-      if(GameState->CurrentMaterial < GameState->R.MaterialCount - 1)
-      {
-        ++GameState->CurrentMaterial;
-      }
-    }
-    UI::DrawSquareTexture(GameState, &Layout, GameState->IDTexture);
-
-    assert(GameState->R.MaterialCount > 0);
-    material* CurrentMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
-
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Apply To Selected"))
-    {
-      if(GameState->R.ModelCount > 0)
-      {
-        if(0 <= GameState->SelectedEntityIndex &&
-           GameState->SelectedEntityIndex < GameState->EntityCount)
-        {
-          entity* Entity = &GameState->Entities[GameState->SelectedEntityIndex];
-          if(0 <= GameState->SelectedMeshIndex &&
-             GameState->SelectedMeshIndex < Entity->Model->MeshCount)
-          {
-            if(0 <= GameState->CurrentMaterial &&
-               GameState->CurrentMaterial < GameState->R.MaterialCount)
-            {
-              Entity->MaterialIndices[GameState->SelectedMeshIndex] = GameState->CurrentMaterial;
-            }
-          }
-        }
-      }
-    }
-
-    UI::Row(GameState, &Layout, 2, "Shader Type");
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Previous"))
-    {
-      if(CurrentMaterial->Common.ShaderType > 0)
-      {
-        uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
-        *CurrentMaterial                    = {};
-        CurrentMaterial->Common.ShaderType  = ShaderType;
-        CurrentMaterial->Common.UseBlending = true;
-      }
-    }
-    if(UI::ReleaseButton(GameState, &Layout, Input, "  Next  "))
-    {
-      if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
-      {
-        uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
-        *CurrentMaterial                    = {};
-        CurrentMaterial->Common.ShaderType  = ShaderType;
-        CurrentMaterial->Common.UseBlending = true;
-      }
-    }
-
-    material* Material = &GameState->R.Materials[GameState->CurrentMaterial];
-    UI::Row(GameState, &Layout, 1, "Blending");
-    UI::_BoolButton(&Layout, Input, "Toggle", &CurrentMaterial->Common.UseBlending);
-    switch(Material->Common.ShaderType)
-    {
-      case SHADER_Phong:
-      {
-        UI::Row(GameState, &Layout, 2, "Albedo");
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Prev"))
-        {
-          if(CurrentMaterial->Phong.TextureIndex0 > 0)
-          {
-            --CurrentMaterial->Phong.TextureIndex0;
-          }
-        }
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Next  "))
-        {
-          if(CurrentMaterial->Phong.TextureIndex0 < GameState->R.TextureCount)
-          {
-            ++CurrentMaterial->Phong.TextureIndex0;
-          }
-        }
-        UI::Row(GameState, &Layout, 1, "Ambient");
-        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength, 0, 1.0f,
-                        5.0f);
-        UI::Row(GameState, &Layout, 1, "Specular");
-        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength, 0,
-                        1.0f, 5.0f);
-      }
-      break;
-      case SHADER_Color:
-      {
-        UI::Row(GameState, &Layout, 4, "Color");
-        UI::SliderFloat(GameState, &Layout, Input, "R", &Material->Color.Color.R, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "G", &Material->Color.Color.G, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "B", &Material->Color.Color.B, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "A", &Material->Color.Color.A, 0, 1.0f, 5.0f);
-      }
-      break;
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
-    {
-      uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
-      *CurrentMaterial                   = {};
-      CurrentMaterial->Common.ShaderType = ShaderType;
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
-    {
-      AddMaterial(&GameState->R, {});
-      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Crete From Current"))
-    {
-      AddMaterial(&GameState->R, *CurrentMaterial);
-      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
     }
   }
 

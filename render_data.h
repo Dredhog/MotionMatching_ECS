@@ -2,12 +2,24 @@
 
 enum shader_type
 {
+  SHADER_LightMapPhong,
   SHADER_Phong,
   SHADER_Color,
   //  SHADER_ID,
 
   SHADER_EnumCount,
 };
+
+#if 0
+enum texture_type
+{
+  TEXTURE_Diffuse,
+  TEXTURE_Specular,
+  TEXTURE_Normal,
+
+  TEXTURE_EnumCount,
+};
+#endif
 
 union material {
   // material_header;
@@ -20,10 +32,17 @@ union material {
   struct
   {
     material_header Common;
-    uint32_t        TextureIndex0;
+    uint32_t        DiffuseMapIndex;
     float           AmbientStrength;
     float           SpecularStrength;
   } Phong;
+  struct
+  {
+    material_header Common;
+    uint32_t        DiffuseMapIndex;
+    uint32_t        SpecularMapIndex;
+    float           Shininess;
+  } LightMapPhong;
   struct
   {
     material_header Common;
@@ -35,12 +54,18 @@ const int32_t TEXTURE_MAX_COUNT       = 20;
 const int32_t MATERIAL_MAX_COUNT      = 20;
 const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
 const int32_t MODEL_MAX_COUNT         = 10;
+const int32_t TEXTURE_NAME_MAX_LENGTH = 50;
 
 struct mesh_instance
 {
   Render::mesh* Mesh;
   material*     Material;
   int32_t       EntityIndex;
+};
+
+struct texture_name
+{
+  char Name[TEXTURE_NAME_MAX_LENGTH];
 };
 
 struct render_data
@@ -56,11 +81,13 @@ struct render_data
   int32_t        ModelCount;
 
   // Textures
-  int32_t Textures[TEXTURE_MAX_COUNT];
-  int32_t TextureCount;
+  int32_t      Textures[TEXTURE_MAX_COUNT];
+  texture_name TextureNames[TEXTURE_MAX_COUNT];
+  int32_t      TextureCount;
 
   // Shaders
   uint32_t ShaderPhong;
+  uint32_t ShaderLightingMapPhong;
   uint32_t ShaderSkeletalPhong;
   uint32_t ShaderSkeletalBoneColor;
   uint32_t ShaderColor;
@@ -72,15 +99,57 @@ struct render_data
 
   // Light
   vec3 LightPosition;
+  //-----Testing Purposes-----
+  vec3 LightAmbientColor;
+  vec3 LightDiffuseColor;
+  vec3 LightSpecularColor;
+  //--------------------------
   vec3 LightColor;
 };
 
+#if 0
 inline void
-AddTexture(render_data* RenderData, int32_t TextureID)
+AddTexture(render_data* RenderData, int32_t TextureID, texture_type TextureType)
+{
+  assert(TextureID);
+  switch(TextureType)
+  {
+    case TEXTURE_Diffuse:
+    {
+      assert(0 <= RenderData->TextureCount && RenderData->TextureCount < TEXTURE_MAX_COUNT);
+      RenderData->Textures[RenderData->TextureCount++] = TextureID;
+    }
+    break;
+    case TEXTURE_Specular:
+    {
+      assert(0 <= RenderData->SpecularMapCount && RenderData->SpecularMapCount < TEXTURE_MAX_COUNT);
+      RenderData->SpecularMaps[RenderData->SpecularMapCount++] = TextureID;
+    }
+    break;
+    case TEXTURE_Normal:
+    {
+      assert(0 <= RenderData->NormalMapCount && RenderData->NormalMapCount < TEXTURE_MAX_COUNT);
+      RenderData->NormalMaps[RenderData->NormalMapCount++] = TextureID;
+    }
+    break;
+    case TEXTURE_EnumCount:
+    {
+    }
+    break;
+  }
+}
+#endif
+
+inline uint32_t
+AddTexture(render_data* RenderData, uint32_t TextureID, char* TextureName)
 {
   assert(TextureID);
   assert(0 <= RenderData->TextureCount && RenderData->TextureCount < TEXTURE_MAX_COUNT);
+  int32_t NameLength = (int32_t)strlen(TextureName);
+  assert(NameLength < TEXTURE_NAME_MAX_LENGTH);
+  strcpy(RenderData->TextureNames[RenderData->TextureCount].Name, TextureName);
   RenderData->Textures[RenderData->TextureCount++] = TextureID;
+  return TextureID;
 }
 
 inline material
@@ -89,9 +158,21 @@ NewPhongMaterial()
   material Material               = {};
   Material.Common.ShaderType      = SHADER_Phong;
   Material.Common.UseBlending     = true;
-  Material.Phong.TextureIndex0    = 0;
+  Material.Phong.DiffuseMapIndex  = 0;
   Material.Phong.AmbientStrength  = 0.8f;
   Material.Phong.SpecularStrength = 0.6f;
+  return Material;
+}
+
+inline material
+NewLightMapPhongMaterial()
+{
+  material Material                       = {};
+  Material.Common.ShaderType              = SHADER_LightMapPhong;
+  Material.Common.UseBlending             = true;
+  Material.LightMapPhong.DiffuseMapIndex  = 0;
+  Material.LightMapPhong.SpecularMapIndex = 0;
+  Material.LightMapPhong.Shininess        = 0;
   return Material;
 }
 

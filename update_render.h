@@ -49,7 +49,6 @@ GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
   return MVPMatrix;
 }
 
-
 void
 AddEntity(game_state* GameState, Render::model* Model, int32_t* MaterialIndices,
           Anim::transform Transform)
@@ -99,6 +98,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     AddModel(&GameState->R, GameState->CharacterModel);
     Render::model* TempSponzaPtr;
 
+    /*
     CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/ak47.model", &TempSponzaPtr, NULL);
     AddModel(&GameState->R, TempSponzaPtr);
 
@@ -108,9 +108,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/conference.model", &TempSponzaPtr,
                              NULL);
     AddModel(&GameState->R, TempSponzaPtr);
+    */
 
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
+    GameState->R.ShaderLightingMapPhong =
+      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/lighting_map_phong");
     GameState->R.ShaderCubemap =
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/cubemap");
     GameState->R.ShaderGizmo = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/gizmo");
@@ -125,18 +128,52 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/debug_textured_quad");
     GameState->R.ShaderID = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/id");
     //------------LOAD TEXTURES-----------
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/body_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/arm_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/hand_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/leg_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/helmet_diff.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/glass_dif.png"));
+    // Diffuse Maps
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/body_dif.png"),
+               "body_diff");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/arm_dif.png"),
+               "arm_diff");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/hand_dif.png"),
+               "hand_diff");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/leg_dif.png"),
+               "leg_diff");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/helmet_diff.png"),
+               "helmet_diff");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/glass_dif.png"),
+               "glass_diff");
+    // Specular Maps
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/specular/hand_showroom_spec.png"), "had_spec");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/specular/helmet_showroom_spec.png"),
+               "helmet_spec");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/specular/body_showroom_spec.png"),
+               "body_sped");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/specular/leg_showroom_spec.png"), "leg_spec");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/specular/arm_showroom_spec.png"), "arm_spec");
+    // Normal Maps
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/hand_showroom_ddn.png"),
+               "hand_norm");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/normal/helmet_showroom_ddn.png"),
+               "helmet_norm");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/glass_ddn.png"),
+               "glass_norm");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/body_showroom_ddn.png"),
+               "body_norm");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/leg_showroom_ddn.png"),
+               "leg_norm");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/arm_showroom_ddn.png"),
+               "arm_norm");
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
 
-    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12, 8, 2);
+    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 7, 8, 1);
 
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
@@ -195,10 +232,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     UpdateCamera(&GameState->PreviewCamera, Input);
 
     GameState->R.LightPosition = { 1, 1, 2 };
-    GameState->R.LightColor    = { 0.7f, 0.7f, 0.75f };
+    //-----Testing purposes-----
+    // NOTE: Not sure if separating light into these 3 components should be done.
+    GameState->R.LightSpecularColor = { 1.0f, 1.0f, 1.0f };
+    GameState->R.LightDiffuseColor  = GameState->R.LightSpecularColor * 0.5f;
+    GameState->R.LightAmbientColor  = GameState->R.LightSpecularColor * 0.2f;
+    //--------------------------
+    GameState->R.LightColor = GameState->R.LightSpecularColor;
 
     GameState->DrawWireframe           = false;
-    GameState->DrawCubemap             = true;
+    GameState->DrawCubemap             = false;
     GameState->DrawBoneWeights         = false;
     GameState->DrawTimeline            = true;
     GameState->DrawGizmos              = true;
@@ -207,32 +250,56 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->EditorBoneRotationSpeed = 45.0f;
 
     {
-      material Phong0            = NewPhongMaterial();
-      Phong0.Phong.TextureIndex0 = GameState->R.Textures[3];
+      material LightMapPhong0                       = NewLightMapPhongMaterial();
+      LightMapPhong0.LightMapPhong.DiffuseMapIndex  = 3;
+      LightMapPhong0.LightMapPhong.SpecularMapIndex = 8;
+      LightMapPhong0.LightMapPhong.Shininess        = 0.5f;
+      AddMaterial(&GameState->R, LightMapPhong0);
+
+      material LightMapPhong1                       = NewLightMapPhongMaterial();
+      LightMapPhong1.LightMapPhong.DiffuseMapIndex  = 0;
+      LightMapPhong1.LightMapPhong.SpecularMapIndex = 7;
+      LightMapPhong1.LightMapPhong.Shininess        = 0.5f;
+      AddMaterial(&GameState->R, LightMapPhong1);
+
+      material LightMapPhong2                       = NewLightMapPhongMaterial();
+      LightMapPhong2.LightMapPhong.DiffuseMapIndex  = 0;
+      LightMapPhong2.LightMapPhong.SpecularMapIndex = 1;
+      LightMapPhong2.LightMapPhong.Shininess        = 0.5f;
+      AddMaterial(&GameState->R, LightMapPhong2);
+
+      material LightMapPhong3                       = NewLightMapPhongMaterial();
+      LightMapPhong3.LightMapPhong.DiffuseMapIndex  = 5;
+      LightMapPhong3.LightMapPhong.SpecularMapIndex = 10;
+      LightMapPhong3.LightMapPhong.Shininess        = 0.5f;
+      AddMaterial(&GameState->R, LightMapPhong3);
+
+      material Phong0              = NewPhongMaterial();
+      Phong0.Phong.DiffuseMapIndex = 0;
       AddMaterial(&GameState->R, Phong0);
 
-      material Phong1            = NewPhongMaterial();
-      Phong1.Phong.TextureIndex0 = GameState->R.Textures[1];
+      material Phong1              = NewPhongMaterial();
+      Phong1.Phong.DiffuseMapIndex = 1;
       AddMaterial(&GameState->R, Phong1);
 
-      material Phong2            = NewPhongMaterial();
-      Phong2.Phong.TextureIndex0 = GameState->R.Textures[2];
+      material Phong2              = NewPhongMaterial();
+      Phong2.Phong.DiffuseMapIndex = 2;
       AddMaterial(&GameState->R, Phong2);
 
-      material Phong3            = NewPhongMaterial();
-      Phong3.Phong.TextureIndex0 = GameState->R.Textures[0];
+      material Phong3              = NewPhongMaterial();
+      Phong3.Phong.DiffuseMapIndex = 3;
       AddMaterial(&GameState->R, Phong3);
 
-      material Phong4            = NewPhongMaterial();
-      Phong4.Phong.TextureIndex0 = GameState->R.Textures[4];
+      material Phong4              = NewPhongMaterial();
+      Phong4.Phong.DiffuseMapIndex = 4;
       AddMaterial(&GameState->R, Phong4);
 
-      material Phong5            = NewPhongMaterial();
-      Phong5.Phong.TextureIndex0 = GameState->R.Textures[5];
+      material Phong5              = NewPhongMaterial();
+      Phong5.Phong.DiffuseMapIndex = 5;
       AddMaterial(&GameState->R, Phong5);
 
-      material Phong6            = NewPhongMaterial();
-      Phong6.Phong.TextureIndex0 = GameState->R.Textures[6];
+      material Phong6              = NewPhongMaterial();
+      Phong6.Phong.DiffuseMapIndex = 6;
       AddMaterial(&GameState->R, Phong6);
 
       material Color0 = NewColorMaterial();
