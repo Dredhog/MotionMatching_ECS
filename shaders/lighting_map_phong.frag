@@ -37,9 +37,9 @@ main()
   vec3  diffuse = vec3(texture(material.diffuse, frag_texCoord)) * diff * light.diffuse;
 
   vec3 view_dir    = normalize(camera_position - frag_position);
-  vec3 reflect_dir = reflect(-light_dir, unit_normal);
+  vec3 halfway_dir = normalize(light_dir + view_dir);
 
-  float spec     = pow(max(dot(view_dir, reflect_dir), 0.0), material.shininess);
+  float spec     = pow(max(dot(frag_normal, halfway_dir), 0.0), material.shininess);
   vec3  specular = vec3(texture(material.specular, frag_texCoord)) * spec * light.specular;
 
   out_color = vec4((ambient + diffuse + specular), 1.0f);

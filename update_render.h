@@ -114,6 +114,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
     GameState->R.ShaderLightingMapPhong =
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/lighting_map_phong");
+    GameState->R.ShaderMaterialPhong =
+      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/material_blinn_phong");
     GameState->R.ShaderCubemap =
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/cubemap");
     GameState->R.ShaderGizmo = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/gizmo");

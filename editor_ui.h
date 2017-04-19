@@ -138,6 +138,8 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
             ++CurrentMaterial->Phong.DiffuseMapIndex;
           }
         }
+        UI::Row(GameState, &Layout, 1, "Blinn");
+        UI::_BoolButton(&Layout, Input, "Toggle", &Material->Phong.UseBlinn);
         UI::Row(GameState, &Layout, 1, "Ambient");
         UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength, 0, 1.0f,
                         5.0f);
@@ -146,7 +148,6 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
                         1.0f, 5.0f);
       }
       break;
-      // TODO(Rytis): Fix bug involving specular map and different shader slider value change
       case SHADER_LightMapPhong:
       {
         UI::Row(GameState, &Layout, 1, "Diffuse");

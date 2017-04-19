@@ -1,7 +1,16 @@
 #pragma once
 
+enum material_type
+{
+  MATERIAL_Color    = 1,
+  MATERIAL_Texture  = 2,
+  MATERIAL_Specular = 4,
+  MATERIAL_Normal   = 8,
+};
+
 enum shader_type
 {
+  SHADER_MaterialPhong,
   SHADER_LightMapPhong,
   SHADER_Phong,
   SHADER_Color,
@@ -25,6 +34,7 @@ union material {
   // material_header;
   struct material_header
   {
+    int32_t  MaterialType;
     uint32_t ShaderType;
     bool     UseBlending;
   } Common;
@@ -35,6 +45,7 @@ union material {
     uint32_t        DiffuseMapIndex;
     float           AmbientStrength;
     float           SpecularStrength;
+    bool            UseBlinn;
   } Phong;
   struct
   {
@@ -88,6 +99,7 @@ struct render_data
   // Shaders
   uint32_t ShaderPhong;
   uint32_t ShaderLightingMapPhong;
+  uint32_t ShaderMaterialPhong;
   uint32_t ShaderSkeletalPhong;
   uint32_t ShaderSkeletalBoneColor;
   uint32_t ShaderColor;
@@ -161,6 +173,7 @@ NewPhongMaterial()
   Material.Phong.DiffuseMapIndex  = 0;
   Material.Phong.AmbientStrength  = 0.8f;
   Material.Phong.SpecularStrength = 0.6f;
+  Material.Phong.UseBlinn         = true;
   return Material;
 }
 
