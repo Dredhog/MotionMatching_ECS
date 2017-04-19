@@ -10,7 +10,6 @@
 #include "model.h"
 #include "file_io.h"
 #include "asset.h"
-#include "builder/pack.h"
 #include "load_texture.h"
 #include "misc.h"
 #include "intersection_testing.h"
@@ -49,6 +48,7 @@ GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
   mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
   return MVPMatrix;
 }
+
 
 void
 AddEntity(game_state* GameState, Render::model* Model, int32_t* MaterialIndices,
@@ -125,14 +125,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/debug_textured_quad");
     GameState->R.ShaderID = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/id");
     //------------LOAD TEXTURES-----------
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/body_dif.png"));
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/arm_dif.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/hand_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/hand_dif.png"));
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/leg_dif.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/helmet_diff.png"));
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/glass_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/body_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/leg_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/arm_dif.png"));
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/body_dif.png"));
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);

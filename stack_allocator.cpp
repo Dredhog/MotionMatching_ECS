@@ -72,6 +72,14 @@ namespace Memory
     m_AllocCount = 0;
   }
 
+  size_t
+  Memory::stack_allocator::GetByteCountAboveMarker(marker Marker) const
+  {
+    size_t Result = m_Top - Marker.Address;
+    assert(Result > 0);
+    return Result;
+  }
+
   marker
   Memory::stack_allocator::GetMarker() const
   {

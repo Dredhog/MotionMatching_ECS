@@ -24,7 +24,7 @@ typedef PLATFORM_FREE_FILE_MEMORY(platform_free_file_memory);
 typedef PLATFORM_WRITE_ENTIRE_FILE(platform_write_entire_file);
 #endif
 
-uint32_t
+inline uint32_t
 SafeTruncateUint64(uint64_t Value)
 {
   assert(Value <= 0xffffffff);
@@ -32,7 +32,7 @@ SafeTruncateUint64(uint64_t Value)
   return Result;
 }
 
-debug_read_file_result
+inline debug_read_file_result
 ReadEntireFile(Memory::stack_allocator *Allocator, const char* FileName)
 {
 	assert(Allocator);
@@ -82,7 +82,7 @@ ReadEntireFile(Memory::stack_allocator *Allocator, const char* FileName)
   return Result;
 }
 
-bool
+inline bool
 WriteEntireFile(char* Filename, uint64_t MemorySize, void* Memory)
 {
   int FileHandle = open(Filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);

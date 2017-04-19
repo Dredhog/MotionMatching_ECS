@@ -14,7 +14,6 @@
 #include "stack_allocator.cpp"
 
 #include "file_io.h"
-#include "pack.h"
 
 void InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight);
 void NormalizeVertexBoneWeights(Render::vertex* Verte);
@@ -305,7 +304,8 @@ main(int ArgCount, char** Args)
   Assimp::Importer Importer;
   const aiScene*   Scene =
     Importer.ReadFile(Args[1], aiProcess_SplitLargeMeshes | aiProcess_Triangulate |
-                                 aiProcess_GenNormals | aiProcess_FlipUVs);
+                                 aiProcess_GenNormals | aiProcess_FlipUVs |
+                                 aiProcess_CalcTangentSpace);
   if(!Scene || Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !Scene->mRootNode)
   {
     printf("error::assimp: %s\n", Importer.GetErrorString());
@@ -353,11 +353,11 @@ main(int ArgCount, char** Args)
     // write '.model'
     assert(Allocator.GetUsedSize() == TotalOutputFileSize - sizeof(Anim::skeleton));
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
-		AssetHeader->Skeleton = 0;
+    AssetHeader->Skeleton  = 0;
 
     printf("writing: %s\n", ModelName);
     PrintModelHeader((Render::model*)AssetHeader->Model);
-    PackAsset(AssetHeader, TotalOutputFileSize - sizeof(Anim::skeleton));
+		Asset::PackAsset(AssetHeader, TotalOutputFileSize - sizeof(Anim::skeleton));
     WriteEntireFile(ModelName, TotalOutputFileSize - sizeof(Anim::skeleton), FileMemory);
 
     UnpackAsset(AssetHeader);
@@ -381,7 +381,7 @@ main(int ArgCount, char** Args)
     assert(Allocator.GetUsedSize() == TotalOutputFileSize);
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
     AssetHeader->TotalSize = TotalOutputFileSize;
-		AssetHeader->Skeleton = 0;
+    AssetHeader->Skeleton  = 0;
 
     printf("writing: %s\n", ModelName);
     Render::PrintModelHeader((Render::model*)AssetHeader->Model);

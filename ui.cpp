@@ -34,6 +34,7 @@ vec4 g_PressedColor       = { 0.3f, 0.3f, 0.3f, 1 };
 vec4 g_BoolNormalColor    = { 0.3f, 0.3f, 0.3f, 1 };
 vec4 g_BoolPressedColor   = { 0.2f, 0.2f, 0.4f, 1 };
 vec4 g_BoolHighlightColor = { 0.3f, 0.3f, 0.5f, 1 };
+vec4 g_DescriptionColor   = { 0.3f, 0.35f, 0.4f, 1 };
 vec4 g_FontColor          = { 1.0f, 1.0f, 1.0f, 1 };
 
 #define NOT_ACTIVE                                                                                 \
@@ -46,7 +47,7 @@ bool
 AreUI_IDsEqual(ui_id A, ui_id B)
 {
   bool Result =
-    ((A.DataPtr != B.DataPtr) || (A.NamePtr != B.NamePtr) || (A.OwnerPtr != B.OwnerPtr));
+    ((A.DataPtr == B.DataPtr) && (A.NamePtr == B.NamePtr) && (A.OwnerPtr == B.OwnerPtr));
   return Result;
 }
 
@@ -55,9 +56,9 @@ IsHot(ui_id ID)
 {
   if(AreUI_IDsEqual(ID, g_Hot))
   {
-    return false;
+    return true;
   }
-  return true;
+  return false;
 }
 
 bool
@@ -65,9 +66,9 @@ IsActive(ui_id ID)
 {
   if(AreUI_IDsEqual(ID, g_Active))
   {
-    return false;
+    return true;
   }
-  return true;
+  return false;
 }
 
 void
@@ -125,7 +126,7 @@ UI::Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const cha
   Layout->Y -= Layout->RowHeight;
 
   Layout->ColumnWidth = ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
-  UI::DrawTextBox(GameState, Layout, Text, DescrioptionBGColor);
+  UI::DrawTextBox(GameState, Layout, Text, g_DescriptionColor);
   assert(ANOTATION_WIDTH_PERCENTAGE < 1.0f);
   Layout->X += ANOTATION_WIDTH_PERCENTAGE * Layout->Width;
   assert(ColumnCount >= 1);
@@ -172,12 +173,16 @@ UI::DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, 
 {
   float TextPadding = 0.005f;
   DrawBox(GameState, TopLeft, Width, Height, InnerColor, BorderColor);
+  int32_t  TextureWidth;
+  int32_t  TextureHeight;
   uint32_t TextureID =
     Text::GetTextTextureID(&GameState->Font, (int32_t)(10 * ((float)Width / (float)Height)), Text,
-                           g_FontColor);
+                           g_FontColor, &TextureWidth, &TextureHeight);
+  float TextAspect = (float)Width / (float)Height;
   DEBUGDrawTopLeftTexturedQuad(GameState, TextureID,
                                vec3{ TopLeft.X + TextPadding, TopLeft.Y - TextPadding, TopLeft.Z },
-                               Width - 2 * TextPadding, Height - 2 * TextPadding);
+                               TextAspect * (Height - 2 * TextPadding), Height - 2 * TextPadding);
+  // TextAspect * Height, Height);
 }
 
 void
@@ -191,6 +196,43 @@ UI::DrawTextBox(game_state* GameState, im_layout* Layout, const char* Text, vec4
 bool
 UI::PushButton(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
                const void* OwnerID)
+{
+  ui_id ID    = {};
+  ID.DataPtr  = (uintptr_t)Text;
+  ID.OwnerPtr = (uintptr_t)OwnerID;
+
+  if(_LayoutIntersects(Layout, Input))
+  {
+    SetHot(ID);
+  }
+  else
+  {
+    UnsetHot(ID);
+  }
+
+  bool Result = false;
+  if(IsHot(ID) && IsActive(NOT_ACTIVE))
+  {
+    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    {
+      SetActive(ID);
+      Result = true;
+    }
+  }
+  vec4 InnerColor = IsActive(ID) ? g_PressedColor : (IsHot(ID) ? g_HighlightColor : g_NormalColor);
+  DrawTextBox(GameState, Layout, Text, InnerColor, g_BorderColor);
+  Layout->X += Layout->ColumnWidth;
+  if(IsActive(ID))
+  {
+    SetActive(NOT_ACTIVE);
+  }
+
+  return Result;
+}
+
+bool
+UI::ReleaseButton(game_state* GameState, im_layout* Layout, const game_input* Input,
+                  const char* Text, const void* OwnerID)
 {
   ui_id ID    = {};
   ID.DataPtr  = (uintptr_t)Text;
@@ -341,7 +383,7 @@ UI::ExpandableButton(game_state* GameState, im_layout* Layout, const game_input*
 
   // draw square icon
   float   IconWidthK = (Layout->RowHeight / Layout->AspectRatio) / Layout->ColumnWidth;
-  int32_t TextureID  = (IsExpanded) ? GameState->ExpandedTextureID : GameState->CollapsedTextureID;
+  int32_t TextureID  = (*IsExpanded) ? GameState->ExpandedTextureID : GameState->CollapsedTextureID;
   DEBUGDrawTopLeftTexturedQuad(GameState, TextureID, vec3{ Layout->X, Layout->Y, 0.0f },
                                IconWidthK * Layout->ColumnWidth, Layout->RowHeight);
 
@@ -392,7 +434,6 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
     UnsetHot(ID);
   }
 
-  bool triggered = false;
   if(IsActive(ID))
   {
     if(!_Intersects(Layout->X - IconWidth, Layout->Y, Layout->ColumnWidth + 2 * IconWidth,
@@ -408,13 +449,9 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
       }
     }
   }
-  else if(IsHot(ID))
+  else if(IsHot(ID) && (Input->MouseLeft.EndedDown && Input->MouseLeft.Changed))
   {
-    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
-    {
-      //triggered = true;
-      SetActive(ID);
-    }
+    SetActive(ID);
   }
 
 #define GetStringAtIndex(Index) (ElementToCharPtr((char*)ItemList + ElementSize * (Index)))
@@ -432,16 +469,20 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   TempLayout.CurrentP.Z = -0.1f;
   if(IsActive(ID))
   {
+    SetActive(NOT_ACTIVE);
+    bool PressedItem = false;
     for(int i = 0; i < ListLength; i++)
     {
       UI::Row(&TempLayout);
       if(UI::PushButton(GameState, &TempLayout, Input, GetStringAtIndex(i), &ID))
       {
         *ActiveIndex = i;
-        SetActive(NOT_ACTIVE);
-        SetHot(NOT_ACTIVE);
-        break;
+        PressedItem  = true;
       }
+    }
+    if(!PressedItem)
+    {
+      SetActive(ID);
     }
   }
 #undef GetStringAtIndex

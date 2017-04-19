@@ -14,8 +14,16 @@
 #include "render_data.h"
 #include "text.h"
 
-const int32_t ENTITY_MAX_COUNT = 400;
-// static const int32_t ENTITY_MAX_MESH_COUNT = 100;
+struct loaded_wav
+{
+  int16_t* AudioData;
+  uint32_t AudioLength;
+  uint32_t AudioSampleIndex;
+};
+
+const int32_t ENTITY_MAX_COUNT           = 400;
+const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
+const int32_t MESH_SELECTION_MAX_COUNT   = 400;
 
 struct entity
 {
@@ -24,12 +32,20 @@ struct entity
   int32_t*        MaterialIndices;
 };
 
-struct loaded_wav
+#if 0
+struct entiity_mesh
 {
-  int16_t* AudioData;
-  uint32_t AudioLength;
-  uint32_t AudioSampleIndex;
+  int32_t EntityIndex;
+  int32_t MeshIndex;
 };
+
+struct Selection
+{
+  // ArraysAreMutuallyExclussive
+  int32_t      EntityIndices[ENTITY_SELECTION_MAX_COUNT];
+  entiity_mesh Meshes[MESH_SELECTION_MAX_COUNT];
+};
+#endif
 
 struct game_state
 {
@@ -57,7 +73,6 @@ struct game_state
   // Temp textures (not their place)
   int32_t CollapsedTextureID;
   int32_t ExpandedTextureID;
-  int32_t TextTexture;
   int32_t CubemapTexture;
 
   // Entities
@@ -91,14 +106,6 @@ struct game_state
   uint32_t IndexFBO;
   uint32_t DepthRBO;
   uint32_t IDTexture;
-
-// Material preview framebuffer
-#if 0
-  uint32_t PreviewFBO;
-  uint32_t PreviewDepthRBO;
-  uint32_t MaterialEditorPreviewTexture;
-  uint32_t MaterialPreviewTexture;
-#endif
 };
 
 inline bool
@@ -146,4 +153,16 @@ TransformToMat4(const Anim::transform* Transform)
                               Math::MulMat4(Math::Mat4Rotate(Transform->Rotation),
                                             Math::Mat4Scale(Transform->Scale)));
   return Result;
+}
+
+inline bool
+DeleteEntity(game_state* GameState, int32_t Index)
+{
+  if(0 <= Index && GameState->EntityCount)
+  {
+    GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
+    --GameState->EntityCount;
+    return true;
+  }
+  return false;
 }

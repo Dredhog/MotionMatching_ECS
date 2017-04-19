@@ -13,6 +13,7 @@ struct text_texture
 {
   char*             Text;
   Text::sized_font* SizedFont;
+  int32_t           Dimensions[2];
   vec4              Color;
   uint32_t          TextureID;
 };
@@ -180,7 +181,8 @@ GetBestMatchingSizedFont(const Text::font* Font, int32_t FontSize)
 }
 
 uint32_t
-Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color)
+Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color, int32_t* Width,
+                       int32_t* Height)
 {
   sized_font SizedFont = GetBestMatchingSizedFont(Font, FontSize);
   int32_t    TextTextureIndex =
@@ -200,6 +202,9 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
       WriteTextToLineBufferAtIndex(g_TextLineCache, Text, NewIndex);
     g_TextTextureCache[NewIndex].SizedFont = &SizedFont;
     g_TextTextureCache[NewIndex].Color     = Color;
+    TTF_SizeText(SizedFont.Font, g_TextTextureCache[NewIndex].Text,
+                 &g_TextTextureCache[NewIndex].Dimensions[0],
+                 &g_TextTextureCache[NewIndex].Dimensions[1]);
     if(NewIndex == g_CachedTextureCount)
     {
       ++g_CachedTextureCount;
@@ -207,5 +212,14 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
     TextTextureIndex = NewIndex;
   }
   g_HitCounts[TextTextureIndex]++;
+
+  if(Width)
+  {
+    *Width = g_TextTextureCache[TextTextureIndex].Dimensions[0];
+  }
+  if(Height)
+  {
+    *Height = g_TextTextureCache[TextTextureIndex].Dimensions[1];
+  }
   return g_TextTextureCache[TextTextureIndex].TextureID;
 }

@@ -24,5 +24,6 @@ namespace Text
 
   sized_font LoadSizedFont(const char* FontName, int FontSize);
   font LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize);
-  uint32_t GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color);
+  uint32_t GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color,
+                            int32_t* Width = 0, int32_t* Height = 0);
 }

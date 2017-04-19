@@ -7,6 +7,8 @@
 
 #include "skeleton.h"
 
+static const int ANIM_CONTROLLER_MAX_ANIM_COUNT = 10;
+
 namespace Anim
 {
   struct transform
@@ -22,20 +24,27 @@ namespace Anim
     float*     SampleTimes;
     int32_t    KeyframeCount;
     int32_t    ChannelCount;
-    uint8_t    IsLooping;
   };
 
   struct animation_state
   {
     float StartTimeSec;
     float playbackRateSec;
+    bool  IsLooping;
   };
 
   struct animation_controller
   {
-    animation**      Animations;
-    animation_state* AnimationStates;
-    skeleton*        Skeleton;
+    animation_state AnimationStates[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    animation*      Animations[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    skeleton*       Skeleton;
+    int32_t         AnimStateCount;
+  };
+
+  struct animation_group
+  {
+    animation** Animations;
+    int32_t    AnimationCount;
   };
 
   void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,
