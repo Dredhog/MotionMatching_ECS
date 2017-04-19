@@ -48,6 +48,7 @@ AreUI_IDsEqual(ui_id A, ui_id B)
 {
   bool Result =
     ((A.DataPtr == B.DataPtr) && (A.NamePtr == B.NamePtr) && (A.OwnerPtr == B.OwnerPtr));
+
   return Result;
 }
 
@@ -64,11 +65,7 @@ IsHot(ui_id ID)
 bool
 IsActive(ui_id ID)
 {
-  if(AreUI_IDsEqual(ID, g_Active))
-  {
-    return true;
-  }
-  return false;
+  return AreUI_IDsEqual(ID, g_Active);
 }
 
 void
@@ -420,7 +417,7 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
 {
   ui_id ID   = {};
   ID.DataPtr = (uintptr_t)ItemList;
-  ID.NamePtr = (uintptr_t)SectionHeight;
+  ID.NamePtr = (uintptr_t)(1000.0f * SectionHeight);
 
   float IconWidth       = Layout->RowHeight / Layout->AspectRatio;
   float TextRegionWidth = Layout->ColumnWidth - IconWidth;
@@ -435,19 +432,17 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
     UnsetHot(ID);
   }
 
+#define GetStringAtIndex(Index) (ElementToCharPtr((char*)ItemList + ElementSize * (Index)))
   if(IsActive(ID))
   {
     if(!_Intersects(Layout->X - IconWidth, Layout->Y, Layout->ColumnWidth + 2 * IconWidth,
-                    Layout->RowHeight * (ListLength + 1), Input))
+                    Layout->RowHeight * (ListLength + 2), Input))
     {
       SetActive(NOT_ACTIVE);
     }
-    else if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+    else if(IsHot(ID) && Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
     {
-      if(_LayoutIntersects(Layout, Input))
-      {
-        SetActive(NOT_ACTIVE);
-      }
+      SetActive(NOT_ACTIVE);
     }
   }
   else if(IsHot(ID) && (Input->MouseLeft.EndedDown && Input->MouseLeft.Changed))
@@ -455,17 +450,16 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
     SetActive(ID);
   }
 
-#define GetStringAtIndex(Index) (ElementToCharPtr((char*)ItemList + ElementSize * (Index)))
-
+  vec4 HeaderColor = IsHot(ID) ? g_HighlightColor : g_NormalColor;
   // DrawCurrentElement
   DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,
-              GetStringAtIndex(*ActiveIndex), g_NormalColor, g_BorderColor);
+              GetStringAtIndex(*ActiveIndex), HeaderColor, g_BorderColor);
   DEBUGDrawTopLeftTexturedQuad(GameState, GameState->ExpandedTextureID,
                                vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
                                Layout->RowHeight);
-
-  im_layout TempLayout  = *Layout;
-  TempLayout.TopLeft.X  = TempLayout.CurrentP.X;
+  im_layout TempLayout = *Layout;
+  TempLayout.TopLeft.X = TempLayout.CurrentP.X;
+  TempLayout.CurrentP.Y -= Layout->RowHeight;
   TempLayout.Width      = TempLayout.ColumnWidth;
   TempLayout.CurrentP.Z = -0.1f;
 
@@ -473,13 +467,18 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   {
     for(int i = 0; i < ListLength; i++)
     {
-      UI::Row(&TempLayout);
       vec4 BoxColor = g_NormalColor;
       if(_LayoutIntersects(&TempLayout, Input))
       {
         BoxColor = g_HighlightColor;
+
+        if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+        {
+          *ActiveIndex = i;
+        }
       }
       UI::DrawTextBox(GameState, &TempLayout, GetStringAtIndex(i), BoxColor);
+      UI::Row(&TempLayout);
     }
   }
   Layout->X += Layout->ColumnWidth;
