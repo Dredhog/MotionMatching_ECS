@@ -158,6 +158,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
                        VoidPtrToTextureName);
           CurrentMaterial->LightMapPhong.DiffuseMapIndex = ActiveDiffuseMapIndex;
         }
+
         UI::Row(GameState, &Layout, 1, "Specular");
         {
           int32_t ActiveSpecularMapIndex = CurrentMaterial->LightMapPhong.SpecularMapIndex;
