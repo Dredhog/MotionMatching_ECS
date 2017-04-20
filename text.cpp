@@ -173,7 +173,7 @@ GetBestMatchingSizedFont(const Text::font* Font, int32_t FontSize)
     int Diff = AbsInt32(Font->SizedFonts[i].Size - FontSize);
     if(Diff < MinDiff)
     {
-      MinDiff        = Diff;
+      // MinDiff        = Diff;
       BestMatchIndex = i;
     }
   }

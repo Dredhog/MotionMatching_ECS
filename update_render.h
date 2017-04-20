@@ -173,7 +173,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
 
-    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 7, 8, 1);
+    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
 
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
