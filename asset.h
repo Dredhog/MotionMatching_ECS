@@ -28,11 +28,18 @@ namespace Asset
 
   void PackModel(Render::model* Model);
   void UnpackModel(Render::model* Model);
+
   void PackAnimation(Anim::animation* Animation);
+  void UnpackAnimation(Anim::animation* Animation);
+
   void PackAnimationGroup(Anim::animation_group* AnimationGroup);
+  void UnpackAnimationGroup(Anim::animation_group* AnimationGroup);
+
   void PackAsset(Asset::asset_file_header* Header, int32_t TotalAssetSize);
   void UnpackAsset(Asset::asset_file_header* Header);
 
   void ExportAnimationGroup(Memory::stack_allocator*         Alloc,
                             EditAnimation::animation_editor* AnimEditor, char* FileName);
+  void ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
+                            char* FileName);
 }

@@ -7,7 +7,7 @@
 
 #include "skeleton.h"
 
-static const int ANIM_CONTROLLER_MAX_ANIM_COUNT = 10;
+static const int ANIM_CONTROLLER_MAX_ANIM_COUNT = 5;
 
 namespace Anim
 {
@@ -44,7 +44,7 @@ namespace Anim
   struct animation_group
   {
     animation** Animations;
-    int32_t    AnimationCount;
+    int32_t     AnimationCount;
   };
 
   void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,

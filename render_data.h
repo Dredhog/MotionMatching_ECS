@@ -11,7 +11,6 @@ enum shader_type
 {
   SHADER_Phong,
   SHADER_Color,
-  //  SHADER_ID,
 
   SHADER_EnumCount,
 };

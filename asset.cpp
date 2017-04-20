@@ -47,6 +47,14 @@ Asset::PackAnimation(Anim::animation* Animation)
 }
 
 void
+Asset::UnpackAnimation(Anim::animation* Animation)
+{
+  uint64_t Base          = (uint64_t)Animation;
+  Animation->Transforms  = (Anim::transform*)((uint64_t)Animation->Transforms + Base);
+  Animation->SampleTimes = (float*)((uint64_t)Animation->SampleTimes + Base);
+}
+
+void
 Asset::PackAnimationGroup(Anim::animation_group* AnimationGroup)
 {
   for(int a = 0; a < AnimationGroup->AnimationCount; a++)
@@ -56,16 +64,33 @@ Asset::PackAnimationGroup(Anim::animation_group* AnimationGroup)
 }
 
 void
+Asset::UnpackAnimationGroup(Anim::animation_group* AnimationGroup)
+{
+  for(int a = 0; a < AnimationGroup->AnimationCount; a++)
+  {
+    UnpackAnimation(AnimationGroup->Animations[a]);
+  }
+}
+
+void
 Asset::PackAsset(Asset::asset_file_header* Header, int32_t TotalAssetSize)
 {
   uint64_t HeaderBase = (uint64_t)Header;
 
-  PackModel((Render::model*)Header->Model);
-  Header->Model = Header->Model - HeaderBase;
-
-  if(Header->Skeleton && Header->AssetType == Asset::ASSET_Actor)
+  if(Header->AssetType == Asset::ASSET_Actor || Header->AssetType == Asset::ASSET_Model)
   {
-    Header->Skeleton = Header->Skeleton - HeaderBase;
+    PackModel((Render::model*)Header->Model);
+    Header->Model = Header->Model - HeaderBase;
+
+    if(Header->Skeleton && Header->AssetType == Asset::ASSET_Actor)
+    {
+      Header->Skeleton = Header->Skeleton - HeaderBase;
+    }
+  }
+  else if(Header->AssetType == ASSET_AnimationGroup)
+  {
+    PackAnimationGroup((Anim::animation_group*)Header->AnimationGroup);
+    Header->AnimationGroup = Header->AnimationGroup - HeaderBase;
   }
 
   Header->TotalSize = TotalAssetSize;
@@ -78,14 +103,21 @@ Asset::UnpackAsset(Asset::asset_file_header* Header)
   assert(Header->Checksum == ASSET_HEADER_CHECKSUM);
   uint64_t HeaderBase = (uint64_t)Header;
 
-  Header->Model = Header->Model + HeaderBase;
-
-  if(Header->AssetType == Asset::ASSET_Actor)
+  if(Header->AssetType == Asset::ASSET_Actor || Header->AssetType == Asset::ASSET_Model)
   {
-    Header->Skeleton = Header->Skeleton + HeaderBase;
-  }
+    Header->Model = Header->Model + HeaderBase;
+    UnpackModel((Render::model*)Header->Model);
 
-  UnpackModel((Render::model*)Header->Model);
+    if(Header->AssetType == Asset::ASSET_Actor)
+    {
+      Header->Skeleton = Header->Skeleton + HeaderBase;
+    }
+  }
+  else if(Header->AssetType == ASSET_AnimationGroup)
+  {
+    Header->AnimationGroup = Header->AnimationGroup + HeaderBase;
+    UnpackAnimationGroup((Anim::animation_group*)Header->AnimationGroup);
+  }
 }
 
 void
@@ -128,11 +160,26 @@ Asset::ExportAnimationGroup(Memory::stack_allocator*         Alloc,
              ChannelCount * sizeof(Anim::transform));
     }
   }
-  Asset::PackAnimationGroup(AnimGroup);
-  uint64_t HeaderBase    = (uint64_t)Header;
-  Header->AnimationGroup = ((uint64_t)Header->AnimationGroup - HeaderBase);
 
-  Header->TotalSize =
+  int32_t TotalSize =
     Memory::SafeTruncate_size_t_To_uint32_t(Alloc->GetByteCountAboveMarker(Marker));
+  PackAsset(Header, TotalSize);
+
   WriteEntireFile(FileName, Header->TotalSize, Header);
+}
+
+void
+Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
+                            char* FileName)
+{
+  assert(OutputAnimGroup);
+  debug_read_file_result AssetReadResult = ReadEntireFile(Alloc, FileName);
+
+  assert(AssetReadResult.Contents);
+  Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
+
+  UnpackAsset(AssetHeader);
+
+  *OutputAnimGroup = (Anim::animation_group*)AssetHeader->AnimationGroup;
+  assert(*OutputAnimGroup);
 }

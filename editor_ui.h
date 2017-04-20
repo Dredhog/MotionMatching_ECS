@@ -365,6 +365,13 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
                                   "data/animation_export_test");
     }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Animation"))
+    {
+      Anim::animation_group* AnimGroup;
+      Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup,
+                                  "data/animation_export_test");
+    }
   }
 
   UI::Row(&Layout);
