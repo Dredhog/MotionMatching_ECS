@@ -14,21 +14,9 @@ enum shader_type
   SHADER_LightMapPhong,
   SHADER_Phong,
   SHADER_Color,
-  //  SHADER_ID,
 
   SHADER_EnumCount,
 };
-
-#if 0
-enum texture_type
-{
-  TEXTURE_Diffuse,
-  TEXTURE_Specular,
-  TEXTURE_Normal,
-
-  TEXTURE_EnumCount,
-};
-#endif
 
 union material {
   // material_header;

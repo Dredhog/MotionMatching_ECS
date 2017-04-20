@@ -338,6 +338,13 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
                                   "data/animation_export_test");
     }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Animation"))
+    {
+      Anim::animation_group* AnimGroup;
+      Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup,
+                                  "data/animation_export_test");
+    }
   }
 
   UI::Row(&Layout);
@@ -347,47 +354,47 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BorderColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BorderColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BorderColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BorderColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BorderColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Base");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_NormalColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_NormalColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_NormalColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_NormalColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_NormalColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Highlight");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_HighlightColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_HighlightColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_HighlightColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_HighlightColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_HighlightColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Pressed");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_PressedColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_PressedColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_PressedColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_PressedColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_PressedColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "BoolPressed");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolPressedColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolPressedColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolPressedColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolPressedColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolPressedColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Bool Base");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolNormalColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolNormalColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolNormalColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolNormalColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolNormalColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Bool Highlight");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolHighlightColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolHighlightColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolHighlightColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolHighlightColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolHighlightColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Description bg");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_DescriptionColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_DescriptionColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_DescriptionColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_DescriptionColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_DescriptionColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Font");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_FontColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_FontColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_FontColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_FontColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_FontColor.A, 0, 1.0f, 5.0f);
   }
 
 #if 0
