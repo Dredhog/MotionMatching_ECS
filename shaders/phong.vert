@@ -41,34 +41,17 @@ main()
 
   mat3 normalMatrix = transpose(inverse(mat3(mat_model)));
 
-  if((flags & DIFFUSE) != 0)
-  {
-    frag.texCoord = a_texCoord;
-  }
-  else
-  {
-    frag.texCoord = vec2(0.0f);
-  }
+  frag.texCoord = a_texCoord;
 
-  if((flags & NORMAL) != 0)
-  {
-    frag.normal = vec3(0.0f);
+  frag.normal = normalMatrix * a_normal;
 
-    vec3 normal    = normalize(normalMatrix * a_normal);
-    vec3 tangent   = normalize(normalMatrix * a_tangent);
-    tangent        = normalize(tangent - dot(tangent, normal) * normal);
-    vec3 bitangent = cross(normal, tangent);
+  vec3 normal    = normalize(normalMatrix * a_normal);
+  vec3 tangent   = normalize(normalMatrix * a_tangent);
+  tangent        = normalize(tangent - dot(tangent, normal) * normal);
+  vec3 bitangent = cross(normal, tangent);
 
-    mat3 mat_tbn         = transpose(mat3(tangent, bitangent, normal));
-    frag.tangentLightPos = mat_tbn * lightPosition;
-    frag.tangentViewPos  = mat_tbn * cameraPosition;
-    frag.tangentFragPos  = mat_tbn * frag.position;
-  }
-  else
-  {
-    frag.normal          = normalMatrix * a_normal;
-    frag.tangentLightPos = vec3(0.0f);
-    frag.tangentViewPos  = vec3(0.0f);
-    frag.tangentFragPos  = vec3(0.0f);
-  }
+  mat3 mat_tbn         = transpose(mat3(tangent, bitangent, normal));
+  frag.tangentLightPos = mat_tbn * lightPosition;
+  frag.tangentViewPos  = mat_tbn * cameraPosition;
+  frag.tangentFragPos  = mat_tbn * frag.position;
 }

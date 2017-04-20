@@ -123,7 +123,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     {
       case SHADER_Phong:
       {
-        static bool DiffuseFlagValue = false;
+        bool DiffuseFlagValue = (Material->Phong.Flags & MATERIAL_Diffuse) != 0;
 
         UI::Row(GameState, &Layout, 1, "Use Diffuse");
         UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
@@ -145,7 +145,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           Material->Phong.Flags &= ~MATERIAL_Diffuse;
         }
 
-        static bool SpecularFlagValue = false;
+        bool SpecularFlagValue = (Material->Phong.Flags & MATERIAL_Specular) != 0;
 
         UI::Row(GameState, &Layout, 1, "Use Specular");
         UI::_BoolButton(&Layout, Input, "Toggle", &SpecularFlagValue);
@@ -167,7 +167,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           Material->Phong.Flags &= ~MATERIAL_Specular;
         }
 
-        static bool NormalFlagValue = false;
+        bool NormalFlagValue = (Material->Phong.Flags & MATERIAL_Normal) != 0;
 
         UI::Row(GameState, &Layout, 1, "Use Normal");
         UI::_BoolButton(&Layout, Input, "Toggle", &NormalFlagValue);

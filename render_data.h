@@ -27,6 +27,7 @@ union material {
   {
     material_header Common;
     int32_t         Flags;
+    vec4            DiffuseColor;
     uint32_t        DiffuseMapIndex;
     uint32_t        SpecularMapIndex;
     uint32_t        NormalMapIndex;
@@ -116,6 +117,7 @@ NewPhongMaterial()
   Material.Common.ShaderType      = SHADER_Phong;
   Material.Common.UseBlending     = true;
   Material.Phong.Flags            = 0;
+  Material.Phong.DiffuseColor     = vec4{ 1.0f, 1.0f, 1.0f, 1.0f };
   Material.Phong.DiffuseMapIndex  = 0;
   Material.Phong.SpecularMapIndex = 0;
   Material.Phong.DiffuseMapIndex  = 0;

@@ -6,6 +6,8 @@
 
 struct Material
 {
+  vec4 diffuseColor;
+
   sampler2D diffuseMap;
   sampler2D specularMap;
   sampler2D normalMap;
@@ -45,13 +47,15 @@ out vec4 out_color;
 void
 main()
 {
-  vec3 ambient = ambientStrength * light.ambient;
-  /*
-  if(((frag.flags & DIFFUSE) != 0) && (frag.flags >= SPECULAR))
+  vec3 ambient = vec3(0.0f);
+  if((frag.flags & DIFFUSE) != 0)
   {
-    ambient = vec3(texture(material.diffuseMap, frag.texCoord)) * light.ambient;
+    ambient = ambientStrength * vec3(texture(material.diffuseMap, frag.texCoord)) * light.ambient;
   }
-  */
+  else
+  {
+    ambient = ambientStrength * material.diffuseColor.rgb * light.ambient;
+  }
 
   vec3 normal = vec3(0.0f);
   if((frag.flags & NORMAL) != 0)
@@ -80,6 +84,10 @@ main()
   {
     diffuse = vec3(texture(material.diffuseMap, frag.texCoord)) * diff * light.diffuse;
   }
+  else
+  {
+    diffuse = material.diffuseColor.rgb * diff * light.diffuse;
+  }
 
   vec3 viewDir = vec3(0.0f);
   if((frag.flags & NORMAL) != 0)
@@ -104,15 +112,18 @@ main()
     specular = specularStrength * spec * light.specular;
   }
 
-  vec3 result = vec3(0.0f);
+  vec4 result = vec4(0.0f);
   if((frag.flags & DIFFUSE) != 0)
   {
-    result = (ambient + diffuse + specular) * vec3(texture(material.diffuseMap, frag.texCoord));
+    result =
+      vec4((ambient + diffuse + specular) * vec3(texture(material.diffuseMap, frag.texCoord)),
+           1.0f);
   }
   else
   {
-    result = vec3(1.0f, 0.0f, 0.0f);
+    result =
+      vec4((ambient + diffuse + specular) * material.diffuseColor.rgb, material.diffuseColor.a);
   }
 
-  out_color = vec4(result, 1.0f);
+  out_color = vec4(result);
 }
