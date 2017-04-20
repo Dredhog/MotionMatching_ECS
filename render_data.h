@@ -123,7 +123,7 @@ NewPhongMaterial()
   Material.Phong.DiffuseMapIndex  = 0;
   Material.Phong.AmbientStrength  = 0;
   Material.Phong.SpecularStrength = 0;
-  Material.Phong.Shininess        = 0;
+  Material.Phong.Shininess        = 1.0f;
   return Material;
 }
 

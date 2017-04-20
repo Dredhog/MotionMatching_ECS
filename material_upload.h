@@ -36,9 +36,8 @@ SetMaterial(render_data* RenderData, camera* Camera, material* Material)
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseMap"), 0);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.specularMap"), 1);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.normalMap"), 2);
-    // NOTE: Shininess multiplier should not stay this way
     glUniform1f(glGetUniformLocation(RenderData->ShaderPhong, "material.shininess"),
-                Material->Phong.Shininess * 128.0f);
+                Material->Phong.Shininess);
     glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "lightPosition"), 1,
                  (float*)&RenderData->LightPosition);
     glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "light.ambient"), 1,

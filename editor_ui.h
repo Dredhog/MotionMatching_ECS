@@ -123,7 +123,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     {
       case SHADER_Phong:
       {
-        bool DiffuseFlagValue = (Material->Phong.Flags & MATERIAL_Diffuse) != 0;
+        bool DiffuseFlagValue = (Material->Phong.Flags & MATERIAL_Diffuse);
 
         UI::Row(GameState, &Layout, 1, "Use Diffuse");
         UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
@@ -131,7 +131,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         {
           Material->Phong.Flags |= MATERIAL_Diffuse;
 
-          UI::Row(GameState, &Layout, 1, "Diffuse");
+          UI::Row(GameState, &Layout, 1, "Diffuse Map");
           {
             int32_t ActiveDiffuseMapIndex = CurrentMaterial->Phong.DiffuseMapIndex;
             UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames,
@@ -143,6 +143,13 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         else
         {
           Material->Phong.Flags &= ~MATERIAL_Diffuse;
+					
+        UI::Row(GameState, &Layout, 4, "Diffuse Color");
+        UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "G", &CurrentMaterial->Phong.DiffuseColor.G, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "B", &CurrentMaterial->Phong.DiffuseColor.B, 0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "A", &CurrentMaterial->Phong.DiffuseColor.A, 0, 1.0f, 5.0f);
+
         }
 
         bool SpecularFlagValue = (Material->Phong.Flags & MATERIAL_Specular) != 0;
@@ -190,14 +197,14 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         }
 
         UI::Row(GameState, &Layout, 1, "Ambient");
-        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength,
-                        0, 1.0f, 5.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength, 0, 1.0f,
+                        5.0f);
         UI::Row(GameState, &Layout, 1, "Specular");
-        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength,
-                        0, 1.0f, 5.0f);
-        UI::Row(GameState, &Layout, 1, "Shininess");
-        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 0,
+        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength, 0,
                         1.0f, 5.0f);
+        UI::Row(GameState, &Layout, 1, "Shininess");
+        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f, 512.0f,
+                        1024.0f);
       }
       break;
       case SHADER_Color:
