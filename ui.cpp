@@ -417,7 +417,8 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
 {
   ui_id ID   = {};
   ID.DataPtr = (uintptr_t)ItemList;
-  ID.NamePtr = (uintptr_t)(1000.0f * SectionHeight);
+  ID.NamePtr = (uintptr_t)(1000.0f * Layout->Y);
+  ID.OwnerPtr = (uintptr_t)(1000.0f * Layout->X);
 
   float IconWidth       = Layout->RowHeight / Layout->AspectRatio;
   float TextRegionWidth = Layout->ColumnWidth - IconWidth;
