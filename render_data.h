@@ -31,8 +31,6 @@ union material {
     uint32_t        DiffuseMapIndex;
     uint32_t        SpecularMapIndex;
     uint32_t        NormalMapIndex;
-    float           AmbientStrength;
-    float           SpecularStrength;
     float           Shininess;
   } Phong;
   struct
@@ -90,12 +88,10 @@ struct render_data
 
   // Light
   vec3 LightPosition;
-  //-----Testing Purposes-----
+
   vec3 LightAmbientColor;
   vec3 LightDiffuseColor;
   vec3 LightSpecularColor;
-  //--------------------------
-  vec3 LightColor;
 };
 
 inline uint32_t
@@ -121,8 +117,6 @@ NewPhongMaterial()
   Material.Phong.DiffuseMapIndex  = 0;
   Material.Phong.SpecularMapIndex = 0;
   Material.Phong.DiffuseMapIndex  = 0;
-  Material.Phong.AmbientStrength  = 0;
-  Material.Phong.SpecularStrength = 0;
   Material.Phong.Shininess        = 1.0f;
   return Material;
 }

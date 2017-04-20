@@ -196,12 +196,6 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           Material->Phong.Flags &= ~MATERIAL_Normal;
         }
 
-        UI::Row(GameState, &Layout, 1, "Ambient");
-        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength, 0, 1.0f,
-                        5.0f);
-        UI::Row(GameState, &Layout, 1, "Specular");
-        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength, 0,
-                        1.0f, 5.0f);
         UI::Row(GameState, &Layout, 1, "Shininess");
         UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f, 512.0f,
                         1024.0f);

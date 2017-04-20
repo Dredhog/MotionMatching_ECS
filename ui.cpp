@@ -415,9 +415,9 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
              im_layout* Layout, const game_input* Input, float SectionHeight, float* ScrollK,
              size_t ElementSize, char* (*ElementToCharPtr)(void*))
 {
-  ui_id ID   = {};
-  ID.DataPtr = (uintptr_t)ItemList;
-  ID.NamePtr = (uintptr_t)(1000.0f * Layout->Y);
+  ui_id ID    = {};
+  ID.DataPtr  = (uintptr_t)ItemList;
+  ID.NamePtr  = (uintptr_t)(1000.0f * Layout->Y);
   ID.OwnerPtr = (uintptr_t)(1000.0f * Layout->X);
 
   float IconWidth       = Layout->RowHeight / Layout->AspectRatio;
@@ -463,6 +463,7 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   TempLayout.CurrentP.Y -= Layout->RowHeight;
   TempLayout.Width      = TempLayout.ColumnWidth;
   TempLayout.CurrentP.Z = -0.1f;
+  TempLayout.RowHeight  = 0.75f * Layout->RowHeight;
 
   if(IsActive(ID))
   {

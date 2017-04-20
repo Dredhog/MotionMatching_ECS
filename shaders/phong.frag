@@ -37,8 +37,6 @@ in VertexOut
 }
 frag;
 
-uniform float ambientStrength;
-uniform float specularStrength;
 uniform Material material;
 uniform Light light;
 
@@ -77,7 +75,7 @@ main()
   }
   else
   {
-    specular = specularStrength * spec * light.specular;
+    specular = spec * light.specular;
   }
 
   vec3 ambient = vec3(0.0f);
@@ -89,7 +87,7 @@ main()
 
   if((frag.flags & DIFFUSE) != 0)
   {
-    ambient = ambientStrength * vec3(texture(material.diffuseMap, frag.texCoord)) * light.ambient;
+    ambient = vec3(texture(material.diffuseMap, frag.texCoord)) * light.ambient;
     diffuse = vec3(texture(material.diffuseMap, frag.texCoord)) * diff * light.diffuse;
 
     result =
@@ -98,7 +96,7 @@ main()
   }
   else
   {
-    ambient = ambientStrength * material.diffuseColor.rgb * light.ambient;
+    ambient = material.diffuseColor.rgb * light.ambient;
     diffuse = material.diffuseColor.rgb * diff * light.diffuse;
 
     result =

@@ -27,10 +27,6 @@ SetMaterial(render_data* RenderData, camera* Camera, material* Material)
   {
     glUseProgram(RenderData->ShaderPhong);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "flags"), Material->Phong.Flags);
-    glUniform1f(glGetUniformLocation(RenderData->ShaderPhong, "ambientStrength"),
-                Material->Phong.AmbientStrength);
-    glUniform1f(glGetUniformLocation(RenderData->ShaderPhong, "specularStrength"),
-                Material->Phong.SpecularStrength);
     glUniform4fv(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseColor"), 1,
                  (float*)&Material->Phong.DiffuseColor);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseMap"), 0);
