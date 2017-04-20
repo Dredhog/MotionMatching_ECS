@@ -3,7 +3,7 @@
 enum material_type
 {
   MATERIAL_Color    = 1,
-  MATERIAL_Texture  = 2,
+  MATERIAL_Diffuse  = 2,
   MATERIAL_Specular = 4,
   MATERIAL_Normal   = 8,
 };
@@ -11,7 +11,6 @@ enum material_type
 enum shader_type
 {
   SHADER_MaterialPhong,
-  SHADER_LightMapPhong,
   SHADER_Phong,
   SHADER_Color,
   //  SHADER_ID,
@@ -34,7 +33,6 @@ union material {
   // material_header;
   struct material_header
   {
-    int32_t  MaterialType;
     uint32_t ShaderType;
     bool     UseBlending;
   } Common;
@@ -50,10 +48,14 @@ union material {
   struct
   {
     material_header Common;
+    int32_t         Flags;
     uint32_t        DiffuseMapIndex;
     uint32_t        SpecularMapIndex;
+    uint32_t        NormalMapIndex;
+    float           AmbientStrength;
+    float           SpecularStrength;
     float           Shininess;
-  } LightMapPhong;
+  } MaterialPhong;
   struct
   {
     material_header Common;
@@ -98,7 +100,6 @@ struct render_data
 
   // Shaders
   uint32_t ShaderPhong;
-  uint32_t ShaderLightingMapPhong;
   uint32_t ShaderMaterialPhong;
   uint32_t ShaderSkeletalPhong;
   uint32_t ShaderSkeletalBoneColor;
@@ -118,39 +119,6 @@ struct render_data
   //--------------------------
   vec3 LightColor;
 };
-
-#if 0
-inline void
-AddTexture(render_data* RenderData, int32_t TextureID, texture_type TextureType)
-{
-  assert(TextureID);
-  switch(TextureType)
-  {
-    case TEXTURE_Diffuse:
-    {
-      assert(0 <= RenderData->TextureCount && RenderData->TextureCount < TEXTURE_MAX_COUNT);
-      RenderData->Textures[RenderData->TextureCount++] = TextureID;
-    }
-    break;
-    case TEXTURE_Specular:
-    {
-      assert(0 <= RenderData->SpecularMapCount && RenderData->SpecularMapCount < TEXTURE_MAX_COUNT);
-      RenderData->SpecularMaps[RenderData->SpecularMapCount++] = TextureID;
-    }
-    break;
-    case TEXTURE_Normal:
-    {
-      assert(0 <= RenderData->NormalMapCount && RenderData->NormalMapCount < TEXTURE_MAX_COUNT);
-      RenderData->NormalMaps[RenderData->NormalMapCount++] = TextureID;
-    }
-    break;
-    case TEXTURE_EnumCount:
-    {
-    }
-    break;
-  }
-}
-#endif
 
 inline uint32_t
 AddTexture(render_data* RenderData, uint32_t TextureID, char* TextureName)
@@ -178,14 +146,18 @@ NewPhongMaterial()
 }
 
 inline material
-NewLightMapPhongMaterial()
+NewMaterialPhongMaterial()
 {
   material Material                       = {};
-  Material.Common.ShaderType              = SHADER_LightMapPhong;
+  Material.Common.ShaderType              = SHADER_MaterialPhong;
   Material.Common.UseBlending             = true;
-  Material.LightMapPhong.DiffuseMapIndex  = 0;
-  Material.LightMapPhong.SpecularMapIndex = 0;
-  Material.LightMapPhong.Shininess        = 0;
+  Material.MaterialPhong.Flags            = 0;
+  Material.MaterialPhong.DiffuseMapIndex  = 0;
+  Material.MaterialPhong.SpecularMapIndex = 0;
+  Material.MaterialPhong.DiffuseMapIndex  = 0;
+  Material.MaterialPhong.AmbientStrength  = 0;
+  Material.MaterialPhong.SpecularStrength = 0;
+  Material.MaterialPhong.Shininess        = 0;
   return Material;
 }
 

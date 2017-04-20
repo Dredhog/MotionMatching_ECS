@@ -43,7 +43,7 @@ main()
     spec             = pow(max(dot(view_dir, reflect_dir), 0.0f), 32.0f);
   }
 
-  vec3 specular = (specular_strength * texture_sample.a) * spec * light_color;
+  vec3 specular = specular_strength * spec * light_color;
 
   out_color = vec4(texture_sample.xyz * (ambient + diffuse + specular), 1.0f);
 }

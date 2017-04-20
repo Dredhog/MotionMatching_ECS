@@ -148,28 +148,82 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
                         1.0f, 5.0f);
       }
       break;
-      case SHADER_LightMapPhong:
+      case SHADER_MaterialPhong:
       {
-        UI::Row(GameState, &Layout, 1, "Diffuse");
+        static bool DiffuseFlagValue = false;
+
+        UI::Row(GameState, &Layout, 1, "Use Diffuse");
+        UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
+        if(DiffuseFlagValue)
         {
-          int32_t ActiveDiffuseMapIndex = CurrentMaterial->LightMapPhong.DiffuseMapIndex;
-          UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames, GameState->R.TextureCount,
-                       GameState, &Layout, Input, 0.2f, &g_ScrollK, sizeof(texture_name),
-                       VoidPtrToTextureName);
-          CurrentMaterial->LightMapPhong.DiffuseMapIndex = ActiveDiffuseMapIndex;
+          Material->MaterialPhong.Flags |= MATERIAL_Diffuse;
+
+          UI::Row(GameState, &Layout, 1, "Diffuse");
+          {
+            int32_t ActiveDiffuseMapIndex = CurrentMaterial->MaterialPhong.DiffuseMapIndex;
+            UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames,
+                         GameState->R.TextureCount, GameState, &Layout, Input, 0.2f, &g_ScrollK,
+                         sizeof(texture_name), VoidPtrToTextureName);
+            CurrentMaterial->MaterialPhong.DiffuseMapIndex = ActiveDiffuseMapIndex;
+          }
+        }
+        else
+        {
+          Material->MaterialPhong.Flags &= ~MATERIAL_Diffuse;
         }
 
+        static bool SpecularFlagValue = false;
+
+        UI::Row(GameState, &Layout, 1, "Use Specular");
+        UI::_BoolButton(&Layout, Input, "Toggle", &SpecularFlagValue);
+        if(SpecularFlagValue)
+        {
+          Material->MaterialPhong.Flags |= MATERIAL_Specular;
+
+          UI::Row(GameState, &Layout, 1, "Specular");
+          {
+            int32_t ActiveSpecularMapIndex = CurrentMaterial->MaterialPhong.SpecularMapIndex;
+            UI::ComboBox(&ActiveSpecularMapIndex, GameState->R.TextureNames,
+                         GameState->R.TextureCount, GameState, &Layout, Input, 0.4f, &g_ScrollK,
+                         sizeof(texture_name), VoidPtrToTextureName);
+            CurrentMaterial->MaterialPhong.SpecularMapIndex = ActiveSpecularMapIndex;
+          }
+        }
+        else
+        {
+          Material->MaterialPhong.Flags &= ~MATERIAL_Specular;
+        }
+
+        static bool NormalFlagValue = false;
+
+        UI::Row(GameState, &Layout, 1, "Use Normal");
+        UI::_BoolButton(&Layout, Input, "Toggle", &NormalFlagValue);
+        if(NormalFlagValue)
+        {
+          Material->MaterialPhong.Flags |= MATERIAL_Normal;
+
+          UI::Row(GameState, &Layout, 1, "Normal");
+          {
+            int32_t ActiveNormalMapIndex = CurrentMaterial->MaterialPhong.NormalMapIndex;
+            UI::ComboBox(&ActiveNormalMapIndex, GameState->R.TextureNames,
+                         GameState->R.TextureCount, GameState, &Layout, Input, 0.2f, &g_ScrollK,
+                         sizeof(texture_name), VoidPtrToTextureName);
+            CurrentMaterial->MaterialPhong.NormalMapIndex = ActiveNormalMapIndex;
+          }
+        }
+        else
+        {
+          Material->MaterialPhong.Flags &= ~MATERIAL_Normal;
+        }
+
+        UI::Row(GameState, &Layout, 1, "Ambient");
+        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->MaterialPhong.AmbientStrength,
+                        0, 1.0f, 5.0f);
         UI::Row(GameState, &Layout, 1, "Specular");
-        {
-          int32_t ActiveSpecularMapIndex = CurrentMaterial->LightMapPhong.SpecularMapIndex;
-          UI::ComboBox(&ActiveSpecularMapIndex, GameState->R.TextureNames,
-                       GameState->R.TextureCount, GameState, &Layout, Input, 0.4f, &g_ScrollK,
-                       sizeof(texture_name), VoidPtrToTextureName);
-          CurrentMaterial->LightMapPhong.SpecularMapIndex = ActiveSpecularMapIndex;
-        }
-
+        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->MaterialPhong.SpecularStrength,
+                        0, 1.0f, 5.0f);
         UI::Row(GameState, &Layout, 1, "Shininess");
-        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->LightMapPhong.Shininess, 0,
+        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->MaterialPhong.Shininess, 0,
                         1.0f, 5.0f);
       }
       break;
@@ -347,47 +401,47 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BorderColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BorderColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BorderColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BorderColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BorderColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Base");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_NormalColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_NormalColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_NormalColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_NormalColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_NormalColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Highlight");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_HighlightColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_HighlightColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_HighlightColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_HighlightColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_HighlightColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Pressed");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_PressedColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_PressedColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_PressedColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_PressedColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_PressedColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "BoolPressed");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolPressedColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolPressedColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolPressedColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolPressedColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolPressedColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Bool Base");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolNormalColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolNormalColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolNormalColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolNormalColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolNormalColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Bool Highlight");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolHighlightColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolHighlightColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolHighlightColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolHighlightColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolHighlightColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Description bg");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_DescriptionColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_DescriptionColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_DescriptionColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_DescriptionColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_DescriptionColor.A, 0, 1.0f, 5.0f);
     UI::Row(GameState, &Layout, 3, "Font");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_FontColor.R, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "G", &g_FontColor.G, 0, 1.0f, 5.0f);
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_FontColor.B, 0, 1.0f, 5.0f);
-    //UI::SliderFloat(GameState, &Layout, Input, "A", &g_FontColor.A, 0, 1.0f, 5.0f);
+    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_FontColor.A, 0, 1.0f, 5.0f);
   }
 
 #if 0

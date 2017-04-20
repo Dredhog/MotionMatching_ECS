@@ -1,7 +1,7 @@
 #version 330 core
 
 #define COLOR 1
-#define TEXTURE 2
+#define DIFFUSE 2
 #define SPECULAR 4
 #define NORMAL 8
 
@@ -12,8 +12,8 @@ layout(location = 3) in vec3 a_tangent;
 
 uniform mat4 mat_mvp;
 uniform mat4 mat_model;
-uniform vec3 light_position;
-uniform vec3 camera_position;
+uniform vec3 lightPosition;
+uniform vec3 cameraPosition;
 uniform int  flags;
 
 out VertexOut
@@ -36,13 +36,13 @@ main()
 {
   gl_Position    = mat_mvp * vec4(a_position, 1.0f);
   frag.position  = vec3(mat_model * vec4(a_position, 1.0f));
-  frag.lightPos  = light_position;
-  frag.cameraPos = camera_position;
+  frag.lightPos  = lightPosition;
+  frag.cameraPos = cameraPosition;
   frag.flags     = flags;
 
   mat3 normalMatrix = transpose(inverse(mat3(mat_model)));
 
-  if((flags & TEXTURE) != 0)
+  if((flags & DIFFUSE) != 0)
   {
     frag.texCoord = a_texCoord;
   }
@@ -55,15 +55,14 @@ main()
   {
     frag.normal = vec3(0.0f);
 
-    vec3 a_bitangent = cross(a_tangent, a_normal);
-
-    vec3 tangent   = normalize(normalMatrix * a_tangent);
-    vec3 bitangent = normalize(normalMatrix * a_bitangent);
     vec3 normal    = normalize(normalMatrix * a_normal);
+    vec3 tangent   = normalize(normalMatrix * a_tangent);
+    tangent        = normalize(tangent - dot(tangent, normal) * normal);
+    vec3 bitangent = cross(normal, tangent);
 
     mat3 mat_tbn         = transpose(mat3(tangent, bitangent, normal));
-    frag.tangentLightPos = mat_tbn * light_position;
-    frag.tangentViewPos  = mat_tbn * camera_position;
+    frag.tangentLightPos = mat_tbn * lightPosition;
+    frag.tangentViewPos  = mat_tbn * cameraPosition;
     frag.tangentFragPos  = mat_tbn * frag.position;
   }
   else

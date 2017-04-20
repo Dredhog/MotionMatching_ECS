@@ -112,8 +112,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
-    GameState->R.ShaderLightingMapPhong =
-      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/lighting_map_phong");
     GameState->R.ShaderMaterialPhong =
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/material_blinn_phong");
     GameState->R.ShaderCubemap =
@@ -145,31 +143,32 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                "glass_diff");
     // Specular Maps
     AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/hand_showroom_spec.png"), "had_spec");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/helmet_showroom_spec.png"),
-               "helmet_spec");
-    AddTexture(&GameState->R,
                Texture::LoadTexture("./data/textures/specular/body_showroom_spec.png"),
-               "body_sped");
+               "body_spec");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/specular/arm_showroom_spec.png"), "arm_spec");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/specular/hand_showroom_spec.png"),
+               "hand_spec");
     AddTexture(&GameState->R,
                Texture::LoadTexture("./data/textures/specular/leg_showroom_spec.png"), "leg_spec");
     AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/arm_showroom_spec.png"), "arm_spec");
+               Texture::LoadTexture("./data/textures/specular/helmet_showroom_spec.png"),
+               "helmet_spec");
     // Normal Maps
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/body_showroom_ddn.png"),
+               "body_norm");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/arm_showroom_ddn.png"),
+               "arm_norm");
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/hand_showroom_ddn.png"),
                "hand_norm");
+    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/leg_showroom_ddn.png"),
+               "leg_norm");
     AddTexture(&GameState->R,
                Texture::LoadTexture("./data/textures/normal/helmet_showroom_ddn.png"),
                "helmet_norm");
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/glass_ddn.png"),
                "glass_norm");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/body_showroom_ddn.png"),
-               "body_norm");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/leg_showroom_ddn.png"),
-               "leg_norm");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/arm_showroom_ddn.png"),
-               "arm_norm");
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
@@ -252,29 +251,41 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->EditorBoneRotationSpeed = 45.0f;
 
     {
-      material LightMapPhong0                       = NewLightMapPhongMaterial();
-      LightMapPhong0.LightMapPhong.DiffuseMapIndex  = 3;
-      LightMapPhong0.LightMapPhong.SpecularMapIndex = 8;
-      LightMapPhong0.LightMapPhong.Shininess        = 0.5f;
-      AddMaterial(&GameState->R, LightMapPhong0);
+      material MaterialPhong0                       = NewMaterialPhongMaterial();
+      MaterialPhong0.MaterialPhong.DiffuseMapIndex  = 0;
+      MaterialPhong0.MaterialPhong.SpecularMapIndex = 6;
+      MaterialPhong0.MaterialPhong.DiffuseMapIndex  = 11;
+      MaterialPhong0.MaterialPhong.AmbientStrength  = 0.0f;
+      MaterialPhong0.MaterialPhong.SpecularStrength = 0.0f;
+      MaterialPhong0.MaterialPhong.Shininess        = 0.0f;
+      AddMaterial(&GameState->R, MaterialPhong0);
 
-      material LightMapPhong1                       = NewLightMapPhongMaterial();
-      LightMapPhong1.LightMapPhong.DiffuseMapIndex  = 0;
-      LightMapPhong1.LightMapPhong.SpecularMapIndex = 7;
-      LightMapPhong1.LightMapPhong.Shininess        = 0.5f;
-      AddMaterial(&GameState->R, LightMapPhong1);
+      material MaterialPhong1                       = NewMaterialPhongMaterial();
+      MaterialPhong1.MaterialPhong.DiffuseMapIndex  = 1;
+      MaterialPhong1.MaterialPhong.SpecularMapIndex = 7;
+      MaterialPhong1.MaterialPhong.DiffuseMapIndex  = 12;
+      MaterialPhong1.MaterialPhong.AmbientStrength  = 0.0f;
+      MaterialPhong1.MaterialPhong.SpecularStrength = 0.0f;
+      MaterialPhong1.MaterialPhong.Shininess        = 0.0f;
+      AddMaterial(&GameState->R, MaterialPhong1);
 
-      material LightMapPhong2                       = NewLightMapPhongMaterial();
-      LightMapPhong2.LightMapPhong.DiffuseMapIndex  = 0;
-      LightMapPhong2.LightMapPhong.SpecularMapIndex = 1;
-      LightMapPhong2.LightMapPhong.Shininess        = 0.5f;
-      AddMaterial(&GameState->R, LightMapPhong2);
+      material MaterialPhong2                       = NewMaterialPhongMaterial();
+      MaterialPhong2.MaterialPhong.DiffuseMapIndex  = 2;
+      MaterialPhong2.MaterialPhong.SpecularMapIndex = 8;
+      MaterialPhong2.MaterialPhong.DiffuseMapIndex  = 13;
+      MaterialPhong2.MaterialPhong.AmbientStrength  = 0.0f;
+      MaterialPhong2.MaterialPhong.SpecularStrength = 0.0f;
+      MaterialPhong2.MaterialPhong.Shininess        = 0.0f;
+      AddMaterial(&GameState->R, MaterialPhong2);
 
-      material LightMapPhong3                       = NewLightMapPhongMaterial();
-      LightMapPhong3.LightMapPhong.DiffuseMapIndex  = 5;
-      LightMapPhong3.LightMapPhong.SpecularMapIndex = 10;
-      LightMapPhong3.LightMapPhong.Shininess        = 0.5f;
-      AddMaterial(&GameState->R, LightMapPhong3);
+      material MaterialPhong3                       = NewMaterialPhongMaterial();
+      MaterialPhong3.MaterialPhong.DiffuseMapIndex  = 3;
+      MaterialPhong3.MaterialPhong.SpecularMapIndex = 9;
+      MaterialPhong3.MaterialPhong.DiffuseMapIndex  = 14;
+      MaterialPhong3.MaterialPhong.AmbientStrength  = 0.0f;
+      MaterialPhong3.MaterialPhong.SpecularStrength = 0.0f;
+      MaterialPhong3.MaterialPhong.Shininess        = 0.0f;
+      AddMaterial(&GameState->R, MaterialPhong3);
 
       material Phong0              = NewPhongMaterial();
       Phong0.Phong.DiffuseMapIndex = 0;
