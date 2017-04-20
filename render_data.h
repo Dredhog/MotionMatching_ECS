@@ -2,32 +2,19 @@
 
 enum material_type
 {
-  MATERIAL_Color    = 1,
-  MATERIAL_Diffuse  = 2,
-  MATERIAL_Specular = 4,
-  MATERIAL_Normal   = 8,
+  MATERIAL_Diffuse  = 1,
+  MATERIAL_Specular = 2,
+  MATERIAL_Normal   = 4,
 };
 
 enum shader_type
 {
-  SHADER_MaterialPhong,
   SHADER_Phong,
   SHADER_Color,
   //  SHADER_ID,
 
   SHADER_EnumCount,
 };
-
-#if 0
-enum texture_type
-{
-  TEXTURE_Diffuse,
-  TEXTURE_Specular,
-  TEXTURE_Normal,
-
-  TEXTURE_EnumCount,
-};
-#endif
 
 union material {
   // material_header;
@@ -40,14 +27,6 @@ union material {
   struct
   {
     material_header Common;
-    uint32_t        DiffuseMapIndex;
-    float           AmbientStrength;
-    float           SpecularStrength;
-    bool            UseBlinn;
-  } Phong;
-  struct
-  {
-    material_header Common;
     int32_t         Flags;
     uint32_t        DiffuseMapIndex;
     uint32_t        SpecularMapIndex;
@@ -55,7 +34,7 @@ union material {
     float           AmbientStrength;
     float           SpecularStrength;
     float           Shininess;
-  } MaterialPhong;
+  } Phong;
   struct
   {
     material_header Common;
@@ -100,7 +79,6 @@ struct render_data
 
   // Shaders
   uint32_t ShaderPhong;
-  uint32_t ShaderMaterialPhong;
   uint32_t ShaderSkeletalPhong;
   uint32_t ShaderSkeletalBoneColor;
   uint32_t ShaderColor;
@@ -138,26 +116,13 @@ NewPhongMaterial()
   material Material               = {};
   Material.Common.ShaderType      = SHADER_Phong;
   Material.Common.UseBlending     = true;
+  Material.Phong.Flags            = 0;
   Material.Phong.DiffuseMapIndex  = 0;
-  Material.Phong.AmbientStrength  = 0.8f;
-  Material.Phong.SpecularStrength = 0.6f;
-  Material.Phong.UseBlinn         = true;
-  return Material;
-}
-
-inline material
-NewMaterialPhongMaterial()
-{
-  material Material                       = {};
-  Material.Common.ShaderType              = SHADER_MaterialPhong;
-  Material.Common.UseBlending             = true;
-  Material.MaterialPhong.Flags            = 0;
-  Material.MaterialPhong.DiffuseMapIndex  = 0;
-  Material.MaterialPhong.SpecularMapIndex = 0;
-  Material.MaterialPhong.DiffuseMapIndex  = 0;
-  Material.MaterialPhong.AmbientStrength  = 0;
-  Material.MaterialPhong.SpecularStrength = 0;
-  Material.MaterialPhong.Shininess        = 0;
+  Material.Phong.SpecularMapIndex = 0;
+  Material.Phong.DiffuseMapIndex  = 0;
+  Material.Phong.AmbientStrength  = 0;
+  Material.Phong.SpecularStrength = 0;
+  Material.Phong.Shininess        = 0;
   return Material;
 }
 

@@ -123,53 +123,26 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     {
       case SHADER_Phong:
       {
-        UI::Row(GameState, &Layout, 2, "Albedo");
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Prev"))
-        {
-          if(CurrentMaterial->Phong.DiffuseMapIndex > 0)
-          {
-            --CurrentMaterial->Phong.DiffuseMapIndex;
-          }
-        }
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Next  "))
-        {
-          if(CurrentMaterial->Phong.DiffuseMapIndex < GameState->R.TextureCount)
-          {
-            ++CurrentMaterial->Phong.DiffuseMapIndex;
-          }
-        }
-        UI::Row(GameState, &Layout, 1, "Blinn");
-        UI::_BoolButton(&Layout, Input, "Toggle", &Material->Phong.UseBlinn);
-        UI::Row(GameState, &Layout, 1, "Ambient");
-        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength, 0, 1.0f,
-                        5.0f);
-        UI::Row(GameState, &Layout, 1, "Specular");
-        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength, 0,
-                        1.0f, 5.0f);
-      }
-      break;
-      case SHADER_MaterialPhong:
-      {
         static bool DiffuseFlagValue = false;
 
         UI::Row(GameState, &Layout, 1, "Use Diffuse");
         UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
         if(DiffuseFlagValue)
         {
-          Material->MaterialPhong.Flags |= MATERIAL_Diffuse;
+          Material->Phong.Flags |= MATERIAL_Diffuse;
 
           UI::Row(GameState, &Layout, 1, "Diffuse");
           {
-            int32_t ActiveDiffuseMapIndex = CurrentMaterial->MaterialPhong.DiffuseMapIndex;
+            int32_t ActiveDiffuseMapIndex = CurrentMaterial->Phong.DiffuseMapIndex;
             UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames,
                          GameState->R.TextureCount, GameState, &Layout, Input, 0.2f, &g_ScrollK,
                          sizeof(texture_name), VoidPtrToTextureName);
-            CurrentMaterial->MaterialPhong.DiffuseMapIndex = ActiveDiffuseMapIndex;
+            CurrentMaterial->Phong.DiffuseMapIndex = ActiveDiffuseMapIndex;
           }
         }
         else
         {
-          Material->MaterialPhong.Flags &= ~MATERIAL_Diffuse;
+          Material->Phong.Flags &= ~MATERIAL_Diffuse;
         }
 
         static bool SpecularFlagValue = false;
@@ -178,20 +151,20 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         UI::_BoolButton(&Layout, Input, "Toggle", &SpecularFlagValue);
         if(SpecularFlagValue)
         {
-          Material->MaterialPhong.Flags |= MATERIAL_Specular;
+          Material->Phong.Flags |= MATERIAL_Specular;
 
           UI::Row(GameState, &Layout, 1, "Specular");
           {
-            int32_t ActiveSpecularMapIndex = CurrentMaterial->MaterialPhong.SpecularMapIndex;
+            int32_t ActiveSpecularMapIndex = CurrentMaterial->Phong.SpecularMapIndex;
             UI::ComboBox(&ActiveSpecularMapIndex, GameState->R.TextureNames,
                          GameState->R.TextureCount, GameState, &Layout, Input, 0.4f, &g_ScrollK,
                          sizeof(texture_name), VoidPtrToTextureName);
-            CurrentMaterial->MaterialPhong.SpecularMapIndex = ActiveSpecularMapIndex;
+            CurrentMaterial->Phong.SpecularMapIndex = ActiveSpecularMapIndex;
           }
         }
         else
         {
-          Material->MaterialPhong.Flags &= ~MATERIAL_Specular;
+          Material->Phong.Flags &= ~MATERIAL_Specular;
         }
 
         static bool NormalFlagValue = false;
@@ -200,30 +173,30 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         UI::_BoolButton(&Layout, Input, "Toggle", &NormalFlagValue);
         if(NormalFlagValue)
         {
-          Material->MaterialPhong.Flags |= MATERIAL_Normal;
+          Material->Phong.Flags |= MATERIAL_Normal;
 
           UI::Row(GameState, &Layout, 1, "Normal");
           {
-            int32_t ActiveNormalMapIndex = CurrentMaterial->MaterialPhong.NormalMapIndex;
+            int32_t ActiveNormalMapIndex = CurrentMaterial->Phong.NormalMapIndex;
             UI::ComboBox(&ActiveNormalMapIndex, GameState->R.TextureNames,
                          GameState->R.TextureCount, GameState, &Layout, Input, 0.2f, &g_ScrollK,
                          sizeof(texture_name), VoidPtrToTextureName);
-            CurrentMaterial->MaterialPhong.NormalMapIndex = ActiveNormalMapIndex;
+            CurrentMaterial->Phong.NormalMapIndex = ActiveNormalMapIndex;
           }
         }
         else
         {
-          Material->MaterialPhong.Flags &= ~MATERIAL_Normal;
+          Material->Phong.Flags &= ~MATERIAL_Normal;
         }
 
         UI::Row(GameState, &Layout, 1, "Ambient");
-        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->MaterialPhong.AmbientStrength,
+        UI::SliderFloat(GameState, &Layout, Input, "Amb", &Material->Phong.AmbientStrength,
                         0, 1.0f, 5.0f);
         UI::Row(GameState, &Layout, 1, "Specular");
-        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->MaterialPhong.SpecularStrength,
+        UI::SliderFloat(GameState, &Layout, Input, "Dif", &Material->Phong.SpecularStrength,
                         0, 1.0f, 5.0f);
         UI::Row(GameState, &Layout, 1, "Shininess");
-        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->MaterialPhong.Shininess, 0,
+        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 0,
                         1.0f, 5.0f);
       }
       break;

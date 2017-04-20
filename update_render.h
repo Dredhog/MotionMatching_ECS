@@ -112,8 +112,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
-    GameState->R.ShaderMaterialPhong =
-      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/material_blinn_phong");
     GameState->R.ShaderCubemap =
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/cubemap");
     GameState->R.ShaderGizmo = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/gizmo");
@@ -251,68 +249,74 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->EditorBoneRotationSpeed = 45.0f;
 
     {
-      material MaterialPhong0                       = NewMaterialPhongMaterial();
-      MaterialPhong0.MaterialPhong.DiffuseMapIndex  = 0;
-      MaterialPhong0.MaterialPhong.SpecularMapIndex = 6;
-      MaterialPhong0.MaterialPhong.DiffuseMapIndex  = 11;
-      MaterialPhong0.MaterialPhong.AmbientStrength  = 0.0f;
-      MaterialPhong0.MaterialPhong.SpecularStrength = 0.0f;
-      MaterialPhong0.MaterialPhong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, MaterialPhong0);
-
-      material MaterialPhong1                       = NewMaterialPhongMaterial();
-      MaterialPhong1.MaterialPhong.DiffuseMapIndex  = 1;
-      MaterialPhong1.MaterialPhong.SpecularMapIndex = 7;
-      MaterialPhong1.MaterialPhong.DiffuseMapIndex  = 12;
-      MaterialPhong1.MaterialPhong.AmbientStrength  = 0.0f;
-      MaterialPhong1.MaterialPhong.SpecularStrength = 0.0f;
-      MaterialPhong1.MaterialPhong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, MaterialPhong1);
-
-      material MaterialPhong2                       = NewMaterialPhongMaterial();
-      MaterialPhong2.MaterialPhong.DiffuseMapIndex  = 2;
-      MaterialPhong2.MaterialPhong.SpecularMapIndex = 8;
-      MaterialPhong2.MaterialPhong.DiffuseMapIndex  = 13;
-      MaterialPhong2.MaterialPhong.AmbientStrength  = 0.0f;
-      MaterialPhong2.MaterialPhong.SpecularStrength = 0.0f;
-      MaterialPhong2.MaterialPhong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, MaterialPhong2);
-
-      material MaterialPhong3                       = NewMaterialPhongMaterial();
-      MaterialPhong3.MaterialPhong.DiffuseMapIndex  = 3;
-      MaterialPhong3.MaterialPhong.SpecularMapIndex = 9;
-      MaterialPhong3.MaterialPhong.DiffuseMapIndex  = 14;
-      MaterialPhong3.MaterialPhong.AmbientStrength  = 0.0f;
-      MaterialPhong3.MaterialPhong.SpecularStrength = 0.0f;
-      MaterialPhong3.MaterialPhong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, MaterialPhong3);
-
-      material Phong0              = NewPhongMaterial();
-      Phong0.Phong.DiffuseMapIndex = 0;
+      material Phong0               = NewPhongMaterial();
+      Phong0.Phong.Flags            = 0;
+      Phong0.Phong.DiffuseMapIndex  = 0;
+      Phong0.Phong.SpecularMapIndex = 6;
+      Phong0.Phong.DiffuseMapIndex  = 11;
+      Phong0.Phong.AmbientStrength  = 0.0f;
+      Phong0.Phong.SpecularStrength = 0.0f;
+      Phong0.Phong.Shininess        = 0.0f;
       AddMaterial(&GameState->R, Phong0);
 
-      material Phong1              = NewPhongMaterial();
-      Phong1.Phong.DiffuseMapIndex = 1;
+      material Phong1               = NewPhongMaterial();
+      Phong1.Phong.Flags            = 0;
+      Phong1.Phong.DiffuseMapIndex  = 1;
+      Phong1.Phong.SpecularMapIndex = 7;
+      Phong1.Phong.DiffuseMapIndex  = 12;
+      Phong1.Phong.AmbientStrength  = 0.0f;
+      Phong1.Phong.SpecularStrength = 0.0f;
+      Phong1.Phong.Shininess        = 0.0f;
       AddMaterial(&GameState->R, Phong1);
 
-      material Phong2              = NewPhongMaterial();
-      Phong2.Phong.DiffuseMapIndex = 2;
+      material Phong2               = NewPhongMaterial();
+      Phong2.Phong.Flags            = 0;
+      Phong2.Phong.DiffuseMapIndex  = 2;
+      Phong2.Phong.SpecularMapIndex = 8;
+      Phong2.Phong.DiffuseMapIndex  = 13;
+      Phong2.Phong.AmbientStrength  = 0.0f;
+      Phong2.Phong.SpecularStrength = 0.0f;
+      Phong2.Phong.Shininess        = 0.0f;
       AddMaterial(&GameState->R, Phong2);
 
-      material Phong3              = NewPhongMaterial();
-      Phong3.Phong.DiffuseMapIndex = 3;
+      material Phong3               = NewPhongMaterial();
+      Phong3.Phong.Flags            = 0;
+      Phong3.Phong.DiffuseMapIndex  = 3;
+      Phong3.Phong.SpecularMapIndex = 9;
+      Phong3.Phong.DiffuseMapIndex  = 14;
+      Phong3.Phong.AmbientStrength  = 0.0f;
+      Phong3.Phong.SpecularStrength = 0.0f;
+      Phong3.Phong.Shininess        = 0.0f;
       AddMaterial(&GameState->R, Phong3);
 
-      material Phong4              = NewPhongMaterial();
-      Phong4.Phong.DiffuseMapIndex = 4;
+      material Phong4               = NewPhongMaterial();
+      Phong4.Phong.Flags            = 0;
+      Phong4.Phong.DiffuseMapIndex  = 4;
+      Phong4.Phong.SpecularMapIndex = 10;
+      Phong4.Phong.DiffuseMapIndex  = 15;
+      Phong4.Phong.AmbientStrength  = 0.0f;
+      Phong4.Phong.SpecularStrength = 0.0f;
+      Phong4.Phong.Shininess        = 0.0f;
       AddMaterial(&GameState->R, Phong4);
 
-      material Phong5              = NewPhongMaterial();
-      Phong5.Phong.DiffuseMapIndex = 5;
+      material Phong5               = NewPhongMaterial();
+      Phong5.Phong.Flags            = 0;
+      Phong5.Phong.DiffuseMapIndex  = 5;
+      Phong5.Phong.SpecularMapIndex = 11;
+      Phong5.Phong.DiffuseMapIndex  = 16;
+      Phong5.Phong.AmbientStrength  = 0.0f;
+      Phong5.Phong.SpecularStrength = 0.0f;
+      Phong5.Phong.Shininess        = 0.0f;
       AddMaterial(&GameState->R, Phong5);
 
-      material Phong6              = NewPhongMaterial();
-      Phong6.Phong.DiffuseMapIndex = 6;
+      material Phong6               = NewPhongMaterial();
+      Phong6.Phong.Flags            = 0;
+      Phong6.Phong.DiffuseMapIndex  = 6;
+      Phong6.Phong.SpecularMapIndex = 12;
+      Phong6.Phong.DiffuseMapIndex  = 17;
+      Phong6.Phong.AmbientStrength  = 0.0f;
+      Phong6.Phong.SpecularStrength = 0.0f;
+      Phong6.Phong.Shininess        = 0.0f;
       AddMaterial(&GameState->R, Phong6);
 
       material Color0 = NewColorMaterial();
