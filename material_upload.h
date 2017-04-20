@@ -40,60 +40,37 @@ SetMaterial(render_data* RenderData, camera* Camera, material* Material)
     glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->Phong.DiffuseMapIndex]);
     return RenderData->ShaderPhong;
   }
-  /*
-  else if(Material->Common.ShaderType == SHADER_LightMapPhong)
-  {
-    glUseProgram(RenderData->ShaderLightingMapPhong);
-    glUniform1i(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "material.diffuse"), 0);
-    glUniform1i(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "material.specular"), 1);
-    // NOTE: Shininess multiplier should not stay this way
-    glUniform1f(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "material.shininess"),
-                Material->LightMapPhong.Shininess * 128.0f);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.position"), 1,
-                 (float*)&RenderData->LightPosition);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.ambient"), 1,
-                 (float*)&RenderData->LightAmbientColor);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.diffuse"), 1,
-                 (float*)&RenderData->LightDiffuseColor);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "light.specular"), 1,
-                 (float*)&RenderData->LightSpecularColor);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderLightingMapPhong, "camera_position"), 1,
-                 (float*)&Camera->Position);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->LightMapPhong.DiffuseMapIndex]);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->LightMapPhong.SpecularMapIndex]);
-    glActiveTexture(GL_TEXTURE0);
-    return RenderData->ShaderLightingMapPhong;
-  }
-  */
-  //Testing out new shader
-  else if(Material->Common.ShaderType == SHADER_LightMapPhong)
+  else if(Material->Common.ShaderType == SHADER_MaterialPhong)
   {
     glUseProgram(RenderData->ShaderMaterialPhong);
     glUniform1i(glGetUniformLocation(RenderData->ShaderMaterialPhong, "flags"),
-                (MATERIAL_Texture | MATERIAL_Specular));
-    glUniform1f(glGetUniformLocation(RenderData->ShaderMaterialPhong, "ambient_strength"), 0.2f);
-    glUniform1f(glGetUniformLocation(RenderData->ShaderMaterialPhong, "specular_strength"), 1.0f);
+                Material->MaterialPhong.Flags);
+    glUniform1f(glGetUniformLocation(RenderData->ShaderMaterialPhong, "ambientStrength"),
+                Material->MaterialPhong.AmbientStrength);
+    glUniform1f(glGetUniformLocation(RenderData->ShaderMaterialPhong, "specularStrength"),
+                Material->MaterialPhong.SpecularStrength);
     glUniform1i(glGetUniformLocation(RenderData->ShaderMaterialPhong, "material.diffuseMap"), 0);
     glUniform1i(glGetUniformLocation(RenderData->ShaderMaterialPhong, "material.specularMap"), 1);
+    glUniform1i(glGetUniformLocation(RenderData->ShaderMaterialPhong, "material.normalMap"), 2);
     // NOTE: Shininess multiplier should not stay this way
     glUniform1f(glGetUniformLocation(RenderData->ShaderMaterialPhong, "material.shininess"),
-                Material->LightMapPhong.Shininess * 128.0f);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderMaterialPhong, "light_position"), 1,
+                Material->MaterialPhong.Shininess * 128.0f);
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderMaterialPhong, "lightPosition"), 1,
                  (float*)&RenderData->LightPosition);
     glUniform3fv(glGetUniformLocation(RenderData->ShaderMaterialPhong, "light.ambient"), 1,
-                 (float*)&RenderData->LightAmbientColor);
+                 (float*)&RenderData->LightSpecularColor);
     glUniform3fv(glGetUniformLocation(RenderData->ShaderMaterialPhong, "light.diffuse"), 1,
                  (float*)&RenderData->LightDiffuseColor);
     glUniform3fv(glGetUniformLocation(RenderData->ShaderMaterialPhong, "light.specular"), 1,
                  (float*)&RenderData->LightSpecularColor);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderMaterialPhong, "camera_position"), 1,
+    glUniform3fv(glGetUniformLocation(RenderData->ShaderMaterialPhong, "cameraPosition"), 1,
                  (float*)&Camera->Position);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->LightMapPhong.DiffuseMapIndex]);
+    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->MaterialPhong.DiffuseMapIndex]);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->LightMapPhong.SpecularMapIndex]);
+    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->MaterialPhong.SpecularMapIndex]);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->MaterialPhong.NormalMapIndex]);
     glActiveTexture(GL_TEXTURE0);
     return RenderData->ShaderMaterialPhong;
   }
