@@ -230,11 +230,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->PreviewCamera.Rotation = {};
     UpdateCamera(&GameState->PreviewCamera, Input);
 
-    GameState->R.LightPosition = { 1, 1, 2 };
+    GameState->R.LightPosition = { 0.7f, 1, 1 };
 
     GameState->R.LightSpecularColor = { 1, 1, 1 };
     GameState->R.LightDiffuseColor  = { 1, 1, 1 };
-    GameState->R.LightAmbientColor  = { 1, 1, 1 };
+    GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
     GameState->R.ShowLightPosition  = true;
 
     GameState->DrawWireframe           = false;

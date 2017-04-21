@@ -1,8 +1,8 @@
 #version 330 core
 
-#define DIFFUSE 1
-#define SPECULAR 2
-#define NORMAL 4
+#define DIFFUSE_MAP 1
+#define SPECULAR_MAP 2
+#define NORMAL_MAP 4
 
 struct Material
 {
@@ -49,10 +49,9 @@ main()
   vec3 lightDir = vec3(0.0f);
   vec3 viewDir  = vec3(0.0f);
 
-  if((frag.flags & NORMAL) != 0)
+  if((frag.flags & NORMAL_MAP) != 0)
   {
-    normal   = texture(material.normalMap, frag.texCoord).rgb;
-    normal   = normalize(normal);
+    normal   = normalize(texture(material.normalMap, frag.texCoord).rgb);
     normal   = normalize(normal * 2.0f - 1.0f);
     lightDir = normalize(frag.tangentLightPos - frag.tangentFragPos);
     viewDir  = normalize(frag.tangentViewPos - frag.tangentFragPos);
@@ -64,44 +63,41 @@ main()
     viewDir  = normalize(frag.cameraPos - frag.position);
   }
 
-  vec3 halfwayDir = normalize(lightDir + viewDir);
+  vec3 half_vector = normalize(lightDir + viewDir);
 
-  float spec     = pow(max(dot(normal, halfwayDir), 0.0f), material.shininess);
-  vec3  specular = vec3(0.0f);
+  // --------DIFFUSE------
+  float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
+  vec3  diffuse           = diffuse_intensity * light.diffuse;
 
-  if((frag.flags & SPECULAR) != 0)
+  // --------SPECULAR------
+  float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
+  vec3  specular           = vec3(0.0f);
+  if((frag.flags & SPECULAR_MAP) != 0)
   {
-    specular = vec3(texture(material.specularMap, frag.texCoord)) * spec * light.specular;
+    specular =
+      vec3(texture(material.specularMap, frag.texCoord)) * specular_intensity * light.specular;
   }
   else
   {
-    specular = spec * light.specular;
+    specular = specular_intensity * light.specular;
   }
 
-  vec3 ambient = vec3(0.0f);
+  // --------AMBIENT--------
+  vec3 ambient = light.ambient;
 
-  float diff    = max(dot(normal, lightDir), 0.0f);
-  vec3  diffuse = vec3(0.0f);
-
+  // --------FINAL----------
   vec4 result = vec4(0.0f);
-
-  if((frag.flags & DIFFUSE) != 0)
+  if((frag.flags & DIFFUSE_MAP) != 0)
   {
-    ambient = vec3(texture(material.diffuseMap, frag.texCoord)) * light.ambient;
-    diffuse = vec3(texture(material.diffuseMap, frag.texCoord)) * diff * light.diffuse;
-
     result =
-      vec4((ambient + diffuse + specular) * vec3(texture(material.diffuseMap, frag.texCoord)),
+      vec4((diffuse + specular + ambient) * vec3(texture(material.diffuseMap, frag.texCoord)),
            1.0f);
   }
   else
   {
-    ambient = material.diffuseColor.rgb * light.ambient;
-    diffuse = material.diffuseColor.rgb * diff * light.diffuse;
-
     result =
-      vec4((ambient + diffuse + specular) * material.diffuseColor.rgb, material.diffuseColor.a);
+      vec4((diffuse + specular + ambient) * material.diffuseColor.rgb, material.diffuseColor.a);
   }
 
-  out_color = vec4(result);
+  out_color = result;
 }

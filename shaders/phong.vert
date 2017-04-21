@@ -1,8 +1,8 @@
 #version 330 core
 
-#define DIFFUSE 1
-#define SPECULAR 2
-#define NORMAL 4
+#define DIFFUSE_MAP 1
+#define SPECULAR_MAP 2
+#define NORMAL_MAP 4
 
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
