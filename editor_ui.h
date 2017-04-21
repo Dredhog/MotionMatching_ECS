@@ -94,6 +94,25 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         }
       }
     }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Crete From Current"))
+    {
+      AddMaterial(&GameState->R, *CurrentMaterial);
+      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+    }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
+    {
+      AddMaterial(&GameState->R, {});
+      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+    }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
+    {
+      uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
+      *CurrentMaterial                   = {};
+      CurrentMaterial->Common.ShaderType = ShaderType;
+    }
 
     UI::Row(GameState, &Layout, 2, "Shader Type");
     if(UI::ReleaseButton(GameState, &Layout, Input, "Previous"))
@@ -201,7 +220,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         }
 
         UI::Row(GameState, &Layout, 1, "Shininess");
-        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 0.01f, 512.0f,
+        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f, 512.0f,
                         1024.0f);
       }
       break;
@@ -215,94 +234,9 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       }
       break;
     }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
-    {
-      uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
-      *CurrentMaterial                   = {};
-      CurrentMaterial->Common.ShaderType = ShaderType;
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
-    {
-      AddMaterial(&GameState->R, {});
-      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Crete From Current"))
-    {
-      AddMaterial(&GameState->R, *CurrentMaterial);
-      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
-    }
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Render Settings", &g_ShowDisplaySet))
-  {
-    UI::Row(GameState, &Layout, 6, "Toggleables");
-    UI::_BoolButton(&Layout, Input, "Toggle Timeline", &GameState->DrawTimeline);
-    UI::_BoolButton(&Layout, Input, "Toggle Cubemap", &GameState->DrawCubemap);
-    UI::_BoolButton(&Layout, Input, "Toggle Wireframe", &GameState->DrawWireframe);
-    UI::_BoolButton(&Layout, Input, "Toggle Gizmos", &GameState->DrawGizmos);
-    UI::_BoolButton(&Layout, Input, "Toggle BWeights", &GameState->DrawBoneWeights);
-    UI::_BoolButton(&Layout, Input, "Toggle Spinning", &GameState->IsModelSpinning);
-  }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Camera     ", &g_ShowCameraSettings))
-  {
-    UI::Row(GameState, &Layout, 1, "FOV    ");
-    UI::SliderFloat(GameState, &Layout, Input, "FieldOfView", &GameState->Camera.FieldOfView, 0,
-                    200.0f, 50.0f);
-    UI::Row(GameState, &Layout, 1, "Near  ");
-    UI::SliderFloat(GameState, &Layout, Input, "Near Clip Plane", &GameState->Camera.NearClipPlane,
-                    0.001f, 1000, 50.0f);
-    UI::Row(GameState, &Layout, 1, "Far   ");
-    UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.FarClipPlane,
-                    GameState->Camera.NearClipPlane, 1000, 50.0f);
-    UI::Row(GameState, &Layout, 1, "Speed");
-    UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.Speed, 0, 200,
-                    50.0f);
-  }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Light Settings", &g_ShowLightSettings))
-  {
-    UI::Row(GameState, &Layout, 3, "Diffuse");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightDiffuseColor.R, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightDiffuseColor.G, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightDiffuseColor.B, 0, 1.0f,
-                    5.0f);
-    UI::Row(GameState, &Layout, 3, "Specular");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightSpecularColor.R, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightSpecularColor.G, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightSpecularColor.B, 0, 1.0f,
-                    5.0f);
-    UI::Row(GameState, &Layout, 3, "Ambient");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightAmbientColor.R, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightAmbientColor.G, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightAmbientColor.B, 0, 1.0f,
-                    5.0f);
-    UI::Row(GameState, &Layout, 3, "Position");
-    UI::SliderFloat(GameState, &Layout, Input, "X", &GameState->R.LightPosition.X, -INFINITY,
-                    INFINITY, 20.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "Y", &GameState->R.LightPosition.Y, -INFINITY,
-                    INFINITY, 20.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "Z", &GameState->R.LightPosition.Z, -INFINITY,
-                    INFINITY, 20.0f);
-    UI::Row(GameState, &Layout, 1, "Show Gizmo");
-    UI::BoolButton(GameState, &Layout, Input, "Show", &GameState->R.ShowLightPosition);
-  }
-  if(GameState->R.ShowLightPosition)
-  {
-    mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
-    DEBUGPushGizmo(&GameState->Camera, &Mat4LightPosition);
-  }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Entity Creation", &g_ShowEntityDrowpown))
+  if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityDrowpown))
   {
     UI::Row(GameState, &Layout, 2, "model");
     if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "model"))
@@ -387,7 +321,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
     }
 
-    UI::Row(GameState, &Layout, 1, "Playhead Time");
+    UI::Row(GameState, &Layout, 1, "Playhead");
     UI::SliderFloat(GameState, &Layout, Input, "Playhead Time", &GameState->AnimEditor.PlayHeadTime,
                     -100, 100, 2.0f);
     EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 0);
@@ -417,9 +351,75 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
                                   "data/animation_export_test");
     }
   }
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Light Settings", &g_ShowLightSettings))
+  {
+    UI::Row(GameState, &Layout, 3, "Diffuse");
+    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightDiffuseColor.R, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightDiffuseColor.G, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightDiffuseColor.B, 0, 1.0f,
+                    5.0f);
+    UI::Row(GameState, &Layout, 3, "Specular");
+    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightSpecularColor.R, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightSpecularColor.G, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightSpecularColor.B, 0, 1.0f,
+                    5.0f);
+    UI::Row(GameState, &Layout, 3, "Ambient");
+    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightAmbientColor.R, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightAmbientColor.G, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightAmbientColor.B, 0, 1.0f,
+                    5.0f);
+    UI::Row(GameState, &Layout, 3, "Position");
+    UI::SliderFloat(GameState, &Layout, Input, "X", &GameState->R.LightPosition.X, -INFINITY,
+                    INFINITY, 20.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "Y", &GameState->R.LightPosition.Y, -INFINITY,
+                    INFINITY, 20.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "Z", &GameState->R.LightPosition.Z, -INFINITY,
+                    INFINITY, 20.0f);
+    UI::Row(GameState, &Layout, 1, "Show Gizmo");
+    UI::BoolButton(GameState, &Layout, Input, "Show", &GameState->R.ShowLightPosition);
+  }
+  if(GameState->R.ShowLightPosition)
+  {
+    mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
+    DEBUGPushGizmo(&GameState->Camera, &Mat4LightPosition);
+  }
 
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "GUI Parameters", &g_ShowGUISettings))
+  if(UI::_ExpandableButton(&Layout, Input, "Render Switches", &g_ShowDisplaySet))
+  {
+    UI::Row(GameState, &Layout, 6, "Toggleables");
+    UI::_BoolButton(&Layout, Input, "Toggle Timeline", &GameState->DrawTimeline);
+    UI::_BoolButton(&Layout, Input, "Toggle Cubemap", &GameState->DrawCubemap);
+    UI::_BoolButton(&Layout, Input, "Toggle Wireframe", &GameState->DrawWireframe);
+    UI::_BoolButton(&Layout, Input, "Toggle Gizmos", &GameState->DrawGizmos);
+    UI::_BoolButton(&Layout, Input, "Toggle BWeights", &GameState->DrawBoneWeights);
+    UI::_BoolButton(&Layout, Input, "Toggle Spinning", &GameState->IsModelSpinning);
+  }
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Camera     ", &g_ShowCameraSettings))
+  {
+    UI::Row(GameState, &Layout, 1, "FOV    ");
+    UI::SliderFloat(GameState, &Layout, Input, "FieldOfView", &GameState->Camera.FieldOfView, 0,
+                    200.0f, 50.0f);
+    UI::Row(GameState, &Layout, 1, "Near  ");
+    UI::SliderFloat(GameState, &Layout, Input, "Near Clip Plane", &GameState->Camera.NearClipPlane,
+                    0.001f, 1000, 50.0f);
+    UI::Row(GameState, &Layout, 1, "Far   ");
+    UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.FarClipPlane,
+                    GameState->Camera.NearClipPlane, 1000, 50.0f);
+    UI::Row(GameState, &Layout, 1, "Speed");
+    UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.Speed, 0, 200,
+                    50.0f);
+  }
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "GUI Colors     ", &g_ShowGUISettings))
   {
     UI::Row(GameState, &Layout, 3, "Border");
     UI::SliderFloat(GameState, &Layout, Input, "R", &g_BorderColor.R, 0, 1.0f, 5.0f);

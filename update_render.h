@@ -256,8 +256,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       Phong0.Phong.Shininess        = 60.0f;
       AddMaterial(&GameState->R, Phong0);
 
+#if 0
       material Color0 = NewColorMaterial();
       AddMaterial(&GameState->R, Color0);
+#endif
     }
   }
   //---------------------END INIT -------------------------
