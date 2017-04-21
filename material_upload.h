@@ -27,6 +27,8 @@ SetMaterial(render_data* RenderData, camera* Camera, material* Material)
   {
     glUseProgram(RenderData->ShaderPhong);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "flags"), Material->Phong.Flags);
+    // glUniformMatrix4fv(glGetUniformLocation(RenderData->ShaderPhong, "g_boneMatrices"),
+    //                  BoneMatrixCount, NeedToTranspose, (float*)&BoneMatrices);
     glUniform4fv(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseColor"), 1,
                  (float*)&Material->Phong.DiffuseColor);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseMap"), 0);

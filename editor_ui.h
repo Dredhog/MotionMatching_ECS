@@ -219,6 +219,19 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           Material->Phong.Flags &= ~MATERIAL_Normal;
         }
 
+        bool SkeletalFlagValue = (Material->Phong.Flags & MATERIAL_Skeletal);
+
+        UI::Row(GameState, &Layout, 1, "Is Skeletal");
+        UI::_BoolButton(&Layout, Input, "Toggle", &SkeletalFlagValue);
+        if(SkeletalFlagValue)
+        {
+          Material->Phong.Flags |= MATERIAL_Skeletal;
+        }
+        else
+        {
+          Material->Phong.Flags &= ~MATERIAL_Skeletal;
+        }
+
         UI::Row(GameState, &Layout, 1, "Shininess");
         UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f, 512.0f,
                         1024.0f);

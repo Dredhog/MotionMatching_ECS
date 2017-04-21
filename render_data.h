@@ -5,6 +5,7 @@ enum material_type
   MATERIAL_Diffuse  = 1,
   MATERIAL_Specular = 2,
   MATERIAL_Normal   = 4,
+  MATERIAL_Skeletal = 8,
 };
 
 enum shader_type

@@ -3,6 +3,7 @@
 #define DIFFUSE_MAP 1
 #define SPECULAR_MAP 2
 #define NORMAL_MAP 4
+#define SKELETAL 8
 
 struct Material
 {
