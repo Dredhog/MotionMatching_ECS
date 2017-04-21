@@ -45,6 +45,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   static bool  g_ShowScrollSection      = false;
   static bool  g_ShowMaterialEditor     = false;
   static bool  g_ShowCameraSettings     = false;
+  static bool  g_ShowLightSettings      = false;
   static bool  g_ShowGUISettings        = false;
   static float g_ScrollK                = 0.0f;
 
@@ -143,13 +144,16 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         else
         {
           Material->Phong.Flags &= ~MATERIAL_Diffuse;
-					
-        UI::Row(GameState, &Layout, 4, "Diffuse Color");
-        UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "G", &CurrentMaterial->Phong.DiffuseColor.G, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "B", &CurrentMaterial->Phong.DiffuseColor.B, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "A", &CurrentMaterial->Phong.DiffuseColor.A, 0, 1.0f, 5.0f);
 
+          UI::Row(GameState, &Layout, 4, "Diffuse Color");
+          UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R, 0,
+                          1.0f, 5.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "G", &CurrentMaterial->Phong.DiffuseColor.G, 0,
+                          1.0f, 5.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "B", &CurrentMaterial->Phong.DiffuseColor.B, 0,
+                          1.0f, 5.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "A", &CurrentMaterial->Phong.DiffuseColor.A, 0,
+                          1.0f, 5.0f);
         }
 
         bool SpecularFlagValue = (Material->Phong.Flags & MATERIAL_Specular) != 0;
@@ -197,7 +201,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         }
 
         UI::Row(GameState, &Layout, 1, "Shininess");
-        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f, 512.0f,
+        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 0.01f, 512.0f,
                         1024.0f);
       }
       break;
@@ -257,6 +261,45 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::Row(GameState, &Layout, 1, "Speed");
     UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.Speed, 0, 200,
                     50.0f);
+  }
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Light Settings", &g_ShowLightSettings))
+  {
+    UI::Row(GameState, &Layout, 3, "Diffuse");
+    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightDiffuseColor.R, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightDiffuseColor.G, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightDiffuseColor.B, 0, 1.0f,
+                    5.0f);
+    UI::Row(GameState, &Layout, 3, "Specular");
+    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightSpecularColor.R, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightSpecularColor.G, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightSpecularColor.B, 0, 1.0f,
+                    5.0f);
+    UI::Row(GameState, &Layout, 3, "Ambient");
+    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightAmbientColor.R, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightAmbientColor.G, 0, 1.0f,
+                    5.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightAmbientColor.B, 0, 1.0f,
+                    5.0f);
+    UI::Row(GameState, &Layout, 3, "Position");
+    UI::SliderFloat(GameState, &Layout, Input, "X", &GameState->R.LightPosition.X, -INFINITY,
+                    INFINITY, 20.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "Y", &GameState->R.LightPosition.Y, -INFINITY,
+                    INFINITY, 20.0f);
+    UI::SliderFloat(GameState, &Layout, Input, "Z", &GameState->R.LightPosition.Z, -INFINITY,
+                    INFINITY, 20.0f);
+    UI::Row(GameState, &Layout, 1, "Show Gizmo");
+    UI::BoolButton(GameState, &Layout, Input, "Show", &GameState->R.ShowLightPosition);
+  }
+  if(GameState->R.ShowLightPosition)
+  {
+    mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
+    DEBUGPushGizmo(&GameState->Camera, &Mat4LightPosition);
   }
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Entity Creation", &g_ShowEntityDrowpown))

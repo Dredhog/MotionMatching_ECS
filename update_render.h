@@ -230,11 +230,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->PreviewCamera.Rotation = {};
     UpdateCamera(&GameState->PreviewCamera, Input);
 
-    GameState->R.LightPosition      = { 1, 1, 2 };
+    GameState->R.LightPosition = { 1, 1, 2 };
 
-    GameState->R.LightSpecularColor = { 1.0f, 1.0f, 1.0f };
-    GameState->R.LightDiffuseColor  = GameState->R.LightSpecularColor * 1.0f;
-    GameState->R.LightAmbientColor  = GameState->R.LightSpecularColor * 1.0f;
+    GameState->R.LightSpecularColor = { 1, 1, 1 };
+    GameState->R.LightDiffuseColor  = { 1, 1, 1 };
+    GameState->R.LightAmbientColor  = { 1, 1, 1 };
+    GameState->R.ShowLightPosition  = true;
 
     GameState->DrawWireframe           = false;
     GameState->DrawCubemap             = false;
@@ -249,58 +250,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       material Phong0               = NewPhongMaterial();
       Phong0.Phong.Flags            = 0;
       Phong0.Phong.DiffuseMapIndex  = 0;
+      Phong0.Phong.DiffuseColor     = { 0.5f, 0.5f, 0.5f, 1 };
       Phong0.Phong.SpecularMapIndex = 6;
       Phong0.Phong.DiffuseMapIndex  = 11;
-      Phong0.Phong.Shininess        = 0.0f;
+      Phong0.Phong.Shininess        = 60.0f;
       AddMaterial(&GameState->R, Phong0);
-
-      material Phong1               = NewPhongMaterial();
-      Phong1.Phong.Flags            = 0;
-      Phong1.Phong.DiffuseMapIndex  = 1;
-      Phong1.Phong.SpecularMapIndex = 7;
-      Phong1.Phong.DiffuseMapIndex  = 12;
-      Phong1.Phong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, Phong1);
-
-      material Phong2               = NewPhongMaterial();
-      Phong2.Phong.Flags            = 0;
-      Phong2.Phong.DiffuseMapIndex  = 2;
-      Phong2.Phong.SpecularMapIndex = 8;
-      Phong2.Phong.DiffuseMapIndex  = 13;
-      Phong2.Phong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, Phong2);
-
-      material Phong3               = NewPhongMaterial();
-      Phong3.Phong.Flags            = 0;
-      Phong3.Phong.DiffuseMapIndex  = 3;
-      Phong3.Phong.SpecularMapIndex = 9;
-      Phong3.Phong.DiffuseMapIndex  = 14;
-      Phong3.Phong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, Phong3);
-
-      material Phong4               = NewPhongMaterial();
-      Phong4.Phong.Flags            = 0;
-      Phong4.Phong.DiffuseMapIndex  = 4;
-      Phong4.Phong.SpecularMapIndex = 10;
-      Phong4.Phong.DiffuseMapIndex  = 15;
-      Phong4.Phong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, Phong4);
-
-      material Phong5               = NewPhongMaterial();
-      Phong5.Phong.Flags            = 0;
-      Phong5.Phong.DiffuseMapIndex  = 5;
-      Phong5.Phong.SpecularMapIndex = 11;
-      Phong5.Phong.DiffuseMapIndex  = 16;
-      Phong5.Phong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, Phong5);
-
-      material Phong6               = NewPhongMaterial();
-      Phong6.Phong.Flags            = 0;
-      Phong6.Phong.DiffuseMapIndex  = 6;
-      Phong6.Phong.SpecularMapIndex = 12;
-      Phong6.Phong.DiffuseMapIndex  = 17;
-      Phong6.Phong.Shininess        = 0.0f;
-      AddMaterial(&GameState->R, Phong6);
 
       material Color0 = NewColorMaterial();
       AddMaterial(&GameState->R, Color0);

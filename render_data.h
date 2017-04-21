@@ -88,6 +88,7 @@ struct render_data
 
   // Light
   vec3 LightPosition;
+  bool ShowLightPosition;
 
   vec3 LightAmbientColor;
   vec3 LightDiffuseColor;
