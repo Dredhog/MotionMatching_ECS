@@ -27,8 +27,6 @@ SetMaterial(render_data* RenderData, camera* Camera, material* Material)
   {
     glUseProgram(RenderData->ShaderPhong);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "flags"), Material->Phong.Flags);
-    // glUniformMatrix4fv(glGetUniformLocation(RenderData->ShaderPhong, "g_boneMatrices"),
-    //                  BoneMatrixCount, NeedToTranspose, (float*)&BoneMatrices);
     glUniform4fv(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseColor"), 1,
                  (float*)&Material->Phong.DiffuseColor);
     glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseMap"), 0);
@@ -73,35 +71,6 @@ SetMaterial(render_data* RenderData, camera* Camera, int32_t MaterialIndex)
 }
 
 #if 0
-void
-SetUpSkeletalPhongShader()
-{
-  glUseProgram(GameState->ShaderSkeletalPhong);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalPhong, "g_bone_matrices"), 20,
-                     GL_FALSE, (float*)GameState->AnimEditor.HierarchicalModelSpaceMatrices);
-  glUniform1f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "ambient_strength"),
-              GameState->AmbientStrength);
-  glUniform1f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "specular_strength"),
-              GameState->SpecularStrength);
-  glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "light_position"),
-              GameState->LightPosition.X, GameState->LightPosition.Y, GameState->LightPosition.Z);
-  glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "light_color"),
-              GameState->LightColor.X, GameState->LightColor.Y, GameState->LightColor.Z);
-  glUniform3f(glGetUniformLocation(GameState->ShaderSkeletalPhong, "camera_position"),
-              GameState->Camera.Position.X, GameState->Camera.Position.Y,
-              GameState->Camera.Position.Z);
-}
-
-void
-SetUpBoneColorShader()
-{
-  glUseProgram(GameState->ShaderSkeletalBoneColor);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderSkeletalBoneColor, "g_bone_matrices"),
-                     20, GL_FALSE, (float*)GameState->AnimEditor.HierarchicalModelSpaceMatrices);
-  glUniform3fv(glGetUniformLocation(GameState->ShaderSkeletalBoneColor, "g_bone_colors"), 20,
-               (float*)&g_BoneColors);
-}
-
 void
 SetUpCubemapShader(render_data* RenderData)
 {

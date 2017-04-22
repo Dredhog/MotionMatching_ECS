@@ -190,10 +190,12 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           if(SkeletalFlagValue)
           {
             Material->Phong.Flags |= MATERIAL_Skeletal;
+            Material->Common.IsSkeletal = true;
           }
           else
           {
             Material->Phong.Flags &= ~MATERIAL_Skeletal;
+            Material->Common.IsSkeletal = false;
           }
 
           UI::Row(GameState, &Layout, 1, "Shininess");
@@ -212,15 +214,13 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         break;
       }
       UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Crete From Current"))
-      {
-        AddMaterial(&GameState->R, *CurrentMaterial);
-        GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
-      }
-      UI::Row(&Layout);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
       {
-        AddMaterial(&GameState->R, {});
+        material NewMaterial           = {};
+        NewMaterial.Common.UseBlending = true;
+        NewMaterial.Phong.DiffuseColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+        NewMaterial.Phong.Shininess    = 60;
+        AddMaterial(&GameState->R, NewMaterial);
         GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
       }
       UI::Row(&Layout);
@@ -229,6 +229,12 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
         *CurrentMaterial                   = {};
         CurrentMaterial->Common.ShaderType = ShaderType;
+      }
+      UI::Row(&Layout);
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Create From Current"))
+      {
+        AddMaterial(&GameState->R, *CurrentMaterial);
+        GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
       }
       entity* SelectedEntity = {};
       if(GetSelectedEntity(GameState, &SelectedEntity))
@@ -309,7 +315,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
             SelectedEntity->AnimController->ModelSpacePoses =
               PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
                         mat4);
-            SelectedEntity->AnimController->FinalHierarchicalPoses =
+            SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
               PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
                         mat4);
             UI::Row(&Layout);
@@ -326,7 +332,8 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
             if(UI::ReleaseButton(GameState, &Layout, Input, "Animate Selected Entity"))
             {
               GameState->SelectionMode = SELECT_Bone;
-              EditAnimation::AttachEntityToAnimEditor(&GameState->AnimEditor, SelectedEntity);
+              AttachEntityToAnimEditor(GameState, &GameState->AnimEditor,
+                                       GameState->SelectedEntityIndex);
               g_ShowAnimationEditor = true;
             }
           }

@@ -23,6 +23,7 @@ namespace EditAnimation
     float            SampleTimes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
     Anim::skeleton*  Skeleton;
     Anim::transform* Transform;
+    int32_t          EntityIndex;
 
     mat4 BoneSpaceMatrices[SKELETON_MAX_BONE_COUNT];
     mat4 ModelSpaceMatrices[SKELETON_MAX_BONE_COUNT];
@@ -61,5 +62,4 @@ namespace EditAnimation
   void PrintAnimEditorState(const animation_editor* Editor);
   float GetTimelinePercentage(const animation_editor* Editor, float Time);
 
-  void AttachEntityToAnimEditor(animation_editor* Editor, entity* Entity);
 }

@@ -21,13 +21,14 @@ union material {
   struct material_header
   {
     uint32_t ShaderType;
+    bool     IsSkeletal;
     bool     UseBlending;
   } Common;
 
   struct
   {
     material_header Common;
-    int32_t         Flags;
+    uint32_t        Flags;
     vec4            DiffuseColor;
     uint32_t        DiffuseMapIndex;
     uint32_t        SpecularMapIndex;

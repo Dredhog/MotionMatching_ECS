@@ -41,7 +41,7 @@ namespace Anim
     skeleton*       Skeleton;
     mat4*           BoneSpacePoses;
     mat4*           ModelSpacePoses;
-    mat4*           FinalHierarchicalPoses;
+    mat4*           HierarchicalModelSpaceMatrices;
     int32_t         AnimStateCount;
   };
 

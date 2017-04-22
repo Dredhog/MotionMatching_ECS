@@ -293,11 +293,3 @@ EditAnimation::PrintAnimEditorState(const animation_editor* Editor)
   }
 }
 
-void
-EditAnimation::AttachEntityToAnimEditor(animation_editor* Editor, entity* Entity)
-{
-  assert(Entity->Model->Skeleton);
-  assert(Entity);
-  Editor->Skeleton  = Entity->Model->Skeleton;
-  Editor->Transform = &Entity->Transform;
-}

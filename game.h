@@ -61,7 +61,6 @@ struct game_state
   Render::model* SphereModel;
   Render::model* UVSphereModel;
   Render::model* QuadModel;
-  // Render::model* CharacterModel;
   Render::model* GizmoModel;
   Render::model* CubemapModel;
 
@@ -105,19 +104,24 @@ struct game_state
 };
 
 inline bool
-GetSelectedEntity(game_state* GameState, entity** OutputEntity)
+GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex)
 {
   if(GameState->EntityCount > 0)
   {
-    if(0 <= GameState->SelectedEntityIndex &&
-       GameState->SelectedEntityIndex < GameState->EntityCount)
+    if(0 <= EntityIndex && EntityIndex < GameState->EntityCount)
     {
-      *OutputEntity = &GameState->Entities[GameState->SelectedEntityIndex];
+      *OutputEntity = &GameState->Entities[EntityIndex];
       return true;
     }
     return false;
   }
   return false;
+}
+
+inline bool
+GetSelectedEntity(game_state* GameState, entity** OutputEntity)
+{
+  return GetEntityAtIndex(GameState, OutputEntity, GameState->SelectedEntityIndex);
 }
 
 inline bool
@@ -160,4 +164,18 @@ DeleteEntity(game_state* GameState, int32_t Index)
     return true;
   }
   return false;
+}
+
+inline void
+AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
+                         int32_t EntityIndex)
+{
+  entity* AddedEntity = {};
+  if(GetEntityAtIndex(GameState, &AddedEntity, EntityIndex))
+  {
+    assert(AddedEntity->Model->Skeleton);
+    Editor->Skeleton    = AddedEntity->Model->Skeleton;
+    Editor->Transform   = &AddedEntity->Transform;
+    Editor->EntityIndex = EntityIndex;
+  }
 }

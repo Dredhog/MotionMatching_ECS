@@ -233,11 +233,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       Phong0.Phong.DiffuseMapIndex  = 11;
       Phong0.Phong.Shininess        = 60.0f;
       AddMaterial(&GameState->R, Phong0);
-
-#if 0
-      material Color0 = NewColorMaterial();
-      AddMaterial(&GameState->R, Color0);
-#endif
     }
   }
   //---------------------END INIT -------------------------
@@ -398,11 +393,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
     {
       vec3 Position = Math::GetMat4Translation(BoneGizmos[i]);
-      if(i == 5)
-      {
-        // printf("BonePos[i] = { %f %f %f }\n", (double)Position.X, (double)Position.Y,
-        //(double)Position.Z);
-      }
       if(GameState->DrawWireframe)
       {
         DEBUGPushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius);
@@ -411,6 +401,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         DEBUGPushGizmo(&GameState->Camera, &BoneGizmos[GameState->AnimEditor.CurrentBone]);
       }
+    }
+  }
+  if(GameState->AnimEditor.Skeleton)
+  {
+    assert(0 <= GameState->AnimEditor.EntityIndex &&
+           GameState->AnimEditor.EntityIndex < GameState->EntityCount);
+    {
+      memcpy(GameState->Entities[GameState->AnimEditor.EntityIndex]
+               .AnimController->HierarchicalModelSpaceMatrices,
+             GameState->AnimEditor.HierarchicalModelSpaceMatrices,
+             sizeof(mat4) * GameState->AnimEditor.Skeleton->BoneCount);
     }
   }
   //---------------------RENDERING----------------------------
@@ -430,47 +431,59 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  // Draw scene to backbuffer
-  // SORT(MeshInstances, ByMaterial, MyMesh);
-  glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  material*     PreviousMaterial    = nullptr;
-  Render::mesh* PreviousMesh        = nullptr;
-  int32_t       PreviousEntityIndex = -1;
-  uint32_t      CurrentShaderID     = 0;
-  for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
   {
-    material*     CurrentMaterial    = GameState->R.MeshInstances[i].Material;
-    Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
-    int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
-    if(CurrentMaterial != PreviousMaterial)
-    {
-      if(PreviousMaterial)
-      {
-        // UnsetMaterial(&GameState->R, PreviousMaterial);
-        {
-          glBindTexture(GL_TEXTURE_2D, 0);
-          glBindVertexArray(0);
-        }
-      }
-      material Material = *CurrentMaterial;
-      CurrentShaderID   = SetMaterial(&GameState->R, &GameState->Camera, CurrentMaterial);
+    // Draw scene to backbuffer
+    // SORT(MeshInstances, ByMaterial, MyMesh);
+    glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-      PreviousMaterial = CurrentMaterial;
-    }
-    if(CurrentMesh != PreviousMesh)
+    material*     PreviousMaterial    = nullptr;
+    Render::mesh* PreviousMesh        = nullptr;
+    int32_t       PreviousEntityIndex = -1;
+    uint32_t      CurrentShaderID     = 0;
+    for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
     {
-      glBindVertexArray(CurrentMesh->VAO);
-      PreviousMesh = CurrentMesh;
+      material*     CurrentMaterial    = GameState->R.MeshInstances[i].Material;
+      Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
+      int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
+      if(CurrentMaterial != PreviousMaterial)
+      {
+        if(PreviousMaterial)
+        {
+          // UnsetMaterial(&GameState->R, PreviousMaterial);
+          {
+            glBindTexture(GL_TEXTURE_2D, 0);
+            glBindVertexArray(0);
+          }
+        }
+        material Material = *CurrentMaterial;
+        CurrentShaderID   = SetMaterial(&GameState->R, &GameState->Camera, CurrentMaterial);
+
+        PreviousMaterial = CurrentMaterial;
+      }
+      if(CurrentMesh != PreviousMesh)
+      {
+        glBindVertexArray(CurrentMesh->VAO);
+        PreviousMesh = CurrentMesh;
+      }
+      if(CurrentMaterial->Common.IsSkeletal &&
+         GameState->Entities[CurrentEntityIndex].AnimController)
+      {
+        glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"),
+                           GameState->Entities[CurrentEntityIndex]
+                             .AnimController->Skeleton->BoneCount,
+                           GL_FALSE,
+                           (float*)GameState->Entities[CurrentEntityIndex]
+                             .AnimController->HierarchicalModelSpaceMatrices);
+      }
+      glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_mvp"), 1, GL_FALSE,
+                         GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
+      glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
+                         GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+      glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
     }
-    glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_mvp"), 1, GL_FALSE,
-                       GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
-    glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
-                       GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
-    glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
   }
-  glBindVertexArray(0);
 
   // Higlight entity
   entity* SelectedEntity;
@@ -479,19 +492,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // Higlight mesh
     glDepthFunc(GL_LEQUAL);
     vec4 ColorRed = vec4{ 1, 1, 0, 1 };
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glUseProgram(GameState->R.ShaderColor);
+    glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&ColorRed);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
+                       GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
+    if(SelectedEntity->AnimController)
+    {
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_boneMatrices"),
+                         SelectedEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
+                         (float*)SelectedEntity->AnimController->HierarchicalModelSpaceMatrices);
+    }
     if(GameState->SelectionMode == SELECT_Mesh)
     {
       Render::mesh* SelectedMesh = {};
       if(GetSelectedMesh(GameState, &SelectedMesh))
       {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glUseProgram(GameState->R.ShaderColor);
-        glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
-                     (float*)&ColorRed);
         glBindVertexArray(SelectedMesh->VAO);
 
-        glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
-                           GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
         glDrawElements(GL_TRIANGLES, SelectedMesh->IndiceCount, GL_UNSIGNED_INT, 0);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       }
@@ -502,13 +520,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       entity* SelectedEntity = {};
       if(GetSelectedEntity(GameState, &SelectedEntity))
       {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glUseProgram(GameState->R.ShaderColor);
-        glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
-                     (float*)&ColorRed);
-
-        glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
-                           GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
         for(int m = 0; m < SelectedEntity->Model->MeshCount; m++)
         {
           glBindVertexArray(SelectedEntity->Model->Meshes[m]->VAO);
@@ -547,7 +558,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   DEBUGDrawWireframeSpheres(GameState);
   glClear(GL_DEPTH_BUFFER_BIT);
-  DEBUGDrawGizmos(GameState);
   if(Input->IsMouseInEditorMode)
   {
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -573,8 +583,27 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUseProgram(GameState->R.ShaderID);
       for(int e = 0; e < GameState->EntityCount; e++)
       {
+        entity* CurrentEntity;
+        assert(GetEntityAtIndex(GameState, &CurrentEntity, e));
         glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "mat_mvp"), 1, GL_FALSE,
                            GetEntityMVPMatrix(GameState, e).e);
+        if(CurrentEntity->AnimController)
+        {
+          glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"),
+                             CurrentEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
+                             (float*)CurrentEntity->AnimController->HierarchicalModelSpaceMatrices);
+        }
+        if(GameState->SelectionMode == SELECT_Mesh)
+        {
+          Render::mesh* SelectedMesh = {};
+          if(GetSelectedMesh(GameState, &SelectedMesh))
+          {
+            glBindVertexArray(SelectedMesh->VAO);
+
+            glDrawElements(GL_TRIANGLES, SelectedMesh->IndiceCount, GL_UNSIGNED_INT, 0);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+          }
+        }
         for(int m = 0; m < GameState->Entities[e].Model->MeshCount; m++)
         {
           glBindVertexArray(GameState->Entities[e].Model->Meshes[m]->VAO);
