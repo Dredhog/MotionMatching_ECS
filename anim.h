@@ -30,14 +30,18 @@ namespace Anim
   {
     float StartTimeSec;
     float playbackRateSec;
-    bool  IsLooping;
+    bool  IsPlaying;
+    bool  Loop;
   };
 
   struct animation_controller
   {
-    animation_state AnimationStates[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    animation_state States[ANIM_CONTROLLER_MAX_ANIM_COUNT];
     animation*      Animations[ANIM_CONTROLLER_MAX_ANIM_COUNT];
     skeleton*       Skeleton;
+    mat4*           BoneSpacePoses;
+    mat4*           ModelSpacePoses;
+    mat4*           FinalHierarchicalPoses;
     int32_t         AnimStateCount;
   };
 
@@ -53,4 +57,7 @@ namespace Anim
                               const Anim::skeleton* Skeleton);
   void ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSpaceMatrices,
                                      const Anim::skeleton* Skeleton);
+
+  void AddAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation);
+  void StartAnimationAtIndex(Anim::animation_controller* AnimController, int Index, float Time);
 }

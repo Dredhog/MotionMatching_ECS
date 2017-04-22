@@ -1,5 +1,6 @@
 #include "edit_animation.h"
 #include "misc.h"
+#include "entity.h"
 
 void
 EditAnimation::LerpTransforms(Anim::transform* Result, const Anim::transform* A, float t,
@@ -290,4 +291,13 @@ EditAnimation::PrintAnimEditorState(const animation_editor* Editor)
   {
     printf("%d, %fs\n", i, (double)Editor->SampleTimes[i]);
   }
+}
+
+void
+EditAnimation::AttachEntityToAnimEditor(animation_editor* Editor, entity* Entity)
+{
+  assert(Entity->Model->Skeleton);
+  assert(Entity);
+  Editor->Skeleton  = Entity->Model->Skeleton;
+  Editor->Transform = &Entity->Transform;
 }

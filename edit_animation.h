@@ -4,6 +4,7 @@
 
 #include "anim.h"
 #include "skeleton.h"
+#include "entity.h"
 
 static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 0.1f;
 #define EDITOR_ANIM_MAX_KEYFRAME_COUNT 30
@@ -17,10 +18,11 @@ namespace EditAnimation
 {
   struct animation_editor
   {
-    editor_keyframe Keyframes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
-    editor_keyframe ClipboardKeyframe;
-    float           SampleTimes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
-    Anim::skeleton* Skeleton;
+    editor_keyframe  Keyframes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
+    editor_keyframe  ClipboardKeyframe;
+    float            SampleTimes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
+    Anim::skeleton*  Skeleton;
+    Anim::transform* Transform;
 
     mat4 BoneSpaceMatrices[SKELETON_MAX_BONE_COUNT];
     mat4 ModelSpaceMatrices[SKELETON_MAX_BONE_COUNT];
@@ -58,4 +60,6 @@ namespace EditAnimation
   void PlayAnimation(animation_editor* Editor, float dt);
   void PrintAnimEditorState(const animation_editor* Editor);
   float GetTimelinePercentage(const animation_editor* Editor, float Time);
+
+  void AttachEntityToAnimEditor(animation_editor* Editor, entity* Entity);
 }

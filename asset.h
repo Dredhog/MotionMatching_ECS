@@ -22,7 +22,6 @@ namespace Asset
     uint32_t AssetType;
     uint32_t TotalSize;
     uint64_t Model;
-    uint64_t Skeleton;
     uint64_t AnimationGroup;
   };
 

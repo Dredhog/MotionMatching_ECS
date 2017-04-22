@@ -9,7 +9,7 @@
 char*
 VoidPtrToCharPtr(void* NamePtr)
 {
-  return (char*)(*(char**)NamePtr);
+  return *(char**)NamePtr;
 }
 
 char*
@@ -30,338 +30,415 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   // Humble beginnings of the editor GUI system
   const float   TEXT_HEIGHT    = 0.03f;
   const float   StartX         = 0.75f;
-  const float   StartY         = 0.97f;
+  const float   StartY         = 1;
   const float   YPadding       = 0.02f;
   const float   LayoutWidth    = 0.15f;
   const float   RowHeight      = 0.035f;
   const float   SliderWidth    = 0.05f;
   const int32_t ScrollRowCount = 2;
 
-  static bool  g_ShowDisplaySet         = false;
-  static bool  g_ShowTransformSettign   = false;
-  static bool  g_ShowTranslationButtons = false;
-  static bool  g_ShowEntityDrowpown     = false;
-  static bool  g_ShowAnimSetings        = false;
-  static bool  g_ShowScrollSection      = false;
-  static bool  g_ShowMaterialEditor     = false;
-  static bool  g_ShowCameraSettings     = false;
-  static bool  g_ShowLightSettings      = false;
-  static bool  g_ShowGUISettings        = false;
-  static float g_ScrollK                = 0.0f;
+  static bool g_ShowDisplaySet         = false;
+  static bool g_ShowTransformSettign   = false;
+  static bool g_ShowTranslationButtons = false;
+  static bool g_ShowEntityDrowpown     = false;
+  static bool g_ShowAnimationEditor    = false;
+  static bool g_ShowScrollSection      = false;
+  static bool g_ShowMaterialEditor     = false;
+  static bool g_ShowCameraSettings     = false;
+  static bool g_ShowLightSettings      = false;
+  static bool g_ShowGUISettings        = false;
 
   UI::im_layout Layout = UI::NewLayout({ StartX, StartY }, LayoutWidth, RowHeight, SliderWidth);
 
-  if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
+  UI::Row(GameState, &Layout, 1, "Select");
+  UI::ComboBox((int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings, SELECT_EnumCount,
+               GameState, &Layout, Input, sizeof(const char*), VoidPtrToCharPtr);
+  if(GameState->SelectionMode == SELECT_Mesh || GameState->SelectionMode == SELECT_Entity)
   {
-    UI::Row(GameState, &Layout, 2, "Material");
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "Material"))
-    {
-      if(0 < GameState->CurrentMaterial)
-      {
-        --GameState->CurrentMaterial;
-      }
-    }
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "Material"))
-    {
-      if(GameState->CurrentMaterial < GameState->R.MaterialCount - 1)
-      {
-        ++GameState->CurrentMaterial;
-      }
-    }
-    UI::DrawSquareTexture(GameState, &Layout, GameState->IDTexture);
-
-    assert(GameState->R.MaterialCount > 0);
-    material* CurrentMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
-
     UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Apply To Selected"))
+    if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
     {
-      if(GameState->R.ModelCount > 0)
+      UI::Row(GameState, &Layout, 2, "Material");
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "Material"))
       {
-        if(0 <= GameState->SelectedEntityIndex &&
-           GameState->SelectedEntityIndex < GameState->EntityCount)
+        if(0 < GameState->CurrentMaterial)
         {
-          entity* Entity = &GameState->Entities[GameState->SelectedEntityIndex];
-          if(0 <= GameState->SelectedMeshIndex &&
-             GameState->SelectedMeshIndex < Entity->Model->MeshCount)
+          --GameState->CurrentMaterial;
+        }
+      }
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "Material"))
+      {
+        if(GameState->CurrentMaterial < GameState->R.MaterialCount - 1)
+        {
+          ++GameState->CurrentMaterial;
+        }
+      }
+      UI::DrawSquareTexture(GameState, &Layout, GameState->IDTexture);
+
+      assert(GameState->R.MaterialCount > 0);
+      material* CurrentMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
+
+      UI::Row(GameState, &Layout, 2, "Shader Type");
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Previous"))
+      {
+        if(CurrentMaterial->Common.ShaderType > 0)
+        {
+          uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
+          *CurrentMaterial                    = {};
+          CurrentMaterial->Common.ShaderType  = ShaderType;
+          CurrentMaterial->Common.UseBlending = true;
+        }
+      }
+      if(UI::ReleaseButton(GameState, &Layout, Input, "  Next  "))
+      {
+        if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
+        {
+          uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
+          *CurrentMaterial                    = {};
+          CurrentMaterial->Common.ShaderType  = ShaderType;
+          CurrentMaterial->Common.UseBlending = true;
+        }
+      }
+
+      material* Material = &GameState->R.Materials[GameState->CurrentMaterial];
+      UI::Row(GameState, &Layout, 1, "Blending");
+      UI::_BoolButton(&Layout, Input, "Toggle", &CurrentMaterial->Common.UseBlending);
+      switch(Material->Common.ShaderType)
+      {
+        case SHADER_Phong:
+        {
+          bool DiffuseFlagValue = (Material->Phong.Flags & MATERIAL_Diffuse);
+
+          UI::Row(GameState, &Layout, 1, "Use Diffuse");
+          UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
+          if(DiffuseFlagValue)
           {
-            if(0 <= GameState->CurrentMaterial &&
-               GameState->CurrentMaterial < GameState->R.MaterialCount)
+            Material->Phong.Flags |= MATERIAL_Diffuse;
+
+            UI::Row(GameState, &Layout, 1, "Diffuse Map");
             {
-              Entity->MaterialIndices[GameState->SelectedMeshIndex] = GameState->CurrentMaterial;
+              int32_t ActiveDiffuseMapIndex = CurrentMaterial->Phong.DiffuseMapIndex;
+              UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames,
+                           GameState->R.TextureCount, GameState, &Layout, Input,
+                           sizeof(texture_name), VoidPtrToTextureName);
+              CurrentMaterial->Phong.DiffuseMapIndex = ActiveDiffuseMapIndex;
+            }
+          }
+          else
+          {
+            Material->Phong.Flags &= ~MATERIAL_Diffuse;
+
+            UI::Row(GameState, &Layout, 4, "Diffuse Color");
+            UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R,
+                            0, 1.0f, 5.0f);
+            UI::SliderFloat(GameState, &Layout, Input, "G", &CurrentMaterial->Phong.DiffuseColor.G,
+                            0, 1.0f, 5.0f);
+            UI::SliderFloat(GameState, &Layout, Input, "B", &CurrentMaterial->Phong.DiffuseColor.B,
+                            0, 1.0f, 5.0f);
+            UI::SliderFloat(GameState, &Layout, Input, "A", &CurrentMaterial->Phong.DiffuseColor.A,
+                            0, 1.0f, 5.0f);
+          }
+
+          bool SpecularFlagValue = (Material->Phong.Flags & MATERIAL_Specular) != 0;
+
+          UI::Row(GameState, &Layout, 1, "Use Specular");
+          UI::_BoolButton(&Layout, Input, "Toggle", &SpecularFlagValue);
+          if(SpecularFlagValue)
+          {
+            Material->Phong.Flags |= MATERIAL_Specular;
+
+            UI::Row(GameState, &Layout, 1, "Specular");
+            {
+              int32_t ActiveSpecularMapIndex = CurrentMaterial->Phong.SpecularMapIndex;
+              UI::ComboBox(&ActiveSpecularMapIndex, GameState->R.TextureNames,
+                           GameState->R.TextureCount, GameState, &Layout, Input,
+                           sizeof(texture_name), VoidPtrToTextureName);
+              CurrentMaterial->Phong.SpecularMapIndex = ActiveSpecularMapIndex;
+            }
+          }
+          else
+          {
+            Material->Phong.Flags &= ~MATERIAL_Specular;
+          }
+
+          bool NormalFlagValue = (Material->Phong.Flags & MATERIAL_Normal) != 0;
+
+          UI::Row(GameState, &Layout, 1, "Use Normal");
+          UI::_BoolButton(&Layout, Input, "Toggle", &NormalFlagValue);
+          if(NormalFlagValue)
+          {
+            Material->Phong.Flags |= MATERIAL_Normal;
+
+            UI::Row(GameState, &Layout, 1, "Normal");
+            {
+              int32_t ActiveNormalMapIndex = CurrentMaterial->Phong.NormalMapIndex;
+              UI::ComboBox(&ActiveNormalMapIndex, GameState->R.TextureNames,
+                           GameState->R.TextureCount, GameState, &Layout, Input,
+                           sizeof(texture_name), VoidPtrToTextureName);
+              CurrentMaterial->Phong.NormalMapIndex = ActiveNormalMapIndex;
+            }
+          }
+          else
+          {
+            Material->Phong.Flags &= ~MATERIAL_Normal;
+          }
+
+          bool SkeletalFlagValue = (Material->Phong.Flags & MATERIAL_Skeletal);
+
+          UI::Row(GameState, &Layout, 1, "Is Skeletal");
+          UI::_BoolButton(&Layout, Input, "Toggle", &SkeletalFlagValue);
+          if(SkeletalFlagValue)
+          {
+            Material->Phong.Flags |= MATERIAL_Skeletal;
+          }
+          else
+          {
+            Material->Phong.Flags &= ~MATERIAL_Skeletal;
+          }
+
+          UI::Row(GameState, &Layout, 1, "Shininess");
+          UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f,
+                          512.0f, 1024.0f);
+        }
+        break;
+        case SHADER_Color:
+        {
+          UI::Row(GameState, &Layout, 4, "Color");
+          UI::SliderFloat(GameState, &Layout, Input, "R", &Material->Color.Color.R, 0, 1.0f, 5.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "G", &Material->Color.Color.G, 0, 1.0f, 5.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "B", &Material->Color.Color.B, 0, 1.0f, 5.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "A", &Material->Color.Color.A, 0, 1.0f, 5.0f);
+        }
+        break;
+      }
+      UI::Row(&Layout);
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Crete From Current"))
+      {
+        AddMaterial(&GameState->R, *CurrentMaterial);
+        GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+      }
+      UI::Row(&Layout);
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
+      {
+        AddMaterial(&GameState->R, {});
+        GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+      }
+      UI::Row(&Layout);
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
+      {
+        uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
+        *CurrentMaterial                   = {};
+        CurrentMaterial->Common.ShaderType = ShaderType;
+      }
+      entity* SelectedEntity = {};
+      if(GetSelectedEntity(GameState, &SelectedEntity))
+      {
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Apply To Selected"))
+        {
+          if(0 <= GameState->CurrentMaterial &&
+             GameState->CurrentMaterial < GameState->R.MaterialCount)
+          {
+            if(GameState->SelectionMode == SELECT_Mesh)
+            {
+              SelectedEntity->MaterialIndices[GameState->SelectedMeshIndex] =
+                GameState->CurrentMaterial;
+            }
+            else if(GameState->SelectionMode == SELECT_Entity)
+            {
+              for(int m = 0; m < SelectedEntity->Model->MeshCount; m++)
+              {
+                SelectedEntity->MaterialIndices[m] = GameState->CurrentMaterial;
+              }
             }
           }
         }
       }
     }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Crete From Current"))
-    {
-      AddMaterial(&GameState->R, *CurrentMaterial);
-      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
-    {
-      AddMaterial(&GameState->R, {});
-      GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
-    {
-      uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
-      *CurrentMaterial                   = {};
-      CurrentMaterial->Common.ShaderType = ShaderType;
-    }
-
-    UI::Row(GameState, &Layout, 2, "Shader Type");
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Previous"))
-    {
-      if(CurrentMaterial->Common.ShaderType > 0)
-      {
-        uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
-        *CurrentMaterial                    = {};
-        CurrentMaterial->Common.ShaderType  = ShaderType;
-        CurrentMaterial->Common.UseBlending = true;
-      }
-    }
-    if(UI::ReleaseButton(GameState, &Layout, Input, "  Next  "))
-    {
-      if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
-      {
-        uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
-        *CurrentMaterial                    = {};
-        CurrentMaterial->Common.ShaderType  = ShaderType;
-        CurrentMaterial->Common.UseBlending = true;
-      }
-    }
-
-    material* Material = &GameState->R.Materials[GameState->CurrentMaterial];
-    UI::Row(GameState, &Layout, 1, "Blending");
-    UI::_BoolButton(&Layout, Input, "Toggle", &CurrentMaterial->Common.UseBlending);
-    switch(Material->Common.ShaderType)
-    {
-      case SHADER_Phong:
-      {
-        bool DiffuseFlagValue = (Material->Phong.Flags & MATERIAL_Diffuse);
-
-        UI::Row(GameState, &Layout, 1, "Use Diffuse");
-        UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
-        if(DiffuseFlagValue)
-        {
-          Material->Phong.Flags |= MATERIAL_Diffuse;
-
-          UI::Row(GameState, &Layout, 1, "Diffuse Map");
-          {
-            int32_t ActiveDiffuseMapIndex = CurrentMaterial->Phong.DiffuseMapIndex;
-            UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames,
-                         GameState->R.TextureCount, GameState, &Layout, Input, 0.2f, &g_ScrollK,
-                         sizeof(texture_name), VoidPtrToTextureName);
-            CurrentMaterial->Phong.DiffuseMapIndex = ActiveDiffuseMapIndex;
-          }
-        }
-        else
-        {
-          Material->Phong.Flags &= ~MATERIAL_Diffuse;
-
-          UI::Row(GameState, &Layout, 4, "Diffuse Color");
-          UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R, 0,
-                          1.0f, 5.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "G", &CurrentMaterial->Phong.DiffuseColor.G, 0,
-                          1.0f, 5.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "B", &CurrentMaterial->Phong.DiffuseColor.B, 0,
-                          1.0f, 5.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "A", &CurrentMaterial->Phong.DiffuseColor.A, 0,
-                          1.0f, 5.0f);
-        }
-
-        bool SpecularFlagValue = (Material->Phong.Flags & MATERIAL_Specular) != 0;
-
-        UI::Row(GameState, &Layout, 1, "Use Specular");
-        UI::_BoolButton(&Layout, Input, "Toggle", &SpecularFlagValue);
-        if(SpecularFlagValue)
-        {
-          Material->Phong.Flags |= MATERIAL_Specular;
-
-          UI::Row(GameState, &Layout, 1, "Specular");
-          {
-            int32_t ActiveSpecularMapIndex = CurrentMaterial->Phong.SpecularMapIndex;
-            UI::ComboBox(&ActiveSpecularMapIndex, GameState->R.TextureNames,
-                         GameState->R.TextureCount, GameState, &Layout, Input, 0.4f, &g_ScrollK,
-                         sizeof(texture_name), VoidPtrToTextureName);
-            CurrentMaterial->Phong.SpecularMapIndex = ActiveSpecularMapIndex;
-          }
-        }
-        else
-        {
-          Material->Phong.Flags &= ~MATERIAL_Specular;
-        }
-
-        bool NormalFlagValue = (Material->Phong.Flags & MATERIAL_Normal) != 0;
-
-        UI::Row(GameState, &Layout, 1, "Use Normal");
-        UI::_BoolButton(&Layout, Input, "Toggle", &NormalFlagValue);
-        if(NormalFlagValue)
-        {
-          Material->Phong.Flags |= MATERIAL_Normal;
-
-          UI::Row(GameState, &Layout, 1, "Normal");
-          {
-            int32_t ActiveNormalMapIndex = CurrentMaterial->Phong.NormalMapIndex;
-            UI::ComboBox(&ActiveNormalMapIndex, GameState->R.TextureNames,
-                         GameState->R.TextureCount, GameState, &Layout, Input, 0.2f, &g_ScrollK,
-                         sizeof(texture_name), VoidPtrToTextureName);
-            CurrentMaterial->Phong.NormalMapIndex = ActiveNormalMapIndex;
-          }
-        }
-        else
-        {
-          Material->Phong.Flags &= ~MATERIAL_Normal;
-        }
-
-        bool SkeletalFlagValue = (Material->Phong.Flags & MATERIAL_Skeletal);
-
-        UI::Row(GameState, &Layout, 1, "Is Skeletal");
-        UI::_BoolButton(&Layout, Input, "Toggle", &SkeletalFlagValue);
-        if(SkeletalFlagValue)
-        {
-          Material->Phong.Flags |= MATERIAL_Skeletal;
-        }
-        else
-        {
-          Material->Phong.Flags &= ~MATERIAL_Skeletal;
-        }
-
-        UI::Row(GameState, &Layout, 1, "Shininess");
-        UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f, 512.0f,
-                        1024.0f);
-      }
-      break;
-      case SHADER_Color:
-      {
-        UI::Row(GameState, &Layout, 4, "Color");
-        UI::SliderFloat(GameState, &Layout, Input, "R", &Material->Color.Color.R, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "G", &Material->Color.Color.G, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "B", &Material->Color.Color.B, 0, 1.0f, 5.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "A", &Material->Color.Color.A, 0, 1.0f, 5.0f);
-      }
-      break;
-    }
   }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityDrowpown))
+  if(GameState->SelectionMode == SELECT_Entity)
   {
-    UI::Row(GameState, &Layout, 2, "model");
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "model"))
-    {
-      if(0 < GameState->CurrentModel)
-      {
-        --GameState->CurrentModel;
-      }
-    }
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "model"))
-    {
-      if(GameState->CurrentModel < GameState->R.ModelCount - 1)
-      {
-        ++GameState->CurrentModel;
-      }
-    }
     UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Create Entity"))
+    if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityDrowpown))
     {
-      GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
-    }
-
-    entity* SelectedEntity = {};
-    if(GetSelectedEntity(GameState, &SelectedEntity))
-    {
+      UI::Row(GameState, &Layout, 2, "model");
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "model"))
+      {
+        if(0 < GameState->CurrentModel)
+        {
+          --GameState->CurrentModel;
+        }
+      }
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "model"))
+      {
+        if(GameState->CurrentModel < GameState->R.ModelCount - 1)
+        {
+          ++GameState->CurrentModel;
+        }
+      }
       UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Delete Entity"))
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Create Entity"))
       {
-        DeleteEntity(GameState, GameState->SelectedEntityIndex);
-        GameState->SelectedEntityIndex = -1;
+        GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
+      }
+
+      entity* SelectedEntity = {};
+      if(GetSelectedEntity(GameState, &SelectedEntity))
+      {
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Delete Entity"))
+        {
+          DeleteEntity(GameState, GameState->SelectedEntityIndex);
+          GameState->SelectedEntityIndex = -1;
+        }
+
+        UI::Row(&Layout);
+        if(SelectedEntity->Model->Skeleton)
+        {
+          if(!SelectedEntity->AnimController &&
+             UI::ReleaseButton(GameState, &Layout, Input, "Add Anim. Controller"))
+          {
+            SelectedEntity->AnimController =
+              PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
+            *SelectedEntity->AnimController = {};
+
+            SelectedEntity->AnimController->Skeleton = SelectedEntity->Model->Skeleton;
+            SelectedEntity->AnimController->BoneSpacePoses =
+              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+                        mat4);
+            SelectedEntity->AnimController->ModelSpacePoses =
+              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+                        mat4);
+            SelectedEntity->AnimController->FinalHierarchicalPoses =
+              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+                        mat4);
+            UI::Row(&Layout);
+          }
+          else if(SelectedEntity->AnimController &&
+                  (UI::ReleaseButton(GameState, &Layout, Input, "Delete Anim. Controller")))
+          {
+            SelectedEntity->AnimController = 0;
+          }
+
+          if(SelectedEntity->AnimController)
+          {
+            UI::Row(&Layout);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Animate Selected Entity"))
+            {
+              GameState->SelectionMode = SELECT_Bone;
+              EditAnimation::AttachEntityToAnimEditor(&GameState->AnimEditor, SelectedEntity);
+              g_ShowAnimationEditor = true;
+            }
+          }
+        }
+
+        Anim::transform* Transform     = &SelectedEntity->Transform;
+        mat4             Mat4Transform = TransformToGizmoMat4(Transform);
+        DEBUGPushGizmo(&GameState->Camera, &Mat4Transform);
+        UI::Row(&Layout);
+        UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
+        UI::Row(GameState, &Layout, 3, "Translation");
+        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.X, -INFINITY,
+                        INFINITY, 20.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Y, -INFINITY,
+                        INFINITY, 20.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Z, -INFINITY,
+                        INFINITY, 20.0f);
+        UI::Row(GameState, &Layout, 3, "Rotation");
+        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.X, -INFINITY,
+                        INFINITY, 720.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Y, -INFINITY,
+                        INFINITY, 720.0f);
+        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Z, -INFINITY,
+                        INFINITY, 720.0f);
+        UI::Row(GameState, &Layout, 3, "Scale  ");
+        UI::SliderFloat(GameState, &Layout, Input, "Scale X", &Transform->Scale.X, 0, 100,
+                        10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+        UI::SliderFloat(GameState, &Layout, Input, "Scale Y", &Transform->Scale.Y, 0, 100,
+                        10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+        UI::SliderFloat(GameState, &Layout, Input, "Scale Z", &Transform->Scale.Z, 0, 100,
+                        10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
       }
     }
   }
-  entity* SelectedEntity = {};
-  if(GetSelectedEntity(GameState, &SelectedEntity))
+  if(GameState->SelectionMode == SELECT_Bone)
   {
-#if 1
-    Anim::transform* Transform     = &SelectedEntity->Transform;
-    mat4             Mat4Transform = TransformToGizmoMat4(Transform);
-    DEBUGPushGizmo(&GameState->Camera, &Mat4Transform);
-#else
-    Anim::transform* Transform =
-      &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-         .Transforms[GameState->AnimEditor.CurrentBone];
-#endif
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Transform", &g_ShowTranslationButtons))
+    if(UI::_ExpandableButton(&Layout, Input, "Animation Editor", &g_ShowAnimationEditor))
     {
+      if(GameState->SelectionMode == SELECT_Bone && GameState->AnimEditor.Skeleton)
+      {
 
-      UI::Row(GameState, &Layout, 3, "Translation");
-      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.X, -INFINITY,
-                      INFINITY, 20.0f);
-      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Y, -INFINITY,
-                      INFINITY, 20.0f);
-      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Z, -INFINITY,
-                      INFINITY, 20.0f);
-      UI::Row(GameState, &Layout, 3, "Rotation");
-      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.X, -360, 360.0f,
-                      720.0f);
-      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Y, -360, 360.0f,
-                      720.0f);
-      UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Z, -360, 360.0f,
-                      720.0f);
-      UI::Row(GameState, &Layout, 3, "Scale  ");
-      UI::SliderFloat(GameState, &Layout, Input, "Scale X", &Transform->Scale.X, 0, 100,
-                      10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
-      UI::SliderFloat(GameState, &Layout, Input, "Scale Y", &Transform->Scale.Y, 0, 100,
-                      10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
-      UI::SliderFloat(GameState, &Layout, Input, "Scale Z", &Transform->Scale.Z, 0, 100,
-                      10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
-    }
-  }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Animation Editor", &g_ShowAnimSetings))
-  {
-    UI::Row(GameState, &Layout, 1, "Bone");
-    {
-      int32_t ActiveBoneIndex = GameState->AnimEditor.CurrentBone;
-      UI::ComboBox(&ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones,
-                   GameState->AnimEditor.Skeleton->BoneCount, GameState, &Layout, Input, 0.2f,
-                   &g_ScrollK, sizeof(Anim::bone), ElementToBoneName);
-      EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
-    }
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Import Animation"))
+        {
+          Anim::animation_group* AnimGroup;
+          Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup,
+                                      "data/animation_export_test");
+        }
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Export Animation"))
+        {
+          Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
+                                      "data/animation_export_test");
+        }
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Delete keyframe"))
+        {
+          EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
+        }
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Insert keyframe"))
+        {
+          EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
+                                                     GameState->AnimEditor.PlayHeadTime);
+        }
 
-    UI::Row(GameState, &Layout, 1, "Playhead");
-    UI::SliderFloat(GameState, &Layout, Input, "Playhead Time", &GameState->AnimEditor.PlayHeadTime,
-                    -100, 100, 2.0f);
-    EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 0);
+        UI::Row(GameState, &Layout, 1, "Playhead");
+        UI::SliderFloat(GameState, &Layout, Input, "Playhead Time",
+                        &GameState->AnimEditor.PlayHeadTime, -100, 100, 2.0f);
+        EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 0);
+        if(GameState->AnimEditor.KeyframeCount > 0)
+        {
+          UI::Row(GameState, &Layout, 1, "Bone");
+          {
+            int32_t ActiveBoneIndex = GameState->AnimEditor.CurrentBone;
+            UI::ComboBox(&ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones,
+                         GameState->AnimEditor.Skeleton->BoneCount, GameState, &Layout, Input,
+                         sizeof(Anim::bone), ElementToBoneName);
+            EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
+          }
 
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Delete keyframe"))
-    {
-      EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Insert keyframe"))
-    {
-      EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
-                                                 GameState->AnimEditor.PlayHeadTime);
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Export Animation"))
-    {
-      Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
-                                  "data/animation_export_test");
-    }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Animation"))
-    {
-      Anim::animation_group* AnimGroup;
-      Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup,
-                                  "data/animation_export_test");
+          Anim::transform* Transform =
+            &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+               .Transforms[GameState->AnimEditor.CurrentBone];
+          mat4 Mat4Transform = TransformToGizmoMat4(Transform);
+          DEBUGPushGizmo(&GameState->Camera, &Mat4Transform);
+          UI::Row(&Layout);
+          UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
+          UI::Row(GameState, &Layout, 3, "Translation");
+          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.X,
+                          -INFINITY, INFINITY, 20.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Y,
+                          -INFINITY, INFINITY, 20.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Z,
+                          -INFINITY, INFINITY, 20.0f);
+          UI::Row(GameState, &Layout, 3, "Rotation");
+          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.X, -INFINITY,
+                          INFINITY, 720.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Y, -INFINITY,
+                          INFINITY, 720.0f);
+          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Z, -INFINITY,
+                          INFINITY, 720.0f);
+          UI::Row(GameState, &Layout, 3, "Scale  ");
+          UI::SliderFloat(GameState, &Layout, Input, "Scale X", &Transform->Scale.X, 0, 100,
+                          10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+          UI::SliderFloat(GameState, &Layout, Input, "Scale Y", &Transform->Scale.Y, 0, 100,
+                          10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+          UI::SliderFloat(GameState, &Layout, Input, "Scale Z", &Transform->Scale.Z, 0, 100,
+                          10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+        }
+      }
     }
   }
   UI::Row(&Layout);
@@ -480,25 +557,6 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::SliderFloat(GameState, &Layout, Input, "B", &g_FontColor.B, 0, 1.0f, 5.0f);
     // UI::SliderFloat(GameState, &Layout, Input, "A", &g_FontColor.A, 0, 1.0f, 5.0f);
   }
-
-#if 0
-    UI::Row(&Layout, 1, PlayHead);
-    UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.X, -INFINITY,
-                    INFINITY, 20.0f);
-#elif 0
-
-  if(UI::_HoldButton(&Layout, Input, "PlayHead Left"))
-  {
-    EditAnimation::AdvancePlayHead(&GameState->AnimEditor, -1 * Input->dt);
-  }
-  if(UI::_HoldButton(&Layout, Input, "PlayHead Right"))
-  {
-    EditAnimation::AdvancePlayHead(&GameState->AnimEditor, +1 * Input->dt);
-  }
-
-  UI::Row(&Layout);
-  UI::_BoolButton(&Layout, Input, "Play Animation", &GameState->IsAnimationPlaying);
-#endif
 }
 
 void

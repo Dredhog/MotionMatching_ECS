@@ -13,6 +13,8 @@
 #include "camera.h"
 #include "render_data.h"
 #include "text.h"
+#include "entity.h"
+#include "edit_animation.h"
 
 struct loaded_wav
 {
@@ -25,30 +27,23 @@ const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
 const int32_t MESH_SELECTION_MAX_COUNT   = 400;
 
-struct entity
+#define FOR_ALL_NAMES(DO_FUNC) DO_FUNC(Entity) DO_FUNC(Mesh) DO_FUNC(Bone)
+#define GENERATE_ENUM(Name) SELECT_##Name,
+#define GENERATE_STRING(Name) #Name,
+enum selection_mode
 {
-  Anim::transform Transform;
-  Render::model*  Model;
-  int32_t*        MaterialIndices;
+  FOR_ALL_NAMES(GENERATE_ENUM) SELECT_EnumCount
 };
 
-#if 0
-struct entiity_mesh
-{
-  int32_t EntityIndex;
-  int32_t MeshIndex;
-};
-
-struct Selection
-{
-  // ArraysAreMutuallyExclussive
-  int32_t      EntityIndices[ENTITY_SELECTION_MAX_COUNT];
-  entiity_mesh Meshes[MESH_SELECTION_MAX_COUNT];
-};
-#endif
+static const char* g_SelectionEnumStrings[SELECT_EnumCount] =
+  { "Entity", "Mesh", "Bone" /*FOR_ALL_NAMES(GENERATE_STRING)*/ };
+#undef FOR_ALL_NAMES
+#undef GENERATE_ENUM
+#undef GENERATE_STRING
 
 struct game_state
 {
+
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
 
@@ -66,7 +61,7 @@ struct game_state
   Render::model* SphereModel;
   Render::model* UVSphereModel;
   Render::model* QuadModel;
-  Render::model* CharacterModel;
+  // Render::model* CharacterModel;
   Render::model* GizmoModel;
   Render::model* CubemapModel;
 
@@ -101,6 +96,7 @@ struct game_state
   bool       WAVLoaded;
 
   uint32_t MagicChecksum;
+  uint32_t SelectionMode;
 
   // ID buffer (selection)
   uint32_t IndexFBO;
@@ -111,7 +107,6 @@ struct game_state
 inline bool
 GetSelectedEntity(game_state* GameState, entity** OutputEntity)
 {
-  // GameState->SelectedEntityIndex = 0;
   if(GameState->EntityCount > 0)
   {
     if(0 <= GameState->SelectedEntityIndex &&
@@ -128,7 +123,6 @@ GetSelectedEntity(game_state* GameState, entity** OutputEntity)
 inline bool
 GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
 {
-  // GameState->SelectedMeshIndex = 3;
   entity* Entity = NULL;
   if(GetSelectedEntity(GameState, &Entity))
   {
@@ -146,6 +140,7 @@ GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
   }
   return false;
 }
+
 inline mat4
 TransformToMat4(const Anim::transform* Transform)
 {

@@ -264,7 +264,7 @@ main(int ArgCount, char** Args)
 {
   char* ModelName;
   char* ActorName;
-  // Process comman line arguments
+  // Process command line arguments
   {
     if(ArgCount != 3)
     {
@@ -282,33 +282,6 @@ main(int ArgCount, char** Args)
     strcpy(ActorName, Args[2]);
     strcpy(ModelName + LenWithoutExtension, ModelExtension);
     strcpy(ActorName + LenWithoutExtension, ActorExtension);
-
-#if 0
-    char* DestName       = Args[2];
-    char* ModelExtension = ".model";
-    char* ActorExtension = ".actor";
-
-    size_t DestNameLen       = strlen(DestName);
-    size_t ModelExtensionLen = strlen(ModelExtension);
-    size_t ActorExtensionLen = strlen(ActorExtension);
-
-    if(DestNameLen > ModelExtensionLen &&
-       strcmp(&DestName[DestNameLen - ModelExtensionLen], ModelExtension) == 0)
-    {
-      printf("This is an model\n");
-    }
-    else if(DestNameLen > ActorExtensionLen &&
-            strcmp(&DestName[DestNameLen - ActorExtensionLen], ActorExtension) == 0)
-    {
-      IsActor = true;
-      printf("This is an actor\n");
-    }
-    else
-    {
-      printf("error: output must have either '.model' or '.actor' extension'\n");
-      return 1;
-    }
-#endif
   }
 
   Assimp::Importer Importer;
@@ -352,7 +325,7 @@ main(int ArgCount, char** Args)
     // Reserve Space For Mesh Pointer Array
     Model->Meshes = PushArray(&Allocator, Scene->mNumMeshes, Render::mesh*);
 
-    // Create The Actal Meshesmeshes
+    // Create The Actual Meshes
     r_ProcessNode(&Allocator, Scene->mRootNode, Scene, Model, &Skeleton);
 
     AssetHeader->Model = (uint64_t)Model;
@@ -363,24 +336,24 @@ main(int ArgCount, char** Args)
     // write '.model'
     assert(Allocator.GetUsedSize() == TotalOutputFileSize - sizeof(Anim::skeleton));
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
-    AssetHeader->Skeleton  = 0;
 
+    ((Render::model*)AssetHeader->Model)->Skeleton = 0;
     printf("writing: %s\n", ModelName);
     PrintModelHeader((Render::model*)AssetHeader->Model);
-		Asset::PackAsset(AssetHeader, TotalOutputFileSize - sizeof(Anim::skeleton));
+    Asset::PackAsset(AssetHeader, TotalOutputFileSize - sizeof(Anim::skeleton));
     WriteEntireFile(ModelName, TotalOutputFileSize - sizeof(Anim::skeleton), FileMemory);
 
     UnpackAsset(AssetHeader);
 
     // write '.actor'
-    Anim::skeleton* SkeletonPtr = PushStruct(&Allocator, Anim::skeleton);
-    *SkeletonPtr                = Skeleton;
-    AssetHeader->Skeleton       = (uint64_t)SkeletonPtr;
-    AssetHeader->AssetType      = (uint32_t)Asset::ASSET_Actor;
+    Anim::skeleton* SkeletonPtr                     = PushStruct(&Allocator, Anim::skeleton);
+    *SkeletonPtr                                    = Skeleton;
+    ((Render::model*)AssetHeader->Model)->Skeleton = SkeletonPtr;
+    AssetHeader->AssetType                          = (uint32_t)Asset::ASSET_Actor;
     assert(Allocator.GetUsedSize() == TotalOutputFileSize);
 
     printf("writing: %s\n", ActorName);
-    PrintSkeleton((Anim::skeleton*)AssetHeader->Skeleton);
+    PrintSkeleton(&Skeleton);
     printf("\n");
     PackAsset(AssetHeader, TotalOutputFileSize);
     WriteEntireFile(ActorName, TotalOutputFileSize, FileMemory);
@@ -391,7 +364,6 @@ main(int ArgCount, char** Args)
     assert(Allocator.GetUsedSize() == TotalOutputFileSize);
     AssetHeader->AssetType = (uint32_t)Asset::ASSET_Model;
     AssetHeader->TotalSize = TotalOutputFileSize;
-    AssetHeader->Skeleton  = 0;
 
     printf("writing: %s\n", ModelName);
     Render::PrintModelHeader((Render::model*)AssetHeader->Model);

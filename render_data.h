@@ -78,8 +78,6 @@ struct render_data
 
   // Shaders
   uint32_t ShaderPhong;
-  uint32_t ShaderSkeletalPhong;
-  uint32_t ShaderSkeletalBoneColor;
   uint32_t ShaderColor;
   uint32_t ShaderGizmo;
   uint32_t ShaderQuad;

@@ -5,13 +5,15 @@
 #include <cassert>
 
 #include "mesh.h"
+#include "skeleton.h"
 
 namespace Render
 {
   struct model
   {
-    int32_t        MeshCount;
-    Render::mesh** Meshes;
+    int32_t         MeshCount;
+    Render::mesh**  Meshes;
+    Anim::skeleton* Skeleton;
   };
 
   inline void

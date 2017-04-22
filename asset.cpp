@@ -17,6 +17,10 @@ Asset::PackModel(Render::model* Model)
 
     Model->Meshes[i] = (Render::mesh*)((uint64_t)Model->Meshes[i] - Base);
   }
+  if(Model->Skeleton)
+  {
+    Model->Skeleton = (Anim::skeleton*)((uint64_t)Model->Skeleton - Base);
+  }
   Model->Meshes = (Render::mesh**)((uint64_t)Model->Meshes - Base);
 }
 
@@ -35,6 +39,10 @@ Asset::UnpackModel(Render::model* Model)
 
     Mesh->Vertices = (Render::vertex*)((uint64_t)Mesh->Vertices + Base);
     Mesh->Indices  = (uint32_t*)((uint64_t)Mesh->Indices + Base);
+  }
+  if(Model->Skeleton)
+  {
+    Model->Skeleton = (Anim::skeleton*)((uint64_t)Model->Skeleton + Base);
   }
 }
 
@@ -79,13 +87,13 @@ Asset::PackAsset(Asset::asset_file_header* Header, int32_t TotalAssetSize)
 
   if(Header->AssetType == Asset::ASSET_Actor || Header->AssetType == Asset::ASSET_Model)
   {
+    if(Header->AssetType == Asset::ASSET_Actor)
+    {
+      assert(((Render::model*)Header->Model)->Skeleton);
+    }
+
     PackModel((Render::model*)Header->Model);
     Header->Model = Header->Model - HeaderBase;
-
-    if(Header->Skeleton && Header->AssetType == Asset::ASSET_Actor)
-    {
-      Header->Skeleton = Header->Skeleton - HeaderBase;
-    }
   }
   else if(Header->AssetType == ASSET_AnimationGroup)
   {
@@ -107,11 +115,6 @@ Asset::UnpackAsset(Asset::asset_file_header* Header)
   {
     Header->Model = Header->Model + HeaderBase;
     UnpackModel((Render::model*)Header->Model);
-
-    if(Header->AssetType == Asset::ASSET_Actor)
-    {
-      Header->Skeleton = Header->Skeleton + HeaderBase;
-    }
   }
   else if(Header->AssetType == ASSET_AnimationGroup)
   {

@@ -5,8 +5,8 @@
 #include "stack_allocator.h"
 
 void
-CheckedLoadAndSetUpAsset(Memory::stack_allocator* Alloc, const char* RelativePath,
-                         Render::model** OutputModel, Anim::skeleton** OutputSkeleton)
+CheckedLoadAndSetUpModel(Memory::stack_allocator* Alloc, const char* RelativePath,
+                         Render::model** OutputModel)
 {
   debug_read_file_result AssetReadResult = ReadEntireFile(Alloc, RelativePath);
 
@@ -23,16 +23,6 @@ CheckedLoadAndSetUpAsset(Memory::stack_allocator* Alloc, const char* RelativePat
     SetUpMesh((*OutputModel)->Meshes[i]);
   }
   Render::PrintModelHeader(*OutputModel);
-
-  if(OutputSkeleton)
-  {
-    assert((Anim::skeleton*)AssetHeader->Skeleton);
-  }
-
-  if((Anim::skeleton*)AssetHeader->Skeleton && OutputSkeleton)
-  {
-    *OutputSkeleton = (Anim::skeleton*)AssetHeader->Skeleton;
-  }
 }
 
 int32_t
@@ -47,5 +37,5 @@ CheckedLoadCompileFreeShader(Memory::stack_allocator* Alloc, const char* Relativ
     printf("Shader loading failed!\n");
     assert(false);
   }
-	return Result;
+  return Result;
 }

@@ -56,8 +56,8 @@ namespace UI
   void SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
                    float* Var, float Min, float Max, float ScreenValue);
   void ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_state* GameState,
-                im_layout* Layout, const game_input* Input, float SectionHeight, float* ScrollK,
-                size_t ElementSize, char* (*ElementToCharPtr)(void*));
+                im_layout* Layout, const game_input* Input, size_t ElementSize,
+                char* (*ElementToCharPtr)(void*));
 }
 
 #define _DrawTextButton(Layout, Text) DrawTextButton(GameState, (Layout), (Text))

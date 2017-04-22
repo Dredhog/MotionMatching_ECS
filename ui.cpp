@@ -412,8 +412,8 @@ VerticalScrollbar(game_state* GameState, const game_input* Input, const float X,
 
 void
 UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_state* GameState,
-             im_layout* Layout, const game_input* Input, float SectionHeight, float* ScrollK,
-             size_t ElementSize, char* (*ElementToCharPtr)(void*))
+             im_layout* Layout, const game_input* Input, size_t ElementSize,
+             char* (*ElementToCharPtr)(void*))
 {
   ui_id ID    = {};
   ID.DataPtr  = (uintptr_t)ItemList;
@@ -433,7 +433,6 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
     UnsetHot(ID);
   }
 
-#define GetStringAtIndex(Index) (ElementToCharPtr((char*)ItemList + ElementSize * (Index)))
   if(IsActive(ID))
   {
     if(!_Intersects(Layout->X - IconWidth, Layout->Y, Layout->ColumnWidth + 2 * IconWidth,
@@ -451,6 +450,7 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
     SetActive(ID);
   }
 
+#define GetStringAtIndex(Index) (ElementToCharPtr((char*)ItemList + ElementSize * (Index)))
   vec4 HeaderColor = IsHot(ID) ? g_HighlightColor : g_NormalColor;
   // DrawCurrentElement
   DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,

@@ -24,7 +24,7 @@
 #include "editor_ui.h"
 #include <limits.h>
 
-static const vec3 g_BoneColors[] = {
+static const vec3 g_aoneColors[] = {
   { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.77f },
   { 0.96f, 0.24f, 0.15f }, { 0.20f, 0.34f, 0.44f }, { 0.37f, 0.34f, 0.14f },
   { 0.22f, 0.99f, 0.77f }, { 0.80f, 0.70f, 0.11f }, { 0.81f, 0.92f, 0.18f },
@@ -83,33 +83,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Memory::stack_allocator* PersistentMemStack = GameState->PersistentMemStack;
 
     // --------LOAD MODELS/ACTORS--------
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/gizmo1.model",
-                             &GameState->GizmoModel, NULL);
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/debug_meshes.model",
-                             &GameState->QuadModel, NULL);
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/multimesh_soldier.actor",
-                             &GameState->CharacterModel, &GameState->AnimEditor.Skeleton);
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/inverse_cube.model",
-                             &GameState->CubemapModel, NULL);
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/sphere.model",
-                             &GameState->SphereModel, NULL);
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/uv_sphere.model",
-                             &GameState->UVSphereModel, NULL);
-    AddModel(&GameState->R, GameState->CharacterModel);
-    Render::model* TempSponzaPtr;
-
-    /*
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/ak47.model", &TempSponzaPtr, NULL);
-    AddModel(&GameState->R, TempSponzaPtr);
-
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/sponza.model", &TempSponzaPtr, NULL);
-    AddModel(&GameState->R, TempSponzaPtr);
-
-    CheckedLoadAndSetUpAsset(PersistentMemStack, "./data/built/conference.model", &TempSponzaPtr,
-                             NULL);
-    AddModel(&GameState->R, TempSponzaPtr);
-    */
-
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/gizmo1.model",
+                             &GameState->GizmoModel);
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/debug_meshes.model",
+                             &GameState->QuadModel);
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/inverse_cube.model",
+                             &GameState->CubemapModel);
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sphere.model",
+                             &GameState->SphereModel);
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/uv_sphere.model",
+                             &GameState->UVSphereModel);
+    Render::model* TempModelPtr;
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/multimesh_soldier.actor",
+                             &TempModelPtr);
+    AddModel(&GameState->R, TempModelPtr);
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
     GameState->R.ShaderCubemap =
@@ -118,10 +105,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShaderQuad =
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/debug_quad");
     GameState->R.ShaderColor = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/color");
-    GameState->R.ShaderSkeletalBoneColor =
-      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/skeletal_bone_color");
-    GameState->R.ShaderSkeletalPhong =
-      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/skeletal_phong");
     GameState->R.ShaderTexturedQuad =
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/debug_textured_quad");
     GameState->R.ShaderID = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/id");
@@ -189,13 +172,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
     glGenTextures(1, &GameState->IDTexture);
     glBindTexture(GL_TEXTURE_2D, GameState->IDTexture);
-#if 0
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RED_INTEGER, GL_INT,
-                 NULL);
-#else
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
                  GL_UNSIGNED_INT, NULL);
-#endif
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -375,7 +353,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                                GameState->AnimEditor.CurrentKeyframe);
         DeleteCurrentKeyframe(&GameState->AnimEditor);
       }
-      else if(Input->v.EndedDown && Input->v.Changed)
+      else if(Input->v.EndedDown && Input->v.Changed && GameState->AnimEditor.Skeleton)
       {
         EditAnimation::InsertKeyframeFromClipboardAtTime(&GameState->AnimEditor,
                                                          GameState->AnimEditor.PlayHeadTime);
@@ -391,10 +369,55 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+  if(GameState->DrawGizmos && GameState->AnimEditor.Skeleton &&
+     GameState->SelectionMode == SELECT_Bone)
+  {
+    mat4        BoneGizmos[SKELETON_MAX_BONE_COUNT];
+    const float BoneSphereRadius = 0.1f;
+    for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
+    {
+      BoneGizmos[i] =
+        Math::MulMat4(TransformToMat4(GameState->AnimEditor.Transform),
+                      Math::MulMat4(GameState->AnimEditor.HierarchicalModelSpaceMatrices[i],
+                                    GameState->AnimEditor.Skeleton->Bones[i].BindPose));
+      if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
+      {
+        vec3 Position = Math::GetMat4Translation(BoneGizmos[i]);
+        vec3 RayDir =
+          GetRayDirFromScreenP({ Input->NormMouseX, Input->NormMouseY },
+                               GameState->Camera.ProjectionMatrix, GameState->Camera.ViewMatrix);
+        raycast_result RaycastResult =
+          RayIntersectSphere(GameState->Camera.Position, RayDir, Position, BoneSphereRadius);
+        if(RaycastResult.Success)
+        {
+          EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, i);
+        }
+      }
+    }
+
+    for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
+    {
+      vec3 Position = Math::GetMat4Translation(BoneGizmos[i]);
+      if(i == 5)
+      {
+        // printf("BonePos[i] = { %f %f %f }\n", (double)Position.X, (double)Position.Y,
+        //(double)Position.Z);
+      }
+      if(GameState->DrawWireframe)
+      {
+        DEBUGPushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius);
+      }
+      if(GameState->DrawGizmos)
+      {
+        DEBUGPushGizmo(&GameState->Camera, &BoneGizmos[GameState->AnimEditor.CurrentBone]);
+      }
+    }
+  }
   //---------------------RENDERING----------------------------
 
   GameState->R.MeshInstanceCount = 0;
-  // Put enriry data to darw drawing queue every frame to avoid erroneous indirection due to sorting
+  // Put enriry data to darw drawing queue every frame to avoid erroneous indirection due to
+  // sorting
   for(int e = 0; e < GameState->EntityCount; e++)
   {
     for(int m = 0; m < GameState->Entities[e].Model->MeshCount; m++)
@@ -455,19 +478,45 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     // Higlight mesh
     glDepthFunc(GL_LEQUAL);
-    Render::mesh* SelectedMesh = {};
-    if(GetSelectedMesh(GameState, &SelectedMesh))
+    vec4 ColorRed = vec4{ 1, 1, 0, 1 };
+    if(GameState->SelectionMode == SELECT_Mesh)
     {
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      glUseProgram(GameState->R.ShaderColor);
-      vec4 ColorRed = vec4{ 1, 1, 0, 1 };
-      glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&ColorRed);
-      glBindVertexArray(SelectedMesh->VAO);
+      Render::mesh* SelectedMesh = {};
+      if(GetSelectedMesh(GameState, &SelectedMesh))
+      {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glUseProgram(GameState->R.ShaderColor);
+        glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
+                     (float*)&ColorRed);
+        glBindVertexArray(SelectedMesh->VAO);
 
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
-                         GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
-      glDrawElements(GL_TRIANGLES, SelectedMesh->IndiceCount, GL_UNSIGNED_INT, 0);
-      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
+                           GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
+        glDrawElements(GL_TRIANGLES, SelectedMesh->IndiceCount, GL_UNSIGNED_INT, 0);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      }
+    }
+    // Highlight Entity
+    else if(GameState->SelectionMode == SELECT_Entity)
+    {
+      entity* SelectedEntity = {};
+      if(GetSelectedEntity(GameState, &SelectedEntity))
+      {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glUseProgram(GameState->R.ShaderColor);
+        glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
+                     (float*)&ColorRed);
+
+        glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
+                           GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
+        for(int m = 0; m < SelectedEntity->Model->MeshCount; m++)
+        {
+          glBindVertexArray(SelectedEntity->Model->Meshes[m]->VAO);
+          glDrawElements(GL_TRIANGLES, SelectedEntity->Model->Meshes[m]->IndiceCount,
+                         GL_UNSIGNED_INT, 0);
+        }
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      }
     }
   }
 
@@ -493,47 +542,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
+  DEBUGDrawWireframeSpheres(GameState);
+  glClear(GL_DEPTH_BUFFER_BIT);
 
-  if(GameState->DrawGizmos && GameState->AnimEditor.Skeleton)
-  {
-    mat4        BoneGizmos[SKELETON_MAX_BONE_COUNT];
-    const float BoneSphereRadius = 0.1f;
-    for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
-    {
-      /*BoneGizmos[i] =
-        Math::MulMat4(ModelMatrix,
-                      Math::MulMat4(GameState->AnimEditor.HierarchicalModelSpaceMatrices[i],
-                                    GameState->AnimEditor.Skeleton->Bones[i].BindPose));*/
-      BoneGizmos[i] = Math::MulMat4(GameState->AnimEditor.HierarchicalModelSpaceMatrices[i],
-                                    GameState->AnimEditor.Skeleton->Bones[i].BindPose);
-      if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
-      {
-        vec3 Position = Math::GetMat4Translation(BoneGizmos[i]);
-        vec3 RayDir =
-          GetRayDirFromScreenP({ Input->NormMouseX, Input->NormMouseY },
-                               GameState->Camera.ProjectionMatrix, GameState->Camera.ViewMatrix);
-        raycast_result RaycastResult =
-          RayIntersectSphere(GameState->Camera.Position, RayDir, Position, BoneSphereRadius);
-        if(RaycastResult.Success)
-        {
-          EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, i);
-        }
-      }
-    }
-
-    for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
-    {
-      vec3 Position = Math::GetMat4Translation(BoneGizmos[i]);
-      if(GameState->DrawWireframe)
-      {
-        DEBUGPushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius);
-      }
-      if(GameState->DrawGizmos)
-      {
-        DEBUGPushGizmo(&GameState->Camera, &BoneGizmos[GameState->AnimEditor.CurrentBone]);
-      }
-    }
-  }
+  DEBUGDrawWireframeSpheres(GameState);
+  glClear(GL_DEPTH_BUFFER_BIT);
+  DEBUGDrawGizmos(GameState);
   if(Input->IsMouseInEditorMode)
   {
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -591,8 +605,5 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
   }
-  DEBUGDrawWireframeSpheres(GameState);
-
-  glClear(GL_DEPTH_BUFFER_BIT);
   DEBUGDrawGizmos(GameState);
 }

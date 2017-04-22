@@ -36,3 +36,26 @@ Anim::ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSp
       Math::MulMat4(FinalPoseMatrices[Skeleton->Bones[i].ParentIndex], ModelSpaceMatrices[i]);
   }
 }
+
+void
+Anim::AddAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation)
+{
+  if(0 <= AnimController->AnimStateCount &&
+     AnimController->AnimStateCount < ANIM_CONTROLLER_MAX_ANIM_COUNT)
+  {
+    AnimController->States[AnimController->AnimStateCount]       = {};
+    AnimController->Animations[AnimController->AnimStateCount++] = Animation;
+  }
+  else
+  {
+    assert(false && "assert: overflowed animation array in animation_controller");
+  }
+}
+
+void
+Anim::StartAnimationAtIndex(Anim::animation_controller* AnimController, int Index, float Time)
+{
+  assert(0 <= Index && Index <= ANIM_CONTROLLER_MAX_ANIM_COUNT);
+  AnimController->States[Index].StartTimeSec = Time;
+  AnimController->States[Index].IsPlaying    = true;
+}
