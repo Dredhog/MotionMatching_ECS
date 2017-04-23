@@ -609,6 +609,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                              CurrentEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
                              (float*)CurrentEntity->AnimController->HierarchicalModelSpaceMatrices);
         }
+        else
+        {
+          mat4 Mat4Zeros = {};
+          glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1,
+                             GL_FALSE, Mat4Zeros.e);
+        }
         if(GameState->SelectionMode == SELECT_Mesh)
         {
           Render::mesh* SelectedMesh = {};
