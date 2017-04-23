@@ -89,7 +89,7 @@ void
 EditAnimation::InsertKeyframeAtTime(animation_editor* Editor, const editor_keyframe* NewKeyframe,
                                     float Time)
 {
-  assert(0 <= Editor->KeyframeCount && Editor->KeyframeCount <= EDITOR_ANIM_MAX_KEYFRAME_COUNT);
+  assert(0 <= Editor->KeyframeCount && Editor->KeyframeCount <= ANIM_EDITOR_MAX_KEYFRAME_COUNT);
 
   int InsertIndex  = 0;
   int SizeIncrease = 1;
@@ -113,7 +113,7 @@ EditAnimation::InsertKeyframeAtTime(animation_editor* Editor, const editor_keyfr
         }
         else if(Time < Editor->SampleTimes[InsertIndex])
         {
-          assert(Editor->KeyframeCount < EDITOR_ANIM_MAX_KEYFRAME_COUNT);
+          assert(Editor->KeyframeCount < ANIM_EDITOR_MAX_KEYFRAME_COUNT);
           for(int i = Editor->KeyframeCount; i > InsertIndex; i--)
           {
             Editor->Keyframes[i]   = Editor->Keyframes[i - 1];
@@ -291,5 +291,29 @@ EditAnimation::PrintAnimEditorState(const animation_editor* Editor)
   {
     printf("%d, %fs\n", i, (double)Editor->SampleTimes[i]);
   }
+}
+
+void
+EditAnimation::EditAnimation(animation_editor* Editor, const Anim::animation* Animation)
+{
+  assert(Animation->KeyframeCount <= ANIM_EDITOR_MAX_KEYFRAME_COUNT);
+  assert(!Editor->Skeleton ||
+         (Editor->Skeleton && Editor->Skeleton->BoneCount == Animation->ChannelCount));
+
+  memcpy(Editor->SampleTimes, Animation->SampleTimes, sizeof(float) * Animation->KeyframeCount);
+  for(int k = 0; k < Animation->KeyframeCount; k++)
+  {
+    memcpy(Editor->Keyframes[k].Transforms, &Animation->Transforms[k * Animation->ChannelCount],
+           sizeof(Anim::transform) * Animation->ChannelCount);
+  }
+
+  memset(Editor->BoneSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);
+  memset(Editor->ModelSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);
+  memset(Editor->HierarchicalModelSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);
+  Editor->ClipboardKeyframe = {};
+  Editor->KeyframeCount     = Animation->KeyframeCount;
+  Editor->PlayHeadTime      = 1.0f;
+  Editor->CurrentKeyframe   = 0;
+  Editor->CurrentBone       = 0;
 }
 

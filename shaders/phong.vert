@@ -40,7 +40,7 @@ main()
   mat4 finalPoseMatrix = mat4(1.0f);
 
   if((flags & SKELETAL) != 0 && (g_boneMatrices[0] != mat4(0.0f)) &&
-     (a_boneWeights.x + a_boneWeights.y + a_boneWeights.z + a_boneWeights.w) > 0.0f)
+     (a_boneWeights.x + a_boneWeights.y + a_boneWeights.z + a_boneWeights.w) > 0.99f)
   {
     finalPoseMatrix = g_boneMatrices[a_boneIndices.x] * a_boneWeights.x +
                       g_boneMatrices[a_boneIndices.y] * a_boneWeights.y +

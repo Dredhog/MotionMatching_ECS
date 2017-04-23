@@ -217,7 +217,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->DrawWireframe           = false;
     GameState->DrawCubemap             = false;
-    GameState->DrawBoneWeights         = false;
     GameState->DrawTimeline            = true;
     GameState->DrawGizmos              = true;
     GameState->IsModelSpinning         = false;
@@ -247,10 +246,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       Entity->Transform.Rotation.Y += 45.0f * Input->dt;
     }
-  }
-  if(Input->b.EndedDown && Input->b.Changed)
-  {
-    GameState->DrawBoneWeights = !GameState->DrawBoneWeights;
   }
   if(Input->g.EndedDown && Input->g.Changed)
   {
@@ -291,7 +286,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+  // ANIMATION UPDATE
+  for(int e = 0; e < GameState->EntityCount; e++)
+  {
+    Anim::animation_controller* Controller = GameState->Entities[e].AnimController;
+    if(Controller)
+    {
+      Anim::UpdateController(Controller, Input->dt);
+    }
+  }
+
   //---------------ANIMATION EDITOR UPDATE-----------------
+  if(Input->IsMouseInEditorMode && GameState->SelectionMode == SELECT_Bone &&
+     GameState->AnimEditor.Skeleton)
   {
     if(Input->Space.EndedDown && Input->Space.Changed)
     {
@@ -362,11 +369,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       EditAnimation::CalculateHierarchicalmatricesAtTime(&GameState->AnimEditor);
     }
-  }
 
-  if(GameState->DrawGizmos && GameState->AnimEditor.Skeleton &&
-     GameState->SelectionMode == SELECT_Bone)
-  {
     mat4        BoneGizmos[SKELETON_MAX_BONE_COUNT];
     const float BoneSphereRadius = 0.1f;
     for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
@@ -389,7 +392,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
       }
     }
-
     for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
     {
       vec3 Position = Math::GetMat4Translation(BoneGizmos[i]);
@@ -402,9 +404,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         DEBUGPushGizmo(&GameState->Camera, &BoneGizmos[GameState->AnimEditor.CurrentBone]);
       }
     }
-  }
-  if(GameState->AnimEditor.Skeleton)
-  {
     assert(0 <= GameState->AnimEditor.EntityIndex &&
            GameState->AnimEditor.EntityIndex < GameState->EntityCount);
     {
@@ -450,11 +449,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         if(PreviousMaterial)
         {
-          // UnsetMaterial(&GameState->R, PreviousMaterial);
-          {
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glBindVertexArray(0);
-          }
+          glBindTexture(GL_TEXTURE_2D, 0);
+          glBindVertexArray(0);
         }
         material Material = *CurrentMaterial;
         CurrentShaderID   = SetMaterial(&GameState->R, &GameState->Camera, CurrentMaterial);
@@ -476,6 +472,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                            (float*)GameState->Entities[CurrentEntityIndex]
                              .AnimController->HierarchicalModelSpaceMatrices);
       }
+      else
+      {
+        mat4 Mat4Zeros = {};
+        glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                           Mat4Zeros.e);
+      }
       glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_mvp"), 1, GL_FALSE,
                          GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
       glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
@@ -487,7 +489,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Higlight entity
   entity* SelectedEntity;
-  if(GetSelectedEntity(GameState, &SelectedEntity))
+  if(Input->IsMouseInEditorMode && GetSelectedEntity(GameState, &SelectedEntity))
   {
     // Higlight mesh
     glDepthFunc(GL_LEQUAL);
@@ -502,6 +504,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_boneMatrices"),
                          SelectedEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
                          (float*)SelectedEntity->AnimController->HierarchicalModelSpaceMatrices);
+    }
+    else
+    {
+      mat4 Mat4Zeros = {};
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_boneMatrices"), 1,
+                         GL_FALSE, Mat4Zeros.e);
     }
     if(GameState->SelectionMode == SELECT_Mesh)
     {
@@ -533,11 +541,18 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Draw material preview to texture
   {
+    material* PreviewMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
     glClearColor(0.7f, 0.7f, 0.7f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    uint32_t ShaderID = SetMaterial(&GameState->R, &GameState->PreviewCamera,
-                                    &GameState->R.Materials[GameState->CurrentMaterial]);
+    uint32_t ShaderID = SetMaterial(&GameState->R, &GameState->PreviewCamera, PreviewMaterial);
+
+    if(PreviewMaterial->Common.IsSkeletal)
+    {
+      mat4 Mat4Zeros = {};
+      glUniformMatrix4fv(glGetUniformLocation(ShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                         Mat4Zeros.e);
+    }
     glEnable(GL_BLEND);
     mat4 PreviewSphereMatrix = Math::Mat4Ident();
     glBindVertexArray(GameState->UVSphereModel->Meshes[0]->VAO);
@@ -553,10 +568,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
+
   DEBUGDrawWireframeSpheres(GameState);
   glClear(GL_DEPTH_BUFFER_BIT);
 
-  DEBUGDrawWireframeSpheres(GameState);
   glClear(GL_DEPTH_BUFFER_BIT);
   if(Input->IsMouseInEditorMode)
   {
@@ -564,7 +579,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glEnable(GL_BLEND);
     glDepthFunc(GL_LEQUAL);
     // ANIMATION TIMELINE
-    if(GameState->DrawTimeline && GameState->AnimEditor.Skeleton)
+    if(GameState->SelectionMode == SELECT_Bone && GameState->DrawTimeline &&
+       GameState->AnimEditor.Skeleton)
     {
       VisualizeTimeline(GameState);
     }

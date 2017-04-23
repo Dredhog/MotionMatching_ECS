@@ -7,7 +7,7 @@
 #include "entity.h"
 
 static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 0.1f;
-#define EDITOR_ANIM_MAX_KEYFRAME_COUNT 30
+static const int   ANIM_EDITOR_MAX_KEYFRAME_COUNT     = 30;
 
 struct editor_keyframe
 {
@@ -18,9 +18,9 @@ namespace EditAnimation
 {
   struct animation_editor
   {
-    editor_keyframe  Keyframes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
+    editor_keyframe  Keyframes[ANIM_EDITOR_MAX_KEYFRAME_COUNT];
     editor_keyframe  ClipboardKeyframe;
-    float            SampleTimes[EDITOR_ANIM_MAX_KEYFRAME_COUNT];
+    float            SampleTimes[ANIM_EDITOR_MAX_KEYFRAME_COUNT];
     Anim::skeleton*  Skeleton;
     Anim::transform* Transform;
     int32_t          EntityIndex;
@@ -62,4 +62,5 @@ namespace EditAnimation
   void PrintAnimEditorState(const animation_editor* Editor);
   float GetTimelinePercentage(const animation_editor* Editor, float Time);
 
+  void EditAnimation(animation_editor* Editor, const Anim::animation* Animation);
 }

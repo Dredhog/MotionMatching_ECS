@@ -75,16 +75,17 @@ struct game_state
   int32_t SelectedEntityIndex;
   int32_t SelectedMeshIndex;
 
+  // Animation Test
+  Anim::animation* TestAnimation;
+
   // Fonts/text
   Text::font Font;
 
   // Switches/Flags
   bool  DrawWireframe;
   bool  DrawCubemap;
-  bool  DrawBoneWeights;
   bool  DrawTimeline;
   bool  DrawGizmos;
-  bool  DrawText;
   bool  IsModelSpinning;
   bool  IsAnimationPlaying;
   float EditorBoneRotationSpeed;
@@ -178,4 +179,15 @@ AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor*
     Editor->Transform   = &AddedEntity->Transform;
     Editor->EntityIndex = EntityIndex;
   }
+}
+
+inline void
+DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animation_editor* Editor)
+{
+  assert(GameState->Entities[Editor->EntityIndex].AnimController);
+
+  assert(Editor->Skeleton);
+  Editor->Skeleton    = 0;
+  Editor->Transform   = 0;
+  Editor->EntityIndex = 0;
 }

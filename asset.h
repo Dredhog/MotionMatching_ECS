@@ -37,8 +37,8 @@ namespace Asset
   void PackAsset(Asset::asset_file_header* Header, int32_t TotalAssetSize);
   void UnpackAsset(Asset::asset_file_header* Header);
 
-  void ExportAnimationGroup(Memory::stack_allocator*         Alloc,
-                            EditAnimation::animation_editor* AnimEditor, char* FileName);
+  void ExportAnimationGroup(Memory::stack_allocator*               Alloc,
+                            const EditAnimation::animation_editor* AnimEditor, char* FileName);
   void ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
                             char* FileName);
 }

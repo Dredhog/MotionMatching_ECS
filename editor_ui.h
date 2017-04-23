@@ -40,7 +40,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   static bool g_ShowDisplaySet         = false;
   static bool g_ShowTransformSettign   = false;
   static bool g_ShowTranslationButtons = false;
-  static bool g_ShowEntityDrowpown     = false;
+  static bool g_ShowEntityTools        = false;
   static bool g_ShowAnimationEditor    = false;
   static bool g_ShowScrollSection      = false;
   static bool g_ShowMaterialEditor     = false;
@@ -58,7 +58,9 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
     UI::Row(&Layout);
     if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
     {
-      UI::Row(GameState, &Layout, 2, "Material");
+      char MaterialNameBuffer[10];
+      sprintf(MaterialNameBuffer, "Material %d", GameState->CurrentMaterial);
+      UI::Row(GameState, &Layout, 2, MaterialNameBuffer);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "Material"))
       {
         if(0 < GameState->CurrentMaterial)
@@ -265,9 +267,11 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   if(GameState->SelectionMode == SELECT_Entity)
   {
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityDrowpown))
+    if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityTools))
     {
-      UI::Row(GameState, &Layout, 2, "model");
+      char ModelNameBuffer[10];
+      sprintf(ModelNameBuffer, "Model %d", GameState->CurrentModel);
+      UI::Row(GameState, &Layout, 2, ModelNameBuffer);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "model"))
       {
         if(0 < GameState->CurrentModel)
@@ -298,43 +302,23 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           GameState->SelectedEntityIndex = -1;
         }
 
-        UI::Row(&Layout);
-        if(SelectedEntity->Model->Skeleton)
+        if(SelectedEntity->AnimController)
         {
-          if(!SelectedEntity->AnimController &&
-             UI::ReleaseButton(GameState, &Layout, Input, "Add Anim. Controller"))
+          UI::Row(&Layout);
+          if(UI::ReleaseButton(GameState, &Layout, Input, "Animate Selected Entity"))
           {
-            SelectedEntity->AnimController =
-              PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
-            *SelectedEntity->AnimController = {};
-
-            SelectedEntity->AnimController->Skeleton = SelectedEntity->Model->Skeleton;
-            SelectedEntity->AnimController->BoneSpacePoses =
-              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
-                        mat4);
-            SelectedEntity->AnimController->ModelSpacePoses =
-              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
-                        mat4);
-            SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
-              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
-                        mat4);
-            UI::Row(&Layout);
+            GameState->SelectionMode = SELECT_Bone;
+            AttachEntityToAnimEditor(GameState, &GameState->AnimEditor,
+                                     GameState->SelectedEntityIndex);
+            g_ShowAnimationEditor = true;
           }
-          else if(SelectedEntity->AnimController &&
-                  (UI::ReleaseButton(GameState, &Layout, Input, "Delete Anim. Controller")))
-          {
-            SelectedEntity->AnimController = 0;
-          }
-
-          if(SelectedEntity->AnimController)
+          if(GameState->TestAnimation)
           {
             UI::Row(&Layout);
-            if(UI::ReleaseButton(GameState, &Layout, Input, "Animate Selected Entity"))
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Add Animation"))
             {
-              GameState->SelectionMode = SELECT_Bone;
-              AttachEntityToAnimEditor(GameState, &GameState->AnimEditor,
-                                       GameState->SelectedEntityIndex);
-              g_ShowAnimationEditor = true;
+              Anim::AddAnimation(SelectedEntity->AnimController, GameState->TestAnimation);
+              Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
             }
           }
         }
@@ -365,24 +349,79 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
                         10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
         UI::SliderFloat(GameState, &Layout, Input, "Scale Z", &Transform->Scale.Z, 0, 100,
                         10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+
+        UI::Row(&Layout);
+        if(SelectedEntity->Model->Skeleton)
+        {
+          if(!SelectedEntity->AnimController &&
+             UI::ReleaseButton(GameState, &Layout, Input, "Add Anim. Controller"))
+          {
+            SelectedEntity->AnimController =
+              PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
+            *SelectedEntity->AnimController = {};
+
+            SelectedEntity->AnimController->Skeleton = SelectedEntity->Model->Skeleton;
+            SelectedEntity->AnimController->OutputTransforms =
+              PushArray(GameState->PersistentMemStack,
+                        ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT *
+                          SelectedEntity->Model->Skeleton->BoneCount,
+                        Anim::transform);
+            SelectedEntity->AnimController->BoneSpaceMatrices =
+              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+                        mat4);
+            SelectedEntity->AnimController->ModelSpaceMatrices =
+              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+                        mat4);
+            SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
+              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+                        mat4);
+            UI::Row(&Layout);
+          }
+          else if(SelectedEntity->AnimController &&
+                  (UI::ReleaseButton(GameState, &Layout, Input, "Delete Anim. Controller")))
+          {
+            SelectedEntity->AnimController = 0;
+          }
+        }
       }
     }
   }
-  if(GameState->SelectionMode == SELECT_Bone)
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Animation Editor", &g_ShowAnimationEditor))
   {
+    if(GameState->AnimEditor.Skeleton)
+    {
+      UI::Row(&Layout);
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Stop Editing"))
+      {
+        DettachEntityFromAnimEditor(GameState, &GameState->AnimEditor);
+        GameState->SelectionMode = SELECT_Entity;
+        g_ShowEntityTools        = true;
+        g_ShowAnimationEditor    = false;
+      }
+    }
+
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Animation Editor", &g_ShowAnimationEditor))
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Animation"))
+    {
+      Anim::animation_group* AnimGroup;
+      Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup,
+                                  "data/animation_export_test");
+      GameState->TestAnimation = AnimGroup->Animations[0];
+    }
+    if(GameState->TestAnimation && GameState->AnimEditor.Skeleton &&
+       GameState->AnimEditor.Skeleton->BoneCount == GameState->TestAnimation->ChannelCount)
+    {
+      UI::Row(&Layout);
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Loaded Animation"))
+      {
+        EditAnimation::EditAnimation(&GameState->AnimEditor, GameState->TestAnimation);
+      }
+    }
+    if(GameState->SelectionMode == SELECT_Bone)
     {
       if(GameState->SelectionMode == SELECT_Bone && GameState->AnimEditor.Skeleton)
       {
-
-        UI::Row(&Layout);
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Import Animation"))
-        {
-          Anim::animation_group* AnimGroup;
-          Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup,
-                                      "data/animation_export_test");
-        }
         UI::Row(&Layout);
         if(UI::ReleaseButton(GameState, &Layout, Input, "Export Animation"))
         {
@@ -420,7 +459,6 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
             &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
                .Transforms[GameState->AnimEditor.CurrentBone];
           mat4 Mat4Transform = TransformToGizmoMat4(Transform);
-          DEBUGPushGizmo(&GameState->Camera, &Mat4Transform);
           UI::Row(&Layout);
           UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
           UI::Row(GameState, &Layout, 3, "Translation");
@@ -491,12 +529,11 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Render Switches", &g_ShowDisplaySet))
   {
-    UI::Row(GameState, &Layout, 6, "Toggleables");
+    UI::Row(GameState, &Layout, 4, "Toggleables");
     UI::_BoolButton(&Layout, Input, "Toggle Timeline", &GameState->DrawTimeline);
-    UI::_BoolButton(&Layout, Input, "Toggle Cubemap", &GameState->DrawCubemap);
+    // UI::_BoolButton(&Layout, Input, "Toggle Cubemap", &GameState->DrawCubemap);
     UI::_BoolButton(&Layout, Input, "Toggle Wireframe", &GameState->DrawWireframe);
     UI::_BoolButton(&Layout, Input, "Toggle Gizmos", &GameState->DrawGizmos);
-    UI::_BoolButton(&Layout, Input, "Toggle BWeights", &GameState->DrawBoneWeights);
     UI::_BoolButton(&Layout, Input, "Toggle Spinning", &GameState->IsModelSpinning);
   }
   UI::Row(&Layout);

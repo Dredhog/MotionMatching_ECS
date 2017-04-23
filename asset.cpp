@@ -65,17 +65,25 @@ Asset::UnpackAnimation(Anim::animation* Animation)
 void
 Asset::PackAnimationGroup(Anim::animation_group* AnimationGroup)
 {
+  uint64_t Base = (uint64_t)AnimationGroup;
   for(int a = 0; a < AnimationGroup->AnimationCount; a++)
   {
     PackAnimation(AnimationGroup->Animations[a]);
+    AnimationGroup->Animations[a] =
+      (Anim::animation*)((uint64_t)AnimationGroup->Animations[a] - Base);
   }
+  AnimationGroup->Animations = (Anim::animation**)((uint64_t)AnimationGroup->Animations - Base);
 }
 
 void
 Asset::UnpackAnimationGroup(Anim::animation_group* AnimationGroup)
 {
+  uint64_t Base              = (uint64_t)AnimationGroup;
+  AnimationGroup->Animations = (Anim::animation**)((uint64_t)AnimationGroup->Animations + Base);
   for(int a = 0; a < AnimationGroup->AnimationCount; a++)
   {
+    AnimationGroup->Animations[a] =
+      (Anim::animation*)((uint64_t)AnimationGroup->Animations[a] + Base);
     UnpackAnimation(AnimationGroup->Animations[a]);
   }
 }
@@ -124,8 +132,8 @@ Asset::UnpackAsset(Asset::asset_file_header* Header)
 }
 
 void
-Asset::ExportAnimationGroup(Memory::stack_allocator*         Alloc,
-                            EditAnimation::animation_editor* AnimEditor, char* FileName)
+Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
+                            const EditAnimation::animation_editor* AnimEditor, char* FileName)
 {
   Memory::marker Marker = Alloc->GetMarker();
 
@@ -154,13 +162,17 @@ Asset::ExportAnimationGroup(Memory::stack_allocator*         Alloc,
 
     memcpy(AnimGroup->Animations[a]->SampleTimes, AnimEditor->SampleTimes,
            KeyframeCount * sizeof(float));
+    for(int k = 0; k < KeyframeCount; k++)
+    {
+      AnimGroup->Animations[a]->SampleTimes[k] -= AnimEditor->SampleTimes[0];
+    }
 
     AnimGroup->Animations[a]->Transforms =
       PushArray(Alloc, AnimationTransformCount, Anim::transform);
     for(int k = 0; k < KeyframeCount; k++)
     {
-      memcpy(&AnimGroup->Animations[a]->Transforms[k * ChannelCount], &AnimEditor->Keyframes[k],
-             ChannelCount * sizeof(Anim::transform));
+      memcpy(&AnimGroup->Animations[a]->Transforms[k * ChannelCount],
+             AnimEditor->Keyframes[k].Transforms, ChannelCount * sizeof(Anim::transform));
     }
   }
 
