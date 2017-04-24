@@ -37,19 +37,19 @@ frag;
 void
 main()
 {
-  mat4 finalPoseMatrix = mat4(1.0f);
+  mat4 modelMatrix = mat_model;
+  mat4 mvpMatrix   = mat_mvp;
 
   if((flags & SKELETAL) != 0 && (g_boneMatrices[0] != mat4(0.0f)) &&
      (a_boneWeights.x + a_boneWeights.y + a_boneWeights.z + a_boneWeights.w) > 0.99f)
   {
-    finalPoseMatrix = g_boneMatrices[a_boneIndices.x] * a_boneWeights.x +
-                      g_boneMatrices[a_boneIndices.y] * a_boneWeights.y +
-                      g_boneMatrices[a_boneIndices.z] * a_boneWeights.z +
-                      g_boneMatrices[a_boneIndices.w] * a_boneWeights.w;
+    mat4 finalPoseMatrix = g_boneMatrices[a_boneIndices.x] * a_boneWeights.x +
+                           g_boneMatrices[a_boneIndices.y] * a_boneWeights.y +
+                           g_boneMatrices[a_boneIndices.z] * a_boneWeights.z +
+                           g_boneMatrices[a_boneIndices.w] * a_boneWeights.w;
+    modelMatrix *= finalPoseMatrix;
+    mvpMatrix *= finalPoseMatrix;
   }
-
-  mat4 modelMatrix = mat_model * finalPoseMatrix;
-  mat4 mvpMatrix   = mat_mvp * finalPoseMatrix;
 
   gl_Position    = mvpMatrix * vec4(a_position, 1.0f);
   frag.position  = vec3(modelMatrix * vec4(a_position, 1.0f));
