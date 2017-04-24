@@ -109,7 +109,7 @@ Asset::PackAsset(Asset::asset_file_header* Header, int32_t TotalAssetSize)
     Header->AnimationGroup = Header->AnimationGroup - HeaderBase;
   }
 
-  Header->TotalSize = TotalAssetSize;
+  Header->TotalSize = (uint32_t)TotalAssetSize;
   Header->Checksum  = ASSET_HEADER_CHECKSUM;
 }
 

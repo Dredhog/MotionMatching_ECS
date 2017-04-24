@@ -22,7 +22,6 @@ CheckedLoadAndSetUpModel(Memory::stack_allocator* Alloc, const char* RelativePat
   {
     SetUpMesh((*OutputModel)->Meshes[i]);
   }
-  Render::PrintModelHeader(*OutputModel);
 }
 
 int32_t

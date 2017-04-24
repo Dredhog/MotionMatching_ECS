@@ -15,6 +15,6 @@ main()
   frag_color = g_color;
 
   vec3 final_position =
-    vec3(a_position.xy * g_dimension - vec2(1, 1) + g_position.xy, g_position.z);
+    2 * vec3((a_position.xy * g_dimension + g_position.xy), g_position.z) - vec3(1, 1, 0);
   gl_Position = vec4(final_position, 1.0f);
 }

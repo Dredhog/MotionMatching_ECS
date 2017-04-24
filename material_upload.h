@@ -3,7 +3,6 @@
 void
 UnsetMaterial(render_data* RenderData, int32_t MaterialIndex)
 {
-  uint32_t ShaderType = RenderData->Materials[MaterialIndex].Common.ShaderType;
   glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
   glDepthFunc(GL_LESS);
   glBindTexture(GL_TEXTURE_2D, 0);

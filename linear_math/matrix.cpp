@@ -275,7 +275,6 @@ namespace Math
   void
   Transpose3(mat3* Mat)
   {
-    mat3 Transpose;
     for(int i = 0; i < 3; i++)
     {
       for(int j = 0; j < 3; j++)

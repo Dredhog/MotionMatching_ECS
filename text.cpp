@@ -7,7 +7,7 @@
 #include "string.h"
 #include "misc.h"
 
-#define TEXTURE_CACHE_LINE_COUNT 64
+#define TEXTURE_CACHE_LINE_COUNT 256
 
 struct text_texture
 {
@@ -28,6 +28,7 @@ text_texture g_TextTextureCache[TEXTURE_CACHE_LINE_COUNT];
 int32_t      g_CachedTextureCount;
 
 int32_t g_HitCounts[TEXTURE_CACHE_LINE_COUNT];
+int32_t g_RequestsPerFrame[TEXTURE_CACHE_LINE_COUNT];
 
 Text::sized_font
 Text::LoadSizedFont(const char* FontName, int FontSize)
@@ -141,13 +142,13 @@ WriteTextToLineBufferAtIndex(text_line* LineBuffer, const char* Text, int32_t Bu
 }
 
 int32_t
-FindCacheLineToOccupy(int32_t* HitCount, int32_t CacheLineCount)
+FindCacheLineToOccupy(const int32_t* HitCount, int32_t CacheLineCount)
 {
-  int32_t CandidateLineIndex = 0;
+  int32_t CandidateLineIndex = -1;
   int32_t MinHitCount        = 1000000000;
   for(int i = 0; i < CacheLineCount; i++)
   {
-    if(HitCount[i] < MinHitCount)
+    if(HitCount[i] < MinHitCount && g_RequestsPerFrame[i] == 0)
     {
       MinHitCount        = HitCount[i];
       CandidateLineIndex = i;
@@ -157,14 +158,13 @@ FindCacheLineToOccupy(int32_t* HitCount, int32_t CacheLineCount)
       }
     }
   }
+  assert(CandidateLineIndex >= 0);
   return CandidateLineIndex;
 }
 
 Text::sized_font
 GetBestMatchingSizedFont(const Text::font* Font, int32_t FontSize)
 {
-  Text::sized_font Result;
-
   int MinDiff        = AbsInt32(Font->SizedFonts[0].Size - FontSize);
   int BestMatchIndex = 0;
 
@@ -193,8 +193,10 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
 
     if(g_TextTextureCache[NewIndex].TextureID)
     {
+      //printf("evicting at: %d, texture: %d with %d hits\n", NewIndex,
+             //g_TextTextureCache[NewIndex].TextureID, g_HitCounts[NewIndex]);
       glDeleteTextures(1, &g_TextTextureCache[NewIndex].TextureID);
-      g_HitCounts[TextTextureIndex] = 0;
+      g_HitCounts[NewIndex] = 0;
     }
 
     g_TextTextureCache[NewIndex].TextureID = LoadTextTexture(SizedFont.Font, Text, Color);
@@ -212,6 +214,7 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
     TextTextureIndex = NewIndex;
   }
   g_HitCounts[TextTextureIndex]++;
+  g_RequestsPerFrame[TextTextureIndex]++;
 
   if(Width)
   {
@@ -222,4 +225,13 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
     *Height = g_TextTextureCache[TextTextureIndex].Dimensions[1];
   }
   return g_TextTextureCache[TextTextureIndex].TextureID;
+}
+
+void
+Text::ClearTextRequestCounts()
+{
+  for(int i = 0; i < TEXTURE_CACHE_LINE_COUNT; i++)
+  {
+    g_RequestsPerFrame[i] = 0;
+  }
 }

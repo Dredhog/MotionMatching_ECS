@@ -35,8 +35,7 @@ enum selection_mode
   FOR_ALL_NAMES(GENERATE_ENUM) SELECT_EnumCount
 };
 
-static const char* g_SelectionEnumStrings[SELECT_EnumCount] =
-  { "Entity", "Mesh", "Bone" /*FOR_ALL_NAMES(GENERATE_STRING)*/ };
+static const char* g_SelectionEnumStrings[SELECT_EnumCount] = { FOR_ALL_NAMES(GENERATE_STRING) };
 #undef FOR_ALL_NAMES
 #undef GENERATE_ENUM
 #undef GENERATE_STRING
@@ -82,11 +81,10 @@ struct game_state
   Text::font Font;
 
   // Switches/Flags
-  bool  DrawWireframe;
   bool  DrawCubemap;
-  bool  DrawTimeline;
   bool  DrawGizmos;
-  bool  IsModelSpinning;
+  bool  DrawDebugSpheres;
+  bool  DrawTimeline;
   bool  IsAnimationPlaying;
   float EditorBoneRotationSpeed;
   bool  IsEntityCreationMode;

@@ -1,11 +1,11 @@
 #pragma once
 
-enum material_type
+enum phong_flags
 {
-  MATERIAL_Diffuse  = 1,
-  MATERIAL_Specular = 2,
-  MATERIAL_Normal   = 4,
-  MATERIAL_Skeletal = 8,
+  PHONG_UseDiffuseMap  = 1,
+  PHONG_UseSpecularMap = 2,
+  PHONG_UseNormalMap   = 4,
+  PHONG_UseSkeleton    = 8,
 };
 
 enum shader_type
@@ -17,7 +17,6 @@ enum shader_type
 };
 
 union material {
-  // material_header;
   struct material_header
   {
     uint32_t ShaderType;
@@ -42,9 +41,9 @@ union material {
   } Color;
 };
 
+const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
 const int32_t TEXTURE_MAX_COUNT       = 20;
 const int32_t MATERIAL_MAX_COUNT      = 20;
-const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
 const int32_t MODEL_MAX_COUNT         = 10;
 const int32_t TEXTURE_NAME_MAX_LENGTH = 50;
 
@@ -73,7 +72,7 @@ struct render_data
   int32_t        ModelCount;
 
   // Textures
-  int32_t      Textures[TEXTURE_MAX_COUNT];
+  uint32_t      Textures[TEXTURE_MAX_COUNT];
   texture_name TextureNames[TEXTURE_MAX_COUNT];
   int32_t      TextureCount;
 
@@ -110,15 +109,10 @@ AddTexture(render_data* RenderData, uint32_t TextureID, char* TextureName)
 inline material
 NewPhongMaterial()
 {
-  material Material               = {};
-  Material.Common.ShaderType      = SHADER_Phong;
-  Material.Common.UseBlending     = true;
-  Material.Phong.Flags            = 0;
-  Material.Phong.DiffuseColor     = vec4{ 1.0f, 1.0f, 1.0f, 1.0f };
-  Material.Phong.DiffuseMapIndex  = 0;
-  Material.Phong.SpecularMapIndex = 0;
-  Material.Phong.DiffuseMapIndex  = 0;
-  Material.Phong.Shininess        = 1.0f;
+  material Material           = {};
+  Material.Common.ShaderType  = SHADER_Phong;
+  Material.Phong.DiffuseColor = { 0.5f, 0.5f, 0.5f, 1 };
+  Material.Phong.Shininess    = 60.0f;
   return Material;
 }
 

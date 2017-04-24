@@ -138,10 +138,9 @@ UI::DrawSquareTexture(game_state* GameState, UI::im_layout* Layout, uint32_t Tex
 
   UI::Row(Layout);
   Layout->X = Layout->TopLeft.X;
+  Debug::PushTopLeftTexturedQuad(TextureID, { Layout->X, Layout->Y }, QuadWidth, QuadHeight);
   Layout->Y -= QuadHeight;
 
-  DEBUGDrawUnflippedTexturedQuad(GameState, TextureID, { Layout->X, Layout->Y }, QuadWidth,
-                                 QuadHeight);
   Layout->ColumnWidth = Layout->Width;
   Layout->Y += Layout->RowHeight;
 }
@@ -151,10 +150,9 @@ DrawBox(game_state* GameState, vec3 TopLeft, float Width, float Height, vec4 Inn
         vec4 BorderColor)
 {
   float ButtonBorder = 0.002f;
-  DEBUGDrawTopLeftQuad(GameState, TopLeft, Width, Height, BorderColor);
-  DEBUGDrawTopLeftQuad(GameState,
-                       vec3{ TopLeft.X + ButtonBorder, TopLeft.Y - ButtonBorder, TopLeft.Z },
-                       Width - 2 * ButtonBorder, Height - 2 * ButtonBorder, InnerColor);
+  Debug::PushTopLeftQuad(TopLeft, Width, Height, BorderColor);
+  Debug::PushTopLeftQuad(vec3{ TopLeft.X + ButtonBorder, TopLeft.Y - ButtonBorder, TopLeft.Z },
+                         Width - 2 * ButtonBorder, Height - 2 * ButtonBorder, InnerColor);
 }
 
 void
@@ -176,9 +174,10 @@ UI::DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, 
     Text::GetTextTextureID(&GameState->Font, (int32_t)(10 * ((float)Width / (float)Height)), Text,
                            g_FontColor, &TextureWidth, &TextureHeight);
   float TextAspect = (float)Width / (float)Height;
-  DEBUGDrawTopLeftTexturedQuad(GameState, TextureID,
-                               vec3{ TopLeft.X + TextPadding, TopLeft.Y - TextPadding, TopLeft.Z },
-                               TextAspect * (Height - 2 * TextPadding), Height - 2 * TextPadding);
+  Debug::PushTopLeftTexturedQuad(TextureID,
+                                 vec3{ TopLeft.X + TextPadding, TopLeft.Y - TextPadding,
+                                       TopLeft.Z },
+                                 TextAspect * (Height - 2 * TextPadding), Height - 2 * TextPadding);
   // TextAspect * Height, Height);
 }
 
@@ -381,8 +380,8 @@ UI::ExpandableButton(game_state* GameState, im_layout* Layout, const game_input*
   // draw square icon
   float   IconWidthK = (Layout->RowHeight / Layout->AspectRatio) / Layout->ColumnWidth;
   int32_t TextureID  = (*IsExpanded) ? GameState->ExpandedTextureID : GameState->CollapsedTextureID;
-  DEBUGDrawTopLeftTexturedQuad(GameState, TextureID, vec3{ Layout->X, Layout->Y, 0.0f },
-                               IconWidthK * Layout->ColumnWidth, Layout->RowHeight);
+  Debug::PushTopLeftTexturedQuad(TextureID, { Layout->X, Layout->Y, 0.0f },
+                                 IconWidthK * Layout->ColumnWidth, Layout->RowHeight);
 
   vec4 InnerColor =
     ((*IsExpanded) ? g_BoolPressedColor : (IsHot(ID) ? g_BoolHighlightColor : g_BoolNormalColor));
@@ -455,9 +454,9 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   // DrawCurrentElement
   DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,
               GetStringAtIndex(*ActiveIndex), HeaderColor, g_BorderColor);
-  DEBUGDrawTopLeftTexturedQuad(GameState, GameState->ExpandedTextureID,
-                               vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
-                               Layout->RowHeight);
+  Debug::PushTopLeftTexturedQuad(GameState->ExpandedTextureID,
+                                 vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
+                                 Layout->RowHeight);
   im_layout TempLayout = *Layout;
   TempLayout.TopLeft.X = TempLayout.CurrentP.X;
   TempLayout.CurrentP.Y -= Layout->RowHeight;

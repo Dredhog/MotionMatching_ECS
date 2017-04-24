@@ -51,7 +51,7 @@ ReadEntireFile(Memory::stack_allocator *Allocator, const char* FileName)
     close(FileHandle);
     return Result;
   }
-  Result.ContentsSize = SafeTruncateUint64(FileStatus.st_size);
+  Result.ContentsSize = SafeTruncateUint64((uint64_t)FileStatus.st_size);
 
   Result.Contents = Allocator->Alloc(Result.ContentsSize);
   if(!Result.Contents)
@@ -75,7 +75,7 @@ ReadEntireFile(Memory::stack_allocator *Allocator, const char* FileName)
       close(FileHandle);
       return Result;
     }
-    BytesStoread -= BytesRead;
+    BytesStoread -= (uint64_t)BytesRead;
     NextByteLocation += BytesRead;
   }
   close(FileHandle);
@@ -102,7 +102,7 @@ WriteEntireFile(char* Filename, uint64_t MemorySize, void* Memory)
       close(FileHandle);
       return false;
     }
-    BytesToWrite -= BytesWritten;
+    BytesToWrite -= (uint64_t)BytesWritten;
     NextByteLocation += BytesWritten;
   }
   close(FileHandle);

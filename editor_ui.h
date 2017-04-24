@@ -24,25 +24,57 @@ ElementToBoneName(void* Bone)
   return ((Anim::bone*)Bone)->Name;
 }
 
+namespace UI
+{
+  void SliderTransform(game_state* GameState, im_layout* Layout, const char* Text = 0);
+  void
+  SliderVec3(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
+             vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY,
+             float ValueScreenDelta = 10.0f)
+  {
+    UI::Row(GameState, Layout, 3, Text);
+    UI::SliderFloat(GameState, Layout, Input, "x", &VecPtr->X, Min, Max, ValueScreenDelta);
+    UI::SliderFloat(GameState, Layout, Input, "y", &VecPtr->Y, Min, Max, ValueScreenDelta);
+    UI::SliderFloat(GameState, Layout, Input, "z", &VecPtr->Z, Min, Max, ValueScreenDelta);
+  }
+
+  void
+  SliderVec3Color(game_state* GameState, im_layout* Layout, const game_input* Input,
+                  const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f,
+                  float ValueScreenDelta = 3.0f)
+  {
+    UI::Row(GameState, Layout, 3, Text);
+    UI::SliderFloat(GameState, Layout, Input, "r", &VecPtr->R, Min, Max, ValueScreenDelta);
+    UI::SliderFloat(GameState, Layout, Input, "g", &VecPtr->G, Min, Max, ValueScreenDelta);
+    UI::SliderFloat(GameState, Layout, Input, "b", &VecPtr->B, Min, Max, ValueScreenDelta);
+  }
+
+  void
+  SliderVec4Color(game_state* GameState, im_layout* Layout, const game_input* Input,
+                  const char* Text, vec4* VecPtr, float Min = 0.0f, float Max = 1.0f,
+                  float ValueScreenDelta = 3.0f)
+  {
+    UI::Row(GameState, Layout, 4, Text);
+    UI::SliderFloat(GameState, Layout, Input, "r", &VecPtr->R, Min, Max, ValueScreenDelta);
+    UI::SliderFloat(GameState, Layout, Input, "g", &VecPtr->G, Min, Max, ValueScreenDelta);
+    UI::SliderFloat(GameState, Layout, Input, "b", &VecPtr->B, Min, Max, ValueScreenDelta);
+    UI::SliderFloat(GameState, Layout, Input, "a", &VecPtr->A, Min, Max, ValueScreenDelta);
+  }
+}
+
 void
-DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
+RunIMGUIEditorUI(game_state* GameState, const game_input* Input)
 {
   // Humble beginnings of the editor GUI system
-  const float   TEXT_HEIGHT    = 0.03f;
   const float   StartX         = 0.75f;
   const float   StartY         = 1;
-  const float   YPadding       = 0.02f;
   const float   LayoutWidth    = 0.15f;
   const float   RowHeight      = 0.035f;
   const float   SliderWidth    = 0.05f;
-  const int32_t ScrollRowCount = 2;
 
   static bool g_ShowDisplaySet         = false;
-  static bool g_ShowTransformSettign   = false;
-  static bool g_ShowTranslationButtons = false;
   static bool g_ShowEntityTools        = false;
   static bool g_ShowAnimationEditor    = false;
-  static bool g_ShowScrollSection      = false;
   static bool g_ShowMaterialEditor     = false;
   static bool g_ShowCameraSettings     = false;
   static bool g_ShowLightSettings      = false;
@@ -109,13 +141,13 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
       {
         case SHADER_Phong:
         {
-          bool DiffuseFlagValue = (Material->Phong.Flags & MATERIAL_Diffuse);
+          bool DiffuseFlagValue = (Material->Phong.Flags & PHONG_UseDiffuseMap);
 
           UI::Row(GameState, &Layout, 1, "Use Diffuse");
           UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
           if(DiffuseFlagValue)
           {
-            Material->Phong.Flags |= MATERIAL_Diffuse;
+            Material->Phong.Flags |= PHONG_UseDiffuseMap;
 
             UI::Row(GameState, &Layout, 1, "Diffuse Map");
             {
@@ -128,7 +160,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           }
           else
           {
-            Material->Phong.Flags &= ~MATERIAL_Diffuse;
+            Material->Phong.Flags &= ~PHONG_UseDiffuseMap;
 
             UI::Row(GameState, &Layout, 4, "Diffuse Color");
             UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R,
@@ -141,13 +173,13 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
                             0, 1.0f, 5.0f);
           }
 
-          bool SpecularFlagValue = (Material->Phong.Flags & MATERIAL_Specular) != 0;
-
+          bool SpecularFlagValue = Material->Phong.Flags & PHONG_UseSpecularMap;
           UI::Row(GameState, &Layout, 1, "Use Specular");
           UI::_BoolButton(&Layout, Input, "Toggle", &SpecularFlagValue);
+
           if(SpecularFlagValue)
           {
-            Material->Phong.Flags |= MATERIAL_Specular;
+            Material->Phong.Flags |= PHONG_UseSpecularMap;
 
             UI::Row(GameState, &Layout, 1, "Specular");
             {
@@ -160,16 +192,16 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           }
           else
           {
-            Material->Phong.Flags &= ~MATERIAL_Specular;
+            Material->Phong.Flags &= ~PHONG_UseSpecularMap;
           }
 
-          bool NormalFlagValue = (Material->Phong.Flags & MATERIAL_Normal) != 0;
+          bool NormalFlagValue = Material->Phong.Flags & PHONG_UseNormalMap;
 
           UI::Row(GameState, &Layout, 1, "Use Normal");
           UI::_BoolButton(&Layout, Input, "Toggle", &NormalFlagValue);
           if(NormalFlagValue)
           {
-            Material->Phong.Flags |= MATERIAL_Normal;
+            Material->Phong.Flags |= PHONG_UseNormalMap;
 
             UI::Row(GameState, &Layout, 1, "Normal");
             {
@@ -182,21 +214,21 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           }
           else
           {
-            Material->Phong.Flags &= ~MATERIAL_Normal;
+            Material->Phong.Flags &= ~PHONG_UseNormalMap;
           }
 
-          bool SkeletalFlagValue = (Material->Phong.Flags & MATERIAL_Skeletal);
+          bool SkeletalFlagValue = (Material->Phong.Flags & PHONG_UseSkeleton);
 
           UI::Row(GameState, &Layout, 1, "Is Skeletal");
           UI::_BoolButton(&Layout, Input, "Toggle", &SkeletalFlagValue);
           if(SkeletalFlagValue)
           {
-            Material->Phong.Flags |= MATERIAL_Skeletal;
+            Material->Phong.Flags |= PHONG_UseSkeleton;
             Material->Common.IsSkeletal = true;
           }
           else
           {
-            Material->Phong.Flags &= ~MATERIAL_Skeletal;
+            Material->Phong.Flags &= ~PHONG_UseSkeleton;
             Material->Common.IsSkeletal = false;
           }
 
@@ -207,11 +239,7 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         break;
         case SHADER_Color:
         {
-          UI::Row(GameState, &Layout, 4, "Color");
-          UI::SliderFloat(GameState, &Layout, Input, "R", &Material->Color.Color.R, 0, 1.0f, 5.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "G", &Material->Color.Color.G, 0, 1.0f, 5.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "B", &Material->Color.Color.B, 0, 1.0f, 5.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "A", &Material->Color.Color.A, 0, 1.0f, 5.0f);
+          UI::SliderVec4Color(GameState, &Layout, Input, "Color", &Material->Color.Color);
         }
         break;
       }
@@ -301,7 +329,6 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
           DeleteEntity(GameState, GameState->SelectedEntityIndex);
           GameState->SelectedEntityIndex = -1;
         }
-
         if(SelectedEntity->AnimController)
         {
           UI::Row(&Layout);
@@ -324,31 +351,12 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
         }
 
         Anim::transform* Transform     = &SelectedEntity->Transform;
-        mat4             Mat4Transform = TransformToGizmoMat4(Transform);
-        DEBUGPushGizmo(&GameState->Camera, &Mat4Transform);
-        UI::Row(&Layout);
-        UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
-        UI::Row(GameState, &Layout, 3, "Translation");
-        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.X, -INFINITY,
-                        INFINITY, 20.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Y, -INFINITY,
-                        INFINITY, 20.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Z, -INFINITY,
-                        INFINITY, 20.0f);
-        UI::Row(GameState, &Layout, 3, "Rotation");
-        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.X, -INFINITY,
-                        INFINITY, 720.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Y, -INFINITY,
-                        INFINITY, 720.0f);
-        UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Z, -INFINITY,
-                        INFINITY, 720.0f);
-        UI::Row(GameState, &Layout, 3, "Scale  ");
-        UI::SliderFloat(GameState, &Layout, Input, "Scale X", &Transform->Scale.X, 0, 100,
-                        10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
-        UI::SliderFloat(GameState, &Layout, Input, "Scale Y", &Transform->Scale.Y, 0, 100,
-                        10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
-        UI::SliderFloat(GameState, &Layout, Input, "Scale Z", &Transform->Scale.Z, 0, 100,
-                        10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+        UI::SliderVec3(GameState, &Layout, Input, "Translation", &Transform->Translation, -INFINITY,
+                       INFINITY, 10.0f);
+        UI::SliderVec3(GameState, &Layout, Input, "Rotation", &Transform->Rotation, -INFINITY,
+                       INFINITY, 720.0f);
+        UI::SliderVec3(GameState, &Layout, Input, "Scale", &Transform->Scale, -INFINITY, INFINITY,
+                       10.0f);
 
         UI::Row(&Layout);
         if(SelectedEntity->Model->Skeleton)
@@ -455,33 +463,19 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
             EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
           }
 
+          UI::Row(&Layout);
+          UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
+
           Anim::transform* Transform =
             &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
                .Transforms[GameState->AnimEditor.CurrentBone];
           mat4 Mat4Transform = TransformToGizmoMat4(Transform);
-          UI::Row(&Layout);
-          UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
-          UI::Row(GameState, &Layout, 3, "Translation");
-          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.X,
-                          -INFINITY, INFINITY, 20.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Y,
-                          -INFINITY, INFINITY, 20.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Translation.Z,
-                          -INFINITY, INFINITY, 20.0f);
-          UI::Row(GameState, &Layout, 3, "Rotation");
-          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.X, -INFINITY,
-                          INFINITY, 720.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Y, -INFINITY,
-                          INFINITY, 720.0f);
-          UI::SliderFloat(GameState, &Layout, Input, "Rotation", &Transform->Rotation.Z, -INFINITY,
-                          INFINITY, 720.0f);
-          UI::Row(GameState, &Layout, 3, "Scale  ");
-          UI::SliderFloat(GameState, &Layout, Input, "Scale X", &Transform->Scale.X, 0, 100,
-                          10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
-          UI::SliderFloat(GameState, &Layout, Input, "Scale Y", &Transform->Scale.Y, 0, 100,
-                          10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
-          UI::SliderFloat(GameState, &Layout, Input, "Scale Z", &Transform->Scale.Z, 0, 100,
-                          10.0f * ClampFloat(0.01f, AbsFloat(Transform->Scale.X), 10));
+          UI::SliderVec3(GameState, &Layout, Input, "Translation", &Transform->Translation,
+                         -INFINITY, INFINITY, 10.0f);
+          UI::SliderVec3(GameState, &Layout, Input, "Rotation", &Transform->Rotation, -INFINITY,
+                         INFINITY, 720.0f);
+          UI::SliderVec3(GameState, &Layout, Input, "Scale", &Transform->Scale, -INFINITY, INFINITY,
+                         10.0f);
         }
       }
     }
@@ -489,52 +483,31 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Light Settings", &g_ShowLightSettings))
   {
-    UI::Row(GameState, &Layout, 3, "Diffuse");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightDiffuseColor.R, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightDiffuseColor.G, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightDiffuseColor.B, 0, 1.0f,
-                    5.0f);
-    UI::Row(GameState, &Layout, 3, "Specular");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightSpecularColor.R, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightSpecularColor.G, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightSpecularColor.B, 0, 1.0f,
-                    5.0f);
-    UI::Row(GameState, &Layout, 3, "Ambient");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &GameState->R.LightAmbientColor.R, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &GameState->R.LightAmbientColor.G, 0, 1.0f,
-                    5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &GameState->R.LightAmbientColor.B, 0, 1.0f,
-                    5.0f);
-    UI::Row(GameState, &Layout, 3, "Position");
-    UI::SliderFloat(GameState, &Layout, Input, "X", &GameState->R.LightPosition.X, -INFINITY,
-                    INFINITY, 20.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "Y", &GameState->R.LightPosition.Y, -INFINITY,
-                    INFINITY, 20.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "Z", &GameState->R.LightPosition.Z, -INFINITY,
-                    INFINITY, 20.0f);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Diffuse",
+                        (vec3*)&GameState->R.LightDiffuseColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Specular",
+                        (vec3*)&GameState->R.LightSpecularColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Ambient",
+                        (vec3*)&GameState->R.LightAmbientColor);
+    UI::SliderVec3(GameState, &Layout, Input, "Position", &GameState->R.LightPosition);
     UI::Row(GameState, &Layout, 1, "Show Gizmo");
     UI::BoolButton(GameState, &Layout, Input, "Show", &GameState->R.ShowLightPosition);
   }
   if(GameState->R.ShowLightPosition)
   {
     mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
-    DEBUGPushGizmo(&GameState->Camera, &Mat4LightPosition);
+    Debug::PushGizmo(&GameState->Camera, &Mat4LightPosition);
   }
 
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Render Switches", &g_ShowDisplaySet))
   {
-    UI::Row(GameState, &Layout, 4, "Toggleables");
-    UI::_BoolButton(&Layout, Input, "Toggle Timeline", &GameState->DrawTimeline);
-    // UI::_BoolButton(&Layout, Input, "Toggle Cubemap", &GameState->DrawCubemap);
-    UI::_BoolButton(&Layout, Input, "Toggle Wireframe", &GameState->DrawWireframe);
-    UI::_BoolButton(&Layout, Input, "Toggle Gizmos", &GameState->DrawGizmos);
-    UI::_BoolButton(&Layout, Input, "Toggle Spinning", &GameState->IsModelSpinning);
+    UI::Row(GameState, &Layout, 1, "Timeline");
+    UI::_BoolButton(&Layout, Input, "Toggle", &GameState->DrawTimeline);
+    UI::Row(GameState, &Layout, 1, "Gizmos");
+    UI::_BoolButton(&Layout, Input, "Toggle", &GameState->DrawGizmos);
+    UI::Row(GameState, &Layout, 1, "Debug Spheres");
+    UI::_BoolButton(&Layout, Input, "Toggle", &GameState->DrawDebugSpheres);
   }
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Camera     ", &g_ShowCameraSettings))
@@ -555,51 +528,15 @@ DrawAndInteractWithEditorUI(game_state* GameState, const game_input* Input)
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "GUI Colors     ", &g_ShowGUISettings))
   {
-    UI::Row(GameState, &Layout, 3, "Border");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_BorderColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_BorderColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_BorderColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BorderColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "Base");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_NormalColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_NormalColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_NormalColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_NormalColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "Highlight");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_HighlightColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_HighlightColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_HighlightColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_HighlightColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "Pressed");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_PressedColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_PressedColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_PressedColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_PressedColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "BoolPressed");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolPressedColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolPressedColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolPressedColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolPressedColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "Bool Base");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolNormalColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolNormalColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolNormalColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolNormalColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "Bool Highlight");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_BoolHighlightColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_BoolHighlightColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_BoolHighlightColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_BoolHighlightColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "Description bg");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_DescriptionColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_DescriptionColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_DescriptionColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_DescriptionColor.A, 0, 1.0f, 5.0f);
-    UI::Row(GameState, &Layout, 3, "Font");
-    UI::SliderFloat(GameState, &Layout, Input, "R", &g_FontColor.R, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "G", &g_FontColor.G, 0, 1.0f, 5.0f);
-    UI::SliderFloat(GameState, &Layout, Input, "B", &g_FontColor.B, 0, 1.0f, 5.0f);
-    // UI::SliderFloat(GameState, &Layout, Input, "A", &g_FontColor.A, 0, 1.0f, 5.0f);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Border", (vec3*)&g_BorderColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Base", (vec3*)&g_NormalColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Highlight", (vec3*)&g_HighlightColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Pressed", (vec3*)&g_PressedColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Bool Base", (vec3*)&g_BoolNormalColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "BoolPressed", (vec3*)&g_BoolPressedColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Bool Highlight", (vec3*)&g_BoolHighlightColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Description bg", (vec3*)&g_DescriptionColor);
+    UI::SliderVec3Color(GameState, &Layout, Input, "Font", (vec3*)&g_FontColor);
   }
 }
 
@@ -611,11 +548,12 @@ VisualizeTimeline(game_state* GameState)
   {
     const EditAnimation::animation_editor* Editor = &GameState->AnimEditor;
 
-    const float TimelineStartX = 0.20f;
-    const float TimelineStartY = 0.1f;
-    const float TimelineWidth  = 0.6f;
-    const float TimelineHeight = 0.05f;
-    const float FirstTime      = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
+    const float TimelineStartX     = 0.20f;
+    const float TimelineStartY     = 0.1f;
+    const float TimelineWidth      = 0.6f;
+    const float TimelineHeight     = 0.05f;
+    const float CurrentMarkerWidth = 0.002f;
+    const float FirstTime          = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
     const float LastTime =
       MaxFloat(Editor->PlayHeadTime, Editor->SampleTimes[Editor->KeyframeCount - 1]);
 
@@ -623,24 +561,24 @@ VisualizeTimeline(game_state* GameState)
     float TimeDiff        = MaxFloat((LastTime - FirstTime), 1.0f);
     float KeyframeWidth   = KeyframeSpacing / TimeDiff;
 
-    DEBUGDrawQuad(GameState, vec3{ TimelineStartX, TimelineStartY }, TimelineWidth, TimelineHeight);
+    Debug::PushQuad({ TimelineStartX, TimelineStartY }, TimelineWidth, TimelineHeight,
+                    { 1, 1, 1, 1 });
     for(int i = 0; i < KeyframeCount; i++)
     {
       float PosPercentage = (Editor->SampleTimes[i] - FirstTime) / TimeDiff;
-      DEBUGDrawCenteredQuad(GameState,
-                            vec3{ TimelineStartX + PosPercentage * TimelineWidth,
-                                  TimelineStartY + TimelineHeight * 0.5f },
-                            KeyframeWidth, 0.05f, { 0.5f, 0.3f, 0.3f, 1 });
+      Debug::PushQuad(vec3{ TimelineStartX + PosPercentage * TimelineWidth - 0.5f * KeyframeWidth,
+                            TimelineStartY, -0.1f },
+                      KeyframeWidth, TimelineHeight, { 0.5f, 0.3f, 0.3f, 1 });
     }
     float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
-    DEBUGDrawCenteredQuad(GameState,
-                          vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth,
-                                TimelineStartY + TimelineHeight * 0.5f },
-                          KeyframeWidth, 0.05f, { 1, 0, 0, 1 });
+    Debug::PushQuad(vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth -
+                            0.5f * KeyframeWidth,
+                          TimelineStartY, -0.2f },
+                    KeyframeWidth, TimelineHeight, { 1, 0, 0, 1 });
     float CurrentPercentage = (Editor->SampleTimes[Editor->CurrentKeyframe] - FirstTime) / TimeDiff;
-    DEBUGDrawCenteredQuad(GameState,
-                          vec3{ TimelineStartX + CurrentPercentage * TimelineWidth,
-                                TimelineStartY + TimelineHeight * 0.5f },
-                          0.003f, 0.05f, { 0.5f, 0.5f, 0.5f, 1 });
+    Debug::PushQuad(vec3{ TimelineStartX + CurrentPercentage * TimelineWidth -
+                            0.5f * CurrentMarkerWidth,
+                          TimelineStartY, -0.3f },
+                    CurrentMarkerWidth, TimelineHeight, { 0.5f, 0.5f, 0.5f, 1 });
   }
 }

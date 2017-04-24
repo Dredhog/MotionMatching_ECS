@@ -13,7 +13,6 @@
 #define PushStruct(Allocator, Type) (Type*)(Allocator)->Alloc(sizeof(Type))
 
 #define PushArray(Allocator, Count, Type) (Type*)(Allocator)->Alloc(sizeof(Type) * (Count))
-
 namespace Memory
 {
   struct marker
@@ -38,8 +37,8 @@ namespace Memory
     void FreeToMarker(marker Marker);
     void Clear();
 
-    marker  GetMarker() const;
-    size_t  GetByteCountAboveMarker(marker Marker) const;
+    marker GetMarker() const;
+    size_t GetByteCountAboveMarker(marker Marker) const;
     int32_t GetAllocCount() const;
     int32_t GetUsedSize() const;
     int32_t GetCapacity() const;
