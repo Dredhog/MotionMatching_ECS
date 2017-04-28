@@ -24,16 +24,6 @@
 #include "editor_ui.h"
 #include <limits.h>
 
-static const vec3 g_aoneColors[] = {
-  { 0.41f, 0.93f, 0.23f }, { 0.14f, 0.11f, 0.80f }, { 0.35f, 0.40f, 0.77f },
-  { 0.96f, 0.24f, 0.15f }, { 0.20f, 0.34f, 0.44f }, { 0.37f, 0.34f, 0.14f },
-  { 0.22f, 0.99f, 0.77f }, { 0.80f, 0.70f, 0.11f }, { 0.81f, 0.92f, 0.18f },
-  { 0.51f, 0.86f, 0.13f }, { 0.80f, 0.94f, 0.10f }, { 0.70f, 0.42f, 0.52f },
-  { 0.26f, 0.50f, 0.61f }, { 0.10f, 0.21f, 0.81f }, { 0.96f, 0.22f, 0.63f },
-  { 0.77f, 0.22f, 0.79f }, { 0.30f, 0.00f, 0.07f }, { 0.98f, 0.28f, 0.02f },
-  { 0.92f, 0.42f, 0.14f }, { 0.47f, 0.31f, 0.72f },
-};
-
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
 {
@@ -94,8 +84,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/uv_sphere.model",
                              &GameState->UVSphereModel);
     Render::model* TempModelPtr;
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/crysis_soldier.actor",
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/multimesh_soldier.actor",
                              &TempModelPtr);
+    AddModel(&GameState->R, TempModelPtr);
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sponza.model", &TempModelPtr);
+    AddModel(&GameState->R, TempModelPtr);
+    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/armadillo.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
@@ -109,6 +103,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/debug_textured_quad");
     GameState->R.ShaderID = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/id");
     //------------LOAD TEXTURES-----------
+    GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
+    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
+    assert(GameState->CollapsedTextureID);
+    assert(GameState->ExpandedTextureID);
+#if 0
     // Diffuse Maps
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/body_dif.png"),
                "body_diff");
@@ -150,15 +149,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                "helmet_norm");
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/glass_ddn.png"),
                "glass_norm");
-    GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
-    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
-    assert(GameState->CollapsedTextureID);
-    assert(GameState->ExpandedTextureID);
-
-    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
 
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
+#else
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_blue_diff.png"),
+               "blue_curtain");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_green_diff.png"),
+               "green_curtain");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_diff.png"),
+               "red_curtain");
+    AddTexture(&GameState->R,
+               Texture::LoadTexture("./data/textures/sponza/spnza_bricks_a_diff.png"), "brick");
+#endif
+
+    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
     // -------END ASSET LOADING
 
     // ======Set GL state
@@ -196,7 +204,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Camera.Up            = { 0, 1, 0 };
     GameState->Camera.Forward       = { 0, 0, -1 };
     GameState->Camera.Right         = { 1, 0, 0 };
-    GameState->Camera.Rotation      = { -20 };
+    GameState->Camera.Rotation      = { 0 };
     GameState->Camera.NearClipPlane = 0.001f;
     GameState->Camera.FarClipPlane  = 1000.0f;
     GameState->Camera.FieldOfView   = 70.0f;
@@ -234,7 +242,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if(Input->IsMouseInEditorMode)
   {
     // GUI
-    RunIMGUIEditorUI(GameState, Input);
+    IMGUIControlPanel(GameState, Input);
 
     // ANIMATION TIMELINE
     if(GameState->SelectionMode == SELECT_Bone && GameState->DrawTimeline &&
@@ -344,7 +352,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  // ANIMATION UPDATE
+  // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)
   {
     Anim::animation_controller* Controller = GameState->Entities[e].AnimController;
@@ -354,7 +362,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  //---------------ANIMATION EDITOR UPDATE-----------------
+  //----------ANIMATION EDITOR INTERACTION-----------
   if(Input->IsMouseInEditorMode && GameState->SelectionMode == SELECT_Bone &&
      GameState->AnimEditor.Skeleton)
   {
@@ -439,19 +447,30 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       const float BoneSphereRadius = 0.1f;
 
       vec3 Position = Math::GetMat4Translation(Mat4Bone);
-      if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
+      vec3 RayDir =
+        GetRayDirFromScreenP({ Input->NormMouseX, Input->NormMouseY },
+                             GameState->Camera.ProjectionMatrix, GameState->Camera.ViewMatrix);
+      raycast_result RaycastResult =
+        RayIntersectSphere(GameState->Camera.Position, RayDir, Position, BoneSphereRadius);
+      if(RaycastResult.Success)
       {
-        vec3 RayDir =
-          GetRayDirFromScreenP({ Input->NormMouseX, Input->NormMouseY },
-                               GameState->Camera.ProjectionMatrix, GameState->Camera.ViewMatrix);
-        raycast_result RaycastResult =
-          RayIntersectSphere(GameState->Camera.Position, RayDir, Position, BoneSphereRadius);
-        if(RaycastResult.Success)
+        Debug::PushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius, { 1, 1, 0, 1 });
+        if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
         {
           EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, i);
         }
       }
+      else
+      {
+        Debug::PushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius);
+      }
+
+      if(i == GameState->AnimEditor.CurrentBone)
+      {
+        Debug::PushGizmo(&GameState->Camera, &Mat4Bone);
+      }
     }
+    // Copy editor poses to entity anim controller
     assert(0 <= GameState->AnimEditor.EntityIndex &&
            GameState->AnimEditor.EntityIndex < GameState->EntityCount);
     {

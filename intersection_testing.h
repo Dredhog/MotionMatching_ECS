@@ -38,7 +38,7 @@ GetRayDirFromScreenP(vec3 NormScreenP, mat4 ProjectionMatrix, mat4 CameraMatrix)
   // Homogennous Clip Coords
   vec4 ClipDir  = { NDC.X, NDC.Y, -1, 1 };
   vec4 EyeDir   = Math::MulMat4Vec4(Math::InvMat4(ProjectionMatrix), ClipDir);
-  EyeDir        = vec4{ -EyeDir.X, -EyeDir.Y, -0.0072f, 0 };
+  EyeDir        = vec4{ EyeDir.X, EyeDir.Y, -1, 0 };
   vec3 WorldDir = Math::MulMat4Vec4(Math::InvMat4(CameraMatrix), EyeDir).XYZ;
 
   return Math::Normalized(WorldDir);

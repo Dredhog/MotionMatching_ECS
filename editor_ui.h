@@ -63,22 +63,22 @@ namespace UI
 }
 
 void
-RunIMGUIEditorUI(game_state* GameState, const game_input* Input)
+IMGUIControlPanel(game_state* GameState, const game_input* Input)
 {
   // Humble beginnings of the editor GUI system
-  const float   StartX         = 0.75f;
-  const float   StartY         = 1;
-  const float   LayoutWidth    = 0.15f;
-  const float   RowHeight      = 0.035f;
-  const float   SliderWidth    = 0.05f;
+  const float StartX      = 0.75f;
+  const float StartY      = 1;
+  const float LayoutWidth = 0.15f;
+  const float RowHeight   = 0.035f;
+  const float SliderWidth = 0.05f;
 
-  static bool g_ShowDisplaySet         = false;
-  static bool g_ShowEntityTools        = false;
-  static bool g_ShowAnimationEditor    = false;
-  static bool g_ShowMaterialEditor     = false;
-  static bool g_ShowCameraSettings     = false;
-  static bool g_ShowLightSettings      = false;
-  static bool g_ShowGUISettings        = false;
+  static bool g_ShowDisplaySet      = false;
+  static bool g_ShowEntityTools     = false;
+  static bool g_ShowAnimationEditor = false;
+  static bool g_ShowMaterialEditor  = false;
+  static bool g_ShowCameraSettings  = false;
+  static bool g_ShowLightSettings   = false;
+  static bool g_ShowGUISettings     = false;
 
   UI::im_layout Layout = UI::NewLayout({ StartX, StartY }, LayoutWidth, RowHeight, SliderWidth);
 
@@ -350,7 +350,7 @@ RunIMGUIEditorUI(game_state* GameState, const game_input* Input)
           }
         }
 
-        Anim::transform* Transform     = &SelectedEntity->Transform;
+        Anim::transform* Transform = &SelectedEntity->Transform;
         UI::SliderVec3(GameState, &Layout, Input, "Translation", &Transform->Translation, -INFINITY,
                        INFINITY, 10.0f);
         UI::SliderVec3(GameState, &Layout, Input, "Rotation", &Transform->Rotation, -INFINITY,
@@ -358,9 +358,9 @@ RunIMGUIEditorUI(game_state* GameState, const game_input* Input)
         UI::SliderVec3(GameState, &Layout, Input, "Scale", &Transform->Scale, -INFINITY, INFINITY,
                        10.0f);
 
-        UI::Row(&Layout);
         if(SelectedEntity->Model->Skeleton)
         {
+          UI::Row(&Layout);
           if(!SelectedEntity->AnimController &&
              UI::ReleaseButton(GameState, &Layout, Input, "Add Anim. Controller"))
           {
@@ -383,7 +383,6 @@ RunIMGUIEditorUI(game_state* GameState, const game_input* Input)
             SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
               PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
                         mat4);
-            UI::Row(&Layout);
           }
           else if(SelectedEntity->AnimController &&
                   (UI::ReleaseButton(GameState, &Layout, Input, "Delete Anim. Controller")))

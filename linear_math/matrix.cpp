@@ -233,10 +233,10 @@ namespace Math
     assert(ViewAngle > 0.0f && AspectRatio > 0.0f);
 
     float NearOverRight = 1.0f / tanf((3.14159f / 180.0f) * (ViewAngle * 0.5f));
-    float NearOverTop   = NearOverRight * AspectRatio;
+    float NearOverTop   = NearOverRight;
 
     mat4 Result = {};
-    Result._11  = NearOverRight;
+    Result._11  = NearOverRight / AspectRatio;
     Result._22  = NearOverTop;
     Result._33  = -(Far + Near) / (Far - Near);
     Result._34  = (-2.0f * Far * Near) / (Far - Near);
@@ -334,47 +334,89 @@ namespace Math
     Mat3->_33 *= Scale.Z;
   }
 #endif
-	vec3 GetMat4Translation(mat4 Mat4){
-		return {Mat4._14, Mat4._24, Mat4._34};
-	}
+  vec3
+  GetMat4Translation(mat4 Mat4)
+  {
+    return { Mat4._14, Mat4._24, Mat4._34 };
+  }
+
+  float
+  Determinant(const mat4& M)
+  {
+    return M.e[12] * M.e[9] * M.e[6] * M.e[3] - M.e[8] * M.e[13] * M.e[6] * M.e[3] -
+           M.e[12] * M.e[5] * M.e[10] * M.e[3] + M.e[4] * M.e[13] * M.e[10] * M.e[3] +
+           M.e[8] * M.e[5] * M.e[14] * M.e[3] - M.e[4] * M.e[9] * M.e[14] * M.e[3] -
+           M.e[12] * M.e[9] * M.e[2] * M.e[7] + M.e[8] * M.e[13] * M.e[2] * M.e[7] +
+           M.e[12] * M.e[1] * M.e[10] * M.e[7] - M.e[0] * M.e[13] * M.e[10] * M.e[7] -
+           M.e[8] * M.e[1] * M.e[14] * M.e[7] + M.e[0] * M.e[9] * M.e[14] * M.e[7] +
+           M.e[12] * M.e[5] * M.e[2] * M.e[11] - M.e[4] * M.e[13] * M.e[2] * M.e[11] -
+           M.e[12] * M.e[1] * M.e[6] * M.e[11] + M.e[0] * M.e[13] * M.e[6] * M.e[11] +
+           M.e[4] * M.e[1] * M.e[14] * M.e[11] - M.e[0] * M.e[5] * M.e[14] * M.e[11] -
+           M.e[8] * M.e[5] * M.e[2] * M.e[15] + M.e[4] * M.e[9] * M.e[2] * M.e[15] +
+           M.e[8] * M.e[1] * M.e[6] * M.e[15] - M.e[0] * M.e[9] * M.e[6] * M.e[15] -
+           M.e[4] * M.e[1] * M.e[10] * M.e[15] + M.e[0] * M.e[5] * M.e[10] * M.e[15];
+  }
 
   mat4
   InvMat4(const mat4& M)
   {
-    mat4 Result = mat4{
-      -M.e[7] * M.e[10] * M.e[13] + M.e[6] * M.e[11] * M.e[13] + M.e[7] * M.e[9] * M.e[14] -
-        M.e[5] * M.e[11] * M.e[14] - M.e[6] * M.e[9] * M.e[15] + M.e[5] * M.e[10] * M.e[15],
-      M.e[3] * M.e[10] * M.e[13] - M.e[2] * M.e[11] * M.e[13] - M.e[3] * M.e[9] * M.e[14] +
-        M.e[1] * M.e[11] * M.e[14] + M.e[2] * M.e[9] * M.e[15] - M.e[1] * M.e[10] * M.e[15],
-      -M.e[3] * M.e[6] * M.e[13] + M.e[2] * M.e[7] * M.e[13] + M.e[3] * M.e[5] * M.e[14] -
-        M.e[1] * M.e[7] * M.e[14] - M.e[2] * M.e[5] * M.e[15] + M.e[1] * M.e[6] * M.e[15],
-      M.e[3] * M.e[6] * M.e[9] - M.e[2] * M.e[7] * M.e[9] - M.e[3] * M.e[5] * M.e[10] +
-        M.e[1] * M.e[7] * M.e[10] + M.e[2] * M.e[5] * M.e[11] - M.e[1] * M.e[6] * M.e[11],
-      M.e[7] * M.e[10] * M.e[12] - M.e[6] * M.e[11] * M.e[12] - M.e[7] * M.e[8] * M.e[14] +
-        M.e[4] * M.e[11] * M.e[14] + M.e[6] * M.e[8] * M.e[15] - M.e[4] * M.e[10] * M.e[15],
-      -M.e[3] * M.e[10] * M.e[12] + M.e[2] * M.e[11] * M.e[12] + M.e[3] * M.e[8] * M.e[14] -
-        M.e[0] * M.e[11] * M.e[14] - M.e[2] * M.e[8] * M.e[15] + M.e[0] * M.e[10] * M.e[15],
-      M.e[3] * M.e[6] * M.e[12] - M.e[2] * M.e[7] * M.e[12] - M.e[3] * M.e[4] * M.e[14] +
-        M.e[0] * M.e[7] * M.e[14] + M.e[2] * M.e[4] * M.e[15] - M.e[0] * M.e[6] * M.e[15],
-      -M.e[3] * M.e[6] * M.e[8] + M.e[2] * M.e[7] * M.e[8] + M.e[3] * M.e[4] * M.e[10] -
-        M.e[0] * M.e[7] * M.e[10] - M.e[2] * M.e[4] * M.e[11] + M.e[0] * M.e[6] * M.e[11],
-      -M.e[7] * M.e[9] * M.e[12] + M.e[5] * M.e[11] * M.e[12] + M.e[7] * M.e[8] * M.e[13] -
-        M.e[4] * M.e[11] * M.e[13] - M.e[5] * M.e[8] * M.e[15] + M.e[4] * M.e[9] * M.e[15],
-      M.e[3] * M.e[9] * M.e[12] - M.e[1] * M.e[11] * M.e[12] - M.e[3] * M.e[8] * M.e[13] +
-        M.e[0] * M.e[11] * M.e[13] + M.e[1] * M.e[8] * M.e[15] - M.e[0] * M.e[9] * M.e[15],
-      -M.e[3] * M.e[5] * M.e[12] + M.e[1] * M.e[7] * M.e[12] + M.e[3] * M.e[4] * M.e[13] -
-        M.e[0] * M.e[7] * M.e[13] - M.e[1] * M.e[4] * M.e[15] + M.e[0] * M.e[5] * M.e[15],
-      M.e[3] * M.e[5] * M.e[8] - M.e[1] * M.e[7] * M.e[8] - M.e[3] * M.e[4] * M.e[9] +
-        M.e[0] * M.e[7] * M.e[9] + M.e[1] * M.e[4] * M.e[11] - M.e[0] * M.e[5] * M.e[11],
-      M.e[6] * M.e[9] * M.e[12] - M.e[5] * M.e[10] * M.e[12] - M.e[6] * M.e[8] * M.e[13] +
-        M.e[4] * M.e[10] * M.e[13] + M.e[5] * M.e[8] * M.e[14] - M.e[4] * M.e[9] * M.e[14],
-      -M.e[2] * M.e[9] * M.e[12] + M.e[1] * M.e[10] * M.e[12] + M.e[2] * M.e[8] * M.e[13] -
-        M.e[0] * M.e[10] * M.e[13] - M.e[1] * M.e[8] * M.e[14] + M.e[0] * M.e[9] * M.e[14],
-      M.e[2] * M.e[5] * M.e[12] - M.e[1] * M.e[6] * M.e[12] - M.e[2] * M.e[4] * M.e[13] +
-        M.e[0] * M.e[6] * M.e[13] + M.e[1] * M.e[4] * M.e[14] - M.e[0] * M.e[5] * M.e[14],
-      -M.e[2] * M.e[5] * M.e[8] + M.e[1] * M.e[6] * M.e[8] + M.e[2] * M.e[4] * M.e[9] -
-        M.e[0] * M.e[6] * M.e[9] - M.e[1] * M.e[4] * M.e[10] + M.e[0] * M.e[5] * M.e[10],
-    };
-    return Result;
+    float Det = Determinant(M);
+    /* there is no inverse if determinant is zero (not likely unless scale is
+    broken) */
+    if(0.0f == Det)
+    {
+      printf("error: inverse not computable - determinant is zero.\n");
+      return M;
+    }
+    float InvDet = 1.0f / Det;
+
+    return mat4{ InvDet * (M.e[9] * M.e[14] * M.e[7] - M.e[13] * M.e[10] * M.e[7] +
+                           M.e[13] * M.e[6] * M.e[11] - M.e[5] * M.e[14] * M.e[11] -
+                           M.e[9] * M.e[6] * M.e[15] + M.e[5] * M.e[10] * M.e[15]),
+                 InvDet * (M.e[13] * M.e[10] * M.e[3] - M.e[9] * M.e[14] * M.e[3] -
+                           M.e[13] * M.e[2] * M.e[11] + M.e[1] * M.e[14] * M.e[11] +
+                           M.e[9] * M.e[2] * M.e[15] - M.e[1] * M.e[10] * M.e[15]),
+                 InvDet * (M.e[5] * M.e[14] * M.e[3] - M.e[13] * M.e[6] * M.e[3] +
+                           M.e[13] * M.e[2] * M.e[7] - M.e[1] * M.e[14] * M.e[7] -
+                           M.e[5] * M.e[2] * M.e[15] + M.e[1] * M.e[6] * M.e[15]),
+                 InvDet * (M.e[9] * M.e[6] * M.e[3] - M.e[5] * M.e[10] * M.e[3] -
+                           M.e[9] * M.e[2] * M.e[7] + M.e[1] * M.e[10] * M.e[7] +
+                           M.e[5] * M.e[2] * M.e[11] - M.e[1] * M.e[6] * M.e[11]),
+                 InvDet * (M.e[12] * M.e[10] * M.e[7] - M.e[8] * M.e[14] * M.e[7] -
+                           M.e[12] * M.e[6] * M.e[11] + M.e[4] * M.e[14] * M.e[11] +
+                           M.e[8] * M.e[6] * M.e[15] - M.e[4] * M.e[10] * M.e[15]),
+                 InvDet * (M.e[8] * M.e[14] * M.e[3] - M.e[12] * M.e[10] * M.e[3] +
+                           M.e[12] * M.e[2] * M.e[11] - M.e[0] * M.e[14] * M.e[11] -
+                           M.e[8] * M.e[2] * M.e[15] + M.e[0] * M.e[10] * M.e[15]),
+                 InvDet * (M.e[12] * M.e[6] * M.e[3] - M.e[4] * M.e[14] * M.e[3] -
+                           M.e[12] * M.e[2] * M.e[7] + M.e[0] * M.e[14] * M.e[7] +
+                           M.e[4] * M.e[2] * M.e[15] - M.e[0] * M.e[6] * M.e[15]),
+                 InvDet * (M.e[4] * M.e[10] * M.e[3] - M.e[8] * M.e[6] * M.e[3] +
+                           M.e[8] * M.e[2] * M.e[7] - M.e[0] * M.e[10] * M.e[7] -
+                           M.e[4] * M.e[2] * M.e[11] + M.e[0] * M.e[6] * M.e[11]),
+                 InvDet * (M.e[8] * M.e[13] * M.e[7] - M.e[12] * M.e[9] * M.e[7] +
+                           M.e[12] * M.e[5] * M.e[11] - M.e[4] * M.e[13] * M.e[11] -
+                           M.e[8] * M.e[5] * M.e[15] + M.e[4] * M.e[9] * M.e[15]),
+                 InvDet * (M.e[12] * M.e[9] * M.e[3] - M.e[8] * M.e[13] * M.e[3] -
+                           M.e[12] * M.e[1] * M.e[11] + M.e[0] * M.e[13] * M.e[11] +
+                           M.e[8] * M.e[1] * M.e[15] - M.e[0] * M.e[9] * M.e[15]),
+                 InvDet * (M.e[4] * M.e[13] * M.e[3] - M.e[12] * M.e[5] * M.e[3] +
+                           M.e[12] * M.e[1] * M.e[7] - M.e[0] * M.e[13] * M.e[7] -
+                           M.e[4] * M.e[1] * M.e[15] + M.e[0] * M.e[5] * M.e[15]),
+                 InvDet * (M.e[8] * M.e[5] * M.e[3] - M.e[4] * M.e[9] * M.e[3] -
+                           M.e[8] * M.e[1] * M.e[7] + M.e[0] * M.e[9] * M.e[7] +
+                           M.e[4] * M.e[1] * M.e[11] - M.e[0] * M.e[5] * M.e[11]),
+                 InvDet * (M.e[12] * M.e[9] * M.e[6] - M.e[8] * M.e[13] * M.e[6] -
+                           M.e[12] * M.e[5] * M.e[10] + M.e[4] * M.e[13] * M.e[10] +
+                           M.e[8] * M.e[5] * M.e[14] - M.e[4] * M.e[9] * M.e[14]),
+                 InvDet * (M.e[8] * M.e[13] * M.e[2] - M.e[12] * M.e[9] * M.e[2] +
+                           M.e[12] * M.e[1] * M.e[10] - M.e[0] * M.e[13] * M.e[10] -
+                           M.e[8] * M.e[1] * M.e[14] + M.e[0] * M.e[9] * M.e[14]),
+                 InvDet * (M.e[12] * M.e[5] * M.e[2] - M.e[4] * M.e[13] * M.e[2] -
+                           M.e[12] * M.e[1] * M.e[6] + M.e[0] * M.e[13] * M.e[6] +
+                           M.e[4] * M.e[1] * M.e[14] - M.e[0] * M.e[5] * M.e[14]),
+                 InvDet * (M.e[4] * M.e[9] * M.e[2] - M.e[8] * M.e[5] * M.e[2] +
+                           M.e[8] * M.e[1] * M.e[6] - M.e[0] * M.e[9] * M.e[6] -
+                           M.e[4] * M.e[1] * M.e[10] + M.e[0] * M.e[5] * M.e[10]) };
   }
 }

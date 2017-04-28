@@ -304,7 +304,7 @@ UI::SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Inpu
   char FloatTextBuffer[20];
 
   *Var = ClampFloat(Min, *Var, Max);
-  sprintf(FloatTextBuffer, "%5.2f", (double)*Var);
+  sprintf(FloatTextBuffer, "%5.3f", (double)*Var);
 
   vec4 InnerColor = IsActive(ID) ? g_PressedColor : (IsHot(ID) ? g_HighlightColor : g_NormalColor);
   UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor, g_BorderColor);

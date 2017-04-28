@@ -29,8 +29,7 @@ QuadInstance g_TexturedQuads[COLORED_QUAD_MAX_COUNT];
 int32_t      g_TexturedQuadCount;
 
 void
-Debug::PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, bool Overlay,
-                           vec4 Color)
+Debug::PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, vec4 Color)
 {
   mat4 MVPMatrix = Math::MulMat4(Camera->VPMatrix, Math::MulMat4(Math::Mat4Translate(Position),
                                                                  Math::Mat4Scale(Radius)));
@@ -39,7 +38,7 @@ Debug::PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, bo
   g_SphereMatrices[g_SphereCount++] = MVPMatrix;
 }
 void
-Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase, bool Overlay)
+Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase)
 {
   assert(0 <= g_GizmoCount && g_GizmoCount < GIZMO_MAX_COUNT);
   mat4  MVMatrix   = Math::MulMat4(Camera->ViewMatrix, *GizmoBase);
@@ -47,7 +46,8 @@ Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase, bool Overlay)
   float GizmoDepth = Math::GetTranslationVec3(MVMatrix).Z;
 
   g_GizmoMatrices[g_GizmoCount] = MVPMatrix;
-  g_GizmoDepths[g_GizmoCount++] = GizmoDepth;
+  g_GizmoDepths[g_GizmoCount]   = GizmoDepth;
+  ++g_GizmoCount;
 }
 
 void
@@ -117,11 +117,16 @@ Debug::DrawGizmos(game_state* GameState)
 void
 Debug::DrawWireframeSpheres(game_state* GameState)
 {
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glUseProgram(GameState->R.ShaderColor);
   glBindVertexArray(GameState->SphereModel->Meshes[0]->VAO);
+
+  // so as not to displace the spheres by the remaining bone data
+  {
+    mat4 Mat4Zeros = {};
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                       Mat4Zeros.e);
+  }
   for(int i = 0; i < g_SphereCount; i++)
   {
     glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
