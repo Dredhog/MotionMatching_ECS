@@ -37,7 +37,7 @@ Text::LoadSizedFont(const char* FontName, int FontSize)
   TTF_Font*  Font   = TTF_OpenFont(FontName, FontSize);
   if(!Font)
   {
-    printf("error: fialed to load font: %s\n", SDL_GetError());
+    printf("error: failed to load font: %s\n", SDL_GetError());
     return Result;
   }
   Result.Font = Font;
@@ -173,7 +173,7 @@ GetBestMatchingSizedFont(const Text::font* Font, int32_t FontSize)
     int Diff = AbsInt32(Font->SizedFonts[i].Size - FontSize);
     if(Diff < MinDiff)
     {
-      // MinDiff        = Diff;
+      MinDiff        = Diff;
       BestMatchIndex = i;
     }
   }
@@ -193,8 +193,8 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
 
     if(g_TextTextureCache[NewIndex].TextureID)
     {
-      //printf("evicting at: %d, texture: %d with %d hits\n", NewIndex,
-             //g_TextTextureCache[NewIndex].TextureID, g_HitCounts[NewIndex]);
+      // printf("evicting at: %d, texture: %d with %d hits\n", NewIndex,
+      // g_TextTextureCache[NewIndex].TextureID, g_HitCounts[NewIndex]);
       glDeleteTextures(1, &g_TextTextureCache[NewIndex].TextureID);
       g_HitCounts[NewIndex] = 0;
     }
@@ -226,6 +226,225 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
   }
   return g_TextTextureCache[TextTextureIndex].TextureID;
 }
+#if CACHE_TEST
+void
+ResetCache()
+{
+  for(int i = 0; i < g_CachedTextureCount; i++)
+  {
+    glDeleteTextures(1, &g_TextTextureCache[i].TextureID);
+    g_TextLineCache[i]    = {};
+    g_TextTextureCache[i] = {};
+
+    g_HitCounts[i]        = 0;
+    g_RequestsPerFrame[i] = 0;
+  }
+  g_CachedTextureCount = 0;
+}
+
+void
+CacheTests(void (*CacheTestFunctions[])(Text::font*), Text::font* Font, int** ExpectedOutputs,
+           int* Length, int Count)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    ResetCache();
+    (*CacheTestFunctions[i])(Font);
+    if(Length[i] != g_CachedTextureCount)
+    {
+      printf("Expected Test %d sample size is not equal to actual sample size!\n", i);
+    }
+    printf(
+      "Test%d\n--------------------------------------------\nExpected\t--\tActual\t--\tDiff\n--"
+      "------------------------------------------\n",
+      i);
+    for(int j = 0; j < Length[i]; j++)
+    {
+      printf("Texture %d\n%d\t\t--\t%d\t--\t%d\n", j, ExpectedOutputs[i][j], g_HitCounts[j],
+             ExpectedOutputs[i][j] - g_HitCounts[j]);
+    }
+    printf("============================================\n");
+  }
+  ResetCache();
+}
+
+void
+CacheTest0(Text::font* Font)
+{
+  int   ParamCount = 1;
+  vec4  Color[1]   = { { 1.0f, 1.0f, 1.0f, 1.0f } };
+  char* Text[]     = { "Test1" };
+
+  int32_t TextureWidth;
+  int32_t TextureHeight;
+
+  for(int i = 0; i < 20; i++)
+  {
+    float TextWidth  = 0.3f;
+    float TextHeight = 0.1f;
+
+    uint32_t TextureID =
+      GetTextTextureID(Font, (int32_t)(10 * ((float)TextWidth / (float)TextHeight)),
+                       Text[i % ParamCount], Color[i % ParamCount], &TextureWidth, &TextureHeight);
+  }
+}
+
+void
+CacheTest1(Text::font* Font)
+{
+  int  ParamCount = 3;
+  vec4 Color[3]   = { { 1.0f, 1.0f, 1.0f, 1.0f },
+                    { 1.0f, 0.0f, 1.0f, 1.0f },
+                    { 1.0f, 1.0f, 0.0f, 1.0f } };
+  char* Text[] = { "Testas", "Sec", "Third" };
+
+  int32_t TextureWidth;
+  int32_t TextureHeight;
+
+  for(int i = 0; i < 40; i++)
+  {
+    float TextWidth  = 0.5f;
+    float TextHeight = 0.2f;
+
+    uint32_t TextureID =
+      GetTextTextureID(Font, (int32_t)(10 * ((float)TextWidth / (float)TextHeight)),
+                       Text[i % ParamCount], Color[i % ParamCount], &TextureWidth, &TextureHeight);
+  }
+}
+
+void
+CacheTest2(Text::font* Font)
+{
+  int  ParamCount = TEXTURE_CACHE_LINE_COUNT;
+  vec4 Color;
+  char Text[100];
+
+  int32_t TextureWidth;
+  int32_t TextureHeight;
+
+  for(int i = 0; i < 2 * TEXTURE_CACHE_LINE_COUNT; i++)
+  {
+    float TextWidth  = 0.4f;
+    float TextHeight = 0.1f;
+
+    Color = { 1.0f, 1.0f - (float)(i % ParamCount) * 0.001f, (float)(i % ParamCount) * 0.002f,
+              1.0f };
+    sprintf(Text, "Texture %d", (i % ParamCount));
+
+    uint32_t TextureID =
+      GetTextTextureID(Font, (int32_t)(10 * ((float)TextWidth / (float)TextHeight)), Text, Color,
+                       &TextureWidth, &TextureHeight);
+  }
+}
+
+void
+CacheTest3(Text::font* Font)
+{
+  int   ParamCount = 1;
+  vec4  Color[1]   = { { 1.0f, 1.0f, 1.0f, 1.0f } };
+  char* Text[]     = { "a" };
+
+  int32_t TextureWidth;
+  int32_t TextureHeight;
+
+  for(int i = 0; i < 5; i++)
+  {
+    float TextWidth  = 0.3f;
+    float TextHeight = 0.1f;
+
+    uint32_t TextureID =
+      GetTextTextureID(Font, (int32_t)(10 * ((float)TextWidth / (float)TextHeight)),
+                       Text[i % ParamCount], Color[i % ParamCount], &TextureWidth, &TextureHeight);
+  }
+}
+
+void
+CacheTest4(Text::font* Font)
+{
+  int  ParamCount = 3;
+  vec4 Color[3]   = { { 0.0f, 0.0f, 0.0f, 1.0f },
+                    { 0.0f, 0.0f, 0.0f, 0.0f },
+                    { 1.0f, 0.5f, 0.0f, 0.5f } };
+  char* Text[] = { "White and visible", "Black and invisible", "Orange-ish and transparent" };
+
+  int32_t TextureWidth;
+  int32_t TextureHeight;
+
+  for(int i = 0; i < 100; i++)
+  {
+    float TextWidth  = 0.3f;
+    float TextHeight = 0.1f;
+
+    uint32_t TextureID =
+      GetTextTextureID(Font, (int32_t)(10 * ((float)TextWidth / (float)TextHeight)),
+                       Text[i % ParamCount], Color[i % ParamCount], &TextureWidth, &TextureHeight);
+  }
+}
+
+void
+CacheTest5(Text::font* Font)
+{
+  int   ParamCount = 1;
+  vec4  Color[1]   = { { 0.75f, 0.75f, 0.75f, 1.0f } };
+  char* Text[]     = { "Hmmmmm" };
+
+  int32_t TextureWidth;
+  int32_t TextureHeight;
+
+  for(int i = 0; i < 256; i++)
+  {
+    float TextWidth  = 0.3f;
+    float TextHeight = 0.1f;
+
+    uint32_t TextureID =
+      GetTextTextureID(Font, (int32_t)(10 * ((float)TextWidth / (float)TextHeight)),
+                       Text[i % ParamCount], Color[i % ParamCount], &TextureWidth, &TextureHeight);
+  }
+}
+
+void
+Text::SetupAndCallCacheTests(font* Font)
+{
+  const int Count = 6;
+  void (*TestFunctions[Count])(Text::font*);
+
+  TestFunctions[0] = CacheTest0;
+  TestFunctions[1] = CacheTest1;
+  TestFunctions[2] = CacheTest2;
+  TestFunctions[3] = CacheTest3;
+  TestFunctions[4] = CacheTest4;
+  TestFunctions[5] = CacheTest5;
+
+  int** ExpectedResults = (int**)malloc(sizeof(int*) * Count);
+  ExpectedResults[0]    = (int*)malloc(sizeof(int) * 1);
+  ExpectedResults[0][0] = 20;
+  ExpectedResults[1]    = (int*)malloc(sizeof(int) * 3);
+  ExpectedResults[1][0] = 14;
+  ExpectedResults[1][1] = 13;
+  ExpectedResults[1][2] = 13;
+  ExpectedResults[2]    = (int*)malloc(sizeof(int) * 256);
+  ExpectedResults[3]    = (int*)malloc(sizeof(int) * 1);
+  ExpectedResults[3][0] = 5;
+  ExpectedResults[4]    = (int*)malloc(sizeof(int) * 3);
+  ExpectedResults[4][0] = 34;
+  ExpectedResults[4][1] = 33;
+  ExpectedResults[4][2] = 33;
+  ExpectedResults[5]    = (int*)malloc(sizeof(int) * 1);
+  ExpectedResults[5][0] = 256;
+  for(int i = 0; i < TEXTURE_CACHE_LINE_COUNT; i++)
+  {
+    ExpectedResults[2][i] = 2;
+  }
+  int Length[Count] = { 1, 3, TEXTURE_CACHE_LINE_COUNT, 1, 3, 1 };
+
+  CacheTests(TestFunctions, Font, ExpectedResults, Length, Count);
+  for(int i = 0; i < 6; i++)
+  {
+    free(ExpectedResults[i]);
+  }
+  free(ExpectedResults);
+}
+#endif
 
 void
 Text::ClearTextRequestCounts()

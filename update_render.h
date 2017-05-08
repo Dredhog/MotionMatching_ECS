@@ -87,8 +87,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/multimesh_soldier.actor",
                              &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
+#if 0
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sponza.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
+#endif
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/armadillo.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
     // -----------LOAD SHADERS------------
@@ -107,7 +109,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
-#if 0
+#if 1
     // Diffuse Maps
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/body_dif.png"),
                "body_diff");
@@ -167,7 +169,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #endif
 
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
-    // -------END ASSET LOADING
+// -------END ASSET LOADING
+
+#if CACHE_TEST
+    Text::SetupAndCallCacheTests(&GameState->Font);
+#endif
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
