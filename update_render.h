@@ -17,6 +17,7 @@
 #include "render_data.h"
 #include "material_upload.h"
 #include "text.h"
+#include "test_text_texture_cache.h"
 
 #include "debug_drawing.h"
 #include "camera.h"
@@ -172,7 +173,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 // -------END ASSET LOADING
 
 #if CACHE_TEST
-    Text::SetupAndCallCacheTests(&GameState->Font);
+    SetUpAndCallCacheTests(&GameState->Font);
 #endif
 
     // ======Set GL state

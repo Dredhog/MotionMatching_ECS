@@ -7,6 +7,8 @@
 
 #define TEXT_LINE_MAX_LENGTH 64
 
+#define TEXTURE_CACHE_LINE_COUNT 256
+
 #define CACHE_TEST 1
 
 namespace Text
@@ -29,5 +31,5 @@ namespace Text
   uint32_t GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color,
                             int32_t* Width = 0, int32_t* Height = 0);
   void ClearTextRequestCounts();
-  void SetupAndCallCacheTests(font* Font);
+  void ResetCache();
 }
