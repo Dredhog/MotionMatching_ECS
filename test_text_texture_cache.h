@@ -17,34 +17,54 @@ cache_test g_Tests[TEST_COUNT];
 void
 RunCacheTests(cache_test* Tests, Text::font* Font, int Count)
 {
+  printf("============================================\n");
+  printf("Starting Tests:\n");
+  int TestsPassed = 0;
   for(int i = 0; i < Count; i++)
   {
     Text::ResetCache();
     Tests[i].TestFunction(Font);
-    printf("Tests performed: %d/%d\n", i + 1, Count);
-    if(Tests[i].ResultCount != g_CachedTextureCount)
-    {
-      printf("Expected test %d sample size is not equal to actual sample size!\n", i + 1);
-    }
-    printf("Expected:\t");
-    for(int j = 0; j < Tests[i].ResultCount; j++)
-    {
-      printf("%d\t", Tests[i].ExpectedResults[j]);
-    }
-    printf("\nActual:\t\t");
-    for(int j = 0; j < g_CachedTextureCount; j++)
-    {
-      printf("%d\t", g_HitCounts[j]);
-    }
-    printf("\nDiff:\t\t");
+    bool TestFailed = false;
     for(int j = 0; j < Tests[i].ResultCount; j++)
     {
       int Diff = Tests[i].ExpectedResults[j] - g_HitCounts[j];
-      printf("%d\t", Diff);
+      if(Diff != 0)
+      {
+        TestFailed = true;
+      }
     }
-    printf("\n============================================\n");
+    if(TestFailed)
+    {
+      printf("Expected:\t");
+      for(int j = 0; j < Tests[i].ResultCount; j++)
+      {
+        printf("%d\t", Tests[i].ExpectedResults[j]);
+      }
+      printf("\nActual:\t\t");
+      for(int j = 0; j < g_CachedTextureCount; j++)
+      {
+        printf("%d\t", g_HitCounts[j]);
+      }
+      printf("\nDiff:\t\t");
+      for(int j = 0; j < g_CachedTextureCount; j++)
+      {
+        int Diff = Tests[i].ExpectedResults[j] - g_HitCounts[j];
+        printf("%d\t", Diff);
+      }
+    }
+    else
+    {
+      ++TestsPassed;
+    }
+    if(Tests[i].ResultCount != g_CachedTextureCount)
+    {
+      printf("Expected test %d sample size is not equal to actual sample size!\n", i + 1);
+      printf("============================================\n");
+    }
+    Text::ResetCache();
   }
-  Text::ResetCache();
+  printf("Tests performed: %d/%d\n", TestsPassed, Count);
+  printf("============================================\n");
 }
 
 void
@@ -151,9 +171,8 @@ RunCacheTest4(Text::font* Font)
 
   for(int i = 0; i < 100; i++)
   {
-    float TextWidth  = 0.3f;
-    float TextHeight = 0.1f;
-
+    float    TextWidth  = 0.3f;
+    float    TextHeight = 0.1f;
     uint32_t TextureID =
       GetTextTextureID(Font, (int32_t)(10 * ((float)TextWidth / (float)TextHeight)),
                        Text[i % ParamCount], Color[i % ParamCount], &TextureWidth, &TextureHeight);
@@ -187,14 +206,13 @@ SetUpAndCallCacheTests(Text::font* Font)
   g_Tests[0] = { RunCacheTest0, 1, { 20 } };
   g_Tests[1] = { RunCacheTest1, 3, { 14, 13, 13 } };
   g_Tests[2] = { RunCacheTest2, TEXTURE_CACHE_LINE_COUNT, {} };
-  g_Tests[3] = { RunCacheTest3, 1, { 5 } };
-  g_Tests[4] = { RunCacheTest4, 3, { 34, 33, 33 } };
-  g_Tests[5] = { RunCacheTest5, 1, { 256 } };
-
   for(int i = 0; i < g_Tests[2].ResultCount; i++)
   {
     g_Tests[2].ExpectedResults[i] = 2;
   }
+  g_Tests[3] = { RunCacheTest3, 1, { 5 } };
+  g_Tests[4] = { RunCacheTest4, 3, { 34, 33, 33 } };
+  g_Tests[5] = { RunCacheTest5, 1, { 256 } };
 
   RunCacheTests(g_Tests, Font, TEST_COUNT);
 }
