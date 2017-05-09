@@ -5,8 +5,8 @@
 struct cache_test
 {
   void (*TestFunction)(Text::font*);
-  int ExpectedResults[TEXTURE_CACHE_LINE_COUNT];
   int ResultCount;
+  int ExpectedResults[TEXTURE_CACHE_LINE_COUNT];
 };
 
 extern int32_t g_HitCounts[TEXTURE_CACHE_LINE_COUNT];
@@ -20,7 +20,7 @@ RunCacheTests(cache_test* Tests, Text::font* Font, int Count)
   for(int i = 0; i < Count; i++)
   {
     Text::ResetCache();
-    (*(Tests[i].TestFunction))(Font);
+    Tests[i].TestFunction(Font);
     printf("Tests performed: %d/%d\n", i + 1, Count);
     if(Tests[i].ResultCount != g_CachedTextureCount)
     {
@@ -184,28 +184,13 @@ RunCacheTest5(Text::font* Font)
 void
 SetUpAndCallCacheTests(Text::font* Font)
 {
-  g_Tests[0].TestFunction = RunCacheTest0;
-  g_Tests[1].TestFunction = RunCacheTest1;
-  g_Tests[2].TestFunction = RunCacheTest2;
-  g_Tests[3].TestFunction = RunCacheTest3;
-  g_Tests[4].TestFunction = RunCacheTest4;
-  g_Tests[5].TestFunction = RunCacheTest5;
+  g_Tests[0] = { RunCacheTest0, 1, { 20 } };
+  g_Tests[1] = { RunCacheTest1, 3, { 14, 13, 13 } };
+  g_Tests[2] = { RunCacheTest2, TEXTURE_CACHE_LINE_COUNT, {} };
+  g_Tests[3] = { RunCacheTest3, 1, { 5 } };
+  g_Tests[4] = { RunCacheTest4, 3, { 34, 33, 33 } };
+  g_Tests[5] = { RunCacheTest5, 1, { 256 } };
 
-  g_Tests[0].ResultCount        = 1;
-  g_Tests[0].ExpectedResults[0] = 20;
-  g_Tests[1].ResultCount        = 3;
-  g_Tests[1].ExpectedResults[0] = 14;
-  g_Tests[1].ExpectedResults[1] = 13;
-  g_Tests[1].ExpectedResults[2] = 13;
-  g_Tests[2].ResultCount        = TEXTURE_CACHE_LINE_COUNT;
-  g_Tests[3].ResultCount        = 1;
-  g_Tests[3].ExpectedResults[0] = 5;
-  g_Tests[4].ResultCount        = 3;
-  g_Tests[4].ExpectedResults[0] = 34;
-  g_Tests[4].ExpectedResults[1] = 33;
-  g_Tests[4].ExpectedResults[2] = 33;
-  g_Tests[5].ResultCount        = 1;
-  g_Tests[5].ExpectedResults[0] = 256;
   for(int i = 0; i < g_Tests[2].ResultCount; i++)
   {
     g_Tests[2].ExpectedResults[i] = 2;
