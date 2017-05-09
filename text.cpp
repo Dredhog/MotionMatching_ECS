@@ -237,7 +237,7 @@ Text::ClearTextRequestCounts()
 void
 Text::ResetCache()
 {
-  for(int i = 0; i < g_CachedTextureCount; i++)
+  for(int i = 0; i < TEXTURE_CACHE_LINE_COUNT; i++)
   {
     glDeleteTextures(1, &g_TextTextureCache[i].TextureID);
     g_TextLineCache[i]    = {};

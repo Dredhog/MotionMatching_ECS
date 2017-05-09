@@ -1,15 +1,20 @@
 #pragma once
 
 #include <SDL2/SDL_ttf.h>
+#include "linear_math/vector.h"
 
 #define MAX_FONT_SIZE_COUNT 8
 #define FONT_NAME_MAX_SIZE 64
 
 #define TEXT_LINE_MAX_LENGTH 64
 
-#define TEXTURE_CACHE_LINE_COUNT 256
+#define TEST_TEXT_CACHE 0
 
-#define CACHE_TEST 1
+#if TEST_TEXT_CACHE 
+#define TEXTURE_CACHE_LINE_COUNT 6
+#else
+#define TEXTURE_CACHE_LINE_COUNT 256
+#endif
 
 namespace Text
 {
