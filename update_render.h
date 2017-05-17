@@ -18,7 +18,6 @@
 #include "material_upload.h"
 
 #include "text.h"
-#include "test_text_cache.h"
 
 #include "debug_drawing.h"
 #include "camera.h"
@@ -89,10 +88,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/multimesh_soldier.actor",
                              &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
+
 #if 0
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sponza.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
 #endif
+
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/armadillo.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
     // -----------LOAD SHADERS------------
@@ -111,7 +112,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
-#if 1
     // Diffuse Maps
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/body_dif.png"),
                "body_diff");
@@ -156,27 +156,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
-#else
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_blue_diff.png"),
-               "blue_curtain");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_green_diff.png"),
-               "green_curtain");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_diff.png"),
-               "red_curtain");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/spnza_bricks_a_diff.png"), "brick");
-#endif
 
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
-// -------END ASSET LOADING
-
-#if TEST_TEXT_CACHE
-		Test::SetUpAndRunCacheTests(&GameState->Font);
-#endif
-
+    // -------END ASSET LOADING
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
