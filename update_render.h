@@ -16,15 +16,16 @@
 #include "load_asset.h"
 #include "render_data.h"
 #include "material_upload.h"
+
 #include "text.h"
-#include "test_text_texture_cache.h"
-#include "file_tree_walk.h"
 
 #include "debug_drawing.h"
 #include "camera.h"
 
 #include "editor_ui.h"
 #include <limits.h>
+
+#include "file_tree_walk.h"
 
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
@@ -89,10 +90,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/multimesh_soldier.actor",
                              &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
+
 #if 0
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sponza.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
 #endif
+
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/armadillo.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
     // -----------LOAD SHADERS------------
@@ -111,7 +114,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
-#if 1
     // Diffuse Maps
     AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/body_dif.png"),
                "body_diff");
@@ -156,28 +158,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->CubemapTexture =
       Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
-#else
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_blue_diff.png"),
-               "blue_curtain");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_green_diff.png"),
-               "green_curtain");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/sponza_curtain_diff.png"),
-               "red_curtain");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/sponza/spnza_bricks_a_diff.png"), "brick");
-#endif
 
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
 
-    ReadPaths("AssetDirectories");
-// -------END ASSET LOADING
-
-#if CACHE_TEST
-    SetUpAndCallCacheTests(&GameState->Font);
-#endif
+    // Testing purposes
+    Resource::path Paths[100];
+    struct stat    Stats[100];
+    int32_t        ResourceCount = ReadPaths(Paths, Stats, "AssetDirectories");
+    printf("Resource Count = %d\n", ResourceCount);
+    // -------END ASSET LOADING
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);

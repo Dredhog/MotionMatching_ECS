@@ -7,31 +7,35 @@
 #include <unistd.h>
 #include <ftw.h>
 
-char**       g_AssetPathsPointer;
-struct stat* g_AssetStatsPointer;
-int32_t*     g_AssetCountPointer;
+#include "resource_manager.h"
 
-char*       g_AssetPaths[100];
-struct stat g_AssetPathStats[100];
-int32_t     g_AssetPathCount;
+// TODO: Stat diff
+
+Resource::path* g_PathsPointer;
+struct stat*    g_StatsPointer;
+int32_t*        g_CountPointer;
 
 int32_t
 FileTreeWalk(const char* Path, const struct stat* Stat, int32_t Flag)
 {
   if(Flag == FTW_F)
   {
-    strcpy(*g_AssetPaths[*g_AssetCountPointer], Path);
-    assert(0 != 0);
-    memcpy(g_AssetPathStats[*g_AssetPathCount], Stat, sizeof(struct stat));
-    printf("%s\n", *g_AssetPaths[*g_AssetPathCount]);
-    ++*g_AssetPathCount;
+    strcpy(g_PathsPointer[*g_CountPointer].Name, Path);
+    memcpy(&g_StatsPointer[*g_CountPointer], Stat, sizeof(struct stat));
+    ++*g_CountPointer;
   }
   return 0;
 }
 
-void
-ReadPaths(const char* SourceFile)
+int32_t
+ReadPaths(Resource::path* Paths, struct stat* Stats, const char* SourceFile)
 {
+  int32_t PathCount = 0;
+
+  g_PathsPointer = Paths;
+  g_StatsPointer = Stats;
+  g_CountPointer = &PathCount;
+
   char*   SingleLine = NULL;
   size_t  PathLength = 0;
   ssize_t ReadReturnValue;
@@ -53,4 +57,5 @@ ReadPaths(const char* SourceFile)
   }
 
   fclose(FilePointer);
+  return PathCount;
 }

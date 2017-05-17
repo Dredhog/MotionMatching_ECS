@@ -11,4 +11,3 @@ struct entity
 
   Anim::animation_controller* AnimController;
 };
-

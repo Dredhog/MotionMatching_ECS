@@ -2,6 +2,7 @@
 
 #include "asset.h"
 #include "file_io.h"
+#include "load_shader.h"
 #include "stack_allocator.h"
 
 void
