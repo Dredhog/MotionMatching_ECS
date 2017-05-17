@@ -18,6 +18,7 @@
 #include "material_upload.h"
 #include "text.h"
 #include "test_text_texture_cache.h"
+#include "file_tree_walk.h"
 
 #include "debug_drawing.h"
 #include "camera.h"
@@ -170,6 +171,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #endif
 
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
+
+    ReadPaths("AssetDirectories");
 // -------END ASSET LOADING
 
 #if CACHE_TEST

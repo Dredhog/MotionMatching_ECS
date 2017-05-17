@@ -9,7 +9,7 @@ struct cache_test
   int ExpectedResults[TEXTURE_CACHE_LINE_COUNT];
 };
 
-extern int32_t g_HitCounts[TEXTURE_CACHE_LINE_COUNT];
+extern int32_t g_HitCounts[];
 extern int32_t g_CachedTextureCount;
 
 cache_test g_Tests[TEST_COUNT];
