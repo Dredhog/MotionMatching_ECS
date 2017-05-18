@@ -43,13 +43,12 @@ GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
 }
 
 void
-AddEntity(game_state* GameState, Render::model* Model, int32_t* MaterialIndices,
-          Anim::transform Transform)
+AddEntity(game_state* GameState, rid ModelID, int32_t* MaterialIndices, Anim::transform Transform)
 {
   assert(0 <= GameState->EntityCount && GameState->EntityCount < ENTITY_MAX_COUNT);
 
   entity NewEntity          = {};
-  NewEntity.Model           = Model;
+  NewEntity.ModelID         = ModelID;
   NewEntity.MaterialIndices = MaterialIndices;
   NewEntity.Transform       = Transform;
 
@@ -65,108 +64,67 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     GameState->WAVLoaded     = false;
     GameState->MagicChecksum = 123456;
-    GameState->PersistentMemStack =
-      Memory::CreateStackAllocatorInPlace((uint8_t*)GameMemory.PersistentMemory +
-                                            sizeof(game_state),
-                                          GameMemory.PersistentMemorySize - sizeof(game_state));
+
+    // SEGMENT MEMORY
+    uint32_t PersistentStackSize =
+      (uint32_t)(((float)GameMemory.PersistentMemorySize * 0.5f) - sizeof(game_state));
+    uint32_t ModelStackSize = GameMemory.PersistentMemorySize - PersistentStackSize;
+    assert(0 < ModelStackSize);
+
+    uint8_t* PersistentStackStart = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
+    uint8_t* ModelStackStart      = PersistentStackStart + PersistentStackSize;
+
     GameState->TemporaryMemStack =
       Memory::CreateStackAllocatorInPlace(GameMemory.TemporaryMemory,
                                           GameMemory.TemporaryMemorySize);
-    Memory::stack_allocator* TemporaryMemStack  = GameState->TemporaryMemStack;
-    Memory::stack_allocator* PersistentMemStack = GameState->PersistentMemStack;
 
-    // --------LOAD MODELS/ACTORS--------
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/gizmo1.model",
-                             &GameState->GizmoModel);
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/debug_meshes.model",
-                             &GameState->QuadModel);
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/inverse_cube.model",
-                             &GameState->CubemapModel);
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sphere.model",
-                             &GameState->SphereModel);
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/uv_sphere.model",
-                             &GameState->UVSphereModel);
-    Render::model* TempModelPtr;
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/multimesh_soldier.actor",
-                             &TempModelPtr);
-    AddModel(&GameState->R, TempModelPtr);
+    GameState->PersistentMemStack =
+      Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
+
+    GameState->Resources.ModelStack.Create(ModelStackStart, ModelStackSize);
+
+// END MEMORY SEGMENTATION
 
 #if 0
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sponza.model", &TempModelPtr);
     AddModel(&GameState->R, TempModelPtr);
 #endif
+    // --------LOAD MODELS/ACTORS--------
 
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/armadillo.model", &TempModelPtr);
-    AddModel(&GameState->R, TempModelPtr);
+    GameState->GizmoModelID = GameState->Resources.RegisterModel("./data/built/gizmo1.model");
+    GameState->QuadModelID  = GameState->Resources.RegisterModel("./data/built/debug_meshes.model");
+    GameState->CubemapModelID =
+      GameState->Resources.RegisterModel("./data/built/inverse_cube.model");
+    GameState->SphereModelID   = GameState->Resources.RegisterModel("./data/built/sphere.model");
+    GameState->UVSphereModelID = GameState->Resources.RegisterModel("./data/built/uv_sphere.model");
+
+    AddModel(&GameState->R, GameState->Resources.RegisterModel("./data/built/armadillo.model"));
+    AddModel(&GameState->R,
+             GameState->Resources.RegisterModel("./data/built/multimesh_soldier.actor"));
+    AddModel(&GameState->R, GameState->Resources.RegisterModel("./data/built/sponza1.model"));
+
     // -----------LOAD SHADERS------------
-    GameState->R.ShaderPhong = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/phong");
+    GameState->R.ShaderPhong =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/phong");
     GameState->R.ShaderCubemap =
-      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/cubemap");
-    GameState->R.ShaderGizmo = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/gizmo");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/cubemap");
+    GameState->R.ShaderGizmo =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/gizmo");
     GameState->R.ShaderQuad =
-      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/debug_quad");
-    GameState->R.ShaderColor = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/color");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/debug_quad");
+    GameState->R.ShaderColor =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/color");
     GameState->R.ShaderTexturedQuad =
-      CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/debug_textured_quad");
-    GameState->R.ShaderID = CheckedLoadCompileFreeShader(TemporaryMemStack, "./shaders/id");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/debug_textured_quad");
+    GameState->R.ShaderID =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/id");
     //------------LOAD TEXTURES-----------
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
-    // Diffuse Maps
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/body_dif.png"),
-               "body_diff");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/arm_dif.png"),
-               "arm_diff");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/hand_dif.png"),
-               "hand_diff");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/leg_dif.png"),
-               "leg_diff");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/helmet_diff.png"),
-               "helmet_diff");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/diffuse/glass_dif.png"),
-               "glass_diff");
-    // Specular Maps
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/body_showroom_spec.png"),
-               "body_spec");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/arm_showroom_spec.png"), "arm_spec");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/hand_showroom_spec.png"),
-               "hand_spec");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/leg_showroom_spec.png"), "leg_spec");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/specular/helmet_showroom_spec.png"),
-               "helmet_spec");
-    // Normal Maps
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/body_showroom_ddn.png"),
-               "body_norm");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/arm_showroom_ddn.png"),
-               "arm_norm");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/hand_showroom_ddn.png"),
-               "hand_norm");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/leg_showroom_ddn.png"),
-               "leg_norm");
-    AddTexture(&GameState->R,
-               Texture::LoadTexture("./data/textures/normal/helmet_showroom_ddn.png"),
-               "helmet_norm");
-    AddTexture(&GameState->R, Texture::LoadTexture("./data/textures/normal/glass_ddn.png"),
-               "glass_norm");
-
-    GameState->CubemapTexture =
-      Texture::LoadCubemap(TemporaryMemStack, "./data/textures/iceflats", "tga");
 
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
-
-    // Testing purposes
-    Resource::path Paths[100];
-    struct stat    Stats[100];
-    int32_t        ResourceCount = ReadPaths(Paths, Stats, "AssetDirectories");
-    printf("Resource Count = %d\n", ResourceCount);
-    // -------END ASSET LOADING
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
@@ -229,7 +187,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->EditorBoneRotationSpeed = 45.0f;
 
     {
-
       AddMaterial(&GameState->R, NewPhongMaterial());
     }
   }
@@ -289,9 +246,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
           }
         }
-        for(int m = 0; m < GameState->Entities[e].Model->MeshCount; m++)
+        Render::model* CurrentModel = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
+        for(int m = 0; m < CurrentModel->MeshCount; m++)
         {
-          glBindVertexArray(GameState->Entities[e].Model->Meshes[m]->VAO);
+          glBindVertexArray(CurrentModel->Meshes[m]->VAO);
           assert(e < USHRT_MAX);
           assert(m < USHRT_MAX);
           uint16_t EntityID = (uint16_t)e;
@@ -305,8 +263,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                  (float)A / 255.0f };
           glUniform4fv(glGetUniformLocation(GameState->R.ShaderID, "g_id"), 1,
                        (float*)&EntityColorID);
-          glDrawElements(GL_TRIANGLES, GameState->Entities[e].Model->Meshes[m]->IndiceCount,
-                         GL_UNSIGNED_INT, 0);
+          glDrawElements(GL_TRIANGLES, CurrentModel->Meshes[m]->IndiceCount, GL_UNSIGNED_INT, 0);
         }
       }
       glFlush();
@@ -335,17 +292,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         if(GameState->R.ModelCount > 0)
         {
-          Render::model* Model = GameState->R.Models[GameState->CurrentModel];
-          int32_t*       MaterialIndices =
+          Render::model* Model =
+            GameState->Resources.GetModel(GameState->R.Models[GameState->CurrentModelIndex]);
+          int32_t* MaterialIndices =
             PushArray(GameState->PersistentMemStack, Model->MeshCount, int32_t);
-          if(0 <= GameState->CurrentMaterial && GameState->CurrentMaterial < MATERIAL_MAX_COUNT)
+          if(0 <= GameState->CurrentMaterialIndex &&
+             GameState->CurrentMaterialIndex < MATERIAL_MAX_COUNT)
           {
             for(int m = 0; m < Model->MeshCount; m++)
             {
-              MaterialIndices[m] = GameState->CurrentMaterial;
+              MaterialIndices[m] = GameState->CurrentMaterialIndex;
             }
           }
-          AddEntity(GameState, Model, MaterialIndices, NewTransform);
+          AddEntity(GameState, GameState->R.Models[GameState->CurrentModelIndex], MaterialIndices,
+                    NewTransform);
         }
       }
     }
@@ -482,14 +442,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //---------------------RENDERING----------------------------
 
   GameState->R.MeshInstanceCount = 0;
-  // Put enriry data to darw drawing queue every frame to avoid erroneous indirection due to
+  // Put entiry data to darw drawing queue every frame to avoid erroneous indirection due to
   // sorting
   for(int e = 0; e < GameState->EntityCount; e++)
   {
-    for(int m = 0; m < GameState->Entities[e].Model->MeshCount; m++)
+    Render::model* CurrentModel = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
+    for(int m = 0; m < CurrentModel->MeshCount; m++)
     {
       mesh_instance MeshInstance = {};
-      MeshInstance.Mesh          = GameState->Entities[e].Model->Meshes[m];
+      MeshInstance.Mesh          = CurrentModel->Meshes[m];
       MeshInstance.Material    = &GameState->R.Materials[GameState->Entities[e].MaterialIndices[m]];
       MeshInstance.EntityIndex = e;
       AddMeshInstance(&GameState->R, MeshInstance);
@@ -594,11 +555,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         mat4 Mat4EntityTransform = TransformToMat4(&SelectedEntity->Transform);
         Debug::PushGizmo(&GameState->Camera, &Mat4EntityTransform);
-        for(int m = 0; m < SelectedEntity->Model->MeshCount; m++)
+        Render::model* Model = GameState->Resources.GetModel(SelectedEntity->ModelID);
+        for(int m = 0; m < Model->MeshCount; m++)
         {
-          glBindVertexArray(SelectedEntity->Model->Meshes[m]->VAO);
-          glDrawElements(GL_TRIANGLES, SelectedEntity->Model->Meshes[m]->IndiceCount,
-                         GL_UNSIGNED_INT, 0);
+          glBindVertexArray(Model->Meshes[m]->VAO);
+          glDrawElements(GL_TRIANGLES, Model->Meshes[m]->IndiceCount, GL_UNSIGNED_INT, 0);
         }
       }
     }
@@ -607,7 +568,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Draw material preview to texture
   {
-    material* PreviewMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
+    material* PreviewMaterial = &GameState->R.Materials[GameState->CurrentMaterialIndex];
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
     glClearColor(0.7f, 0.7f, 0.7f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -620,15 +581,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                          Mat4Zeros.e);
     }
     glEnable(GL_BLEND);
-    mat4 PreviewSphereMatrix = Math::Mat4Ident();
-    glBindVertexArray(GameState->UVSphereModel->Meshes[0]->VAO);
+    mat4           PreviewSphereMatrix = Math::Mat4Ident();
+    Render::model* UVSphereModel       = GameState->Resources.GetModel(GameState->UVSphereModelID);
+    glBindVertexArray(UVSphereModel->Meshes[0]->VAO);
     glUniformMatrix4fv(glGetUniformLocation(ShaderID, "mat_mvp"), 1, GL_FALSE,
                        Math::MulMat4(GameState->PreviewCamera.VPMatrix, Math::Mat4Ident()).e);
     glUniformMatrix4fv(glGetUniformLocation(ShaderID, "mat_model"), 1, GL_FALSE,
                        PreviewSphereMatrix.e);
 
-    glDrawElements(GL_TRIANGLES, GameState->UVSphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT,
-                   0);
+    glDrawElements(GL_TRIANGLES, UVSphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);

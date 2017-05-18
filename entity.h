@@ -3,10 +3,15 @@
 #include "anim.h"
 #include "model.h"
 
+struct rid
+{
+  int32_t Value;
+};
+
 struct entity
 {
   Anim::transform Transform;
-  Render::model*  Model;
+	rid             ModelID;
   int32_t*        MaterialIndices;
 
   Anim::animation_controller* AnimController;

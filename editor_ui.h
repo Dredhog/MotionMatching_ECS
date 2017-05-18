@@ -91,26 +91,26 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
     {
       char MaterialNameBuffer[10];
-      sprintf(MaterialNameBuffer, "Material %d", GameState->CurrentMaterial);
+      sprintf(MaterialNameBuffer, "Material %d", GameState->CurrentMaterialIndex);
       UI::Row(GameState, &Layout, 2, MaterialNameBuffer);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "Material"))
       {
-        if(0 < GameState->CurrentMaterial)
+        if(0 < GameState->CurrentMaterialIndex)
         {
-          --GameState->CurrentMaterial;
+          --GameState->CurrentMaterialIndex;
         }
       }
       if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "Material"))
       {
-        if(GameState->CurrentMaterial < GameState->R.MaterialCount - 1)
+        if(GameState->CurrentMaterialIndex < GameState->R.MaterialCount - 1)
         {
-          ++GameState->CurrentMaterial;
+          ++GameState->CurrentMaterialIndex;
         }
       }
       UI::DrawSquareTexture(GameState, &Layout, GameState->IDTexture);
 
       assert(GameState->R.MaterialCount > 0);
-      material* CurrentMaterial = &GameState->R.Materials[GameState->CurrentMaterial];
+      material* CurrentMaterial = &GameState->R.Materials[GameState->CurrentMaterialIndex];
 
       UI::Row(GameState, &Layout, 2, "Shader Type");
       if(UI::ReleaseButton(GameState, &Layout, Input, "Previous"))
@@ -134,7 +134,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         }
       }
 
-      material* Material = &GameState->R.Materials[GameState->CurrentMaterial];
+      material* Material = &GameState->R.Materials[GameState->CurrentMaterialIndex];
       UI::Row(GameState, &Layout, 1, "Blending");
       UI::_BoolButton(&Layout, Input, "Toggle", &CurrentMaterial->Common.UseBlending);
       switch(Material->Common.ShaderType)
@@ -251,7 +251,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         NewMaterial.Phong.DiffuseColor = { 0.5f, 0.5f, 0.5f, 1.0f };
         NewMaterial.Phong.Shininess    = 60;
         AddMaterial(&GameState->R, NewMaterial);
-        GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+        GameState->CurrentMaterialIndex = GameState->R.MaterialCount - 1;
       }
       UI::Row(&Layout);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
@@ -264,7 +264,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       if(UI::ReleaseButton(GameState, &Layout, Input, "Create From Current"))
       {
         AddMaterial(&GameState->R, *CurrentMaterial);
-        GameState->CurrentMaterial = GameState->R.MaterialCount - 1;
+        GameState->CurrentMaterialIndex = GameState->R.MaterialCount - 1;
       }
       entity* SelectedEntity = {};
       if(GetSelectedEntity(GameState, &SelectedEntity))
@@ -272,19 +272,20 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         UI::Row(&Layout);
         if(UI::ReleaseButton(GameState, &Layout, Input, "Apply To Selected"))
         {
-          if(0 <= GameState->CurrentMaterial &&
-             GameState->CurrentMaterial < GameState->R.MaterialCount)
+          if(0 <= GameState->CurrentMaterialIndex &&
+             GameState->CurrentMaterialIndex < GameState->R.MaterialCount)
           {
             if(GameState->SelectionMode == SELECT_Mesh)
             {
               SelectedEntity->MaterialIndices[GameState->SelectedMeshIndex] =
-                GameState->CurrentMaterial;
+                GameState->CurrentMaterialIndex;
             }
             else if(GameState->SelectionMode == SELECT_Entity)
             {
-              for(int m = 0; m < SelectedEntity->Model->MeshCount; m++)
+              Render::model* Model = GameState->Resources.GetModel(SelectedEntity->ModelID);
+              for(int m = 0; m < Model->MeshCount; m++)
               {
-                SelectedEntity->MaterialIndices[m] = GameState->CurrentMaterial;
+                SelectedEntity->MaterialIndices[m] = GameState->CurrentMaterialIndex;
               }
             }
           }
@@ -298,20 +299,20 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityTools))
     {
       char ModelNameBuffer[10];
-      sprintf(ModelNameBuffer, "Model %d", GameState->CurrentModel);
+      sprintf(ModelNameBuffer, "Model %d", GameState->CurrentModelIndex);
       UI::Row(GameState, &Layout, 2, ModelNameBuffer);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "model"))
       {
-        if(0 < GameState->CurrentModel)
+        if(0 < GameState->CurrentModelIndex)
         {
-          --GameState->CurrentModel;
+          --GameState->CurrentModelIndex;
         }
       }
       if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "model"))
       {
-        if(GameState->CurrentModel < GameState->R.ModelCount - 1)
+        if(GameState->CurrentModelIndex < GameState->R.ModelCount - 1)
         {
-          ++GameState->CurrentModel;
+          ++GameState->CurrentModelIndex;
         }
       }
       UI::Row(&Layout);
@@ -358,7 +359,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         UI::SliderVec3(GameState, &Layout, Input, "Scale", &Transform->Scale, -INFINITY, INFINITY,
                        10.0f);
 
-        if(SelectedEntity->Model->Skeleton)
+        Render::model* SelectedModel = GameState->Resources.GetModel(SelectedEntity->ModelID);
+        if(SelectedModel->Skeleton)
         {
           UI::Row(&Layout);
           if(!SelectedEntity->AnimController &&
@@ -368,20 +370,20 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
             *SelectedEntity->AnimController = {};
 
-            SelectedEntity->AnimController->Skeleton = SelectedEntity->Model->Skeleton;
+            SelectedEntity->AnimController->Skeleton = SelectedModel->Skeleton;
             SelectedEntity->AnimController->OutputTransforms =
               PushArray(GameState->PersistentMemStack,
                         ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT *
-                          SelectedEntity->Model->Skeleton->BoneCount,
+                          SelectedModel->Skeleton->BoneCount,
                         Anim::transform);
             SelectedEntity->AnimController->BoneSpaceMatrices =
-              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount,
                         mat4);
             SelectedEntity->AnimController->ModelSpaceMatrices =
-              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount,
                         mat4);
             SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
-              PushArray(GameState->PersistentMemStack, SelectedEntity->Model->Skeleton->BoneCount,
+              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount,
                         mat4);
           }
           else if(SelectedEntity->AnimController &&

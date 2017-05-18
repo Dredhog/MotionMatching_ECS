@@ -452,11 +452,22 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
 #define GetStringAtIndex(Index) (ElementToCharPtr((char*)ItemList + ElementSize * (Index)))
   vec4 HeaderColor = IsHot(ID) ? g_HighlightColor : g_NormalColor;
   // DrawCurrentElement
-  DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,
-              GetStringAtIndex(*ActiveIndex), HeaderColor, g_BorderColor);
-  Debug::PushTopLeftTexturedQuad(GameState->ExpandedTextureID,
-                                 vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
-                                 Layout->RowHeight);
+  if(ListLength > 0)
+  {
+    DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,
+                GetStringAtIndex(*ActiveIndex), HeaderColor, g_BorderColor);
+    Debug::PushTopLeftTexturedQuad(GameState->ExpandedTextureID,
+                                   vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
+                                   Layout->RowHeight);
+  }
+  else
+  {
+    DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,
+                "Empty List", HeaderColor, g_BorderColor);
+    Debug::PushTopLeftTexturedQuad(GameState->ExpandedTextureID,
+                                   vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
+                                   Layout->RowHeight);
+  }
   im_layout TempLayout = *Layout;
   TempLayout.TopLeft.X = TempLayout.CurrentP.X;
   TempLayout.CurrentP.Y -= Layout->RowHeight;

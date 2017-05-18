@@ -15,6 +15,7 @@
 #include "text.h"
 #include "entity.h"
 #include "edit_animation.h"
+#include "resource_manager.h"
 
 struct loaded_wav
 {
@@ -48,8 +49,10 @@ struct game_state
 
   render_data                     R;
   EditAnimation::animation_editor AnimEditor;
-  int32_t                         CurrentModel;
-  int32_t                         CurrentMaterial;
+  int32_t                         CurrentModelIndex;
+  int32_t                         CurrentMaterialIndex;
+
+  Resource::resource_manager Resources;
 
   // material EditableMaterial;
 
@@ -57,11 +60,11 @@ struct game_state
   camera PreviewCamera;
 
   // Models
-  Render::model* SphereModel;
-  Render::model* UVSphereModel;
-  Render::model* QuadModel;
-  Render::model* GizmoModel;
-  Render::model* CubemapModel;
+  rid SphereModelID;
+  rid UVSphereModelID;
+  rid QuadModelID;
+  rid GizmoModelID;
+  rid CubemapModelID;
 
   // Temp textures (not their place)
   int32_t CollapsedTextureID;
@@ -129,14 +132,12 @@ GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
   entity* Entity = NULL;
   if(GetSelectedEntity(GameState, &Entity))
   {
-
-    if(Entity->Model->MeshCount > 0)
+    Render::model* Model = GameState->Resources.GetModel(Entity->ModelID);
+    if(Model->MeshCount > 0)
     {
-      if(0 <= GameState->SelectedMeshIndex &&
-         GameState->SelectedMeshIndex < Entity->Model->MeshCount)
+      if(0 <= GameState->SelectedMeshIndex && GameState->SelectedMeshIndex < Model->MeshCount)
       {
-        *OutputMesh = GameState->Entities[GameState->SelectedEntityIndex]
-                        .Model->Meshes[GameState->SelectedMeshIndex];
+        *OutputMesh = Model->Meshes[GameState->SelectedMeshIndex];
         return true;
       }
     }
@@ -172,8 +173,9 @@ AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor*
   entity* AddedEntity = {};
   if(GetEntityAtIndex(GameState, &AddedEntity, EntityIndex))
   {
-    assert(AddedEntity->Model->Skeleton);
-    Editor->Skeleton    = AddedEntity->Model->Skeleton;
+    Render::model* Model = GameState->Resources.GetModel(AddedEntity->ModelID);
+    assert(Model->Skeleton);
+    Editor->Skeleton    = Model->Skeleton;
     Editor->Transform   = &AddedEntity->Transform;
     Editor->EntityIndex = EntityIndex;
   }

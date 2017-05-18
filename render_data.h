@@ -68,11 +68,11 @@ struct render_data
   int32_t       MeshInstanceCount;
 
   // Models
-  Render::model* Models[MODEL_MAX_COUNT];
-  int32_t        ModelCount;
+  rid    Models[MODEL_MAX_COUNT];
+  int32_t ModelCount;
 
   // Textures
-  uint32_t      Textures[TEXTURE_MAX_COUNT];
+  uint32_t     Textures[TEXTURE_MAX_COUNT];
   texture_name TextureNames[TEXTURE_MAX_COUNT];
   int32_t      TextureCount;
 
@@ -145,8 +145,8 @@ AddMeshInstance(render_data* RenderData, mesh_instance MeshInstance)
 }
 
 inline void
-AddModel(render_data* RenderData, Render::model* Model)
+AddModel(render_data* RenderData, rid ModelID)
 {
   assert(0 <= RenderData->ModelCount && RenderData->ModelCount < MODEL_MAX_COUNT);
-  RenderData->Models[RenderData->ModelCount++] = Model;
+  RenderData->Models[RenderData->ModelCount++] = ModelID;
 }
