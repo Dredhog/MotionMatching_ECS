@@ -162,10 +162,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
 
     // Testing purposes
+    path_diff      DiffPaths[100];
     Resource::path Paths[100];
     struct stat    Stats[100];
-    int32_t        ResourceCount = ReadPaths(Paths, Stats, "AssetDirectories");
-    printf("Resource Count = %d\n", ResourceCount);
+    int32_t        ElementCount = 0;
+    int32_t        DiffCount    = ReadPaths(DiffPaths, Paths, Stats, &ElementCount, "data", NULL);
+    printf("DiffCount = %d\n", DiffCount);
     // -------END ASSET LOADING
 
     // ======Set GL state

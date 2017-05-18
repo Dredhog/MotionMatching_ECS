@@ -75,5 +75,3 @@ namespace Resource
     material* GetMaterial(rid);
   };
 }
-
-Resource::resource_manager g_ResourceManager;
