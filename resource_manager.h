@@ -7,7 +7,7 @@
 #include "text.h"
 #include "game.h"
 
-#define RESOURCE_MANAGER_RESOURCE_CAPACITY 30
+#define RESOURCE_MANAGER_RESOURCE_CAPACITY 100
 
 /*For every type Will need:
  * Mapping from RID to path

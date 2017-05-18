@@ -25,7 +25,7 @@
 #include "editor_ui.h"
 #include <limits.h>
 
-#include "file_tree_walk.h"
+#include "file_queries.h"
 
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
@@ -162,9 +162,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
 
     // Testing purposes
-    path_diff      DiffPaths[100];
-    Resource::path Paths[100];
-    struct stat    Stats[100];
+    path_diff      DiffPaths[2 * RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    Resource::path Paths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    struct stat    Stats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     int32_t        ElementCount = 0;
     int32_t        DiffCount    = ReadPaths(DiffPaths, Paths, Stats, &ElementCount, "data", NULL);
     printf("DiffCount = %d\n", DiffCount);

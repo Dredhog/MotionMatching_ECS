@@ -10,8 +10,6 @@
 
 #include "resource_manager.h"
 
-// TODO: Stat diff
-
 enum diff_state
 {
   DIFF_Added,
@@ -33,7 +31,7 @@ struct stat*    g_Stats;
 int32_t*        g_ElementCount;
 int32_t*        g_DiffCount;
 const char*     g_Extension;
-bool            g_WasTraversed[1000];
+bool            g_WasTraversed[RESOURCE_MANAGER_RESOURCE_CAPACITY];
 
 int32_t
 GetPathIndex(Resource::path* PathArray, int32_t PathCount, const char* Path)
@@ -78,11 +76,11 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
     }
     else
     {
-      if(strlen(Path) < strlen(g_Extension))
+      if(strlen(Path) <= strlen(g_Extension))
       {
         printf("%lu - %s\n", strlen(Path), Path);
       }
-      assert(strlen(Path) >= strlen(g_Extension));
+      assert(strlen(Path) > strlen(g_Extension));
 
       if(strlen(g_Extension) > 0)
       {
@@ -94,8 +92,8 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
           ++ExtensionStartIndex;
           while(Path[ExtensionStartIndex] == g_Extension[i])
           {
-            ExtensionStartIndex++;
-            i++;
+            ++ExtensionStartIndex;
+            ++i;
             if((Path[ExtensionStartIndex] == '\0') && (g_Extension[i] == '\0'))
             {
               ExtensionsMatch = true;
@@ -109,6 +107,9 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
         assert(0 && "Extension length is less than or equal to zero! Did you mean to type NULL?");
       }
     }
+
+    assert(*g_ElementCount < RESOURCE_MANAGER_RESOURCE_CAPACITY);
+    assert(*g_DiffCount < 2 * RESOURCE_MANAGER_RESOURCE_CAPACITY);
 
     if(ExtensionsMatch)
     {
@@ -154,13 +155,25 @@ ReadPaths(path_diff* DiffPaths, Resource::path* Paths, struct stat* Stats, int32
   g_DiffCount    = &DiffCount;
   g_Extension    = Extension;
 
-  assert(*ElementCount < 1000);
-
   int32_t FTWReturnValue;
   FTWReturnValue = nftw(StartPath, CheckFile, 100, FTW_ACTIONRETVAL);
   if(FTWReturnValue == -1)
   {
     printf("Error occured when trying to access path %s\n", StartPath);
+  }
+
+  for(int i = 0; i < *ElementCount; i++)
+  {
+    if(!g_WasTraversed[i])
+    {
+      strcpy(Paths[i].Name, Paths[(*ElementCount) - 1].Name);
+      Stats[i] = Stats[(*ElementCount) - 1];
+      --(*ElementCount);
+
+      strcpy(DiffPaths[DiffCount].Path.Name, Paths[i].Name);
+      DiffPaths[DiffCount].State = DIFF_Deleted;
+      ++DiffCount;
+    }
   }
 
   for(int i = 0; i < DiffCount; i++)
@@ -178,20 +191,6 @@ ReadPaths(path_diff* DiffPaths, Resource::path* Paths, struct stat* Stats, int32
       printf("Deleted - ");
     }
     printf("%lu - %s\n", strlen(DiffPaths[i].Path.Name), DiffPaths[i].Path.Name);
-  }
-
-  for(int i = 0; i < *ElementCount; i++)
-  {
-    if(!g_WasTraversed[i])
-    {
-      strcpy(Paths[i].Name, Paths[(*ElementCount) - 1].Name);
-      Stats[i] = Stats[(*ElementCount) - 1];
-      --(*ElementCount);
-
-      strcpy(DiffPaths[DiffCount].Path.Name, Paths[i].Name);
-      DiffPaths[DiffCount].State = DIFF_Deleted;
-      ++DiffCount;
-    }
   }
 
   return DiffCount;
