@@ -248,4 +248,35 @@ namespace Resource
     }
     assert(0 && "assert: invalid codepath");
   }
+
+  void
+  resource_manager::UpdateHardDriveDisplay()
+  {
+    // Update Models
+    int DiffCount = ReadPaths(this->DiffedAssets, this->ModelPaths, this->ModelStats,
+                              &this->ModelPathCount, "data", "model");
+    if(DiffCount > 0)
+    {
+      printf("DIFF COUNT: %d\n", DiffCount);
+      for(int i = 0; i < DiffCount; i++)
+      {
+        switch(this->DiffedAssets[i].State)
+        {
+          case DIFF_Added:
+            printf("Added: ");
+            break;
+          case DIFF_Modified:
+            printf("Modified: ");
+            break;
+          case DIFF_Deleted:
+            printf("Deleted: ");
+            break;
+          default:
+            assert(0 && "assert: overflowed stat enum");
+            break;
+        }
+        printf("%s\n", DiffedAssets[i].Path.Name);
+      }
+    }
+  }
 }

@@ -25,8 +25,6 @@
 #include "editor_ui.h"
 #include <limits.h>
 
-#include "file_tree_walk.h"
-
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
 {
@@ -602,4 +600,5 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   Debug::DrawColoredQuads(GameState);
   Debug::DrawTexturedQuads(GameState);
   Text::ClearTextRequestCounts();
+  GameState->Resources.UpdateHardDriveDisplay();
 }

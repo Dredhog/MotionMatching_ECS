@@ -6,8 +6,8 @@
 #include "model.h"
 #include "mesh.h"
 #include "anim.h"
-#include "text.h"
 #include "render_data.h"
+#include "file_queries.h"
 
 #define RESOURCE_MANAGER_RESOURCE_CAPACITY 30
 
@@ -21,11 +21,6 @@
 
 namespace Resource
 {
-  struct path
-  {
-    char Name[TEXT_LINE_MAX_LENGTH];
-  };
-
   class resource_hash_table // Disregard the current implementation (currently array)
   {
     path  Paths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
@@ -40,10 +35,16 @@ namespace Resource
 
   class resource_manager
   {
-    //path AvailableModlePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    //path AvailableTexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    //path AvailableAnimationGroupPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    //path AvailableMaterialsPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    path    ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    //path    TexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    int32_t ModelPathCount;
+    //int32_t TexturePathCount;
+    //int32_t AnimationGroupPathCount;
+    //int32_t MaterialPathCount;
+
+    path_diff   DiffedAssets[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    struct stat ModelStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    //struct stat TextureStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
 
     resource_hash_table Models;
     resource_hash_table Textures;
@@ -66,5 +67,6 @@ namespace Resource
 
     Render::model* GetModel(rid RID);
     uint32_t       GetTexture(rid RID);
+    void           UpdateHardDriveDisplay();
   };
 }
