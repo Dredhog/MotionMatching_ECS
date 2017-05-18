@@ -7,9 +7,10 @@
 #include "mesh.h"
 #include "anim.h"
 #include "render_data.h"
-#include "file_queries.h"
+#include "text.h"
 
-#define RESOURCE_MANAGER_RESOURCE_CAPACITY 30
+#include <sys/stat.h>
+#define RESOURCE_MANAGER_RESOURCE_CAPACITY 100
 
 /*For every type Will need:
  * Mapping from RID to path
@@ -19,8 +20,28 @@
 
 #define INVALID_RID 0
 
+struct path
+{
+  char Name[TEXT_LINE_MAX_LENGTH];
+};
+
+enum asset_diff_type
+{
+  DIFF_Added,
+  DIFF_Modified,
+  DIFF_Deleted,
+
+  DIFF_EnumCount
+};
+
+struct asset_diff
+{
+  asset_diff_type Type;
+  path            Path;
+};
 namespace Resource
 {
+
   class resource_hash_table // Disregard the current implementation (currently array)
   {
     path  Paths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
@@ -35,16 +56,16 @@ namespace Resource
 
   class resource_manager
   {
-    path    ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    //path    TexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    path ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    // path    TexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     int32_t ModelPathCount;
-    //int32_t TexturePathCount;
-    //int32_t AnimationGroupPathCount;
-    //int32_t MaterialPathCount;
+    // int32_t TexturePathCount;
+    // int32_t AnimationGroupPathCount;
+    // int32_t MaterialPathCount;
 
-    path_diff   DiffedAssets[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    asset_diff  DiffedAssets[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     struct stat ModelStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    //struct stat TextureStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    // struct stat TextureStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
 
     resource_hash_table Models;
     resource_hash_table Textures;

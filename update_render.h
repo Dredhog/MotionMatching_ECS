@@ -24,7 +24,6 @@
 
 #include "editor_ui.h"
 #include <limits.h>
-
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
 {
