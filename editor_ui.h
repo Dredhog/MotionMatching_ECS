@@ -26,11 +26,10 @@ TexturePathToCharPtr(void* CharArray)
   static const size_t PrefixLength = strlen("data/textures/");
   return ((char*)CharArray) + PrefixLength;
 }
-
 char*
 AnimationPathToCharPtr(void* CharArray)
 {
-  static const size_t PrefixLength = strlen("data/animations/");
+  static const size_t PrefixLength = strlen("data'/animations/");
   return ((char*)CharArray) + PrefixLength;
 }
 
@@ -453,101 +452,95 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       }
     }
   }
-  UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Animation Editor", &g_ShowAnimationEditor))
+  if(GameState->SelectionMode == SELECT_Bone)
   {
-    if(GameState->AnimEditor.Skeleton)
+    UI::Row(&Layout);
+    if(UI::_ExpandableButton(&Layout, Input, "Animation Editor", &g_ShowAnimationEditor))
     {
-      UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Stop Editing"))
-      {
-        DettachEntityFromAnimEditor(GameState, &GameState->AnimEditor);
-        GameState->SelectionMode = SELECT_Entity;
-        g_ShowEntityTools        = true;
-        g_ShowAnimationEditor    = false;
-      }
-    }
-
-    /*
-    if(UI::ReleaseButton(GameState, &Layout, Input, AnimGroupName))
-    {
-      Anim::animation_group* AnimGroup;
-
-      Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup, AnimGroupName);
-      GameState->TestAnimation = AnimGroup->Animations[0];
-    }
-    */
-    if(GameState->TestAnimationID.Value > 0 && GameState->AnimEditor.Skeleton)
-
-    {
-      Anim::animation* Animation = GameState->Resources.GetAnimation(GameState->TestAnimationID);
-      if(GameState->AnimEditor.Skeleton->BoneCount == Animation->ChannelCount)
+      if(GameState->AnimEditor.Skeleton)
       {
         UI::Row(&Layout);
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Loaded Animation"))
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Stop Editing"))
         {
-          EditAnimation::EditAnimation(&GameState->AnimEditor, Animation);
+          DettachEntityFromAnimEditor(GameState, &GameState->AnimEditor);
+          GameState->SelectionMode = SELECT_Entity;
+          g_ShowEntityTools        = true;
+          g_ShowAnimationEditor    = false;
         }
       }
-    }
-    if(GameState->SelectionMode == SELECT_Bone)
-    {
-      if(GameState->SelectionMode == SELECT_Bone && GameState->AnimEditor.Skeleton)
+
+      if(GameState->TestAnimationID.Value > 0 && GameState->AnimEditor.Skeleton)
+
       {
-        UI::Row(&Layout);
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Export Animation"))
+        Anim::animation* Animation = GameState->Resources.GetAnimation(GameState->TestAnimationID);
+        if(GameState->AnimEditor.Skeleton->BoneCount == Animation->ChannelCount)
         {
           UI::Row(&Layout);
-          time_t     current_time;
-          struct tm* time_info;
-          char       AnimGroupName[30];
-          time(&current_time);
-          time_info = localtime(&current_time);
-          strftime(AnimGroupName, sizeof(AnimGroupName), "data/animations/%H_%M_%S.anim",
-                   time_info);
-          Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
-                                      AnimGroupName);
-        }
-        UI::Row(&Layout);
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Delete keyframe"))
-        {
-          EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
-        }
-        UI::Row(&Layout);
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Insert keyframe"))
-        {
-          EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
-                                                     GameState->AnimEditor.PlayHeadTime);
-        }
-
-        UI::Row(GameState, &Layout, 1, "Playhead");
-        UI::SliderFloat(GameState, &Layout, Input, "Playhead Time",
-                        &GameState->AnimEditor.PlayHeadTime, -100, 100, 2.0f);
-        EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 0);
-        if(GameState->AnimEditor.KeyframeCount > 0)
-        {
-          UI::Row(GameState, &Layout, 1, "Bone");
+          if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Loaded Animation"))
           {
-            int32_t ActiveBoneIndex = GameState->AnimEditor.CurrentBone;
-            UI::ComboBox(&ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones,
-                         GameState->AnimEditor.Skeleton->BoneCount, GameState, &Layout, Input,
-                         sizeof(Anim::bone), ElementToBoneName);
-            EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
+            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation);
+          }
+        }
+      }
+      if(GameState->SelectionMode == SELECT_Bone)
+      {
+        if(GameState->SelectionMode == SELECT_Bone && GameState->AnimEditor.Skeleton)
+        {
+          UI::Row(&Layout);
+          if(UI::ReleaseButton(GameState, &Layout, Input, "Export Animation"))
+          {
+            UI::Row(&Layout);
+            time_t     current_time;
+            struct tm* time_info;
+            char       AnimGroupName[30];
+            time(&current_time);
+            time_info = localtime(&current_time);
+            strftime(AnimGroupName, sizeof(AnimGroupName), "data/animations/%H_%M_%S.anim",
+                     time_info);
+            Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
+                                        AnimGroupName);
+          }
+          UI::Row(&Layout);
+          if(UI::ReleaseButton(GameState, &Layout, Input, "Delete keyframe"))
+          {
+            EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
+          }
+          UI::Row(&Layout);
+          if(UI::ReleaseButton(GameState, &Layout, Input, "Insert keyframe"))
+          {
+            EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
+                                                       GameState->AnimEditor.PlayHeadTime);
           }
 
-          UI::Row(&Layout);
-          UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
+          UI::Row(GameState, &Layout, 1, "Playhead");
+          UI::SliderFloat(GameState, &Layout, Input, "Playhead Time",
+                          &GameState->AnimEditor.PlayHeadTime, -100, 100, 2.0f);
+          EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 0);
+          if(GameState->AnimEditor.KeyframeCount > 0)
+          {
+            UI::Row(GameState, &Layout, 1, "Bone");
+            {
+              int32_t ActiveBoneIndex = GameState->AnimEditor.CurrentBone;
+              UI::ComboBox(&ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones,
+                           GameState->AnimEditor.Skeleton->BoneCount, GameState, &Layout, Input,
+                           sizeof(Anim::bone), ElementToBoneName);
+              EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
+            }
 
-          Anim::transform* Transform =
-            &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
-               .Transforms[GameState->AnimEditor.CurrentBone];
-          mat4 Mat4Transform = TransformToGizmoMat4(Transform);
-          UI::SliderVec3(GameState, &Layout, Input, "Translation", &Transform->Translation,
-                         -INFINITY, INFINITY, 10.0f);
-          UI::SliderVec3(GameState, &Layout, Input, "Rotation", &Transform->Rotation, -INFINITY,
-                         INFINITY, 720.0f);
-          UI::SliderVec3(GameState, &Layout, Input, "Scale", &Transform->Scale, -INFINITY, INFINITY,
-                         10.0f);
+            UI::Row(&Layout);
+            UI::DrawTextBox(GameState, &Layout, "Transform", g_DescriptionColor);
+
+            Anim::transform* Transform =
+              &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+                 .Transforms[GameState->AnimEditor.CurrentBone];
+            mat4 Mat4Transform = TransformToGizmoMat4(Transform);
+            UI::SliderVec3(GameState, &Layout, Input, "Translation", &Transform->Translation,
+                           -INFINITY, INFINITY, 10.0f);
+            UI::SliderVec3(GameState, &Layout, Input, "Rotation", &Transform->Rotation, -INFINITY,
+                           INFINITY, 720.0f);
+            UI::SliderVec3(GameState, &Layout, Input, "Scale", &Transform->Scale, -INFINITY,
+                           INFINITY, 10.0f);
+          }
         }
       }
     }

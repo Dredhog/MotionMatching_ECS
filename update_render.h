@@ -81,12 +81,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
     GameState->Resources.ModelStack.Create(ModelStackStart, ModelStackSize);
     GameState->Resources.AnimationStack.Create(AnimationStackStart, AnimationStackSize);
-// END SEGMENTATION
+    // END SEGMENTATION
 
-#if 0
-    CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sponza.model", &TempModelPtr);
-    AddModel(&GameState->R, TempModelPtr);
-#endif
     // --------LOAD MODELS/ACTORS--------
     GameState->Resources.UpdateHardDriveDisplay();
 
@@ -96,10 +92,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->Resources.RegisterModel("./data/built/inverse_cube.model");
     GameState->SphereModelID   = GameState->Resources.RegisterModel("./data/built/sphere.model");
     GameState->UVSphereModelID = GameState->Resources.RegisterModel("./data/built/uv_sphere.model");
-
-    // AddModel(&GameState->R, GameState->Resources.RegisterModel("./data/built/sponza.model"));
-    // AddModel(&GameState->R,
-    //         GameState->Resources.RegisterModel("./data/built/multimesh_soldier.actor"));
 
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong =
@@ -117,6 +109,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShaderID =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/id");
     //------------LOAD TEXTURES-----------
+		//
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
