@@ -36,8 +36,8 @@ enum asset_diff_type
 
 struct asset_diff
 {
-  asset_diff_type Type;
-  path            Path;
+  uint32_t Type;
+  path     Path;
 };
 
 namespace Resource
@@ -71,8 +71,6 @@ namespace Resource
     int32_t TexturePathCount;
 
     Memory::stack_allocator ModelStack;
-    Memory::stack_allocator AnimationStack;
-    Memory::stack_allocator MaterialStack;
 
   private:
     bool LoadModel(rid RID);

@@ -13,15 +13,17 @@ VoidPtrToCharPtr(void* NamePtr)
 }
 
 char*
-VoidPtrToTextureName(void* TextureName)
+ModelPathToCharPtr(void* CharArray)
 {
-  return ((texture_name*)TextureName)->Name;
+  static const size_t PrefixLength = strlen("data/built/");
+  return ((char*)CharArray) + PrefixLength;
 }
 
 char*
-CharArrayToCharPtr(void* CharArray)
+TexturePathToCharPtr(void* CharArray)
 {
-  return (char*)CharArray;
+  static const size_t PrefixLength = strlen("data/textures/");
+  return ((char*)CharArray) + PrefixLength;
 }
 
 char*
@@ -160,7 +162,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               static int32_t ActivePathIndex = 0;
               UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
                            GameState->Resources.TexturePathCount, GameState, &Layout, Input,
-                           sizeof(path), CharArrayToCharPtr);
+                           sizeof(path), TexturePathToCharPtr);
               rid NewRID;
 
               if(!GameState->Resources
@@ -176,16 +178,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           else
           {
             Material->Phong.Flags &= ~PHONG_UseDiffuseMap;
-
-            UI::Row(GameState, &Layout, 4, "Diffuse Color");
-            UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R,
-                            0, 1.0f, 5.0f);
-            UI::SliderFloat(GameState, &Layout, Input, "G", &CurrentMaterial->Phong.DiffuseColor.G,
-                            0, 1.0f, 5.0f);
-            UI::SliderFloat(GameState, &Layout, Input, "B", &CurrentMaterial->Phong.DiffuseColor.B,
-                            0, 1.0f, 5.0f);
-            UI::SliderFloat(GameState, &Layout, Input, "A", &CurrentMaterial->Phong.DiffuseColor.A,
-                            0, 1.0f, 5.0f);
+            SliderVec4Color(GameState, &Layout, Input, "Diffuse Color",
+                            &CurrentMaterial->Phong.DiffuseColor, 0.0f, 1.0f, 5.0f);
           }
 
           bool SpecularFlagValue = Material->Phong.Flags & PHONG_UseSpecularMap;
@@ -201,7 +195,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               static int32_t ActivePathIndex = 0;
               UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
                            GameState->Resources.TexturePathCount, GameState, &Layout, Input,
-                           sizeof(path), CharArrayToCharPtr);
+                           sizeof(path), TexturePathToCharPtr);
               rid NewRID;
               if(!GameState->Resources
                     .GetTexturePathRID(&NewRID,
@@ -231,7 +225,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               static int32_t ActivePathIndex = 0;
               UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
                            GameState->Resources.TexturePathCount, GameState, &Layout, Input,
-                           sizeof(path), CharArrayToCharPtr);
+                           sizeof(path), TexturePathToCharPtr);
               rid NewRID;
               if(!GameState->Resources
                     .GetTexturePathRID(&NewRID,
@@ -285,14 +279,14 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         GameState->CurrentMaterialIndex = GameState->R.MaterialCount - 1;
       }
       UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Clear Material Values"))
       {
         uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
         *CurrentMaterial                   = {};
         CurrentMaterial->Common.ShaderType = ShaderType;
       }
       UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Create From Current"))
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Duplicate Current"))
       {
         AddMaterial(&GameState->R, *CurrentMaterial);
         GameState->CurrentMaterialIndex = GameState->R.MaterialCount - 1;
@@ -333,7 +327,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       static int32_t ActivePathIndex = 0;
       UI::ComboBox(&ActivePathIndex, GameState->Resources.ModelPaths,
                    GameState->Resources.ModelPathCount, GameState, &Layout, Input, sizeof(path),
-                   CharArrayToCharPtr);
+                   ModelPathToCharPtr);
       rid NewRID = { 0 };
       if(!GameState->Resources
             .GetModelPathRID(&NewRID, GameState->Resources.ModelPaths[ActivePathIndex].Name))

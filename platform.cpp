@@ -350,7 +350,7 @@ Init(SDL_Window** Window)
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
-                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL /*| SDL_WINDOW_FULLSCREEN*/);
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
 
     if(!Window)
     {
