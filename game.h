@@ -49,7 +49,7 @@ struct game_state
 
   render_data                     R;
   EditAnimation::animation_editor AnimEditor;
-  int32_t                         CurrentModelIndex;
+  rid                             CurrentModelID;
   int32_t                         CurrentMaterialIndex;
 
   Resource::resource_manager Resources;

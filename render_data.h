@@ -29,9 +29,9 @@ union material {
     material_header Common;
     uint32_t        Flags;
     vec4            DiffuseColor;
-    uint32_t        DiffuseMapIndex;
-    uint32_t        SpecularMapIndex;
-    uint32_t        NormalMapIndex;
+    rid             DiffuseMapID;
+    rid             SpecularMapID;
+    rid             NormalMapID;
     float           Shininess;
   } Phong;
   struct
@@ -67,14 +67,16 @@ struct render_data
   mesh_instance MeshInstances[MESH_INSTANCE_MAX_COUNT]; // Filled every frame
   int32_t       MeshInstanceCount;
 
+#if 0
   // Models
-  rid    Models[MODEL_MAX_COUNT];
+  rid     Models[MODEL_MAX_COUNT];
   int32_t ModelCount;
 
   // Textures
   uint32_t     Textures[TEXTURE_MAX_COUNT];
   texture_name TextureNames[TEXTURE_MAX_COUNT];
   int32_t      TextureCount;
+#endif
 
   // Shaders
   uint32_t ShaderPhong;
@@ -94,6 +96,7 @@ struct render_data
   vec3 LightSpecularColor;
 };
 
+#if 0
 inline uint32_t
 AddTexture(render_data* RenderData, uint32_t TextureID, char* TextureName)
 {
@@ -105,6 +108,7 @@ AddTexture(render_data* RenderData, uint32_t TextureID, char* TextureName)
   RenderData->Textures[RenderData->TextureCount++] = TextureID;
   return TextureID;
 }
+#endif
 
 inline material
 NewPhongMaterial()
@@ -144,9 +148,11 @@ AddMeshInstance(render_data* RenderData, mesh_instance MeshInstance)
   RenderData->MeshInstances[RenderData->MeshInstanceCount++] = MeshInstance;
 }
 
+#if 0
 inline void
 AddModel(render_data* RenderData, rid ModelID)
 {
   assert(0 <= RenderData->ModelCount && RenderData->ModelCount < MODEL_MAX_COUNT);
   RenderData->Models[RenderData->ModelCount++] = ModelID;
 }
+#endif

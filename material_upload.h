@@ -10,7 +10,7 @@ UnsetMaterial(render_data* RenderData, int32_t MaterialIndex)
 }
 
 uint32_t
-SetMaterial(render_data* RenderData, camera* Camera, material* Material)
+SetMaterial(game_state* GameState, camera* Camera, material* Material)
 {
   if(Material->Common.UseBlending)
   {
@@ -24,49 +24,58 @@ SetMaterial(render_data* RenderData, camera* Camera, material* Material)
 
   if(Material->Common.ShaderType == SHADER_Phong)
   {
-    glUseProgram(RenderData->ShaderPhong);
-    glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "flags"), Material->Phong.Flags);
-    glUniform4fv(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseColor"), 1,
+    glUseProgram(GameState->R.ShaderPhong);
+    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "flags"), Material->Phong.Flags);
+    glUniform4fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.diffuseColor"), 1,
                  (float*)&Material->Phong.DiffuseColor);
-    glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.diffuseMap"), 0);
-    glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.specularMap"), 1);
-    glUniform1i(glGetUniformLocation(RenderData->ShaderPhong, "material.normalMap"), 2);
-    glUniform1f(glGetUniformLocation(RenderData->ShaderPhong, "material.shininess"),
+    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.diffuseMap"), 0);
+    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.specularMap"), 1);
+    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.normalMap"), 2);
+    glUniform1f(glGetUniformLocation(GameState->R.ShaderPhong, "material.shininess"),
                 Material->Phong.Shininess);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "lightPosition"), 1,
-                 (float*)&RenderData->LightPosition);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "light.ambient"), 1,
-                 (float*)&RenderData->LightAmbientColor);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "light.diffuse"), 1,
-                 (float*)&RenderData->LightDiffuseColor);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "light.specular"), 1,
-                 (float*)&RenderData->LightSpecularColor);
-    glUniform3fv(glGetUniformLocation(RenderData->ShaderPhong, "cameraPosition"), 1,
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "lightPosition"), 1,
+                 (float*)&GameState->R.LightPosition);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "light.ambient"), 1,
+                 (float*)&GameState->R.LightAmbientColor);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "light.diffuse"), 1,
+                 (float*)&GameState->R.LightDiffuseColor);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "light.specular"), 1,
+                 (float*)&GameState->R.LightSpecularColor);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "cameraPosition"), 1,
                  (float*)&Camera->Position);
+    uint32_t DiffuseTexture = (Material->Phong.Flags & PHONG_UseDiffuseMap)
+                                ? GameState->Resources.GetTexture(Material->Phong.DiffuseMapID)
+                                : 0;
+    uint32_t SpecularTexture = (Material->Phong.Flags & PHONG_UseSpecularMap)
+                                 ? GameState->Resources.GetTexture(Material->Phong.SpecularMapID)
+                                 : 0;
+    uint32_t NormalTexture = (Material->Phong.Flags & PHONG_UseNormalMap)
+                               ? GameState->Resources.GetTexture(Material->Phong.NormalMapID)
+                               : 0;
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->Phong.DiffuseMapIndex]);
+    glBindTexture(GL_TEXTURE_2D, DiffuseTexture);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->Phong.SpecularMapIndex]);
+    glBindTexture(GL_TEXTURE_2D, SpecularTexture);
     glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, RenderData->Textures[Material->Phong.NormalMapIndex]);
+    glBindTexture(GL_TEXTURE_2D, NormalTexture);
     glActiveTexture(GL_TEXTURE0);
-    return RenderData->ShaderPhong;
+    return GameState->R.ShaderPhong;
   }
   else if(Material->Common.ShaderType == SHADER_Color)
   {
-    glUseProgram(RenderData->ShaderColor);
-    glUniform4fv(glGetUniformLocation(RenderData->ShaderColor, "g_color"), 1,
+    glUseProgram(GameState->R.ShaderColor);
+    glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
                  (float*)&Material->Color.Color);
-    return RenderData->ShaderColor;
+    return GameState->R.ShaderColor;
   }
   return -1;
 }
 
 uint32_t
-SetMaterial(render_data* RenderData, camera* Camera, int32_t MaterialIndex)
+SetMaterial(game_state* GameState, camera* Camera, int32_t MaterialIndex)
 {
-  assert(0 <= MaterialIndex && MaterialIndex < RenderData->MaterialCount);
-  return SetMaterial(RenderData, Camera, &RenderData->Materials[MaterialIndex]);
+  assert(0 <= MaterialIndex && MaterialIndex < GameState->R.MaterialCount);
+  return SetMaterial(GameState, Camera, &GameState->R.Materials[MaterialIndex]);
 }
 
 #if 0

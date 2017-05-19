@@ -473,7 +473,7 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   TempLayout.CurrentP.Y -= Layout->RowHeight;
   TempLayout.Width      = TempLayout.ColumnWidth;
   TempLayout.CurrentP.Z = -0.1f;
-  TempLayout.RowHeight  = 0.75f * Layout->RowHeight;
+  TempLayout.RowHeight  = 0.9f * Layout->RowHeight;
 
   if(IsActive(ID))
   {
