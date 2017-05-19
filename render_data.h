@@ -68,7 +68,7 @@ struct render_data
   int32_t       MeshInstanceCount;
 
   // Models
-  rid    Models[MODEL_MAX_COUNT];
+  rid     Models[MODEL_MAX_COUNT];
   int32_t ModelCount;
 
   // Textures
