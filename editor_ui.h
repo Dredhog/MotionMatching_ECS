@@ -3,6 +3,7 @@
 #include "debug_drawing.h"
 #include "render_data.h"
 #include "skeleton.h"
+#include "time.h"
 
 #include <limits>
 
@@ -23,6 +24,13 @@ char*
 TexturePathToCharPtr(void* CharArray)
 {
   static const size_t PrefixLength = strlen("data/textures/");
+  return ((char*)CharArray) + PrefixLength;
+}
+
+char*
+AnimationPathToCharPtr(void* CharArray)
+{
+  static const size_t PrefixLength = strlen("data/animations/");
   return ((char*)CharArray) + PrefixLength;
 }
 
@@ -335,17 +343,19 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       UI::ComboBox(&ActivePathIndex, GameState->Resources.ModelPaths,
                    GameState->Resources.ModelPathCount, GameState, &Layout, Input, sizeof(path),
                    ModelPathToCharPtr);
-      rid NewRID = { 0 };
-      if(!GameState->Resources
-            .GetModelPathRID(&NewRID, GameState->Resources.ModelPaths[ActivePathIndex].Name))
       {
-        NewRID =
-          GameState->Resources.RegisterModel(GameState->Resources.ModelPaths[ActivePathIndex].Name);
-        GameState->CurrentModelID = NewRID;
-      }
-      else
-      {
-        GameState->CurrentModelID = NewRID;
+        rid NewRID = { 0 };
+        if(!GameState->Resources
+              .GetModelPathRID(&NewRID, GameState->Resources.ModelPaths[ActivePathIndex].Name))
+        {
+          NewRID = GameState->Resources.RegisterModel(
+            GameState->Resources.ModelPaths[ActivePathIndex].Name);
+          GameState->CurrentModelID = NewRID;
+        }
+        else
+        {
+          GameState->CurrentModelID = NewRID;
+        }
       }
 
       UI::Row(&Layout);
@@ -373,12 +383,38 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
                                      GameState->SelectedEntityIndex);
             g_ShowAnimationEditor = true;
           }
-          if(GameState->TestAnimation)
+          {
+            static int32_t ActivePathIndex = 0;
+            UI::Row(&Layout);
+            UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
+                         GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
+                         sizeof(path), AnimationPathToCharPtr);
+            rid NewRID = { 0 };
+            if(!GameState->Resources
+                  .GetAnimationPathRID(&NewRID,
+                                       GameState->Resources.AnimationPaths[ActivePathIndex].Name))
+            {
+              GameState->TestAnimationID = GameState->Resources.RegisterAnimation(
+                GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+            }
+            GameState->TestAnimationID = NewRID;
+          }
+          if(GameState->TestAnimationID.Value > 0)
           {
             UI::Row(&Layout);
-            if(UI::ReleaseButton(GameState, &Layout, Input, "Add Animation"))
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Play Animation"))
             {
-              Anim::AddAnimation(SelectedEntity->AnimController, GameState->TestAnimation);
+              if(SelectedEntity->AnimController->AnimStateCount == 0)
+              {
+                Anim::AddAnimation(SelectedEntity->AnimController,
+                                   GameState->Resources.GetAnimation(GameState->TestAnimationID));
+              }
+              else
+              {
+                Anim::SetAnimation(SelectedEntity->AnimController,
+                                   GameState->Resources.GetAnimation(GameState->TestAnimationID),
+                                   0);
+              }
               Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
             }
           }
@@ -439,21 +475,26 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       }
     }
 
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Animation"))
+    /*
+    if(UI::ReleaseButton(GameState, &Layout, Input, AnimGroupName))
     {
       Anim::animation_group* AnimGroup;
-      Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup,
-                                  "data/animation_export_test");
+
+      Asset::ImportAnimationGroup(GameState->PersistentMemStack, &AnimGroup, AnimGroupName);
       GameState->TestAnimation = AnimGroup->Animations[0];
     }
-    if(GameState->TestAnimation && GameState->AnimEditor.Skeleton &&
-       GameState->AnimEditor.Skeleton->BoneCount == GameState->TestAnimation->ChannelCount)
+    */
+    if(GameState->TestAnimationID.Value > 0 && GameState->AnimEditor.Skeleton)
+
     {
-      UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Loaded Animation"))
+      Anim::animation* Animation = GameState->Resources.GetAnimation(GameState->TestAnimationID);
+      if(GameState->AnimEditor.Skeleton->BoneCount == Animation->ChannelCount)
       {
-        EditAnimation::EditAnimation(&GameState->AnimEditor, GameState->TestAnimation);
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Loaded Animation"))
+        {
+          EditAnimation::EditAnimation(&GameState->AnimEditor, Animation);
+        }
       }
     }
     if(GameState->SelectionMode == SELECT_Bone)
@@ -463,8 +504,16 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         UI::Row(&Layout);
         if(UI::ReleaseButton(GameState, &Layout, Input, "Export Animation"))
         {
+          UI::Row(&Layout);
+          time_t     current_time;
+          struct tm* time_info;
+          char       AnimGroupName[30];
+          time(&current_time);
+          time_info = localtime(&current_time);
+          strftime(AnimGroupName, sizeof(AnimGroupName), "data/animations/%H_%M_%S.anim",
+                   time_info);
           Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
-                                      "data/animation_export_test");
+                                      AnimGroupName);
         }
         UI::Row(&Layout);
         if(UI::ReleaseButton(GameState, &Layout, Input, "Delete keyframe"))

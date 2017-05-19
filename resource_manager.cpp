@@ -136,15 +136,39 @@ namespace Resource
     return false;
   }
 
-  rid
-  resource_manager::RegisterModel(const char* Path)
+  bool
+  resource_manager::LoadAnimation(rid RID)
   {
-    assert(Path);
-    rid RID;
-    assert(this->Models.NewRID(&RID));
-    this->Models.Set(RID, NULL, Path);
-    printf("registered model: rid %d, %s\n", RID.Value, Path);
-    return RID;
+    Anim::animation* Animation;
+    char*            Path;
+    if(this->Animations.Get(RID, (void**)&Animation, &Path))
+    {
+      if(Animation)
+      {
+        assert(0 && "Reloading model");
+      }
+      else
+      {
+        debug_read_file_result AssetReadResult = ReadEntireFile(&this->AnimationStack, Path);
+
+        assert(AssetReadResult.Contents);
+        if(AssetReadResult.ContentsSize <= 0)
+        {
+          return false;
+        }
+        Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
+
+        UnpackAsset(AssetHeader);
+
+        Animation =
+          (Anim::animation*)((Anim::animation_group*)AssetHeader->AnimationGroup)->Animations[0];
+        assert(Animation);
+
+        this->Animations.Set(RID, Animation, Path);
+      }
+      return true;
+    }
+    return false;
   }
 
   bool
@@ -159,6 +183,23 @@ namespace Resource
     return this->Textures.GetPathRID(RID, Path);
   }
 
+  bool
+  resource_manager::GetAnimationPathRID(rid* RID, const char* Path)
+  {
+    return this->Animations.GetPathRID(RID, Path);
+  }
+
+  rid
+  resource_manager::RegisterModel(const char* Path)
+  {
+    assert(Path);
+    rid RID;
+    assert(this->Models.NewRID(&RID));
+    this->Models.Set(RID, NULL, Path);
+    printf("registered model: rid %d, %s\n", RID.Value, Path);
+    return RID;
+  }
+
   rid
   resource_manager::RegisterTexture(const char* Path)
   {
@@ -167,6 +208,17 @@ namespace Resource
     assert(this->Textures.NewRID(&RID));
     this->Textures.Set(RID, NULL, Path);
     printf("registered texture: rid %d, %s\n", RID.Value, Path);
+    return RID;
+  }
+
+  rid
+  resource_manager::RegisterAnimation(const char* Path)
+  {
+    assert(Path);
+    rid RID;
+    assert(this->Animations.NewRID(&RID));
+    this->Animations.Set(RID, NULL, Path);
+    printf("registered animation: rid %d, %s\n", RID.Value, Path);
     return RID;
   }
 
@@ -212,6 +264,44 @@ namespace Resource
           printf("loaded model: rid %d, %s\n", RID.Value, Path);
           assert(Model);
           return Model;
+        }
+        else
+        {
+          return 0; // Should be default model here
+        }
+      }
+    }
+    else
+    {
+      assert(0 && "Invalid rid");
+    }
+    assert(0 && "Invalid codepath");
+  }
+
+  Anim::animation*
+  resource_manager::GetAnimation(rid RID)
+  {
+    assert(0 < RID.Value && RID.Value <= RESOURCE_MANAGER_RESOURCE_CAPACITY);
+    Anim::animation* Animation;
+    char*            Path;
+    if(this->Animations.Get(RID, (void**)&Animation, &Path))
+    {
+      if(strcmp(Path, "") == 0)
+      {
+        assert(0 && "assert: No path associated with rid");
+      }
+      else if(Animation)
+      {
+        return Animation;
+      }
+      else
+      {
+        if(this->LoadAnimation(RID))
+        {
+          this->Animations.Get(RID, (void**)&Animation, &Path);
+          printf("loaded model: rid %d, %s\n", RID.Value, Path);
+          assert(Animation);
+          return Animation;
         }
         else
         {
@@ -298,6 +388,33 @@ namespace Resource
     // Update texture paths
     DiffCount = ReadPaths(this->DiffedAssets, this->TexturePaths, this->TextureStats,
                           &this->TexturePathCount, "data/textures", NULL);
+    if(DiffCount > 0)
+    {
+      printf("DIFF COUNT: %d\n", DiffCount);
+      for(int i = 0; i < DiffCount; i++)
+      {
+        switch(this->DiffedAssets[i].Type)
+        {
+          case DIFF_Added:
+            printf("Added: ");
+            break;
+          case DIFF_Modified:
+            printf("Modified: ");
+            break;
+          case DIFF_Deleted:
+            printf("Deleted: ");
+            break;
+          default:
+            assert(0 && "assert: overflowed stat enum");
+            break;
+        }
+        printf("%s\n", DiffedAssets[i].Path.Name);
+      }
+    }
+
+    // Update animation paths
+    DiffCount = ReadPaths(this->DiffedAssets, this->AnimationPaths, this->AnimationStats,
+                          &this->AnimationPathCount, "data/animations", "anim");
     if(DiffCount > 0)
     {
       printf("DIFF COUNT: %d\n", DiffCount);

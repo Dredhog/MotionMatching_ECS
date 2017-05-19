@@ -87,8 +87,37 @@ Anim::AddAnimation(Anim::animation_controller* AnimController, Anim::animation* 
   if(0 <= AnimController->AnimStateCount &&
      AnimController->AnimStateCount < ANIM_CONTROLLER_MAX_ANIM_COUNT)
   {
-    AnimController->States[AnimController->AnimStateCount]       = {};
-    AnimController->Animations[AnimController->AnimStateCount++] = Animation;
+    if(AnimController->Skeleton->BoneCount == Animation->ChannelCount)
+    {
+      AnimController->States[AnimController->AnimStateCount]       = {};
+      AnimController->Animations[AnimController->AnimStateCount++] = Animation;
+    }
+    else
+    {
+      printf("anim error: wrong number of animation channels for skeleton\n");
+    }
+  }
+  else
+  {
+    assert(false && "assert: overflowed animation array in animation_controller");
+  }
+}
+
+void
+Anim::SetAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation,
+                   int32_t ControllerIndex)
+{
+  if(0 <= ControllerIndex && ControllerIndex < AnimController->AnimStateCount)
+  {
+    if(AnimController->Skeleton->BoneCount == Animation->ChannelCount)
+    {
+      AnimController->States[ControllerIndex]     = {};
+      AnimController->Animations[ControllerIndex] = Animation;
+    }
+    else
+    {
+      printf("anim error: wrong number of animation channels for skeleton\n");
+    }
   }
   else
   {
