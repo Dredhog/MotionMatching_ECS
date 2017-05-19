@@ -6,6 +6,7 @@
 #include "anim.h"
 #include "edit_animation.h"
 #include "stack_allocator.h"
+#include "render_data.h"
 
 namespace Asset
 {
@@ -41,4 +42,6 @@ namespace Asset
                             const EditAnimation::animation_editor* AnimEditor, char* FileName);
   void ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
                             char* FileName);
+
+  void ExportMaterials(material* Materials, int32_t MaterialCount);
 }
