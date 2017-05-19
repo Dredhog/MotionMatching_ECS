@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "game.h"
+#include "resource_manager.h"
 #include "render_data.h"
 
 material
-ImportMaterial(game_state* GameState, const char* Path)
+ImportMaterial(Resource::resource_manager* Resources, const char* Path)
 {
   if(!strcmp(&Path[strlen(Path) - strlen(".mat")], ".mat"))
   {
@@ -86,13 +86,13 @@ ImportMaterial(game_state* GameState, const char* Path)
 
       strncpy(Path, &Line[Offset], PathLength);
 
-      if(GameState->Resources.GetTexturePathRID(&RID, Path))
+      if(Resources->GetTexturePathRID(&RID, Path))
       {
         Material.Phong.DiffuseMapID = RID;
       }
       else
       {
-        Material.Phong.DiffuseMapID = GameState->Resources.RegisterTexture(Path);
+        Material.Phong.DiffuseMapID = Resources->RegisterTexture(Path);
       }
     }
     else if(strncmp(&Line[Offset], "map_Ns", strlen("map_Ns")) == 0)
@@ -115,13 +115,13 @@ ImportMaterial(game_state* GameState, const char* Path)
 
       strncpy(Path, &Line[Offset], PathLength);
 
-      if(GameState->Resources.GetTexturePathRID(&RID, Path))
+      if(Resources->GetTexturePathRID(&RID, Path))
       {
         Material.Phong.SpecularMapID = RID;
       }
       else
       {
-        Material.Phong.SpecularMapID = GameState->Resources.RegisterTexture(Path);
+        Material.Phong.SpecularMapID = Resources->RegisterTexture(Path);
       }
     }
     else if(strncmp(&Line[Offset], "bump", strlen("bump")) == 0)
@@ -144,13 +144,13 @@ ImportMaterial(game_state* GameState, const char* Path)
 
       strncpy(Path, &Line[Offset], PathLength);
 
-      if(GameState->Resources.GetTexturePathRID(&RID, Path))
+      if(Resources->GetTexturePathRID(&RID, Path))
       {
         Material.Phong.NormalMapID = RID;
       }
       else
       {
-        Material.Phong.NormalMapID = GameState->Resources.RegisterTexture(Path);
+        Material.Phong.NormalMapID = Resources->RegisterTexture(Path);
       }
     }
     else if(strncmp(&Line[Offset], "skeletal", strlen("skeletal")) == 0)
