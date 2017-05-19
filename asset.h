@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdlib.h>
 #include <stdint.h>
 
 #include "model.h"
@@ -42,6 +43,4 @@ namespace Asset
                             const EditAnimation::animation_editor* AnimEditor, char* FileName);
   void ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
                             char* FileName);
-
-  void ExportMaterials(material* Materials, int32_t MaterialCount);
 }
