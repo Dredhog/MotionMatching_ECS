@@ -29,9 +29,9 @@ union material {
     material_header Common;
     uint32_t        Flags;
     vec4            DiffuseColor;
-    uint32_t        DiffuseMapIndex;
-    uint32_t        SpecularMapIndex;
-    uint32_t        NormalMapIndex;
+    rid             DiffuseMapID;
+    rid             SpecularMapID;
+    rid             NormalMapID;
     float           Shininess;
   } Phong;
   struct
@@ -42,21 +42,13 @@ union material {
 };
 
 const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
-const int32_t TEXTURE_MAX_COUNT       = 20;
 const int32_t MATERIAL_MAX_COUNT      = 20;
-const int32_t MODEL_MAX_COUNT         = 10;
-const int32_t TEXTURE_NAME_MAX_LENGTH = 50;
 
 struct mesh_instance
 {
   Render::mesh* Mesh;
   material*     Material;
   int32_t       EntityIndex;
-};
-
-struct texture_name
-{
-  char Name[TEXTURE_NAME_MAX_LENGTH];
 };
 
 struct render_data
@@ -66,15 +58,6 @@ struct render_data
   int32_t       MaterialCount;
   mesh_instance MeshInstances[MESH_INSTANCE_MAX_COUNT]; // Filled every frame
   int32_t       MeshInstanceCount;
-
-  // Models
-  rid     Models[MODEL_MAX_COUNT];
-  int32_t ModelCount;
-
-  // Textures
-  uint32_t     Textures[TEXTURE_MAX_COUNT];
-  texture_name TextureNames[TEXTURE_MAX_COUNT];
-  int32_t      TextureCount;
 
   // Shaders
   uint32_t ShaderPhong;
@@ -93,18 +76,6 @@ struct render_data
   vec3 LightDiffuseColor;
   vec3 LightSpecularColor;
 };
-
-inline uint32_t
-AddTexture(render_data* RenderData, uint32_t TextureID, char* TextureName)
-{
-  assert(TextureID);
-  assert(0 <= RenderData->TextureCount && RenderData->TextureCount < TEXTURE_MAX_COUNT);
-  int32_t NameLength = (int32_t)strlen(TextureName);
-  assert(NameLength < TEXTURE_NAME_MAX_LENGTH);
-  strcpy(RenderData->TextureNames[RenderData->TextureCount].Name, TextureName);
-  RenderData->Textures[RenderData->TextureCount++] = TextureID;
-  return TextureID;
-}
 
 inline material
 NewPhongMaterial()
@@ -142,11 +113,4 @@ AddMeshInstance(render_data* RenderData, mesh_instance MeshInstance)
   assert(0 <= RenderData->MeshInstanceCount &&
          RenderData->MeshInstanceCount < MESH_INSTANCE_MAX_COUNT);
   RenderData->MeshInstances[RenderData->MeshInstanceCount++] = MeshInstance;
-}
-
-inline void
-AddModel(render_data* RenderData, rid ModelID)
-{
-  assert(0 <= RenderData->ModelCount && RenderData->ModelCount < MODEL_MAX_COUNT);
-  RenderData->Models[RenderData->ModelCount++] = ModelID;
 }

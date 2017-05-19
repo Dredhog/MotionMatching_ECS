@@ -13,9 +13,17 @@ VoidPtrToCharPtr(void* NamePtr)
 }
 
 char*
-VoidPtrToTextureName(void* TextureName)
+ModelPathToCharPtr(void* CharArray)
 {
-  return ((texture_name*)TextureName)->Name;
+  static const size_t PrefixLength = strlen("data/built/");
+  return ((char*)CharArray) + PrefixLength;
+}
+
+char*
+TexturePathToCharPtr(void* CharArray)
+{
+  static const size_t PrefixLength = strlen("data/textures/");
+  return ((char*)CharArray) + PrefixLength;
 }
 
 char*
@@ -151,26 +159,27 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
 
             UI::Row(GameState, &Layout, 1, "Diffuse Map");
             {
-              int32_t ActiveDiffuseMapIndex = CurrentMaterial->Phong.DiffuseMapIndex;
-              UI::ComboBox(&ActiveDiffuseMapIndex, GameState->R.TextureNames,
-                           GameState->R.TextureCount, GameState, &Layout, Input,
-                           sizeof(texture_name), VoidPtrToTextureName);
-              CurrentMaterial->Phong.DiffuseMapIndex = ActiveDiffuseMapIndex;
+              static int32_t ActivePathIndex = 0;
+              UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
+                           GameState->Resources.TexturePathCount, GameState, &Layout, Input,
+                           sizeof(path), TexturePathToCharPtr);
+              rid NewRID;
+
+              if(!GameState->Resources
+                    .GetTexturePathRID(&NewRID,
+                                       GameState->Resources.TexturePaths[ActivePathIndex].Name))
+              {
+                NewRID = GameState->Resources.RegisterTexture(
+                  GameState->Resources.TexturePaths[ActivePathIndex].Name);
+              }
+              CurrentMaterial->Phong.DiffuseMapID = NewRID;
             }
           }
           else
           {
             Material->Phong.Flags &= ~PHONG_UseDiffuseMap;
-
-            UI::Row(GameState, &Layout, 4, "Diffuse Color");
-            UI::SliderFloat(GameState, &Layout, Input, "R", &CurrentMaterial->Phong.DiffuseColor.R,
-                            0, 1.0f, 5.0f);
-            UI::SliderFloat(GameState, &Layout, Input, "G", &CurrentMaterial->Phong.DiffuseColor.G,
-                            0, 1.0f, 5.0f);
-            UI::SliderFloat(GameState, &Layout, Input, "B", &CurrentMaterial->Phong.DiffuseColor.B,
-                            0, 1.0f, 5.0f);
-            UI::SliderFloat(GameState, &Layout, Input, "A", &CurrentMaterial->Phong.DiffuseColor.A,
-                            0, 1.0f, 5.0f);
+            SliderVec4Color(GameState, &Layout, Input, "Diffuse Color",
+                            &CurrentMaterial->Phong.DiffuseColor, 0.0f, 1.0f, 5.0f);
           }
 
           bool SpecularFlagValue = Material->Phong.Flags & PHONG_UseSpecularMap;
@@ -183,11 +192,19 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
 
             UI::Row(GameState, &Layout, 1, "Specular");
             {
-              int32_t ActiveSpecularMapIndex = CurrentMaterial->Phong.SpecularMapIndex;
-              UI::ComboBox(&ActiveSpecularMapIndex, GameState->R.TextureNames,
-                           GameState->R.TextureCount, GameState, &Layout, Input,
-                           sizeof(texture_name), VoidPtrToTextureName);
-              CurrentMaterial->Phong.SpecularMapIndex = ActiveSpecularMapIndex;
+              static int32_t ActivePathIndex = 0;
+              UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
+                           GameState->Resources.TexturePathCount, GameState, &Layout, Input,
+                           sizeof(path), TexturePathToCharPtr);
+              rid NewRID;
+              if(!GameState->Resources
+                    .GetTexturePathRID(&NewRID,
+                                       GameState->Resources.TexturePaths[ActivePathIndex].Name))
+              {
+                NewRID = GameState->Resources.RegisterTexture(
+                  GameState->Resources.TexturePaths[ActivePathIndex].Name);
+              }
+              CurrentMaterial->Phong.SpecularMapID = NewRID;
             }
           }
           else
@@ -205,11 +222,19 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
 
             UI::Row(GameState, &Layout, 1, "Normal");
             {
-              int32_t ActiveNormalMapIndex = CurrentMaterial->Phong.NormalMapIndex;
-              UI::ComboBox(&ActiveNormalMapIndex, GameState->R.TextureNames,
-                           GameState->R.TextureCount, GameState, &Layout, Input,
-                           sizeof(texture_name), VoidPtrToTextureName);
-              CurrentMaterial->Phong.NormalMapIndex = ActiveNormalMapIndex;
+              static int32_t ActivePathIndex = 0;
+              UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
+                           GameState->Resources.TexturePathCount, GameState, &Layout, Input,
+                           sizeof(path), TexturePathToCharPtr);
+              rid NewRID;
+              if(!GameState->Resources
+                    .GetTexturePathRID(&NewRID,
+                                       GameState->Resources.TexturePaths[ActivePathIndex].Name))
+              {
+                NewRID = GameState->Resources.RegisterTexture(
+                  GameState->Resources.TexturePaths[ActivePathIndex].Name);
+              }
+              CurrentMaterial->Phong.NormalMapID = NewRID;
             }
           }
           else
@@ -254,14 +279,14 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         GameState->CurrentMaterialIndex = GameState->R.MaterialCount - 1;
       }
       UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Reset Material"))
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Clear Material Values"))
       {
         uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
         *CurrentMaterial                   = {};
         CurrentMaterial->Common.ShaderType = ShaderType;
       }
       UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Create From Current"))
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Duplicate Current"))
       {
         AddMaterial(&GameState->R, *CurrentMaterial);
         GameState->CurrentMaterialIndex = GameState->R.MaterialCount - 1;
@@ -298,23 +323,24 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::Row(&Layout);
     if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityTools))
     {
-      char ModelNameBuffer[10];
-      sprintf(ModelNameBuffer, "Model %d", GameState->CurrentModelIndex);
-      UI::Row(GameState, &Layout, 2, ModelNameBuffer);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Previous", "model"))
+      UI::Row(&Layout);
+      static int32_t ActivePathIndex = 0;
+      UI::ComboBox(&ActivePathIndex, GameState->Resources.ModelPaths,
+                   GameState->Resources.ModelPathCount, GameState, &Layout, Input, sizeof(path),
+                   ModelPathToCharPtr);
+      rid NewRID = { 0 };
+      if(!GameState->Resources
+            .GetModelPathRID(&NewRID, GameState->Resources.ModelPaths[ActivePathIndex].Name))
       {
-        if(0 < GameState->CurrentModelIndex)
-        {
-          --GameState->CurrentModelIndex;
-        }
+        NewRID =
+          GameState->Resources.RegisterModel(GameState->Resources.ModelPaths[ActivePathIndex].Name);
+        GameState->CurrentModelID = NewRID;
       }
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Next", "model"))
+      else
       {
-        if(GameState->CurrentModelIndex < GameState->R.ModelCount - 1)
-        {
-          ++GameState->CurrentModelIndex;
-        }
+        GameState->CurrentModelID = NewRID;
       }
+
       UI::Row(&Layout);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Create Entity"))
       {
@@ -373,18 +399,14 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
             SelectedEntity->AnimController->Skeleton = SelectedModel->Skeleton;
             SelectedEntity->AnimController->OutputTransforms =
               PushArray(GameState->PersistentMemStack,
-                        ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT *
-                          SelectedModel->Skeleton->BoneCount,
+                        ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * SelectedModel->Skeleton->BoneCount,
                         Anim::transform);
             SelectedEntity->AnimController->BoneSpaceMatrices =
-              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount,
-                        mat4);
+              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
             SelectedEntity->AnimController->ModelSpaceMatrices =
-              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount,
-                        mat4);
+              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
             SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
-              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount,
-                        mat4);
+              PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
           }
           else if(SelectedEntity->AnimController &&
                   (UI::ReleaseButton(GameState, &Layout, Input, "Delete Anim. Controller")))

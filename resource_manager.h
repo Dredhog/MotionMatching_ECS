@@ -10,7 +10,7 @@
 #include "text.h"
 
 #include <sys/stat.h>
-#define RESOURCE_MANAGER_RESOURCE_CAPACITY 100
+#define RESOURCE_MANAGER_RESOURCE_CAPACITY 200
 
 /*For every type Will need:
  * Mapping from RID to path
@@ -36,9 +36,10 @@ enum asset_diff_type
 
 struct asset_diff
 {
-  asset_diff_type Type;
-  path            Path;
+  uint32_t Type;
+  path     Path;
 };
+
 namespace Resource
 {
 
@@ -50,30 +51,26 @@ namespace Resource
   public:
     bool Get(rid, void** Asset, char** Path);
     void Set(rid RID, const void* Asset, const char* Path);
-    bool FindPathRID(rid* RID, const char* Path);
+    bool GetPathRID(rid* RID, const char* Path);
     bool NewRID(rid* RID);
   };
 
   class resource_manager
   {
-    path ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    // path    TexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    int32_t ModelPathCount;
-    // int32_t TexturePathCount;
-    // int32_t AnimationGroupPathCount;
-    // int32_t MaterialPathCount;
-
     asset_diff  DiffedAssets[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     struct stat ModelStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    // struct stat TextureStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    struct stat TextureStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
 
     resource_hash_table Models;
     resource_hash_table Textures;
 
   public:
+    path    ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    path    TexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    int32_t ModelPathCount;
+    int32_t TexturePathCount;
+
     Memory::stack_allocator ModelStack;
-    Memory::stack_allocator AnimationStack;
-    Memory::stack_allocator MaterialStack;
 
   private:
     bool LoadModel(rid RID);
@@ -85,6 +82,9 @@ namespace Resource
 
     bool AsociateModel(rid RID, char* Path);
     bool AsociateTexture(rid RID, char* Path);
+
+    bool GetModelPathRID(rid* RID, const char* Path);
+    bool GetTexturePathRID(rid* RID, const char* Path);
 
     Render::model* GetModel(rid RID);
     uint32_t       GetTexture(rid RID);

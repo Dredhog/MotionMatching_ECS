@@ -87,6 +87,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     AddModel(&GameState->R, TempModelPtr);
 #endif
     // --------LOAD MODELS/ACTORS--------
+    GameState->Resources.UpdateHardDriveDisplay();
 
     GameState->GizmoModelID = GameState->Resources.RegisterModel("./data/built/gizmo1.model");
     GameState->QuadModelID  = GameState->Resources.RegisterModel("./data/built/debug_meshes.model");
@@ -95,10 +96,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->SphereModelID   = GameState->Resources.RegisterModel("./data/built/sphere.model");
     GameState->UVSphereModelID = GameState->Resources.RegisterModel("./data/built/uv_sphere.model");
 
-    AddModel(&GameState->R, GameState->Resources.RegisterModel("./data/built/armadillo.model"));
-    AddModel(&GameState->R,
-             GameState->Resources.RegisterModel("./data/built/multimesh_soldier.actor"));
-    AddModel(&GameState->R, GameState->Resources.RegisterModel("./data/built/sponza1.model"));
+    // AddModel(&GameState->R, GameState->Resources.RegisterModel("./data/built/sponza.model"));
+    // AddModel(&GameState->R,
+    //         GameState->Resources.RegisterModel("./data/built/multimesh_soldier.actor"));
 
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong =
@@ -159,7 +159,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Camera.Forward       = { 0, 0, -1 };
     GameState->Camera.Right         = { 1, 0, 0 };
     GameState->Camera.Rotation      = { 0 };
-    GameState->Camera.NearClipPlane = 0.001f;
+    GameState->Camera.NearClipPlane = 0.01f;
     GameState->Camera.FarClipPlane  = 1000.0f;
     GameState->Camera.FieldOfView   = 70.0f;
     GameState->Camera.MaxTiltAngle  = 90.0f;
@@ -281,29 +281,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                              GameState->Camera.ProjectionMatrix, GameState->Camera.ViewMatrix);
       raycast_result RaycastResult =
         RayIntersectPlane(GameState->Camera.Position, RayDir, {}, { 0, 1, 0 });
-      if(RaycastResult.Success && GameState->R.ModelCount > 0)
+      if(RaycastResult.Success && GameState->CurrentModelID.Value != 0)
       {
         Anim::transform NewTransform = {};
         NewTransform.Translation     = RaycastResult.IntersectP;
         NewTransform.Scale           = { 1, 1, 1 };
 
-        if(GameState->R.ModelCount > 0)
+        Render::model* Model = GameState->Resources.GetModel(GameState->CurrentModelID);
+        int32_t*       MaterialIndices =
+          PushArray(GameState->PersistentMemStack, Model->MeshCount, int32_t);
+        if(0 <= GameState->CurrentMaterialIndex &&
+           GameState->CurrentMaterialIndex < MATERIAL_MAX_COUNT)
         {
-          Render::model* Model =
-            GameState->Resources.GetModel(GameState->R.Models[GameState->CurrentModelIndex]);
-          int32_t* MaterialIndices =
-            PushArray(GameState->PersistentMemStack, Model->MeshCount, int32_t);
-          if(0 <= GameState->CurrentMaterialIndex &&
-             GameState->CurrentMaterialIndex < MATERIAL_MAX_COUNT)
+          for(int m = 0; m < Model->MeshCount; m++)
           {
-            for(int m = 0; m < Model->MeshCount; m++)
-            {
-              MaterialIndices[m] = GameState->CurrentMaterialIndex;
-            }
+            MaterialIndices[m] = GameState->CurrentMaterialIndex;
           }
-          AddEntity(GameState, GameState->R.Models[GameState->CurrentModelIndex], MaterialIndices,
-                    NewTransform);
         }
+        AddEntity(GameState, GameState->CurrentModelID, MaterialIndices, NewTransform);
       }
     }
   }
@@ -475,7 +470,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           glBindTexture(GL_TEXTURE_2D, 0);
           glBindVertexArray(0);
         }
-        CurrentShaderID = SetMaterial(&GameState->R, &GameState->Camera, CurrentMaterial);
+        CurrentShaderID = SetMaterial(GameState, &GameState->Camera, CurrentMaterial);
 
         PreviousMaterial = CurrentMaterial;
       }
@@ -569,7 +564,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
     glClearColor(0.7f, 0.7f, 0.7f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    uint32_t ShaderID = SetMaterial(&GameState->R, &GameState->PreviewCamera, PreviewMaterial);
+    uint32_t ShaderID = SetMaterial(GameState, &GameState->PreviewCamera, PreviewMaterial);
 
     if(PreviewMaterial->Common.IsSkeletal)
     {
