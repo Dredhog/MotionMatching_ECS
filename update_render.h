@@ -62,25 +62,26 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->WAVLoaded     = false;
     GameState->MagicChecksum = 123456;
 
-    // SEGMENT MEMORY
-    uint32_t PersistentStackSize =
-      (uint32_t)(((float)GameMemory.PersistentMemorySize * 0.5f) - sizeof(game_state));
-    uint32_t ModelStackSize = GameMemory.PersistentMemorySize - PersistentStackSize;
-    assert(0 < ModelStackSize);
-
-    uint8_t* PersistentStackStart = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
-    uint8_t* ModelStackStart      = PersistentStackStart + PersistentStackSize;
-
     GameState->TemporaryMemStack =
       Memory::CreateStackAllocatorInPlace(GameMemory.TemporaryMemory,
                                           GameMemory.TemporaryMemorySize);
+    // SEGMENT MEMORY
+    assert(GameMemory.PersistentMemorySize > sizeof(game_state));
+
+    uint32_t AvailableSubsystemMemory = GameMemory.PersistentMemorySize - sizeof(game_state);
+    uint32_t PersistentStackSize      = (uint32_t)((float)AvailableSubsystemMemory * 0.25f);
+    uint32_t ModelStackSize           = (uint32_t)((float)AvailableSubsystemMemory * 0.5f);
+    uint32_t AnimationStackSize = AvailableSubsystemMemory - PersistentStackSize - ModelStackSize;
+
+    uint8_t* PersistentStackStart = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
+    uint8_t* ModelStackStart      = PersistentStackStart + PersistentStackSize;
+    uint8_t* AnimationStackStart  = ModelStackStart + ModelStackSize;
 
     GameState->PersistentMemStack =
       Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
-
     GameState->Resources.ModelStack.Create(ModelStackStart, ModelStackSize);
-
-// END MEMORY SEGMENTATION
+    GameState->Resources.AnimationStack.Create(AnimationStackStart, AnimationStackSize);
+// END SEGMENTATION
 
 #if 0
     CheckedLoadAndSetUpModel(PersistentMemStack, "./data/built/sponza.model", &TempModelPtr);

@@ -78,7 +78,7 @@ struct game_state
   int32_t SelectedMeshIndex;
 
   // Animation Test
-  Anim::animation* TestAnimation;
+  rid TestAnimationID;
 
   // Fonts/text
   Text::font Font;

@@ -66,6 +66,8 @@ namespace Anim
   // Animation controller interface
   void UpdateController(Anim::animation_controller* Controller, float dt);
   void AddAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation);
+  void SetAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation,
+                    int32_t ControllerIndex);
   void StartAnimationAtIndex(Anim::animation_controller* AnimController, int Index, float Time);
   void StartAnimationAtGlobalTime(Anim::animation_controller* AnimController, int AnimationIndex,
                                   bool Loop = true);
