@@ -149,6 +149,9 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       {
         case SHADER_Phong:
         {
+          SliderVec4Color(GameState, &Layout, Input, "Ambient Color",
+                          &CurrentMaterial->Phong.AmbientColor, 0.0f, 1.0f, 5.0f);
+
           bool DiffuseFlagValue = (Material->Phong.Flags & PHONG_UseDiffuseMap);
 
           UI::Row(GameState, &Layout, 1, "Use Diffuse");
@@ -210,6 +213,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           else
           {
             Material->Phong.Flags &= ~PHONG_UseSpecularMap;
+            SliderVec4Color(GameState, &Layout, Input, "Specular Color",
+                            &CurrentMaterial->Phong.SpecularColor, 0.0f, 1.0f, 5.0f);
           }
 
           bool NormalFlagValue = Material->Phong.Flags & PHONG_UseNormalMap;
@@ -271,10 +276,12 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       UI::Row(&Layout);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
       {
-        material NewMaterial           = {};
-        NewMaterial.Common.UseBlending = true;
-        NewMaterial.Phong.DiffuseColor = { 0.5f, 0.5f, 0.5f, 1.0f };
-        NewMaterial.Phong.Shininess    = 60;
+        material NewMaterial            = {};
+        NewMaterial.Common.UseBlending  = true;
+        NewMaterial.Phong.AmbientColor  = { 1.0f, 1.0f, 1.0f, 1.0f };
+        NewMaterial.Phong.DiffuseColor  = { 0.5f, 0.5f, 0.5f, 1.0f };
+        NewMaterial.Phong.SpecularColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+        NewMaterial.Phong.Shininess     = 60;
         AddMaterial(&GameState->R, NewMaterial);
         GameState->CurrentMaterialIndex = GameState->R.MaterialCount - 1;
       }

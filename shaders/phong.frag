@@ -7,7 +7,9 @@
 
 struct Material
 {
+  vec4 ambientColor;
   vec4 diffuseColor;
+  vec4 specularColor;
 
   sampler2D diffuseMap;
   sampler2D specularMap;
@@ -66,38 +68,45 @@ main()
 
   vec3 half_vector = normalize(lightDir + viewDir);
 
+  // --------AMBIENT--------
+  vec3 ambient = light.ambient;
+
   // --------DIFFUSE------
   float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
   vec3  diffuse           = diffuse_intensity * light.diffuse;
-
-  // --------SPECULAR------
-  float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
-  vec3  specular           = vec3(0.0f);
-  if((frag.flags & SPECULAR_MAP) != 0)
+  if((frag.flags & DIFFUSE_MAP) != 0)
   {
-    specular =
-      vec3(texture(material.specularMap, frag.texCoord)) * specular_intensity * light.specular;
+    ambient *= vec3(texture(material.diffuseMap, frag.texCoord));
+    diffuse *= vec3(texture(material.diffuseMap, frag.texCoord));
   }
   else
   {
-    specular = specular_intensity * light.specular;
+    ambient *= material.ambientColor.rgb;
+    diffuse *= material.diffuseColor.rgb;
   }
 
-  // --------AMBIENT--------
-  vec3 ambient = light.ambient;
+  // --------SPECULAR------
+  float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
+  specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
+  vec3 specular = specular_intensity * light.specular;
+  if((frag.flags & SPECULAR_MAP) != 0)
+  {
+    specular *= vec3(texture(material.specularMap, frag.texCoord));
+  }
+  else
+  {
+    specular *= material.specularColor.rgb;
+  }
 
   // --------FINAL----------
   vec4 result = vec4(0.0f);
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
-    result =
-      vec4((diffuse + specular + ambient) * vec3(texture(material.diffuseMap, frag.texCoord)),
-           1.0f);
+    result = vec4((diffuse + specular + ambient), 1.0f);
   }
   else
   {
-    result =
-      vec4((diffuse + specular + ambient) * material.diffuseColor.rgb, material.diffuseColor.a);
+    result = vec4((diffuse + specular + ambient), material.diffuseColor.a);
   }
 
   out_color = result;

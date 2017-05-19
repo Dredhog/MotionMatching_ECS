@@ -28,7 +28,9 @@ union material {
   {
     material_header Common;
     uint32_t        Flags;
+    vec4            AmbientColor;
     vec4            DiffuseColor;
+    vec4            SpecularColor;
     rid             DiffuseMapID;
     rid             SpecularMapID;
     rid             NormalMapID;
@@ -82,7 +84,9 @@ NewPhongMaterial()
 {
   material Material           = {};
   Material.Common.ShaderType  = SHADER_Phong;
-  Material.Phong.DiffuseColor = { 0.5f, 0.5f, 0.5f, 1 };
+  Material.Phong.AmbientColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+  Material.Phong.DiffuseColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+  Material.Phong.SpecularColor = { 1.0f, 1.0f, 1.0f, 1.0f };
   Material.Phong.Shininess    = 60.0f;
   return Material;
 }

@@ -16,6 +16,7 @@
 #include "load_asset.h"
 #include "render_data.h"
 #include "material_upload.h"
+#include "material_io.h"
 
 #include "text.h"
 

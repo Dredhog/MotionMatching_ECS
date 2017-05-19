@@ -87,7 +87,7 @@ namespace Resource
     bool GetTexturePathRID(rid* RID, const char* Path);
 
     Render::model* GetModel(rid RID);
-    uint32_t       GetTexture(rid RID);
-    void           UpdateHardDriveDisplay();
+    uint32_t GetTexture(rid RID);
+    void UpdateHardDriveDisplay();
   };
 }
