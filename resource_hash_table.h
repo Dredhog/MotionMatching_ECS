@@ -1,3 +1,5 @@
+#pragma once
+
 namespace Resource
 {
   template<typename T, int MAX_PATH_COUNT>

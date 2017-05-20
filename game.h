@@ -103,27 +103,6 @@ struct game_state
   uint32_t IDTexture;
 };
 
-struct scene
-{
-  int32_t EntityCount;
-  entity* Entities;
-
-  int32_t                     AnimControllerCount;
-  Anim::animation_controller* AnimControllers;
-
-  // Resource mappings
-  int32_t ModelCount;
-  rid*    ModelIDs;
-  path*   ModelPaths;
-
-  int32_t MaterialCount;
-  rid*    MaterialIDs;
-  path*   MaterialPaths;
-
-  int32_t AnimationCount;
-  rid*    AnimationIDs;
-  path*   AnimationPaths;
-};
 
 inline bool
 GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex)

@@ -9,6 +9,7 @@
 #include "render_data.h"
 #include "text.h"
 #include <sys/stat.h>
+#include "rid.h"
 
 struct path
 {
@@ -16,10 +17,10 @@ struct path
 };
 #include "resource_hash_table.h"
 
-typedef Resource::resource_hash_table<Render::model*, 200>         model_hash_table;
+typedef Resource::resource_hash_table<Render::model*, 200>   model_hash_table;
 typedef Resource::resource_hash_table<Anim::animation*, 200> animation_group_hash_table;
-typedef Resource::resource_hash_table<material*, 200>              material_hash_table;
-typedef Resource::resource_hash_table<uint32_t, 200>               texture_hash_table;
+typedef Resource::resource_hash_table<material*, 200>        material_hash_table;
+typedef Resource::resource_hash_table<uint32_t, 200>         texture_hash_table;
 
 static const int RESOURCE_MANAGER_RESOURCE_CAPACITY = 200;
 

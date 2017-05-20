@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
+#include "rid.h"
 #include "linear_math/matrix.h"
 #include "linear_math/vector.h"
 
@@ -37,9 +37,13 @@ namespace Anim
 
   struct animation_controller
   {
-    animation_state  States[ANIM_CONTROLLER_MAX_ANIM_COUNT];
-    animation*       Animations[ANIM_CONTROLLER_MAX_ANIM_COUNT];
-    skeleton*        Skeleton;
+    animation_state States[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    animation*      Animations[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    rid             AnimationIDs[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    skeleton*       Skeleton;
+
+    uint8_t*         DynamicDataStart;
+    size_t           DynamicDataSizeBytes;
     Anim::transform* OutputTransforms;
     mat4*            BoneSpaceMatrices;
     mat4*            ModelSpaceMatrices;
@@ -65,10 +69,11 @@ namespace Anim
 
   // Animation controller interface
   void UpdateController(Anim::animation_controller* Controller, float dt);
-  void AddAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation);
-  void SetAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation,
+  void AddAnimation(Anim::animation_controller* AnimController, rid AnimationID);
+  void SetAnimation(Anim::animation_controller* AnimController, rid AnimationID,
                     int32_t ControllerIndex);
   void StartAnimationAtIndex(Anim::animation_controller* AnimController, int Index, float Time);
+  void StopAnimation(Anim::animation_controller* AnimController, int AnimationIndex);
   void StartAnimationAtGlobalTime(Anim::animation_controller* AnimController, int AnimationIndex,
                                   bool Loop = true);
 

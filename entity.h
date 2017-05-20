@@ -2,11 +2,7 @@
 
 #include "anim.h"
 #include "model.h"
-
-struct rid
-{
-  int32_t Value;
-};
+#include "rid.h"
 
 struct entity
 {

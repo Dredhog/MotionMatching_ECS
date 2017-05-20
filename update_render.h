@@ -162,6 +162,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //---------------------END INIT -------------------------
 
   GameState->Resources.UpdateHardDriveAssetPathLists();
+  if(GameState->CurrentMaterialID.Value <= 0)
+  {
+    if(GameState->Resources.MaterialPathCount > 0)
+    {
+      GameState->CurrentMaterialID =
+        GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[0].Name);
+    }
+  }
 
   if(Input->IsMouseInEditorMode)
   {
@@ -287,6 +295,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Anim::animation_controller* Controller = GameState->Entities[e].AnimController;
     if(Controller)
     {
+      for(int i = 0; i < Controller->AnimStateCount; i++)
+      {
+        assert(Controller->AnimationIDs[i].Value > 0);
+        Controller->Animations[i] = GameState->Resources.GetAnimation(Controller->AnimationIDs[i]);
+      }
       Anim::UpdateController(Controller, Input->dt);
     }
   }

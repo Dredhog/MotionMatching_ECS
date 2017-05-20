@@ -1,4 +1,5 @@
 #include "anim.h"
+#include "resource_manager.h"
 
 void
 Anim::LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
@@ -58,8 +59,9 @@ Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIn
 }
 
 void
-Anim::UpdateController(Anim::animation_controller* Controller, float dt)
+Anim::UpdateController(animation_controller* Controller, float dt)
 {
+
   Controller->GlobalTimeSec += dt;
   if(0 < Controller->AnimStateCount)
   {
@@ -82,47 +84,23 @@ Anim::UpdateController(Anim::animation_controller* Controller, float dt)
 }
 
 void
-Anim::AddAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation)
+Anim::AddAnimation(Anim::animation_controller* AnimController, rid AnimationID)
 {
-  if(0 <= AnimController->AnimStateCount &&
-     AnimController->AnimStateCount < ANIM_CONTROLLER_MAX_ANIM_COUNT)
-  {
-    if(AnimController->Skeleton->BoneCount == Animation->ChannelCount)
-    {
-      AnimController->States[AnimController->AnimStateCount]       = {};
-      AnimController->Animations[AnimController->AnimStateCount++] = Animation;
-    }
-    else
-    {
-      printf("anim error: wrong number of animation channels for skeleton\n");
-    }
-  }
-  else
-  {
-    assert(false && "assert: overflowed animation array in animation_controller");
-  }
+  assert(0 <= AnimController->AnimStateCount &&
+         AnimController->AnimStateCount < ANIM_CONTROLLER_MAX_ANIM_COUNT);
+  assert(AnimationID.Value > 0);
+  AnimController->States[AnimController->AnimStateCount]         = {};
+  AnimController->AnimationIDs[AnimController->AnimStateCount++] = AnimationID;
 }
 
 void
-Anim::SetAnimation(Anim::animation_controller* AnimController, Anim::animation* Animation,
+Anim::SetAnimation(Anim::animation_controller* AnimController, rid AnimationID,
                    int32_t ControllerIndex)
 {
-  if(0 <= ControllerIndex && ControllerIndex < AnimController->AnimStateCount)
-  {
-    if(AnimController->Skeleton->BoneCount == Animation->ChannelCount)
-    {
-      AnimController->States[ControllerIndex]     = {};
-      AnimController->Animations[ControllerIndex] = Animation;
-    }
-    else
-    {
-      printf("anim error: wrong number of animation channels for skeleton\n");
-    }
-  }
-  else
-  {
-    assert(false && "assert: overflowed animation array in animation_controller");
-  }
+  assert(0 <= ControllerIndex && ControllerIndex < AnimController->AnimStateCount);
+  assert(AnimationID.Value > 0);
+  AnimController->States[ControllerIndex]       = {};
+  AnimController->AnimationIDs[ControllerIndex] = AnimationID;
 }
 
 void
@@ -135,6 +113,14 @@ Anim::StartAnimationAtGlobalTime(Anim::animation_controller* AnimController, int
   AnimController->States[AnimationIndex].IsPlaying       = true;
   AnimController->States[AnimationIndex].PlaybackRateSec = 1.0f;
   AnimController->States[AnimationIndex].Loop            = Loop;
+}
+
+void
+Anim::StopAnimation(Anim::animation_controller* AnimController, int AnimationIndex)
+{
+  assert(0 <= AnimationIndex && AnimationIndex <= ANIM_CONTROLLER_MAX_ANIM_COUNT);
+  AnimController->States[AnimationIndex] = {};
+  AnimController->AnimStateCount         = 0;
 }
 
 void

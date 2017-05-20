@@ -447,20 +447,24 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               UI::Row(&Layout);
               if(UI::ReleaseButton(GameState, &Layout, Input, "Add Animation"))
               {
-                if(SelectedEntity->AnimController->AnimStateCount == 0)
+                if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount ==
+                   SelectedModel->Skeleton->BoneCount)
                 {
-                  Anim::AddAnimation(SelectedEntity->AnimController,
-                                     GameState->Resources.GetAnimation(
-                                       GameState->CurrentAnimationID));
+                  if(SelectedEntity->AnimController->AnimStateCount == 0)
+                  {
+                    SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
+                    SelectedEntity->AnimController->AnimStateCount  = 1;
+                  }
+                  else
+                  {
+                    SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
+                  }
+                  Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
                 }
-                else
+                else if(SelectedEntity->AnimController->AnimStateCount != 0)
                 {
-                  Anim::SetAnimation(SelectedEntity->AnimController,
-                                     GameState->Resources.GetAnimation(
-                                       GameState->CurrentAnimationID),
-                                     0);
+                  Anim::StopAnimation(SelectedEntity->AnimController, 0);
                 }
-                Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
               }
             }
           }

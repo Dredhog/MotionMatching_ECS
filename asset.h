@@ -25,6 +25,7 @@ namespace Asset
     uint32_t TotalSize;
     uint64_t Model;
     uint64_t AnimationGroup;
+    uint64_t Scene;
   };
 
   void PackModel(Render::model* Model);
