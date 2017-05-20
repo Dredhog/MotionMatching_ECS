@@ -9,7 +9,12 @@
 material
 ImportMaterial(Resource::resource_manager* Resources, const char* Path)
 {
-  if(!strcmp(&Path[strlen(Path) - strlen(".mat")], ".mat"))
+  if(strlen(Path) <= strlen(".mat"))
+  {
+    printf("%s is not a .mat file!\n", Path);
+    assert(0);
+  }
+  else if(!strcmp(&Path[strlen(Path) - strlen(".mat") - 1], ".mat"))
   {
     printf("%s is not a .mat file!\n", Path);
     assert(0);
@@ -24,6 +29,12 @@ ImportMaterial(Resource::resource_manager* Resources, const char* Path)
   char*  Line        = NULL;
   size_t LineLength  = 0;
 
+  if(FilePointer == NULL)
+  {
+    printf("File at %s not found\n", Path);
+    assert(0);
+  }
+
   while(getline(&Line, &LineLength, FilePointer) != -1)
   {
     int32_t Offset = 0;
@@ -33,134 +44,180 @@ ImportMaterial(Resource::resource_manager* Resources, const char* Path)
     {
       ++Offset;
     }
-    assert(Offset < LineLength);
 
-    if(strncmp(&Line[Offset], "newmtl ", strlen("newmtl ")) == 0)
+    if(Offset + 2 <= LineLength)
     {
-      assert((!LoadingMaterial) && "There can be only one material in single file!\n");
-
-      Offset += strlen("newmtl ");
-      printf("Importing material %s\n", &Line[Offset]);
-      LoadingMaterial = true;
-    }
-    else if(strncmp(&Line[Offset], "Ns", strlen("Ns")) == 0)
-    {
-      Offset += strlen("Ns");
-      sscanf(&Line[Offset], " %f", &Material.Phong.Shininess);
-    }
-    else if(strncmp(&Line[Offset], "Ka", strlen("Ka")) == 0)
-    {
-      Offset += strlen("Ka");
-      sscanf(&Line[Offset], " %f %f %f", &Material.Phong.AmbientColor.R,
-             &Material.Phong.AmbientColor.G, &Material.Phong.AmbientColor.B);
-    }
-    else if(strncmp(&Line[Offset], "Kd", strlen("Kd")) == 0)
-    {
-      Offset += strlen("Kd");
-      sscanf(&Line[Offset], " %f %f %f", &Material.Phong.DiffuseColor.R,
-             &Material.Phong.DiffuseColor.G, &Material.Phong.DiffuseColor.B);
-    }
-    else if(strncmp(&Line[Offset], "Ks", strlen("Ks")) == 0)
-    {
-      Offset += strlen("Ks");
-      sscanf(&Line[Offset], " %f %f %f", &Material.Phong.SpecularColor.R,
-             &Material.Phong.SpecularColor.G, &Material.Phong.SpecularColor.B);
-    }
-    else if(strncmp(&Line[Offset], "map_Kd", strlen("map_Kd")) == 0)
-    {
-      Material.Phong.Flags |= PHONG_UseDiffuseMap;
-
-      Offset += strlen("map_Kd");
-      while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
+      if((Line[Offset] == 'N') && (Line[Offset + 1] == 's'))
       {
-        ++Offset;
+        Offset += strlen("Ns");
+        sscanf(&Line[Offset], " %f", &Material.Phong.Shininess);
+        continue;
       }
-
-      char   Path[TEXT_LINE_MAX_LENGTH];
-      size_t PathLength = strcspn(&Line[Offset], " \t\n");
-      if(PathLength >= TEXT_LINE_MAX_LENGTH)
+      else if((Line[Offset] == 'K') && (Line[Offset + 1] == 'a'))
       {
-        printf("Path in line\n%sis too long\n", Line);
+        Offset += strlen("Ka");
+        sscanf(&Line[Offset], " %f %f %f", &Material.Phong.AmbientColor.R,
+               &Material.Phong.AmbientColor.G, &Material.Phong.AmbientColor.B);
+        continue;
       }
-      assert(PathLength < TEXT_LINE_MAX_LENGTH);
-
-      strncpy(Path, &Line[Offset], PathLength);
-
-      if(Resources->GetTexturePathRID(&RID, Path))
+      else if((Line[Offset] == 'K') && (Line[Offset + 1] == 'd'))
       {
-        Material.Phong.DiffuseMapID = RID;
+        Offset += strlen("Kd");
+        sscanf(&Line[Offset], " %f %f %f", &Material.Phong.DiffuseColor.R,
+               &Material.Phong.DiffuseColor.G, &Material.Phong.DiffuseColor.B);
+        continue;
       }
-      else
+      else if((Line[Offset] == 'K') && (Line[Offset + 1] == 's'))
       {
-        Material.Phong.DiffuseMapID = Resources->RegisterTexture(Path);
+        Offset += strlen("Ks");
+        sscanf(&Line[Offset], " %f %f %f", &Material.Phong.SpecularColor.R,
+               &Material.Phong.SpecularColor.G, &Material.Phong.SpecularColor.B);
+        continue;
       }
     }
-    else if(strncmp(&Line[Offset], "map_Ns", strlen("map_Ns")) == 0)
+
+    if(Offset + 5 <= LineLength)
     {
-      Material.Phong.Flags |= PHONG_UseSpecularMap;
-
-      Offset += strlen("map_Ns");
-      while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
+      if(strncmp(&Line[Offset], "blend", strlen("blend")) == 0)
       {
-        ++Offset;
-      }
-
-      char   Path[TEXT_LINE_MAX_LENGTH];
-      size_t PathLength = strcspn(&Line[Offset], " \t\n");
-      if(PathLength >= TEXT_LINE_MAX_LENGTH)
-      {
-        printf("Path in line\n%sis too long\n", Line);
-      }
-      assert(PathLength < TEXT_LINE_MAX_LENGTH);
-
-      strncpy(Path, &Line[Offset], PathLength);
-
-      if(Resources->GetTexturePathRID(&RID, Path))
-      {
-        Material.Phong.SpecularMapID = RID;
-      }
-      else
-      {
-        Material.Phong.SpecularMapID = Resources->RegisterTexture(Path);
+        Material.Common.UseBlending = true;
+        continue;
       }
     }
-    else if(strncmp(&Line[Offset], "bump", strlen("bump")) == 0)
+
+    if(Offset + 6 <= LineLength)
     {
-      Material.Phong.Flags |= PHONG_UseNormalMap;
-
-      Offset += strlen("bump");
-      while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
+      if(strncmp(&Line[Offset], "newmtl", strlen("newmtl")) == 0)
       {
-        ++Offset;
+        assert((!LoadingMaterial) && "There can be only one material in single file!\n");
+
+        Offset += strlen("newmtl");
+        printf("Importing material%s\n", &Line[Offset]);
+        LoadingMaterial = true;
+        continue;
       }
-
-      char   Path[TEXT_LINE_MAX_LENGTH];
-      size_t PathLength = strcspn(&Line[Offset], " \t\n");
-      if(PathLength >= TEXT_LINE_MAX_LENGTH)
+      else if(strncmp(&Line[Offset], "map_Kd", strlen("map_Kd")) == 0)
       {
-        printf("Path in line\n%sis too long\n", Line);
+        Material.Phong.Flags |= PHONG_UseDiffuseMap;
+
+        Offset += strlen("map_Kd");
+        while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
+        {
+          ++Offset;
+        }
+
+        if(Offset >= LineLength)
+        {
+          printf("Line\n%s contains no path\n", Line);
+          assert(0);
+        }
+
+        char   Path[TEXT_LINE_MAX_LENGTH];
+        size_t PathLength = strcspn(&Line[Offset], " \t\n");
+        if(PathLength >= TEXT_LINE_MAX_LENGTH)
+        {
+          printf("Path in line\n%sis too long\n", Line);
+        }
+        assert(PathLength < TEXT_LINE_MAX_LENGTH);
+
+        strncpy(Path, &Line[Offset], PathLength);
+
+        if(Resources->GetTexturePathRID(&RID, Path))
+        {
+          Material.Phong.DiffuseMapID = RID;
+        }
+        else
+        {
+          Material.Phong.DiffuseMapID = Resources->RegisterTexture(Path);
+        }
+        continue;
       }
-      assert(PathLength < TEXT_LINE_MAX_LENGTH);
-
-      strncpy(Path, &Line[Offset], PathLength);
-
-      if(Resources->GetTexturePathRID(&RID, Path))
+      else if(strncmp(&Line[Offset], "map_Ns", strlen("map_Ns")) == 0)
       {
-        Material.Phong.NormalMapID = RID;
-      }
-      else
-      {
-        Material.Phong.NormalMapID = Resources->RegisterTexture(Path);
+        Material.Phong.Flags |= PHONG_UseSpecularMap;
+
+        Offset += strlen("map_Ns");
+        while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
+        {
+          ++Offset;
+        }
+
+        if(Offset >= LineLength)
+        {
+          printf("Line\n%s contains no path\n", Line);
+          assert(0);
+        }
+
+        char   Path[TEXT_LINE_MAX_LENGTH];
+        size_t PathLength = strcspn(&Line[Offset], " \t\n");
+        if(PathLength >= TEXT_LINE_MAX_LENGTH)
+        {
+          printf("Path in line\n%sis too long\n", Line);
+        }
+        assert(PathLength < TEXT_LINE_MAX_LENGTH);
+
+        strncpy(Path, &Line[Offset], PathLength);
+
+        if(Resources->GetTexturePathRID(&RID, Path))
+        {
+          Material.Phong.SpecularMapID = RID;
+        }
+        else
+        {
+          Material.Phong.SpecularMapID = Resources->RegisterTexture(Path);
+        }
+        continue;
       }
     }
-    else if(strncmp(&Line[Offset], "skeletal", strlen("skeletal")) == 0)
+
+    if(Offset + 7 <= LineLength)
     {
-      Material.Common.IsSkeletal = true;
-      Material.Phong.Flags |= PHONG_UseSkeleton;
+      if(strncmp(&Line[Offset], "skeletal", strlen("skeletal")) == 0)
+      {
+        Material.Common.IsSkeletal = true;
+        Material.Phong.Flags |= PHONG_UseSkeleton;
+        continue;
+      }
     }
-    else if(strncmp(&Line[Offset], "blend", strlen("blend")) == 0)
+
+    if(Offset + 9 <= LineLength)
     {
-      Material.Common.UseBlending = true;
+      if(strncmp(&Line[Offset], "map_normal", strlen("map_normal")) == 0)
+      {
+        Material.Phong.Flags |= PHONG_UseNormalMap;
+
+        Offset += strlen("map_normal");
+        while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
+        {
+          ++Offset;
+        }
+
+        if(Offset >= LineLength)
+        {
+          printf("Line\n%s contains no path\n", Line);
+          assert(0);
+        }
+
+        char   Path[TEXT_LINE_MAX_LENGTH];
+        size_t PathLength = strcspn(&Line[Offset], " \t\n");
+        if(PathLength >= TEXT_LINE_MAX_LENGTH)
+        {
+          printf("Path in line\n%sis too long\n", Line);
+        }
+        assert(PathLength < TEXT_LINE_MAX_LENGTH);
+
+        strncpy(Path, &Line[Offset], PathLength);
+
+        if(Resources->GetTexturePathRID(&RID, Path))
+        {
+          Material.Phong.NormalMapID = RID;
+        }
+        else
+        {
+          Material.Phong.NormalMapID = Resources->RegisterTexture(Path);
+        }
+      }
+      continue;
     }
 
     free(Line);
@@ -169,6 +226,8 @@ ImportMaterial(Resource::resource_manager* Resources, const char* Path)
   }
 
   fclose(FilePointer);
+
+  printf("Material %s loaded.\n", Path);
 
   return Material;
 }
@@ -213,7 +272,7 @@ ExportMaterials(material* Materials, int32_t MaterialCount, const char* Director
       }
       if(Materials[i].Phong.Flags & PHONG_UseNormalMap)
       {
-        fprintf(FilePointer, "\tbump %s\n", "Path");
+        fprintf(FilePointer, "\tmap_normal %s\n", "Path");
       }
     }
     else if(Materials[i].Common.ShaderType == SHADER_Color)
