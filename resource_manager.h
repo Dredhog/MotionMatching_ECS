@@ -80,6 +80,11 @@ namespace Resource
     rid RegisterAnimation(const char* Path);
     rid RegisterMaterial(const char* Path);
 
+    bool DeleteModel(rid RID);
+    bool DeleteTexture(rid RID);
+    bool DeleteAnimation(rid RID);
+    bool DeleteMaterial(rid RID);
+
     rid CreateMaterial(material Material, const char* Path);
 
     bool AsociateModel(rid RID, char* Path);

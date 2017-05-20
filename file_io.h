@@ -13,4 +13,4 @@ struct debug_read_file_result
 uint32_t SafeTruncateUint64(uint64_t Value);
 
 debug_read_file_result ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName);
-bool WriteEntireFile(char* Filename, uint64_t MemorySize, void* Memory);
+bool WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory);

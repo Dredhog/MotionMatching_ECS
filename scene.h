@@ -14,18 +14,21 @@ struct scene
   int32_t                     AnimControllerCount;
   Anim::animation_controller* AnimControllers;
 
-  // Resource mappings
   int32_t ModelCount;
-  rid*    ModelIDs;
-  path*   ModelPaths;
-
-  int32_t MaterialCount;
-  rid*    MaterialIDs;
-  path*   MaterialPaths;
+  rid*    ModelID;
+  path    ModelPaths;
 
   int32_t AnimationCount;
-  rid*    AnimationIDs;
-  path*   AnimationPaths;
+  rid*    AnimationID;
+  path    AnimationPaths;
+
+  int32_t MaterialCount;
+  rid*    MaterialID;
+  path    MaterialPaths;
+
+  int32_t TextureCount;
+  rid*    TextureID;
+  path    TexturePaths;
 };
 
 void ExportScene(game_state* GameState, const char* path);

@@ -5,14 +5,16 @@ namespace Resource
   template<typename T, int MAX_PATH_COUNT>
   class resource_hash_table // Disregard the current implementation (currently array)
   {
-    path Paths[MAX_PATH_COUNT];
-    T    Assets[MAX_PATH_COUNT];
+    int32_t PairCount;
+    path    Paths[MAX_PATH_COUNT];
+    T       Assets[MAX_PATH_COUNT];
 
   public:
     void
     Set(rid RID, const T Asset, const char* Path)
     {
       assert(0 < RID.Value && RID.Value <= TEXT_LINE_MAX_LENGTH);
+      assert(Path);
 
       this->Assets[RID.Value - 1] = Asset;
 
@@ -24,6 +26,10 @@ namespace Resource
       }
       else
       {
+        if(!this->Paths[RID.Value - 1].Name[0])
+        {
+          this->PairCount++;
+        }
         this->Paths[RID.Value - 1] = {};
       }
     }

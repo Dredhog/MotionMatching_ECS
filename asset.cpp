@@ -1,7 +1,5 @@
 #include "asset.h"
 
-#define ASSET_HEADER_CHECKSUM 123456
-
 #include "file_io.h"
 
 void

@@ -162,12 +162,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //---------------------END INIT -------------------------
 
   GameState->Resources.UpdateHardDriveAssetPathLists();
+  if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
+  {
+    GameState->CurrentMaterialID = {};
+  }
   if(GameState->CurrentMaterialID.Value <= 0)
   {
     if(GameState->Resources.MaterialPathCount > 0)
     {
       GameState->CurrentMaterialID =
         GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[0].Name);
+    }
+    else
+    {
+      material TempMaterial = NewPhongMaterial();
+      ExportMaterial(&GameState->Resources, &TempMaterial, "data/materials/", "default");
+      GameState->CurrentMaterialID =
+        GameState->Resources.RegisterMaterial("data/materials/default.mat");
     }
   }
 

@@ -9,6 +9,8 @@
 #include "stack_allocator.h"
 #include "render_data.h"
 
+#define ASSET_HEADER_CHECKSUM 123456
+
 namespace Asset
 {
   enum asset_type
@@ -16,6 +18,7 @@ namespace Asset
     ASSET_Model,
     ASSET_Actor,
     ASSET_AnimationGroup,
+    ASSET_Scene,
   };
 
   struct asset_file_header

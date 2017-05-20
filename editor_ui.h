@@ -4,6 +4,7 @@
 #include "render_data.h"
 #include "skeleton.h"
 #include "time.h"
+#include "scene.h"
 
 #include <limits>
 
@@ -64,6 +65,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   static bool g_ShowCameraSettings  = false;
   static bool g_ShowLightSettings   = false;
   static bool g_ShowGUISettings     = false;
+  static bool g_ShowSceneSettings   = false;
 
   UI::im_layout Layout = UI::NewLayout({ StartX, StartY }, LayoutWidth, RowHeight, SliderWidth);
 
@@ -622,6 +624,24 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::SliderVec3Color(GameState, &Layout, Input, "Description bg", (vec3*)&g_DescriptionColor);
     UI::SliderVec3Color(GameState, &Layout, Input, "Font", (vec3*)&g_FontColor);
   }
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Scene     ", &g_ShowSceneSettings))
+  {
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Export Scene"))
+    {
+      ExportScene(GameState, "data/scenes/fist_scene_export.scene");
+    }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Scene"))
+    {
+      ImportScene(GameState, "data/scenes/fist_scene_export.scene");
+    }
+  }
+  char FrameRateString[20];
+  sprintf(FrameRateString, "%.2f ms", (double)Input->dt * 1000.0);
+  UI::Row(&Layout);
+  UI::ReleaseButton(GameState, &Layout, Input, FrameRateString);
 }
 
 void

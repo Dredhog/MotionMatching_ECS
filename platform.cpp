@@ -5,6 +5,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 
 // Memory
 #include <sys/mman.h>
@@ -551,10 +552,15 @@ main(int argc, char* argv[])
   SDL_PauseAudioDevice(AudioDevice, 0);
   SoundOutput.RunningSampleIndex = AudioRingBuffer.WriteCursor / SoundOutput.BytesPerSample;
 
+  struct timespec LastFrameStart;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &LastFrameStart);
   // Main loop
   // TODO(Rytis): Clean up audio preparation and computation code
   while(true)
   {
+    struct timespec CurrentFrameStart;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &CurrentFrameStart);
+
     //---------INPUT MANAGEMENT
     ProcessInput(&OldInput, &NewInput, &Event);
     if(NewInput.Escape.EndedDown)
@@ -614,7 +620,10 @@ main(int argc, char* argv[])
     SoundBuffer.Samples          = Samples;
     // Audio computation done
 
-    NewInput.dt = 0.001f * (float)FRAME_TIME_MS;
+    NewInput.dt =
+      (float)((((double)CurrentFrameStart.tv_sec - (double)LastFrameStart.tv_sec) * 1e9 +
+               (double)CurrentFrameStart.tv_nsec - (double)LastFrameStart.tv_nsec) /
+              1e9);
     if(NewInput.LeftCtrl.EndedDown)
     {
       NewInput.dt *= SLOW_MOTION_COEFFICIENT;
@@ -628,9 +637,12 @@ main(int argc, char* argv[])
     SDL_UnlockAudioDevice(AudioDevice);
 
     SDL_GL_SwapWindow(Window);
-    SDL_Delay(FRAME_TIME_MS);
 
-    OldInput = NewInput;
+    int DelayTime = FRAME_TIME_MS - 1;
+    SDL_Delay(DelayTime);
+
+    OldInput       = NewInput;
+    LastFrameStart = CurrentFrameStart;
   }
 
   SDL_CloseAudioDevice(AudioDevice);

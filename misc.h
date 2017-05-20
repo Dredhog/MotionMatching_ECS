@@ -21,6 +21,7 @@ MinFloat(float A, float B)
   }
   return B;
 }
+
 inline float
 ClampFloat(float Min, float T, float Max)
 {
