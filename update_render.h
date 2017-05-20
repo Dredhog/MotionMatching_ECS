@@ -85,7 +85,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // END SEGMENTATION
 
     // --------LOAD MODELS/ACTORS--------
-    GameState->Resources.UpdateHardDriveDisplay();
+    GameState->Resources.UpdateHardDriveAssetPathLists();
 
     GameState->GizmoModelID = GameState->Resources.RegisterModel("./data/built/gizmo1.model");
     GameState->QuadModelID  = GameState->Resources.RegisterModel("./data/built/debug_meshes.model");
@@ -110,7 +110,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShaderID =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/id");
     //------------LOAD TEXTURES-----------
-		//
+    //
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
@@ -183,9 +183,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
   //---------------------END INIT -------------------------
-
-  //----------------------UPDATE------------------------
-  UpdateCamera(&GameState->Camera, Input);
 
   if(Input->IsMouseInEditorMode)
   {
@@ -297,6 +294,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
     }
   }
+
+  //----------------------UPDATE------------------------
+  UpdateCamera(&GameState->Camera, Input);
 
   // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)
@@ -589,5 +589,5 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   Debug::DrawColoredQuads(GameState);
   Debug::DrawTexturedQuads(GameState);
   Text::ClearTextRequestCounts();
-  GameState->Resources.UpdateHardDriveDisplay();
+  GameState->Resources.UpdateHardDriveAssetPathLists();
 }

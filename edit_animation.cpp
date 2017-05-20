@@ -312,7 +312,7 @@ EditAnimation::EditAnimation(animation_editor* Editor, const Anim::animation* An
   memset(Editor->HierarchicalModelSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);
   Editor->ClipboardKeyframe = {};
   Editor->KeyframeCount     = Animation->KeyframeCount;
-  Editor->PlayHeadTime      = 1.0f;
+  Editor->PlayHeadTime      = 0;
   Editor->CurrentKeyframe   = 0;
   Editor->CurrentBone       = 0;
 }

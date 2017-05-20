@@ -500,7 +500,7 @@ main(int argc, char* argv[])
   game_memory GameMemory;
   {
     GameMemory.TemporaryMemorySize  = Mibibytes(50);
-    GameMemory.PersistentMemorySize = Mibibytes(150);
+    GameMemory.PersistentMemorySize = Mibibytes(300);
 
     GameMemory.TemporaryMemory  = malloc(GameMemory.TemporaryMemorySize);
     GameMemory.PersistentMemory = malloc(GameMemory.PersistentMemorySize);

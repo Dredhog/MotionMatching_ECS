@@ -175,6 +175,7 @@ AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor*
   {
     Render::model* Model = GameState->Resources.GetModel(AddedEntity->ModelID);
     assert(Model->Skeleton);
+    *Editor             = {};
     Editor->Skeleton    = Model->Skeleton;
     Editor->Transform   = &AddedEntity->Transform;
     Editor->EntityIndex = EntityIndex;

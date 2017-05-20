@@ -356,11 +356,13 @@ namespace Resource
   }
 
   void
-  resource_manager::UpdateHardDriveDisplay()
+  resource_manager::UpdateHardDriveAssetPathLists()
   {
     // Update models paths
     int DiffCount = ReadPaths(this->DiffedAssets, this->ModelPaths, this->ModelStats,
                               &this->ModelPathCount, "data/built", NULL);
+#define LOG_HARD_DRIVE_CHANGES 0
+#if LOG_HARD_DRIVE_CHANGES
     if(DiffCount > 0)
     {
       printf("DIFF COUNT: %d\n", DiffCount);
@@ -384,10 +386,12 @@ namespace Resource
         printf("%s\n", DiffedAssets[i].Path.Name);
       }
     }
+#endif
 
     // Update texture paths
     DiffCount = ReadPaths(this->DiffedAssets, this->TexturePaths, this->TextureStats,
                           &this->TexturePathCount, "data/textures", NULL);
+#if LOG_HARD_DRIVE_CHANGES
     if(DiffCount > 0)
     {
       printf("DIFF COUNT: %d\n", DiffCount);
@@ -411,10 +415,12 @@ namespace Resource
         printf("%s\n", DiffedAssets[i].Path.Name);
       }
     }
+#endif
 
     // Update animation paths
     DiffCount = ReadPaths(this->DiffedAssets, this->AnimationPaths, this->AnimationStats,
                           &this->AnimationPathCount, "data/animations", "anim");
+#if LOG_HARD_DRIVE_CHANGES
     if(DiffCount > 0)
     {
       printf("DIFF COUNT: %d\n", DiffCount);
@@ -438,6 +444,8 @@ namespace Resource
         printf("%s\n", DiffedAssets[i].Path.Name);
       }
     }
+#endif
+#undef LOG_HARD_DRIVE_CHANGES
   }
 }
 

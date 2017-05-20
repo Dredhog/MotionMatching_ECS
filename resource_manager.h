@@ -98,6 +98,6 @@ namespace Resource
     Render::model*   GetModel(rid RID);
     uint32_t         GetTexture(rid RID);
     Anim::animation* GetAnimation(rid RID);
-    void             UpdateHardDriveDisplay();
+    void             UpdateHardDriveAssetPathLists();
   };
 }
