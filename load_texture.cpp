@@ -11,6 +11,7 @@ namespace Texture
     SDL_Surface* ImageSurface = IMG_Load(FileName);
     if(ImageSurface)
     {
+      printf("image: %s loaded succesfully\n", FileName);
       SDL_Surface* DestSurface =
         SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ABGR8888, 0);
       free(ImageSurface);
@@ -31,7 +32,7 @@ namespace Texture
     else
     {
       printf("Platform: texture load from image error: %s\n", SDL_GetError());
-      return 0;
+      assert(0);
     }
   }
 

@@ -1,5 +1,6 @@
 #include "resource_manager.h"
 #include "file_io.h"
+#include "material_io.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -172,6 +173,48 @@ namespace Resource
   }
 
   bool
+  resource_manager::LoadMaterial(rid RID)
+  {
+    material* Material;
+    char*     Path;
+    if(this->Materials.Get(RID, (void**)&Material, &Path))
+    {
+      if(Material)
+      {
+        assert(0 && "Reloading material");
+      }
+      else
+      {
+        Material  = PushStruct(&this->MaterialStack, material);
+        *Material = ImportMaterial(this, Path);
+        this->Materials.Set(RID, Material, Path);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  rid
+  resource_manager::CreateMaterial(material Material, const char* Name)
+  {
+    path FinalPath = {};
+    if(!Name)
+    {
+      time_t     current_time;
+      struct tm* time_info;
+      char       MaterialName[30];
+      time(&current_time);
+      time_info = localtime(&current_time);
+      strftime(MaterialName, sizeof(MaterialName), "%H_%M_%S", time_info);
+      ExportMaterial(&Material, "data/materials/", MaterialName);
+      strftime(FinalPath.Name, sizeof(FinalPath.Name), "data/materials/%H_%M_%S.mat", time_info);
+    }
+
+    rid RID = this->RegisterMaterial(FinalPath.Name);
+    return RID;
+  }
+
+  bool
   resource_manager::GetModelPathRID(rid* RID, const char* Path)
   {
     return this->Models.GetPathRID(RID, Path);
@@ -187,6 +230,12 @@ namespace Resource
   resource_manager::GetAnimationPathRID(rid* RID, const char* Path)
   {
     return this->Animations.GetPathRID(RID, Path);
+  }
+
+  bool
+  resource_manager::GetMaterialPathRID(rid* RID, const char* Path)
+  {
+    return this->Materials.GetPathRID(RID, Path);
   }
 
   rid
@@ -219,6 +268,17 @@ namespace Resource
     assert(this->Animations.NewRID(&RID));
     this->Animations.Set(RID, NULL, Path);
     printf("registered animation: rid %d, %s\n", RID.Value, Path);
+    return RID;
+  }
+
+  rid
+  resource_manager::RegisterMaterial(const char* Path)
+  {
+    assert(Path);
+    rid RID;
+    assert(this->Materials.NewRID(&RID));
+    this->Materials.Set(RID, NULL, Path);
+    printf("registered material: rid %d, %s\n", RID.Value, Path);
     return RID;
   }
 
@@ -267,7 +327,9 @@ namespace Resource
         }
         else
         {
-          return 0; // Should be default model here
+          // Should be default model here
+          printf("model: %s not found!", Path);
+          assert(0 && "model not found");
         }
       }
     }
@@ -299,13 +361,55 @@ namespace Resource
         if(this->LoadAnimation(RID))
         {
           this->Animations.Get(RID, (void**)&Animation, &Path);
-          printf("loaded model: rid %d, %s\n", RID.Value, Path);
+          printf("loaded animation: rid %d, %s\n", RID.Value, Path);
           assert(Animation);
           return Animation;
         }
         else
         {
-          return 0; // Should be default model here
+          // Should be default animation here
+          printf("animation: %s not found!", Path);
+          assert(0 && "animation not found");
+        }
+      }
+    }
+    else
+    {
+      assert(0 && "Invalid rid");
+    }
+    assert(0 && "Invalid codepath");
+  }
+
+  material*
+  resource_manager::GetMaterial(rid RID)
+  {
+    assert(0 < RID.Value && RID.Value <= RESOURCE_MANAGER_RESOURCE_CAPACITY);
+    material* Material;
+    char*     Path;
+    if(this->Materials.Get(RID, (void**)&Material, &Path))
+    {
+      if(strcmp(Path, "") == 0)
+      {
+        assert(0 && "assert: No path associated with rid");
+      }
+      else if(Material)
+      {
+        return Material;
+      }
+      else
+      {
+        if(this->LoadMaterial(RID))
+        {
+          this->Materials.Get(RID, (void**)&Material, &Path);
+          printf("loaded material: rid %d, %s\n", RID.Value, Path);
+          assert(Material);
+          return Material;
+        }
+        else
+        {
+          // Should be default material here
+          printf("material: %s not found!", Path);
+          assert(0 && "material not found");
         }
       }
     }
@@ -335,6 +439,7 @@ namespace Resource
       }
       else
       {
+        printf("getting texture: rid %d, %s\n", RID.Value, Path);
         if(this->LoadTexture(RID))
         {
           this->Textures.Get(RID, (void**)&TextureID, &Path);
@@ -344,6 +449,8 @@ namespace Resource
         }
         else
         {
+          printf("UNABLE TO LOAD: %s\n", Path);
+          assert(0 && "failed to load texture");
           return -1; // Should be default model here
         }
       }
@@ -355,71 +462,39 @@ namespace Resource
     assert(0 && "assert: invalid codepath");
   }
 
+  int32_t
+  resource_manager::GetTexturePathIndex(rid RID)
+  {
+    char* Path = {};
+    this->Textures.Get(RID, 0, &Path);
+    assert(this->Textures.GetPathRID(&RID, Path));
+    for(int i = 0; i < this->TexturePathCount; i++)
+    {
+      if(strcmp(this->TexturePaths[i].Name, Path) == 0)
+      {
+        return i;
+      }
+    }
+    assert(0 && "texture path not found");
+    return -1;
+  }
+
   void
   resource_manager::UpdateHardDriveAssetPathLists()
   {
     // Update models paths
     int DiffCount = ReadPaths(this->DiffedAssets, this->ModelPaths, this->ModelStats,
                               &this->ModelPathCount, "data/built", NULL);
-#define LOG_HARD_DRIVE_CHANGES 0
-#if LOG_HARD_DRIVE_CHANGES
-    if(DiffCount > 0)
-    {
-      printf("DIFF COUNT: %d\n", DiffCount);
-      for(int i = 0; i < DiffCount; i++)
-      {
-        switch(this->DiffedAssets[i].Type)
-        {
-          case DIFF_Added:
-            printf("Added: ");
-            break;
-          case DIFF_Modified:
-            printf("Modified: ");
-            break;
-          case DIFF_Deleted:
-            printf("Deleted: ");
-            break;
-          default:
-            assert(0 && "assert: overflowed stat enum");
-            break;
-        }
-        printf("%s\n", DiffedAssets[i].Path.Name);
-      }
-    }
-#endif
-
     // Update texture paths
     DiffCount = ReadPaths(this->DiffedAssets, this->TexturePaths, this->TextureStats,
                           &this->TexturePathCount, "data/textures", NULL);
-#if LOG_HARD_DRIVE_CHANGES
-    if(DiffCount > 0)
-    {
-      printf("DIFF COUNT: %d\n", DiffCount);
-      for(int i = 0; i < DiffCount; i++)
-      {
-        switch(this->DiffedAssets[i].Type)
-        {
-          case DIFF_Added:
-            printf("Added: ");
-            break;
-          case DIFF_Modified:
-            printf("Modified: ");
-            break;
-          case DIFF_Deleted:
-            printf("Deleted: ");
-            break;
-          default:
-            assert(0 && "assert: overflowed stat enum");
-            break;
-        }
-        printf("%s\n", DiffedAssets[i].Path.Name);
-      }
-    }
-#endif
-
     // Update animation paths
     DiffCount = ReadPaths(this->DiffedAssets, this->AnimationPaths, this->AnimationStats,
                           &this->AnimationPathCount, "data/animations", "anim");
+    // Update material paths
+    DiffCount = ReadPaths(this->DiffedAssets, this->MaterialPaths, this->MaterialStats,
+                          &this->MaterialPathCount, "data/materials", "mat");
+#define LOG_HARD_DRIVE_CHANGES 0
 #if LOG_HARD_DRIVE_CHANGES
     if(DiffCount > 0)
     {

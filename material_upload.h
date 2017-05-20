@@ -74,14 +74,6 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
   }
   return -1;
 }
-
-uint32_t
-SetMaterial(game_state* GameState, camera* Camera, int32_t MaterialIndex)
-{
-  assert(0 <= MaterialIndex && MaterialIndex < GameState->R.MaterialCount);
-  return SetMaterial(GameState, Camera, &GameState->R.Materials[MaterialIndex]);
-}
-
 #if 0
 void
 SetUpCubemapShader(render_data* RenderData)

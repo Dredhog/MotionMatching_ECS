@@ -41,14 +41,14 @@ GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
 }
 
 void
-AddEntity(game_state* GameState, rid ModelID, int32_t* MaterialIndices, Anim::transform Transform)
+AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform)
 {
   assert(0 <= GameState->EntityCount && GameState->EntityCount < ENTITY_MAX_COUNT);
 
-  entity NewEntity          = {};
-  NewEntity.ModelID         = ModelID;
-  NewEntity.MaterialIndices = MaterialIndices;
-  NewEntity.Transform       = Transform;
+  entity NewEntity      = {};
+  NewEntity.ModelID     = ModelID;
+  NewEntity.MaterialIDs = MaterialIDs;
+  NewEntity.Transform   = Transform;
 
   GameState->Entities[GameState->EntityCount++] = NewEntity;
 }
@@ -70,18 +70,22 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameMemory.PersistentMemorySize > sizeof(game_state));
 
     uint32_t AvailableSubsystemMemory = GameMemory.PersistentMemorySize - sizeof(game_state);
-    uint32_t PersistentStackSize      = (uint32_t)((float)AvailableSubsystemMemory * 0.25f);
-    uint32_t ModelStackSize           = (uint32_t)((float)AvailableSubsystemMemory * 0.5f);
-    uint32_t AnimationStackSize = AvailableSubsystemMemory - PersistentStackSize - ModelStackSize;
+    uint32_t PersistentStackSize      = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
+    uint32_t ModelStackSize           = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
+    uint32_t AnimationStackSize       = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
+    uint32_t MaterialStackSize =
+      AvailableSubsystemMemory - PersistentStackSize - ModelStackSize - AnimationStackSize;
 
     uint8_t* PersistentStackStart = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
     uint8_t* ModelStackStart      = PersistentStackStart + PersistentStackSize;
     uint8_t* AnimationStackStart  = ModelStackStart + ModelStackSize;
+    uint8_t* MaterialStackStart   = AnimationStackStart + AnimationStackSize;
 
     GameState->PersistentMemStack =
       Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
     GameState->Resources.ModelStack.Create(ModelStackStart, ModelStackSize);
     GameState->Resources.AnimationStack.Create(AnimationStackStart, AnimationStackSize);
+    GameState->Resources.MaterialStack.Create(MaterialStackStart, MaterialStackSize);
     // END SEGMENTATION
 
     // --------LOAD MODELS/ACTORS--------
@@ -179,7 +183,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->EditorBoneRotationSpeed = 45.0f;
 
     {
-      AddMaterial(&GameState->R, NewPhongMaterial());
+      // AddMaterial(&GameState->R, NewPhongMaterial());
     }
   }
   //---------------------END INIT -------------------------
@@ -280,17 +284,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         NewTransform.Scale           = { 1, 1, 1 };
 
         Render::model* Model = GameState->Resources.GetModel(GameState->CurrentModelID);
-        int32_t*       MaterialIndices =
-          PushArray(GameState->PersistentMemStack, Model->MeshCount, int32_t);
-        if(0 <= GameState->CurrentMaterialIndex &&
-           GameState->CurrentMaterialIndex < MATERIAL_MAX_COUNT)
+        rid* MaterialIDs     = PushArray(GameState->PersistentMemStack, Model->MeshCount, rid);
+        if(GameState->CurrentMaterialID.Value > 0)
         {
           for(int m = 0; m < Model->MeshCount; m++)
           {
-            MaterialIndices[m] = GameState->CurrentMaterialIndex;
+            MaterialIDs[m] = GameState->CurrentMaterialID;
           }
         }
-        AddEntity(GameState, GameState->CurrentModelID, MaterialIndices, NewTransform);
+        AddEntity(GameState, GameState->CurrentModelID, MaterialIDs, NewTransform);
       }
     }
   }
@@ -438,7 +440,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       mesh_instance MeshInstance = {};
       MeshInstance.Mesh          = CurrentModel->Meshes[m];
-      MeshInstance.Material    = &GameState->R.Materials[GameState->Entities[e].MaterialIndices[m]];
+      MeshInstance.Material =
+        GameState->Resources.GetMaterial(GameState->Entities[e].MaterialIDs[m]);
       MeshInstance.EntityIndex = e;
       AddMeshInstance(&GameState->R, MeshInstance);
     }
@@ -554,8 +557,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   // Draw material preview to texture
+  if(GameState->CurrentMaterialID.Value > 0)
   {
-    material* PreviewMaterial = &GameState->R.Materials[GameState->CurrentMaterialIndex];
+    material* PreviewMaterial = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
     glClearColor(0.7f, 0.7f, 0.7f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

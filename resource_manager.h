@@ -61,43 +61,58 @@ namespace Resource
     struct stat ModelStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     struct stat TextureStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     struct stat AnimationStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    struct stat MaterialStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
 
     resource_hash_table Models;
     resource_hash_table Textures;
     resource_hash_table Animations;
+    resource_hash_table Materials;
 
   public:
     path    ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     path    TexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     path    AnimationPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    path    MaterialPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     int32_t ModelPathCount;
     int32_t TexturePathCount;
     int32_t AnimationPathCount;
+    int32_t MaterialPathCount;
 
     Memory::stack_allocator ModelStack;
     Memory::stack_allocator AnimationStack;
+    Memory::stack_allocator MaterialStack;
 
   private:
     bool LoadModel(rid RID);
     bool LoadTexture(rid RID);
     bool LoadAnimation(rid RID);
+    bool LoadMaterial(rid RID);
 
   public:
     rid RegisterModel(const char* Path);
     rid RegisterTexture(const char* Path);
     rid RegisterAnimation(const char* Path);
+    rid RegisterMaterial(const char* Path);
+
+    rid CreateMaterial(material Material, const char* Path);
 
     bool AsociateModel(rid RID, char* Path);
     bool AsociateTexture(rid RID, char* Path);
     bool AsociateAnimation(rid RID, char* Path);
+    bool AsociateMaterial(rid RID, char* Path);
 
     bool GetModelPathRID(rid* RID, const char* Path);
     bool GetTexturePathRID(rid* RID, const char* Path);
     bool GetAnimationPathRID(rid* RID, const char* Path);
+    bool GetMaterialPathRID(rid* RID, const char* Path);
+
+		int32_t GetTexturePathIndex(rid RID);
 
     Render::model*   GetModel(rid RID);
     uint32_t         GetTexture(rid RID);
     Anim::animation* GetAnimation(rid RID);
-    void             UpdateHardDriveAssetPathLists();
+    material*        GetMaterial(rid RID);
+
+    void UpdateHardDriveAssetPathLists();
   };
 }

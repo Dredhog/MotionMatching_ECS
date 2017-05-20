@@ -11,8 +11,8 @@ struct rid
 struct entity
 {
   Anim::transform Transform;
-	rid             ModelID;
-  int32_t*        MaterialIndices;
+  rid             ModelID;
+  rid*            MaterialIDs;
 
   Anim::animation_controller* AnimController;
 };

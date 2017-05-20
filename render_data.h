@@ -55,9 +55,6 @@ struct mesh_instance
 
 struct render_data
 {
-  // Materials
-  material      Materials[MATERIAL_MAX_COUNT];
-  int32_t       MaterialCount;
   mesh_instance MeshInstances[MESH_INSTANCE_MAX_COUNT]; // Filled every frame
   int32_t       MeshInstanceCount;
 
@@ -82,12 +79,12 @@ struct render_data
 inline material
 NewPhongMaterial()
 {
-  material Material           = {};
-  Material.Common.ShaderType  = SHADER_Phong;
-  Material.Phong.AmbientColor = { 0.5f, 0.5f, 0.5f, 1.0f };
-  Material.Phong.DiffuseColor = { 0.5f, 0.5f, 0.5f, 1.0f };
+  material Material            = {};
+  Material.Common.ShaderType   = SHADER_Phong;
+  Material.Phong.AmbientColor  = { 0.5f, 0.5f, 0.5f, 1.0f };
+  Material.Phong.DiffuseColor  = { 0.5f, 0.5f, 0.5f, 1.0f };
   Material.Phong.SpecularColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-  Material.Phong.Shininess    = 60.0f;
+  Material.Phong.Shininess     = 60.0f;
   return Material;
 }
 
@@ -99,16 +96,6 @@ NewColorMaterial()
   Material.Common.UseBlending = true;
   Material.Color.Color        = vec4{ 1, 1, 0, 1 };
   return Material;
-}
-
-inline int32_t
-AddMaterial(render_data* RenderData, material Material)
-{
-  assert(0 <= RenderData->MaterialCount && RenderData->MaterialCount < MATERIAL_MAX_COUNT);
-  int32_t LastMaterialIndex = RenderData->MaterialCount;
-
-  RenderData->Materials[RenderData->MaterialCount++] = Material;
-  return LastMaterialIndex;
 }
 
 inline void
