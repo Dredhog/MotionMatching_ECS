@@ -44,7 +44,6 @@ union material {
 };
 
 const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
-const int32_t MATERIAL_MAX_COUNT      = 20;
 
 struct mesh_instance
 {

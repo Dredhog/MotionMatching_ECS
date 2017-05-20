@@ -71,6 +71,12 @@ ImportMaterial(Resource::resource_manager* Resources, const char* Path)
                &Material.Phong.SpecularColor.G, &Material.Phong.SpecularColor.B);
         continue;
       }
+      else if(Line[Offset] == 'd')
+      {
+        Offset += strlen("d");
+        sscanf(&Line[Offset], " %f", &Material.Phong.DiffuseColor.A);
+        continue;
+      }
     }
 
     if(Offset + 5 <= LineLength)
@@ -229,7 +235,8 @@ ImportMaterial(Resource::resource_manager* Resources, const char* Path)
 }
 
 void
-ExportMaterial(const material* Material, const char* Directory, const char* Name)
+ExportMaterial(Resource::resource_manager* ResourceManager, const material* Material,
+               const char* Directory, const char* Name)
 {
   assert(Directory && Name);
   char FileName[30];
@@ -259,15 +266,24 @@ ExportMaterial(const material* Material, const char* Directory, const char* Name
     }
     if(Material->Phong.Flags & PHONG_UseDiffuseMap)
     {
-      fprintf(FilePointer, "\tmap_Kd %s\n", "Path");
+      fprintf(FilePointer, "\tmap_Kd %s\n",
+              ResourceManager
+                ->TexturePaths[ResourceManager->GetTexturePathIndex(Material->Phong.DiffuseMapID)]
+                .Name);
     }
     if(Material->Phong.Flags & PHONG_UseSpecularMap)
     {
-      fprintf(FilePointer, "\tmap_Ns %s\n", "Path");
+      fprintf(FilePointer, "\tmap_Ns %s\n",
+              ResourceManager
+                ->TexturePaths[ResourceManager->GetTexturePathIndex(Material->Phong.SpecularMapID)]
+                .Name);
     }
     if(Material->Phong.Flags & PHONG_UseNormalMap)
     {
-      fprintf(FilePointer, "\tmap_normal %s\n", "Path");
+      fprintf(FilePointer, "\tmap_normal %s\n",
+              ResourceManager
+                ->TexturePaths[ResourceManager->GetTexturePathIndex(Material->Phong.NormalMapID)]
+                .Name);
     }
   }
   else if(Material->Common.ShaderType == SHADER_Color)

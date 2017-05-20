@@ -42,47 +42,9 @@ MaterialPathToCharPtr(void* CharArray)
 }
 
 char*
-ElementToBoneName(void* Bone)
+BonePtrToCharPtr(void* Bone)
 {
   return ((Anim::bone*)Bone)->Name;
-}
-
-namespace UI
-{
-  void SliderTransform(game_state* GameState, im_layout* Layout, const char* Text = 0);
-  void
-  SliderVec3(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
-             vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY,
-             float ValueScreenDelta = 10.0f)
-  {
-    UI::Row(GameState, Layout, 3, Text);
-    UI::SliderFloat(GameState, Layout, Input, "x", &VecPtr->X, Min, Max, ValueScreenDelta);
-    UI::SliderFloat(GameState, Layout, Input, "y", &VecPtr->Y, Min, Max, ValueScreenDelta);
-    UI::SliderFloat(GameState, Layout, Input, "z", &VecPtr->Z, Min, Max, ValueScreenDelta);
-  }
-
-  void
-  SliderVec3Color(game_state* GameState, im_layout* Layout, const game_input* Input,
-                  const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f,
-                  float ValueScreenDelta = 3.0f)
-  {
-    UI::Row(GameState, Layout, 3, Text);
-    UI::SliderFloat(GameState, Layout, Input, "r", &VecPtr->R, Min, Max, ValueScreenDelta);
-    UI::SliderFloat(GameState, Layout, Input, "g", &VecPtr->G, Min, Max, ValueScreenDelta);
-    UI::SliderFloat(GameState, Layout, Input, "b", &VecPtr->B, Min, Max, ValueScreenDelta);
-  }
-
-  void
-  SliderVec4Color(game_state* GameState, im_layout* Layout, const game_input* Input,
-                  const char* Text, vec4* VecPtr, float Min = 0.0f, float Max = 1.0f,
-                  float ValueScreenDelta = 3.0f)
-  {
-    UI::Row(GameState, Layout, 4, Text);
-    UI::SliderFloat(GameState, Layout, Input, "r", &VecPtr->R, Min, Max, ValueScreenDelta);
-    UI::SliderFloat(GameState, Layout, Input, "g", &VecPtr->G, Min, Max, ValueScreenDelta);
-    UI::SliderFloat(GameState, Layout, Input, "b", &VecPtr->B, Min, Max, ValueScreenDelta);
-    UI::SliderFloat(GameState, Layout, Input, "a", &VecPtr->A, Min, Max, ValueScreenDelta);
-  }
 }
 
 void
@@ -119,23 +81,25 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         UI::ComboBox(&ActivePathIndex, GameState->Resources.MaterialPaths,
                      GameState->Resources.MaterialPathCount, GameState, &Layout, Input,
                      sizeof(path), MaterialPathToCharPtr);
-        rid NewRID = { 0 };
-        if(!GameState->Resources
-              .GetMaterialPathRID(&NewRID,
-                                  GameState->Resources.MaterialPaths[ActivePathIndex].Name))
+        if(GameState->Resources.MaterialPathCount > 0)
         {
-          NewRID = GameState->Resources.RegisterMaterial(
-            GameState->Resources.MaterialPaths[ActivePathIndex].Name);
-          GameState->CurrentMaterialID = NewRID;
-        }
-        else
-        {
-          GameState->CurrentMaterialID = NewRID;
+          rid NewRID = { 0 };
+          if(GameState->Resources
+               .GetMaterialPathRID(&NewRID,
+                                   GameState->Resources.MaterialPaths[ActivePathIndex].Name))
+          {
+            GameState->CurrentMaterialID = NewRID;
+          }
+          else
+          {
+            GameState->CurrentMaterialID = GameState->Resources.RegisterMaterial(
+              GameState->Resources.MaterialPaths[ActivePathIndex].Name);
+          }
         }
       }
       if(GameState->CurrentMaterialID.Value > 0)
       {
-
+        // Draw material preview to texture
         UI::DrawSquareTexture(GameState, &Layout, GameState->IDTexture);
 
         material* CurrentMaterial = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);
@@ -160,135 +124,171 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
             CurrentMaterial->Common.UseBlending = true;
           }
         }
-        material* Material = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);
         UI::Row(GameState, &Layout, 1, "Blending");
         UI::_BoolButton(&Layout, Input, "Toggle", &CurrentMaterial->Common.UseBlending);
-        switch(Material->Common.ShaderType)
+
+        switch(CurrentMaterial->Common.ShaderType)
         {
           case SHADER_Phong:
           {
-            SliderVec4Color(GameState, &Layout, Input, "Ambient Color",
-                            &CurrentMaterial->Phong.AmbientColor, 0.0f, 1.0f, 5.0f);
+            SliderVec3Color(GameState, &Layout, Input, "Ambient Color",
+                            &CurrentMaterial->Phong.AmbientColor.XYZ, 0.0f, 1.0f, 5.0f);
 
-            bool DiffuseFlagValue = (Material->Phong.Flags & PHONG_UseDiffuseMap);
+            bool UseDIffuse = (CurrentMaterial->Phong.Flags & PHONG_UseDiffuseMap);
 
             UI::Row(GameState, &Layout, 1, "Use Diffuse");
-            UI::_BoolButton(&Layout, Input, "Toggle", &DiffuseFlagValue);
-            if(DiffuseFlagValue)
-            {
-              Material->Phong.Flags |= PHONG_UseDiffuseMap;
+            UI::_BoolButton(&Layout, Input, "Toggle", &UseDIffuse);
 
+            if(UseDIffuse)
+            {
               UI::Row(GameState, &Layout, 1, "Diffuse Map");
               {
-                int32_t ActivePathIndex =
-                  GameState->Resources.GetTexturePathIndex(Material->Phong.DiffuseMapID);
-                UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
-                             GameState->Resources.TexturePathCount, GameState, &Layout, Input,
-                             sizeof(path), TexturePathToCharPtr);
-                rid NewRID;
 
-                if(!GameState->Resources
-                      .GetTexturePathRID(&NewRID,
-                                         GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Phong.DiffuseMapID.Value > 0)
                 {
-                  NewRID = GameState->Resources.RegisterTexture(
-                    GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.DiffuseMapID);
                 }
-                CurrentMaterial->Phong.DiffuseMapID = NewRID;
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Phong.Flags |= PHONG_UseDiffuseMap;
+
+                  UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
+                               GameState->Resources.TexturePathCount, GameState, &Layout, Input,
+                               sizeof(path), TexturePathToCharPtr);
+                  rid NewRID;
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Phong.DiffuseMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Phong.DiffuseMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Phong.DiffuseMapID.Value > 0);
+                }
               }
             }
             else
             {
-              Material->Phong.Flags &= ~PHONG_UseDiffuseMap;
+              CurrentMaterial->Phong.Flags &= ~PHONG_UseDiffuseMap;
               SliderVec4Color(GameState, &Layout, Input, "Diffuse Color",
                               &CurrentMaterial->Phong.DiffuseColor, 0.0f, 1.0f, 5.0f);
             }
 
-            bool SpecularFlagValue = Material->Phong.Flags & PHONG_UseSpecularMap;
+            bool UseSpecular = CurrentMaterial->Phong.Flags & PHONG_UseSpecularMap;
             UI::Row(GameState, &Layout, 1, "Use Specular");
-            UI::_BoolButton(&Layout, Input, "Toggle", &SpecularFlagValue);
+            UI::_BoolButton(&Layout, Input, "Toggle", &UseSpecular);
 
-            if(SpecularFlagValue)
+            if(UseSpecular)
             {
-              Material->Phong.Flags |= PHONG_UseSpecularMap;
-
               UI::Row(GameState, &Layout, 1, "Specular");
               {
-                static int32_t ActivePathIndex = 0;
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Phong.SpecularMapID.Value > 0)
+                {
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.SpecularMapID);
+                }
                 UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
                              GameState->Resources.TexturePathCount, GameState, &Layout, Input,
                              sizeof(path), TexturePathToCharPtr);
-                rid NewRID;
-                if(!GameState->Resources
-                      .GetTexturePathRID(&NewRID,
-                                         GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                if(GameState->Resources.TexturePathCount > 0)
                 {
-                  NewRID = GameState->Resources.RegisterTexture(
-                    GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  CurrentMaterial->Phong.Flags |= PHONG_UseSpecularMap;
+
+                  rid NewRID;
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Phong.SpecularMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Phong.SpecularMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Phong.SpecularMapID.Value > 0);
                 }
-                CurrentMaterial->Phong.SpecularMapID = NewRID;
               }
             }
             else
             {
-              Material->Phong.Flags &= ~PHONG_UseSpecularMap;
+              CurrentMaterial->Phong.Flags &= ~PHONG_UseSpecularMap;
               SliderVec4Color(GameState, &Layout, Input, "Specular Color",
                               &CurrentMaterial->Phong.SpecularColor, 0.0f, 1.0f, 5.0f);
             }
 
-            bool NormalFlagValue = Material->Phong.Flags & PHONG_UseNormalMap;
+            bool NormalFlagValue = CurrentMaterial->Phong.Flags & PHONG_UseNormalMap;
 
             UI::Row(GameState, &Layout, 1, "Use Normal");
             UI::_BoolButton(&Layout, Input, "Toggle", &NormalFlagValue);
             if(NormalFlagValue)
             {
-              Material->Phong.Flags |= PHONG_UseNormalMap;
-
               UI::Row(GameState, &Layout, 1, "Normal");
               {
-                static int32_t ActivePathIndex = 0;
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Phong.NormalMapID.Value > 0)
+                {
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.NormalMapID);
+                }
                 UI::ComboBox(&ActivePathIndex, GameState->Resources.TexturePaths,
                              GameState->Resources.TexturePathCount, GameState, &Layout, Input,
                              sizeof(path), TexturePathToCharPtr);
-                rid NewRID;
-                if(!GameState->Resources
-                      .GetTexturePathRID(&NewRID,
-                                         GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                if(GameState->Resources.TexturePathCount > 0)
                 {
-                  NewRID = GameState->Resources.RegisterTexture(
-                    GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  CurrentMaterial->Phong.Flags |= PHONG_UseNormalMap;
+
+                  rid NewRID;
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Phong.NormalMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Phong.NormalMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Phong.NormalMapID.Value > 0);
                 }
-                CurrentMaterial->Phong.NormalMapID = NewRID;
               }
             }
             else
             {
-              Material->Phong.Flags &= ~PHONG_UseNormalMap;
+              CurrentMaterial->Phong.Flags &= ~PHONG_UseNormalMap;
             }
 
-            bool SkeletalFlagValue = (Material->Phong.Flags & PHONG_UseSkeleton);
+            bool SkeletalFlagValue = (CurrentMaterial->Phong.Flags & PHONG_UseSkeleton);
 
             UI::Row(GameState, &Layout, 1, "Is Skeletal");
             UI::_BoolButton(&Layout, Input, "Toggle", &SkeletalFlagValue);
             if(SkeletalFlagValue)
             {
-              Material->Phong.Flags |= PHONG_UseSkeleton;
-              Material->Common.IsSkeletal = true;
+              CurrentMaterial->Phong.Flags |= PHONG_UseSkeleton;
+              CurrentMaterial->Common.IsSkeletal = true;
             }
             else
             {
-              Material->Phong.Flags &= ~PHONG_UseSkeleton;
-              Material->Common.IsSkeletal = false;
+              CurrentMaterial->Phong.Flags &= ~PHONG_UseSkeleton;
+              CurrentMaterial->Common.IsSkeletal = false;
             }
 
             UI::Row(GameState, &Layout, 1, "Shininess");
-            UI::SliderFloat(GameState, &Layout, Input, "Shi", &Material->Phong.Shininess, 1.0f,
-                            512.0f, 1024.0f);
+            UI::SliderFloat(GameState, &Layout, Input, "Shi", &CurrentMaterial->Phong.Shininess,
+                            1.0f, 512.0f, 1024.0f);
           }
           break;
           case SHADER_Color:
           {
-            UI::SliderVec4Color(GameState, &Layout, Input, "Color", &Material->Color.Color);
+            UI::SliderVec4Color(GameState, &Layout, Input, "Color", &CurrentMaterial->Color.Color);
           }
           break;
         }
@@ -437,12 +437,12 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
                     .GetAnimationPathRID(&NewRID,
                                          GameState->Resources.AnimationPaths[ActivePathIndex].Name))
               {
-                GameState->TestAnimationID = GameState->Resources.RegisterAnimation(
+                GameState->CurrentAnimationID = GameState->Resources.RegisterAnimation(
                   GameState->Resources.AnimationPaths[ActivePathIndex].Name);
               }
-              GameState->TestAnimationID = NewRID;
+              GameState->CurrentAnimationID = NewRID;
             }
-            if(GameState->TestAnimationID.Value > 0)
+            if(GameState->CurrentAnimationID.Value > 0)
             {
               UI::Row(&Layout);
               if(UI::ReleaseButton(GameState, &Layout, Input, "Add Animation"))
@@ -450,12 +450,14 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
                 if(SelectedEntity->AnimController->AnimStateCount == 0)
                 {
                   Anim::AddAnimation(SelectedEntity->AnimController,
-                                     GameState->Resources.GetAnimation(GameState->TestAnimationID));
+                                     GameState->Resources.GetAnimation(
+                                       GameState->CurrentAnimationID));
                 }
                 else
                 {
                   Anim::SetAnimation(SelectedEntity->AnimController,
-                                     GameState->Resources.GetAnimation(GameState->TestAnimationID),
+                                     GameState->Resources.GetAnimation(
+                                       GameState->CurrentAnimationID),
                                      0);
                 }
                 Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
@@ -542,7 +544,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
             int32_t ActiveBoneIndex = GameState->AnimEditor.CurrentBone;
             UI::ComboBox(&ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones,
                          GameState->AnimEditor.Skeleton->BoneCount, GameState, &Layout, Input,
-                         sizeof(Anim::bone), ElementToBoneName);
+                         sizeof(Anim::bone), BonePtrToCharPtr);
             EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
           }
 
@@ -575,11 +577,6 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::SliderVec3(GameState, &Layout, Input, "Position", &GameState->R.LightPosition);
     UI::Row(GameState, &Layout, 1, "Show Gizmo");
     UI::BoolButton(GameState, &Layout, Input, "Show", &GameState->R.ShowLightPosition);
-  }
-  if(GameState->R.ShowLightPosition)
-  {
-    mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
-    Debug::PushGizmo(&GameState->Camera, &Mat4LightPosition);
   }
 
   UI::Row(&Layout);

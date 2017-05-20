@@ -51,6 +51,7 @@ struct game_state
   EditAnimation::animation_editor AnimEditor;
   rid                             CurrentModelID;
   rid                             CurrentMaterialID;
+  rid                             CurrentAnimationID;
 
   Resource::resource_manager Resources;
 
@@ -77,9 +78,6 @@ struct game_state
   int32_t SelectedEntityIndex;
   int32_t SelectedMeshIndex;
 
-  // Animation Test
-  rid TestAnimationID;
-
   // Fonts/text
   Text::font Font;
 
@@ -103,6 +101,28 @@ struct game_state
   uint32_t IndexFBO;
   uint32_t DepthRBO;
   uint32_t IDTexture;
+};
+
+struct scene
+{
+  int32_t EntityCount;
+  entity* Entities;
+
+  int32_t                     AnimControllerCount;
+  Anim::animation_controller* AnimControllers;
+
+  // Resource mappings
+  int32_t ModelCount;
+  rid*    ModelIDs;
+  path*   ModelPaths;
+
+  int32_t MaterialCount;
+  rid*    MaterialIDs;
+  path*   MaterialPaths;
+
+  int32_t AnimationCount;
+  rid*    AnimationIDs;
+  path*   AnimationPaths;
 };
 
 inline bool
@@ -186,9 +206,6 @@ inline void
 DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animation_editor* Editor)
 {
   assert(GameState->Entities[Editor->EntityIndex].AnimController);
-
   assert(Editor->Skeleton);
-  Editor->Skeleton    = 0;
-  Editor->Transform   = 0;
-  Editor->EntityIndex = 0;
+  *Editor = {};
 }

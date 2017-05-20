@@ -25,33 +25,10 @@
 
 #include "editor_ui.h"
 #include <limits.h>
-mat4
-GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
-{
-  mat4 ModelMatrix = TransformToMat4(&GameState->Entities[EntityIndex].Transform);
-  return ModelMatrix;
-}
 
-mat4
-GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
-{
-  mat4 ModelMatrix = GetEntityModelMatrix(GameState, EntityIndex);
-  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
-  return MVPMatrix;
-}
-
-void
-AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform)
-{
-  assert(0 <= GameState->EntityCount && GameState->EntityCount < ENTITY_MAX_COUNT);
-
-  entity NewEntity      = {};
-  NewEntity.ModelID     = ModelID;
-  NewEntity.MaterialIDs = MaterialIDs;
-  NewEntity.Transform   = Transform;
-
-  GameState->Entities[GameState->EntityCount++] = NewEntity;
-}
+void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform);
+mat4 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex);
+mat4 GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex);
 
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
@@ -89,37 +66,36 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // END SEGMENTATION
 
     // --------LOAD MODELS/ACTORS--------
-    GameState->Resources.UpdateHardDriveAssetPathLists();
-
-    GameState->GizmoModelID = GameState->Resources.RegisterModel("./data/built/gizmo1.model");
-    GameState->QuadModelID  = GameState->Resources.RegisterModel("./data/built/debug_meshes.model");
+    GameState->GizmoModelID = GameState->Resources.RegisterModel("data/built/gizmo1.model");
+    GameState->QuadModelID  = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
     GameState->CubemapModelID =
       GameState->Resources.RegisterModel("./data/built/inverse_cube.model");
-    GameState->SphereModelID   = GameState->Resources.RegisterModel("./data/built/sphere.model");
-    GameState->UVSphereModelID = GameState->Resources.RegisterModel("./data/built/uv_sphere.model");
+    GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
+    GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
 
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/phong");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/phong");
     GameState->R.ShaderCubemap =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/cubemap");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/cubemap");
     GameState->R.ShaderGizmo =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/gizmo");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/gizmo");
     GameState->R.ShaderQuad =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/debug_quad");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_quad");
     GameState->R.ShaderColor =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/color");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/color");
     GameState->R.ShaderTexturedQuad =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/debug_textured_quad");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_textured_quad");
     GameState->R.ShaderID =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "./shaders/id");
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
     //------------LOAD TEXTURES-----------
     //
-    GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
-    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
+    GameState->CollapsedTextureID = Texture::LoadTexture("./data/collapsed.bmp");
+    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/expanded.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
 
+    //--------------LOAD FONT--------------
     GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
 
     // ======Set GL state
@@ -152,7 +128,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // -------InitGameState
+    // -------Init GameState
     GameState->Camera.Position      = { 0, 1.6f, 2 };
     GameState->Camera.Up            = { 0, 1, 0 };
     GameState->Camera.Forward       = { 0, 0, -1 };
@@ -165,7 +141,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Camera.Speed         = 2.0f;
 
     GameState->PreviewCamera          = GameState->Camera;
-    GameState->PreviewCamera.Position = { 0, 0, 3 };
+    GameState->PreviewCamera.Position = { 0, 0, 2 };
     GameState->PreviewCamera.Rotation = {};
     UpdateCamera(&GameState->PreviewCamera, Input);
 
@@ -181,12 +157,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->DrawGizmos              = true;
     GameState->IsAnimationPlaying      = false;
     GameState->EditorBoneRotationSpeed = 45.0f;
-
-    {
-      // AddMaterial(&GameState->R, NewPhongMaterial());
-    }
+    GameState->CurrentMaterialID       = { 0 };
   }
   //---------------------END INIT -------------------------
+
+  GameState->Resources.UpdateHardDriveAssetPathLists();
 
   if(Input->IsMouseInEditorMode)
   {
@@ -269,6 +244,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
+    // Entity creation
     if(GameState->IsEntityCreationMode && Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
     {
       GameState->IsEntityCreationMode = false;
@@ -300,6 +276,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
 
+  if(GameState->R.ShowLightPosition)
+  {
+    mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
+    Debug::PushGizmo(&GameState->Camera, &Mat4LightPosition);
+  }
   // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)
   {
@@ -593,5 +574,33 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   Debug::DrawColoredQuads(GameState);
   Debug::DrawTexturedQuads(GameState);
   Text::ClearTextRequestCounts();
-  GameState->Resources.UpdateHardDriveAssetPathLists();
 }
+
+void
+AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform)
+{
+  assert(0 <= GameState->EntityCount && GameState->EntityCount < ENTITY_MAX_COUNT);
+
+  entity NewEntity      = {};
+  NewEntity.ModelID     = ModelID;
+  NewEntity.MaterialIDs = MaterialIDs;
+  NewEntity.Transform   = Transform;
+
+  GameState->Entities[GameState->EntityCount++] = NewEntity;
+}
+
+mat4
+GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
+{
+  mat4 ModelMatrix = TransformToMat4(&GameState->Entities[EntityIndex].Transform);
+  return ModelMatrix;
+}
+
+mat4
+GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
+{
+  mat4 ModelMatrix = GetEntityModelMatrix(GameState, EntityIndex);
+  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
+  return MVPMatrix;
+}
+

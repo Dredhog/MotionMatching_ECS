@@ -462,8 +462,8 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
   }
   else
   {
-    DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight,
-                "Empty List", HeaderColor, g_BorderColor);
+    DrawTextBox(GameState, Layout->CurrentP, TextRegionWidth, Layout->RowHeight, "Empty List",
+                HeaderColor, g_BorderColor);
     Debug::PushTopLeftTexturedQuad(GameState->ExpandedTextureID,
                                    vec3{ Layout->X + TextRegionWidth, Layout->Y, 0.0f }, IconWidth,
                                    Layout->RowHeight);
@@ -497,29 +497,33 @@ UI::ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_stat
 #undef GetStringAtIndex
 }
 
-#if 0
-int
-BeginScrollableList(game_state* GameState, UI::im_layout* Layout, const game_input* Input,
-                    int TotalRowCount, int ScrollRowCount, float ScrollbarWidth, float ScrollK)
+void
+UI::SliderVec3(game_state* GameState, im_layout* Layout, const game_input* Input, const char* Text,
+               vec3* VecPtr, float Min, float Max, float ValueScreenDelta)
 {
-  ScrollK        = ClampFloat(0.0f, ScrollK, 1.0f);
-  ScrollRowCount = ClampMinInt32(0, ScrollRowCount);
-  TotalRowCount  = ClampMinInt32(ScrollRowCount, TotalRowCount);
-
-  float ResultStartRow      = ScrollK * (float)(TotalRowCount - ScrollRowCount);
-  int   ResultStartRowIndex = (int)ResultStartRow;
-
-  Layout->Width -= ScrollbarWidth;
-
-  float ScrollBoxHeight = (float)ScrollRowCount * Layout->RowHeight;
-  float ButtonHeight    = ((float)ScrollRowCount / (float)TotalRowCount) * ScrollBoxHeight;
-  float ButtonYOffset   = ScrollBoxHeight * (ResultStartRow / (float)TotalRowCount);
-
-  DrawBox(GameState, Layout->X - ScrollbarWidth, Layout->Y - Layout->RowHeight, ScrollbarWidth,
-          ScrollBoxHeight, { 0.4f, 0.4f, 0.4f, 1.0f }, { 0.1f, 0.1f, 0.1f, 1.0f });
-  DrawBox(GameState, Layout->X - ScrollbarWidth, (Layout->Y - Layout->RowHeight) - ButtonYOffset,
-          ScrollbarWidth, ButtonHeight, { 0.6f, 0.6f, 0.6f, 1.0f }, { 0.1f, 0.1f, 0.1f, 1.0f });
-
-  return ResultStartRowIndex;
+  Row(GameState, Layout, 3, Text);
+  SliderFloat(GameState, Layout, Input, "x", &VecPtr->X, Min, Max, ValueScreenDelta);
+  SliderFloat(GameState, Layout, Input, "y", &VecPtr->Y, Min, Max, ValueScreenDelta);
+  SliderFloat(GameState, Layout, Input, "z", &VecPtr->Z, Min, Max, ValueScreenDelta);
 }
-#endif
+
+void
+UI::SliderVec3Color(game_state* GameState, im_layout* Layout, const game_input* Input,
+                    const char* Text, vec3* VecPtr, float Min, float Max, float ValueScreenDelta)
+{
+  Row(GameState, Layout, 3, Text);
+  SliderFloat(GameState, Layout, Input, "r", &VecPtr->R, Min, Max, ValueScreenDelta);
+  SliderFloat(GameState, Layout, Input, "g", &VecPtr->G, Min, Max, ValueScreenDelta);
+  SliderFloat(GameState, Layout, Input, "b", &VecPtr->B, Min, Max, ValueScreenDelta);
+}
+
+void
+UI::SliderVec4Color(game_state* GameState, im_layout* Layout, const game_input* Input,
+                    const char* Text, vec4* VecPtr, float Min, float Max, float ValueScreenDelta)
+{
+  Row(GameState, Layout, 4, Text);
+  SliderFloat(GameState, Layout, Input, "r", &VecPtr->R, Min, Max, ValueScreenDelta);
+  SliderFloat(GameState, Layout, Input, "g", &VecPtr->G, Min, Max, ValueScreenDelta);
+  SliderFloat(GameState, Layout, Input, "b", &VecPtr->B, Min, Max, ValueScreenDelta);
+  SliderFloat(GameState, Layout, Input, "a", &VecPtr->A, Min, Max, ValueScreenDelta);
+}

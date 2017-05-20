@@ -1,7 +1,6 @@
 #include "resource_manager.h"
 #include "file_io.h"
 #include "material_io.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -13,83 +12,12 @@ int32_t ReadPaths(asset_diff* AssedDiffs, path* Paths, struct stat* Stats, int32
                   const char* StartPath, const char* Extension);
 namespace Resource
 {
-  void
-  resource_hash_table::Set(rid RID, const void* Asset, const char* Path)
-  {
-    assert(0 < RID.Value && RID.Value <= TEXT_LINE_MAX_LENGTH);
-
-    this->Assets[RID.Value - 1] = (void*)Asset;
-
-    if(Path)
-    {
-      size_t PathLength = strlen(Path);
-      assert(PathLength < TEXT_LINE_MAX_LENGTH);
-      strcpy(this->Paths[RID.Value - 1].Name, Path);
-    }
-    else
-    {
-      memset(this->Paths[RID.Value - 1].Name, 0, TEXT_LINE_MAX_LENGTH * sizeof(char));
-    }
-  }
-
-  bool
-  resource_hash_table::Get(rid RID, void** Asset, char** Path)
-  {
-    assert(0 < RID.Value && RID.Value <= TEXT_LINE_MAX_LENGTH);
-
-    if(Asset)
-    {
-      *Asset = this->Assets[RID.Value - 1];
-    }
-
-    if(Path)
-    {
-      *Path = this->Paths[RID.Value - 1].Name;
-    }
-    return true;
-  }
-
-  bool
-  resource_hash_table::GetPathRID(rid* RID, const char* Path)
-  {
-    if(!Path)
-    {
-      assert(Path && "Queried path is NULL");
-      return false;
-    }
-    for(int i = 0; i < RESOURCE_MANAGER_RESOURCE_CAPACITY; i++)
-    {
-      if(strcmp(Path, this->Paths[i].Name) == 0)
-      {
-        RID->Value = { i + 1 };
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool
-  resource_hash_table::NewRID(rid* RID)
-  {
-    for(int i = 0; i < RESOURCE_MANAGER_RESOURCE_CAPACITY; i++)
-    {
-      if(this->Paths[i].Name[0] == '\0' && this->Assets[i] == NULL)
-      {
-        rid NewRID = { i + 1 };
-        *RID       = NewRID;
-        return true;
-      }
-    }
-    assert(0 && "resource_manager error: unable to find new rid");
-    return false;
-  }
-
   bool
   resource_manager::LoadModel(rid RID)
   {
     Render::model* Model;
     char*          Path;
-    if(this->Models.Get(RID, (void**)&Model, &Path))
+    if(this->Models.Get(RID, &Model, &Path))
     {
       if(Model)
       {
@@ -131,7 +59,7 @@ namespace Resource
     if(this->Textures.Get(RID, 0, &Path))
     {
       uint32_t TextureID = Texture::LoadTexture(Path);
-      this->Textures.Set(RID, (void*)(uintptr_t)TextureID, Path);
+      this->Textures.Set(RID, TextureID, Path);
       return true;
     }
     return false;
@@ -142,7 +70,7 @@ namespace Resource
   {
     Anim::animation* Animation;
     char*            Path;
-    if(this->Animations.Get(RID, (void**)&Animation, &Path))
+    if(this->Animations.Get(RID, &Animation, &Path))
     {
       if(Animation)
       {
@@ -177,7 +105,7 @@ namespace Resource
   {
     material* Material;
     char*     Path;
-    if(this->Materials.Get(RID, (void**)&Material, &Path))
+    if(this->Materials.Get(RID, &Material, &Path))
     {
       if(Material)
       {
@@ -206,7 +134,7 @@ namespace Resource
       time(&current_time);
       time_info = localtime(&current_time);
       strftime(MaterialName, sizeof(MaterialName), "%H_%M_%S", time_info);
-      ExportMaterial(&Material, "data/materials/", MaterialName);
+      ExportMaterial(this, &Material, "data/materials/", MaterialName);
       strftime(FinalPath.Name, sizeof(FinalPath.Name), "data/materials/%H_%M_%S.mat", time_info);
     }
 
@@ -255,7 +183,7 @@ namespace Resource
     assert(Path);
     rid RID;
     assert(this->Textures.NewRID(&RID));
-    this->Textures.Set(RID, NULL, Path);
+    this->Textures.Set(RID, 0, Path);
     printf("registered texture: rid %d, %s\n", RID.Value, Path);
     return RID;
   }
@@ -296,7 +224,7 @@ namespace Resource
   {
     assert(Path);
     assert(0 < RID.Value && RID.Value <= RESOURCE_MANAGER_RESOURCE_CAPACITY);
-    this->Textures.Set(RID, NULL, Path);
+    this->Textures.Set(RID, 0, Path);
     return true;
   }
 
@@ -306,7 +234,7 @@ namespace Resource
     assert(0 < RID.Value && RID.Value <= RESOURCE_MANAGER_RESOURCE_CAPACITY);
     Render::model* Model;
     char*          Path;
-    if(this->Models.Get(RID, (void**)&Model, &Path))
+    if(this->Models.Get(RID, &Model, &Path))
     {
       if(strcmp(Path, "") == 0)
       {
@@ -320,7 +248,7 @@ namespace Resource
       {
         if(this->LoadModel(RID))
         {
-          this->Models.Get(RID, (void**)&Model, &Path);
+          this->Models.Get(RID, &Model, &Path);
           printf("loaded model: rid %d, %s\n", RID.Value, Path);
           assert(Model);
           return Model;
@@ -346,7 +274,7 @@ namespace Resource
     assert(0 < RID.Value && RID.Value <= RESOURCE_MANAGER_RESOURCE_CAPACITY);
     Anim::animation* Animation;
     char*            Path;
-    if(this->Animations.Get(RID, (void**)&Animation, &Path))
+    if(this->Animations.Get(RID, &Animation, &Path))
     {
       if(strcmp(Path, "") == 0)
       {
@@ -360,7 +288,7 @@ namespace Resource
       {
         if(this->LoadAnimation(RID))
         {
-          this->Animations.Get(RID, (void**)&Animation, &Path);
+          this->Animations.Get(RID, &Animation, &Path);
           printf("loaded animation: rid %d, %s\n", RID.Value, Path);
           assert(Animation);
           return Animation;
@@ -386,7 +314,7 @@ namespace Resource
     assert(0 < RID.Value && RID.Value <= RESOURCE_MANAGER_RESOURCE_CAPACITY);
     material* Material;
     char*     Path;
-    if(this->Materials.Get(RID, (void**)&Material, &Path))
+    if(this->Materials.Get(RID, &Material, &Path))
     {
       if(strcmp(Path, "") == 0)
       {
@@ -400,7 +328,7 @@ namespace Resource
       {
         if(this->LoadMaterial(RID))
         {
-          this->Materials.Get(RID, (void**)&Material, &Path);
+          this->Materials.Get(RID, &Material, &Path);
           printf("loaded material: rid %d, %s\n", RID.Value, Path);
           assert(Material);
           return Material;
@@ -426,7 +354,7 @@ namespace Resource
     assert(0 < RID.Value && RID.Value <= RESOURCE_MANAGER_RESOURCE_CAPACITY);
     uint32_t TextureID;
     char*    Path;
-    if(this->Textures.Get(RID, (void**)&TextureID, &Path))
+    if(this->Textures.Get(RID, &TextureID, &Path))
     {
       if(strcmp(Path, "") == 0)
       {
@@ -442,7 +370,7 @@ namespace Resource
         printf("getting texture: rid %d, %s\n", RID.Value, Path);
         if(this->LoadTexture(RID))
         {
-          this->Textures.Get(RID, (void**)&TextureID, &Path);
+          this->Textures.Get(RID, &TextureID, &Path);
           printf("loaded texture: rid %d, TexID %u, %s\n", RID.Value, TextureID, Path);
           assert(TextureID);
           return TextureID;
@@ -475,6 +403,7 @@ namespace Resource
         return i;
       }
     }
+    printf("could not find texture: %s\n", Path);
     assert(0 && "texture path not found");
     return -1;
   }

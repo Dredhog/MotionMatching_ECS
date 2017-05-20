@@ -8,22 +8,20 @@
 #include "anim.h"
 #include "render_data.h"
 #include "text.h"
-
 #include <sys/stat.h>
-#define RESOURCE_MANAGER_RESOURCE_CAPACITY 200
-
-/*For every type Will need:
- * Mapping from RID to path
- * Mapping from path to RID
- * Mapping from RID to asset pointer
- */
-
-#define INVALID_RID 0
 
 struct path
 {
   char Name[TEXT_LINE_MAX_LENGTH];
 };
+#include "resource_hash_table.h"
+
+typedef Resource::resource_hash_table<Render::model*, 200>         model_hash_table;
+typedef Resource::resource_hash_table<Anim::animation*, 200> animation_group_hash_table;
+typedef Resource::resource_hash_table<material*, 200>              material_hash_table;
+typedef Resource::resource_hash_table<uint32_t, 200>               texture_hash_table;
+
+static const int RESOURCE_MANAGER_RESOURCE_CAPACITY = 200;
 
 enum asset_diff_type
 {
@@ -42,19 +40,6 @@ struct asset_diff
 
 namespace Resource
 {
-
-  class resource_hash_table // Disregard the current implementation (currently array)
-  {
-    path  Paths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    void* Assets[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-
-  public:
-    bool Get(rid, void** Asset, char** Path);
-    void Set(rid RID, const void* Asset, const char* Path);
-    bool GetPathRID(rid* RID, const char* Path);
-    bool NewRID(rid* RID);
-  };
-
   class resource_manager
   {
     asset_diff  DiffedAssets[RESOURCE_MANAGER_RESOURCE_CAPACITY];
@@ -63,10 +48,10 @@ namespace Resource
     struct stat AnimationStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
     struct stat MaterialStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
 
-    resource_hash_table Models;
-    resource_hash_table Textures;
-    resource_hash_table Animations;
-    resource_hash_table Materials;
+    model_hash_table           Models;
+    texture_hash_table         Textures;
+    animation_group_hash_table Animations;
+    material_hash_table        Materials;
 
   public:
     path    ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
@@ -106,7 +91,7 @@ namespace Resource
     bool GetAnimationPathRID(rid* RID, const char* Path);
     bool GetMaterialPathRID(rid* RID, const char* Path);
 
-		int32_t GetTexturePathIndex(rid RID);
+    int32_t GetTexturePathIndex(rid RID);
 
     Render::model*   GetModel(rid RID);
     uint32_t         GetTexture(rid RID);

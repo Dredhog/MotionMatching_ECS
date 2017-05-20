@@ -1,8 +1,7 @@
 #!/bin/bash
 
-src_dir='data/models_actors/'
-dst_dir='data/built/'
+dst_mod='data/built/'
 
-for i in $dst_dir/*.model $dst_dir/*.actor; do
+for i in $dst_mod/*.model $dst_mod/*.actor; do
   rm $i
 done

@@ -47,6 +47,16 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
                  (float*)&GameState->R.LightSpecularColor);
     glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "cameraPosition"), 1,
                  (float*)&Camera->Position);
+    assert(
+      ((Material->Phong.Flags & PHONG_UseDiffuseMap) && Material->Phong.DiffuseMapID.Value > 0) ||
+      !(Material->Phong.Flags & PHONG_UseDiffuseMap));
+    assert(
+      ((Material->Phong.Flags & PHONG_UseSpecularMap) && Material->Phong.SpecularMapID.Value > 0) ||
+      !(Material->Phong.Flags & PHONG_UseSpecularMap));
+    assert(
+      ((Material->Phong.Flags & PHONG_UseNormalMap) && Material->Phong.NormalMapID.Value > 0) ||
+      !(Material->Phong.Flags & PHONG_UseNormalMap));
+
     uint32_t DiffuseTexture = (Material->Phong.Flags & PHONG_UseDiffuseMap)
                                 ? GameState->Resources.GetTexture(Material->Phong.DiffuseMapID)
                                 : 0;

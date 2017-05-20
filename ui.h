@@ -36,10 +36,10 @@ namespace UI
 
   im_layout NewLayout(vec3 TopLeft, float Width, float RowHeight, float ScrollbarWidth = 0.05f,
                       float AspectRatio = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT);
-  void Row(im_layout* Layout, int ColumnCount = 1);
-  void Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text,
-           vec4 DescriptionColor = { 0.5f, 0.0f, 0.5f, 1 });
-  void DrawSquareTexture(game_state* GameState, UI::im_layout* Layout, uint32_t TextureId);
+  void      Row(im_layout* Layout, int ColumnCount = 1);
+  void      Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text,
+                vec4 DescriptionColor = { 0.5f, 0.0f, 0.5f, 1 });
+  void      DrawSquareTexture(game_state* GameState, UI::im_layout* Layout, uint32_t TextureId);
   void DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, const char* Text,
                    vec4 InnerColor, vec4 BorderColor);
   void DrawTextBox(game_state* GameState, im_layout* Layout, const char* Text,
@@ -58,6 +58,16 @@ namespace UI
   void ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_state* GameState,
                 im_layout* Layout, const game_input* Input, size_t ElementSize,
                 char* (*ElementToCharPtr)(void*));
+
+  void SliderVec3(game_state* GameState, im_layout* Layout, const game_input* Input,
+                  const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY,
+                  float ValueScreenDelta = 10.0f);
+  void SliderVec3Color(game_state* GameState, im_layout* Layout, const game_input* Input,
+                       const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f,
+                       float ValueScreenDelta = 3.0f);
+  void SliderVec4Color(game_state* GameState, im_layout* Layout, const game_input* Input,
+                       const char* Text, vec4* VecPtr, float Min = 0.0f, float Max = 1.0f,
+                       float ValueScreenDelta = 3.0f);
 }
 
 #define _DrawTextButton(Layout, Text) DrawTextButton(GameState, (Layout), (Text))
