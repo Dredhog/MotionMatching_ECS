@@ -42,6 +42,7 @@ namespace Render
   };
 
   void SetUpMesh(Render::mesh* Mesh);
+  void CleanUpMesh(Render::mesh* Mesh);
   void PrintMesh(const mesh* Mesh);
 
   inline void

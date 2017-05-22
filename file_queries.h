@@ -69,8 +69,8 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
       }
     }
 
-    assert(*g_ElementCount < RESOURCE_MANAGER_RESOURCE_CAPACITY);
-    assert(*g_DiffCount < 2 * RESOURCE_MANAGER_RESOURCE_CAPACITY);
+    assert(*g_ElementCount < RESOURCE_MAX_COUNT);
+    assert(*g_DiffCount < 2 * RESOURCE_MAX_COUNT);
 
     int PathIndex = GetPathIndex(g_Paths, *g_ElementCount, Path);
     if(PathIndex == -1)

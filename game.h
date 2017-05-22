@@ -103,7 +103,6 @@ struct game_state
   uint32_t IDTexture;
 };
 
-
 inline bool
 GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex)
 {
@@ -187,4 +186,14 @@ DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animatio
   assert(GameState->Entities[Editor->EntityIndex].AnimController);
   assert(Editor->Skeleton);
   *Editor = {};
+}
+
+inline void
+RegisterDebugModels(game_state* GameState)
+{
+  GameState->GizmoModelID    = GameState->Resources.RegisterModel("data/built/gizmo1.model");
+  GameState->QuadModelID     = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
+  GameState->CubemapModelID  = GameState->Resources.RegisterModel("data/built/inverse_cube.model");
+  GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
+  GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
 }

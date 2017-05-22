@@ -1,6 +1,7 @@
 #include "stack_allocator.h"
 
 #include <cassert>
+#include <string.h>
 
 namespace Memory
 {
@@ -70,6 +71,13 @@ namespace Memory
   {
     m_Top        = m_Base;
     m_AllocCount = 0;
+  }
+
+  void
+  Memory::stack_allocator::NullifyClear()
+  {
+    this->Clear();
+    memset(m_Base, 0, m_CapacityBytes);
   }
 
   size_t

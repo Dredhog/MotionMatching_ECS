@@ -12,7 +12,7 @@
 
 #include "common.h"
 
-#define FRAME_TIME_MS 16
+#define FRAME_TIME_MS 10
 #define SLOW_MOTION_COEFFICIENT 0.2f
 
 #include "update_render.h"

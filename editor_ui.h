@@ -78,7 +78,11 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
     {
       {
-        static int32_t ActivePathIndex = 0;
+        int32_t ActivePathIndex = 0;
+        if(GameState->CurrentMaterialID.Value > 0)
+        {
+          ActivePathIndex = GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
+        }
         UI::Row(&Layout);
         UI::ComboBox(&ActivePathIndex, GameState->Resources.MaterialPaths,
                      GameState->Resources.MaterialPathCount, GameState, &Layout, Input,
@@ -302,6 +306,12 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           CurrentMaterial->Common.ShaderType = ShaderType;
         }
         UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
+        {
+          GameState->CurrentMaterialID =
+            GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
+        }
+        UI::Row(&Layout);
         if(UI::ReleaseButton(GameState, &Layout, Input, "Duplicate Current"))
         {
           GameState->CurrentMaterialID =
@@ -330,14 +340,16 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               }
             }
           }
+          if(GameState->SelectionMode == SELECT_Mesh)
+          {
+            UI::Row(&Layout);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Selected"))
+            {
+              GameState->CurrentMaterialID =
+                SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex];
+            }
+          }
         }
-      }
-
-      UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
-      {
-        GameState->CurrentMaterialID =
-          GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
       }
     }
   }
@@ -507,7 +519,11 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           UI::Row(&Layout);
           if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Attached Animation"))
           {
-            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation);
+            int32_t AnimationPathIndex = GameState->Resources.GetAnimationPathIndex(
+              AttachedEntity->AnimController->AnimationIDs[0]);
+            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation,
+                                         GameState->Resources.AnimationPaths[AnimationPathIndex]
+                                           .Name);
           }
         }
         UI::Row(&Layout);
@@ -536,6 +552,15 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
                      time_info);
             Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
                                         AnimGroupName);
+          }
+          if(GameState->AnimEditor.AnimationPath[0] != '\0')
+          {
+            UI::Row(&Layout);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Override Animation"))
+            {
+              Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
+                                          GameState->AnimEditor.AnimationPath);
+            }
           }
         }
 

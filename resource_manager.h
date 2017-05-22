@@ -16,13 +16,7 @@ struct path
   char Name[TEXT_LINE_MAX_LENGTH];
 };
 #include "resource_hash_table.h"
-
-typedef Resource::resource_hash_table<Render::model*, 200>   model_hash_table;
-typedef Resource::resource_hash_table<Anim::animation*, 200> animation_group_hash_table;
-typedef Resource::resource_hash_table<material*, 200>        material_hash_table;
-typedef Resource::resource_hash_table<uint32_t, 200>         texture_hash_table;
-
-static const int RESOURCE_MANAGER_RESOURCE_CAPACITY = 200;
+static const int RESOURCE_MAX_COUNT = 200;
 
 enum asset_diff_type
 {
@@ -39,58 +33,62 @@ struct asset_diff
   path     Path;
 };
 
+const int MODEL_MAX_COUNT     = RESOURCE_MAX_COUNT;
+const int ANIMATION_MAX_COUNT = RESOURCE_MAX_COUNT;
+const int MATERIAL_MAX_COUNT  = RESOURCE_MAX_COUNT;
+const int TEXTURE_MAX_COUNT   = RESOURCE_MAX_COUNT;
+
 namespace Resource
 {
+  typedef resource_hash_table<Render::model*, MODEL_MAX_COUNT>       model_hash_table;
+  typedef resource_hash_table<Anim::animation*, ANIMATION_MAX_COUNT> animation_group_hash_table;
+  typedef resource_hash_table<material*, MATERIAL_MAX_COUNT>         material_hash_table;
+  typedef resource_hash_table<uint32_t, TEXTURE_MAX_COUNT>           texture_hash_table;
+
   class resource_manager
   {
-    asset_diff  DiffedAssets[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    struct stat ModelStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    struct stat TextureStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    struct stat AnimationStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    struct stat MaterialStats[RESOURCE_MANAGER_RESOURCE_CAPACITY];
+    asset_diff  DiffedAssets[RESOURCE_MAX_COUNT];
+    struct stat ModelStats[RESOURCE_MAX_COUNT];
+    struct stat TextureStats[RESOURCE_MAX_COUNT];
+    struct stat AnimationStats[RESOURCE_MAX_COUNT];
+    struct stat MaterialStats[RESOURCE_MAX_COUNT];
 
-    model_hash_table           Models;
-    texture_hash_table         Textures;
-    animation_group_hash_table Animations;
-    material_hash_table        Materials;
-
-  public:
-    path    ModelPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    path    TexturePaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    path    AnimationPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    path    MaterialPaths[RESOURCE_MANAGER_RESOURCE_CAPACITY];
-    int32_t ModelPathCount;
-    int32_t TexturePathCount;
-    int32_t AnimationPathCount;
-    int32_t MaterialPathCount;
-
-    Memory::stack_allocator ModelStack;
-    Memory::stack_allocator AnimationStack;
-    Memory::stack_allocator MaterialStack;
-
-  private:
     bool LoadModel(rid RID);
     bool LoadTexture(rid RID);
     bool LoadAnimation(rid RID);
     bool LoadMaterial(rid RID);
 
   public:
+    Memory::stack_allocator ModelStack;
+    Memory::stack_allocator AnimationStack;
+    Memory::stack_allocator MaterialStack;
+
+    model_hash_table           Models;
+    texture_hash_table         Textures;
+    animation_group_hash_table Animations;
+    material_hash_table        Materials;
+
+    path ModelPaths[RESOURCE_MAX_COUNT];
+    path TexturePaths[RESOURCE_MAX_COUNT];
+    path AnimationPaths[RESOURCE_MAX_COUNT];
+    path MaterialPaths[RESOURCE_MAX_COUNT];
+
+    int32_t ModelPathCount;
+    int32_t TexturePathCount;
+    int32_t AnimationPathCount;
+    int32_t MaterialPathCount;
+
+    rid CreateMaterial(material Material, const char* Path);
+
     rid RegisterModel(const char* Path);
     rid RegisterTexture(const char* Path);
     rid RegisterAnimation(const char* Path);
     rid RegisterMaterial(const char* Path);
 
-    bool DeleteModel(rid RID);
-    bool DeleteTexture(rid RID);
-    bool DeleteAnimation(rid RID);
-    bool DeleteMaterial(rid RID);
-
-    rid CreateMaterial(material Material, const char* Path);
-
-    bool AsociateModel(rid RID, char* Path);
-    bool AsociateTexture(rid RID, char* Path);
-    bool AsociateAnimation(rid RID, char* Path);
-    bool AsociateMaterial(rid RID, char* Path);
+    bool AssociateModelIDToPath(rid RID, const char* Path);
+    bool AssociateAnimationIDToPath(rid RID, const char* Path);
+    bool AssociateTextureIDToPath(rid RID, const char* Path);
+    bool AssociateMaterialIDToPath(rid RID, const char* Path);
 
     bool GetModelPathRID(rid* RID, const char* Path);
     bool GetTexturePathRID(rid* RID, const char* Path);
@@ -98,11 +96,18 @@ namespace Resource
     bool GetMaterialPathRID(rid* RID, const char* Path);
 
     int32_t GetTexturePathIndex(rid RID);
+    int32_t GetMaterialPathIndex(rid RID);
+    int32_t GetAnimationPathIndex(rid RID);
 
     Render::model*   GetModel(rid RID);
     uint32_t         GetTexture(rid RID);
     Anim::animation* GetAnimation(rid RID);
     material*        GetMaterial(rid RID);
+
+    void WipeAllModelData();
+    void WipeAllMaterialData();
+    void WipeAllAnimationData();
+    void WipeAllTextureData();
 
     void UpdateHardDriveAssetPathLists();
   };

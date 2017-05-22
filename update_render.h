@@ -60,18 +60,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->PersistentMemStack =
       Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
+
     GameState->Resources.ModelStack.Create(ModelStackStart, ModelStackSize);
+    GameState->Resources.ModelStack.NullifyClear();
+
     GameState->Resources.AnimationStack.Create(AnimationStackStart, AnimationStackSize);
+    GameState->Resources.AnimationStack.NullifyClear();
+
     GameState->Resources.MaterialStack.Create(MaterialStackStart, MaterialStackSize);
+    GameState->Resources.MaterialStack.NullifyClear();
     // END SEGMENTATION
 
     // --------LOAD MODELS/ACTORS--------
-    GameState->GizmoModelID = GameState->Resources.RegisterModel("data/built/gizmo1.model");
-    GameState->QuadModelID  = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
-    GameState->CubemapModelID =
-      GameState->Resources.RegisterModel("./data/built/inverse_cube.model");
-    GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
-    GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
+    RegisterDebugModels(GameState);
 
     // -----------LOAD SHADERS------------
     GameState->R.ShaderPhong =
@@ -145,7 +146,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->PreviewCamera.Rotation = {};
     UpdateCamera(&GameState->PreviewCamera, Input);
 
-    GameState->R.LightPosition = { 0.7f, 1, 1 };
+    GameState->R.LightPosition        = { 0.7f, 1, 1 };
+    GameState->R.PreviewLightPosition = { 0.7f, 0, 2 };
 
     GameState->R.LightSpecularColor = { 1, 1, 1 };
     GameState->R.LightDiffuseColor  = { 1, 1, 1 };
@@ -176,9 +178,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     else
     {
       material TempMaterial = NewPhongMaterial();
-      ExportMaterial(&GameState->Resources, &TempMaterial, "data/materials/", "default");
-      GameState->CurrentMaterialID =
-        GameState->Resources.RegisterMaterial("data/materials/default.mat");
+      // ExportMaterial(&GameState->Resources, &TempMaterial, "data/materials/", "default");
+      GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(TempMaterial, "default");
+      // GameState->Resources.RegisterMaterial("data/materials/default.mat");
     }
   }
 
@@ -584,6 +586,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                        Math::MulMat4(GameState->PreviewCamera.VPMatrix, Math::Mat4Ident()).e);
     glUniformMatrix4fv(glGetUniformLocation(ShaderID, "mat_model"), 1, GL_FALSE,
                        PreviewSphereMatrix.e);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "lightPosition"), 1,
+                 (float*)&GameState->R.PreviewLightPosition);
 
     glDrawElements(GL_TRIANGLES, UVSphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
 
@@ -594,7 +598,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   Debug::DrawWireframeSpheres(GameState);
   glClear(GL_DEPTH_BUFFER_BIT);
-  Debug::DrawGizmos(GameState);
+  if(GameState->DrawGizmos)
+  {
+    Debug::DrawGizmos(GameState);
+  }
+  else
+  {
+		
+  }
   Debug::DrawColoredQuads(GameState);
   Debug::DrawTexturedQuads(GameState);
   Text::ClearTextRequestCounts();

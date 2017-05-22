@@ -294,7 +294,8 @@ EditAnimation::PrintAnimEditorState(const animation_editor* Editor)
 }
 
 void
-EditAnimation::EditAnimation(animation_editor* Editor, const Anim::animation* Animation)
+EditAnimation::EditAnimation(animation_editor* Editor, const Anim::animation* Animation,
+                             const char* Path)
 {
   assert(Animation->KeyframeCount <= ANIM_EDITOR_MAX_KEYFRAME_COUNT);
   assert(!Editor->Skeleton ||
@@ -310,6 +311,10 @@ EditAnimation::EditAnimation(animation_editor* Editor, const Anim::animation* An
   memset(Editor->BoneSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);
   memset(Editor->ModelSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);
   memset(Editor->HierarchicalModelSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);
+  if(Path)
+  {
+    memcpy(Editor->AnimationPath, Path, sizeof(Editor->AnimationPath));
+  }
   Editor->ClipboardKeyframe = {};
   Editor->KeyframeCount     = Animation->KeyframeCount;
   Editor->PlayHeadTime      = 0;
