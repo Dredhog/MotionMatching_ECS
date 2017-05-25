@@ -1,5 +1,5 @@
 #include "scene.h"
-#include "stack_allocator.h"
+#include "stack_alloc.h"
 #include "file_io.h"
 #include "asset.h"
 #include "anim.h"
@@ -170,6 +170,8 @@ void
 ImportScene(game_state* GameState, const char* Path)
 {
   printf("-------------------IMPORTING-SCENE------------------------\n");
+  GameState->AnimEditor    = {};
+  GameState->SelectionMode = SELECT_Entity;
 
   // Load the scene into the temp memory stack and fix pointers
   GameState->TemporaryMemStack->NullifyClear();

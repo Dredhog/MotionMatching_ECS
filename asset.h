@@ -6,7 +6,7 @@
 #include "model.h"
 #include "anim.h"
 #include "edit_animation.h"
-#include "stack_allocator.h"
+#include "stack_alloc.h"
 #include "render_data.h"
 
 #define ASSET_HEADER_CHECKSUM 123456

@@ -56,6 +56,7 @@ namespace Memory
   };
 
   stack_allocator* CreateStackAllocatorInPlace(void* Base, uint32_t Capacity);
+
   inline uint32_t
   SafeTruncate_size_t_To_uint32_t(size_t Value)
   {

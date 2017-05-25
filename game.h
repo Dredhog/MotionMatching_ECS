@@ -8,7 +8,8 @@
 #include "skeleton.h"
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
-#include "stack_allocator.h"
+#include "stack_alloc.h"
+#include "heap_alloc.h"
 #include "edit_animation.h"
 #include "camera.h"
 #include "render_data.h"
@@ -46,6 +47,7 @@ struct game_state
 
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
+  Memory::heap_allocator   HeapAllocator;
 
   render_data                     R;
   EditAnimation::animation_editor AnimEditor;

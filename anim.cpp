@@ -46,7 +46,7 @@ Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIn
   const float            AnimDuration =
     (Animation->SampleTimes[Animation->KeyframeCount - 1] - Animation->SampleTimes[0]);
   float SampleTime = State->PlaybackRateSec * (Controller->GlobalTimeSec - State->StartTimeSec);
-  if(State->Loop)
+  if(State->Loop && AnimDuration < SampleTime)
   {
     SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
   }
