@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stack_allocator.h"
+#include "stack_alloc.h"
 
 #include <GL/glew.h>
 #include <SDL2/SDL_image.h>

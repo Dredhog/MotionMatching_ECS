@@ -4,6 +4,7 @@
 #include "render_data.h"
 #include "skeleton.h"
 #include "time.h"
+#include "scene.h"
 
 #include <limits>
 
@@ -48,6 +49,49 @@ BonePtrToCharPtr(void* Bone)
 }
 
 void
+VisualizeTimeline(game_state* GameState)
+{
+  const int KeyframeCount = GameState->AnimEditor.KeyframeCount;
+  if(KeyframeCount > 0)
+  {
+    const EditAnimation::animation_editor* Editor = &GameState->AnimEditor;
+
+    const float TimelineStartX     = 0.20f;
+    const float TimelineStartY     = 0.1f;
+    const float TimelineWidth      = 0.6f;
+    const float TimelineHeight     = 0.05f;
+    const float CurrentMarkerWidth = 0.002f;
+    const float FirstTime          = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
+    const float LastTime =
+      MaxFloat(Editor->PlayHeadTime, Editor->SampleTimes[Editor->KeyframeCount - 1]);
+
+    float KeyframeSpacing = KEYFRAME_MIN_TIME_DIFFERENCE_APART * 0.5f; // seconds
+    float TimeDiff        = MaxFloat((LastTime - FirstTime), 1.0f);
+    float KeyframeWidth   = KeyframeSpacing / TimeDiff;
+
+    Debug::PushQuad({ TimelineStartX, TimelineStartY }, TimelineWidth, TimelineHeight,
+                    { 1, 1, 1, 1 });
+    for(int i = 0; i < KeyframeCount; i++)
+    {
+      float PosPercentage = (Editor->SampleTimes[i] - FirstTime) / TimeDiff;
+      Debug::PushQuad(vec3{ TimelineStartX + PosPercentage * TimelineWidth - 0.5f * KeyframeWidth,
+                            TimelineStartY, -0.1f },
+                      KeyframeWidth, TimelineHeight, { 0.5f, 0.3f, 0.3f, 1 });
+    }
+    float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
+    Debug::PushQuad(vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth -
+                            0.5f * KeyframeWidth,
+                          TimelineStartY, -0.2f },
+                    KeyframeWidth, TimelineHeight, { 1, 0, 0, 1 });
+    float CurrentPercentage = (Editor->SampleTimes[Editor->CurrentKeyframe] - FirstTime) / TimeDiff;
+    Debug::PushQuad(vec3{ TimelineStartX + CurrentPercentage * TimelineWidth -
+                            0.5f * CurrentMarkerWidth,
+                          TimelineStartY, -0.3f },
+                    CurrentMarkerWidth, TimelineHeight, { 0.5f, 0.5f, 0.5f, 1 });
+  }
+}
+
+void
 IMGUIControlPanel(game_state* GameState, const game_input* Input)
 {
   // Humble beginnings of the editor GUI system
@@ -64,6 +108,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   static bool g_ShowCameraSettings  = false;
   static bool g_ShowLightSettings   = false;
   static bool g_ShowGUISettings     = false;
+  static bool g_ShowSceneSettings   = false;
 
   UI::im_layout Layout = UI::NewLayout({ StartX, StartY }, LayoutWidth, RowHeight, SliderWidth);
 
@@ -76,7 +121,11 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
     {
       {
-        static int32_t ActivePathIndex = 0;
+        int32_t ActivePathIndex = 0;
+        if(GameState->CurrentMaterialID.Value > 0)
+        {
+          ActivePathIndex = GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
+        }
         UI::Row(&Layout);
         UI::ComboBox(&ActivePathIndex, GameState->Resources.MaterialPaths,
                      GameState->Resources.MaterialPathCount, GameState, &Layout, Input,
@@ -300,6 +349,12 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           CurrentMaterial->Common.ShaderType = ShaderType;
         }
         UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
+        {
+          GameState->CurrentMaterialID =
+            GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
+        }
+        UI::Row(&Layout);
         if(UI::ReleaseButton(GameState, &Layout, Input, "Duplicate Current"))
         {
           GameState->CurrentMaterialID =
@@ -328,14 +383,16 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               }
             }
           }
+          if(GameState->SelectionMode == SELECT_Mesh)
+          {
+            UI::Row(&Layout);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Selected"))
+            {
+              GameState->CurrentMaterialID =
+                SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex];
+            }
+          }
         }
-      }
-
-      UI::Row(&Layout);
-      if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
-      {
-        GameState->CurrentMaterialID =
-          GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
       }
     }
   }
@@ -505,7 +562,11 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           UI::Row(&Layout);
           if(UI::ReleaseButton(GameState, &Layout, Input, "Edit Attached Animation"))
           {
-            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation);
+            int32_t AnimationPathIndex = GameState->Resources.GetAnimationPathIndex(
+              AttachedEntity->AnimController->AnimationIDs[0]);
+            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation,
+                                         GameState->Resources.AnimationPaths[AnimationPathIndex]
+                                           .Name);
           }
         }
         UI::Row(&Layout);
@@ -534,6 +595,15 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
                      time_info);
             Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
                                         AnimGroupName);
+          }
+          if(GameState->AnimEditor.AnimationPath[0] != '\0')
+          {
+            UI::Row(&Layout);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Override Animation"))
+            {
+              Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
+                                          GameState->AnimEditor.AnimationPath);
+            }
           }
         }
 
@@ -628,47 +698,122 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::SliderVec3Color(GameState, &Layout, Input, "Description bg", (vec3*)&g_DescriptionColor);
     UI::SliderVec3Color(GameState, &Layout, Input, "Font", (vec3*)&g_FontColor);
   }
-}
-
-void
-VisualizeTimeline(game_state* GameState)
-{
-  const int KeyframeCount = GameState->AnimEditor.KeyframeCount;
-  if(KeyframeCount > 0)
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Scene     ", &g_ShowSceneSettings))
   {
-    const EditAnimation::animation_editor* Editor = &GameState->AnimEditor;
-
-    const float TimelineStartX     = 0.20f;
-    const float TimelineStartY     = 0.1f;
-    const float TimelineWidth      = 0.6f;
-    const float TimelineHeight     = 0.05f;
-    const float CurrentMarkerWidth = 0.002f;
-    const float FirstTime          = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
-    const float LastTime =
-      MaxFloat(Editor->PlayHeadTime, Editor->SampleTimes[Editor->KeyframeCount - 1]);
-
-    float KeyframeSpacing = KEYFRAME_MIN_TIME_DIFFERENCE_APART * 0.5f; // seconds
-    float TimeDiff        = MaxFloat((LastTime - FirstTime), 1.0f);
-    float KeyframeWidth   = KeyframeSpacing / TimeDiff;
-
-    Debug::PushQuad({ TimelineStartX, TimelineStartY }, TimelineWidth, TimelineHeight,
-                    { 1, 1, 1, 1 });
-    for(int i = 0; i < KeyframeCount; i++)
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Export Scene"))
     {
-      float PosPercentage = (Editor->SampleTimes[i] - FirstTime) / TimeDiff;
-      Debug::PushQuad(vec3{ TimelineStartX + PosPercentage * TimelineWidth - 0.5f * KeyframeWidth,
-                            TimelineStartY, -0.1f },
-                      KeyframeWidth, TimelineHeight, { 0.5f, 0.3f, 0.3f, 1 });
+      ExportScene(GameState, "data/scenes/fist_scene_export.scene");
     }
-    float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
-    Debug::PushQuad(vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth -
-                            0.5f * KeyframeWidth,
-                          TimelineStartY, -0.2f },
-                    KeyframeWidth, TimelineHeight, { 1, 0, 0, 1 });
-    float CurrentPercentage = (Editor->SampleTimes[Editor->CurrentKeyframe] - FirstTime) / TimeDiff;
-    Debug::PushQuad(vec3{ TimelineStartX + CurrentPercentage * TimelineWidth -
-                            0.5f * CurrentMarkerWidth,
-                          TimelineStartY, -0.3f },
-                    CurrentMarkerWidth, TimelineHeight, { 0.5f, 0.5f, 0.5f, 1 });
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Scene"))
+    {
+      ImportScene(GameState, "data/scenes/fist_scene_export.scene");
+    }
   }
+
+  static bool g_ShowHeapActions = true;
+  UI::Row(&Layout);
+  if(UI::_ExpandableButton(&Layout, Input, "Heap Test", &g_ShowHeapActions))
+  {
+    static float g_ActionSize = Kibibytes(1);
+
+    UI::Row(&Layout);
+    UI::SliderFloat(GameState, &Layout, Input, "Action Size", &g_ActionSize,
+                    (float)sizeof(Memory::free_block), Kibibytes(1), 512.0f);
+
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Create"))
+    {
+      uint8_t* MemForHeap = GameState->PersistentMemStack->Alloc((int32_t)g_ActionSize);
+      GameState->HeapAllocator.Create(MemForHeap, (int32_t)g_ActionSize);
+    }
+    UI::Row(&Layout);
+    if(UI::ReleaseButton(GameState, &Layout, Input, "Alloc"))
+    {
+      GameState->HeapAllocator.Alloc((int32_t)g_ActionSize);
+    }
+
+    if(GameState->HeapAllocator.m_Base != NULL)
+    {
+      static float g_MemStartX    = 0.1f;
+      static float g_MemStartY    = 0.8f;
+      static float g_MemBarZ      = 0.1f;
+      static float g_MemBarWidth  = 0.6f;
+      static float g_MemBarHeight = 0.03f;
+
+      Debug::PushTopLeftQuad({ g_MemStartX, g_MemStartY, g_MemBarZ }, g_MemBarWidth, g_MemBarHeight,
+                             { 1, 1, 1, 1 });
+
+      char AllocInfoString[64];
+      char AllocBlockSizeString[32];
+      for(int i = 0; i < GameState->HeapAllocator.m_AllocCount; i++)
+      {
+        Memory::allocation_info* AllocInfo =
+          &GameState->HeapAllocator.m_AllocInfos[-GameState->HeapAllocator.m_AllocCount + i];
+
+        size_t  BlockOffset      = AllocInfo->Base - GameState->HeapAllocator.m_Base;
+        int32_t BlockSize        = AllocInfo->Size;
+        float   OffsetPercentage = (float)BlockOffset / (float)GameState->HeapAllocator.m_Capacity;
+        float   SizePercentage   = (float)BlockSize / (float)GameState->HeapAllocator.m_Capacity;
+
+        sprintf(AllocBlockSizeString, "%d", BlockSize);
+        UI::DrawTextBox(GameState,
+                        { g_MemStartX + OffsetPercentage * g_MemBarWidth, g_MemStartY, g_MemBarZ },
+                        SizePercentage * g_MemBarWidth, g_MemBarHeight, AllocBlockSizeString,
+                        { 0.7f, 0.1f, 0.2f, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
+
+        size_t InfoOffset          = (uint8_t*)AllocInfo - GameState->HeapAllocator.m_Base;
+        float InfoOffsetPercentage = (float)InfoOffset / (float)GameState->HeapAllocator.m_Capacity;
+        float InfoSizePercentage =
+          (float)sizeof(Memory::allocation_info) / (float)GameState->HeapAllocator.m_Capacity;
+
+        DrawBox(GameState,
+                { g_MemStartX + InfoOffsetPercentage * g_MemBarWidth, g_MemStartY, g_MemBarZ },
+                InfoSizePercentage * g_MemBarWidth, g_MemBarHeight, { 1, 0, 0, 1 },
+                { 0.1f, 0.1f, 0.1f, 1 });
+
+        sprintf(AllocInfoString, "delete Base: %ld, Size: %d, Align: %u, InfoS: %ld", BlockOffset,
+                BlockSize, AllocInfo->AlignmentOffset, InfoOffset);
+
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, AllocInfoString, (void*)(uintptr_t)i))
+        {
+          GameState->HeapAllocator.Dealloc(AllocInfo->Base);
+        }
+      }
+      Memory::free_block* CurrentBlock = GameState->HeapAllocator.m_FirstFreeBlock;
+      while(CurrentBlock)
+      {
+        size_t  BlockOffset      = (uint8_t*)CurrentBlock - GameState->HeapAllocator.m_Base;
+        int32_t BlockSize        = CurrentBlock->Size;
+        float   OffsetPercentage = (float)BlockOffset / (float)GameState->HeapAllocator.m_Capacity;
+        float   SizePercentage   = (float)BlockSize / (float)GameState->HeapAllocator.m_Capacity;
+        sprintf(AllocBlockSizeString, "%d", BlockSize);
+        UI::DrawTextBox(GameState,
+                        { g_MemStartX + OffsetPercentage * g_MemBarWidth,
+                          g_MemStartY - g_MemBarHeight, g_MemBarZ },
+                        SizePercentage * g_MemBarWidth, g_MemBarHeight, AllocBlockSizeString,
+                        { 0.3f, 0.6f, 0.4f, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
+
+        CurrentBlock = CurrentBlock->Next;
+      }
+      if(GameState->HeapAllocator.m_Base < GameState->HeapAllocator.m_Barrier)
+      {
+        size_t BlockSize = GameState->HeapAllocator.m_Barrier - GameState->HeapAllocator.m_Base;
+        float   SizePercentage = (float)BlockSize / (float)GameState->HeapAllocator.m_Capacity;
+        sprintf(AllocBlockSizeString, "%ld", BlockSize);
+        UI::DrawTextBox(GameState, { g_MemStartX, g_MemStartY - 2 * g_MemBarHeight, g_MemBarZ },
+                        SizePercentage * g_MemBarWidth, g_MemBarHeight, AllocBlockSizeString,
+                        { 0.25f, 0.35f, 0.8f, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
+      }
+    }
+  }
+#if 0
+  char FrameRateString[20];
+  sprintf(FrameRateString, "%.2f ms", (double)Input->dt * 1000.0);
+  UI::Row(&Layout);
+  UI::ReleaseButton(GameState, &Layout, Input, FrameRateString);
+#endif
 }

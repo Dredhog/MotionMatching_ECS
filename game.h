@@ -8,7 +8,8 @@
 #include "skeleton.h"
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
-#include "stack_allocator.h"
+#include "stack_alloc.h"
+#include "heap_alloc.h"
 #include "edit_animation.h"
 #include "camera.h"
 #include "render_data.h"
@@ -54,6 +55,7 @@ struct game_state
 
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
+  Memory::heap_allocator   HeapAllocator;
 
   render_data                     R;
   EditAnimation::animation_editor AnimEditor;
@@ -194,6 +196,16 @@ DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animatio
   assert(GameState->Entities[Editor->EntityIndex].AnimController);
   assert(Editor->Skeleton);
   *Editor = {};
+}
+
+inline void
+RegisterDebugModels(game_state* GameState)
+{
+  GameState->GizmoModelID    = GameState->Resources.RegisterModel("data/built/gizmo1.model");
+  GameState->QuadModelID     = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
+  GameState->CubemapModelID  = GameState->Resources.RegisterModel("data/built/inverse_cube.model");
+  GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
+  GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
 }
 
 inline void

@@ -14,6 +14,9 @@ extern vec4 g_BoolHighlightColor;
 extern vec4 g_DescriptionColor;
 extern vec4 g_FontColor;
 
+void DrawBox(game_state* GameState, vec3 TopLeft, float Width, float Height, vec4 InnerColor,
+             vec4 BorderColor);
+
 namespace UI
 {
   struct im_layout

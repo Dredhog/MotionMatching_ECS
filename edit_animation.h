@@ -18,6 +18,7 @@ namespace EditAnimation
 {
   struct animation_editor
   {
+    char             AnimationPath[200];
     editor_keyframe  Keyframes[ANIM_EDITOR_MAX_KEYFRAME_COUNT];
     editor_keyframe  ClipboardKeyframe;
     float            SampleTimes[ANIM_EDITOR_MAX_KEYFRAME_COUNT];
@@ -57,10 +58,10 @@ namespace EditAnimation
   void JumpToNextKeyframe(animation_editor* Editor);
   void JumpToPreviousKeyframe(animation_editor* Editor);
 
-  void AdvancePlayHead(animation_editor* Editor, float dt);
-  void PlayAnimation(animation_editor* Editor, float dt);
-  void PrintAnimEditorState(const animation_editor* Editor);
+  void  AdvancePlayHead(animation_editor* Editor, float dt);
+  void  PlayAnimation(animation_editor* Editor, float dt);
+  void  PrintAnimEditorState(const animation_editor* Editor);
   float GetTimelinePercentage(const animation_editor* Editor, float Time);
 
-  void EditAnimation(animation_editor* Editor, const Anim::animation* Animation);
+  void EditAnimation(animation_editor* Editor, const Anim::animation* Animation, const char* Path);
 }

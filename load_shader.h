@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 
-#include "stack_allocator.h"
+#include "stack_alloc.h"
 
 namespace Shader
 {

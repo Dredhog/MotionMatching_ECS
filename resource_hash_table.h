@@ -12,7 +12,8 @@ namespace Resource
     void
     Set(rid RID, const T Asset, const char* Path)
     {
-      assert(0 < RID.Value && RID.Value <= TEXT_LINE_MAX_LENGTH);
+      assert(0 < RID.Value && RID.Value <= MAX_PATH_COUNT);
+      assert(Path);
 
       this->Assets[RID.Value - 1] = Asset;
 
@@ -31,7 +32,7 @@ namespace Resource
     bool
     Get(rid RID, T* Asset, char** Path)
     {
-      assert(0 < RID.Value && RID.Value <= TEXT_LINE_MAX_LENGTH);
+      assert(0 < RID.Value && RID.Value <= MAX_PATH_COUNT);
 
       if(Asset)
       {
@@ -42,6 +43,10 @@ namespace Resource
       {
         *Path = this->Paths[RID.Value - 1].Name;
       }
+      if(this->Paths[RID.Value - 1].Name[0] == '\0')
+      {
+        return false;
+      }
       return true;
     }
 
@@ -50,7 +55,7 @@ namespace Resource
     {
       if(!Path)
       {
-        assert(Path && "hash table error: queried path is NULL");
+        assert(Path && "hash table error: requested path is NULL");
         return false;
       }
       for(int i = 0; i < MAX_PATH_COUNT; i++)
@@ -76,8 +81,18 @@ namespace Resource
           return true;
         }
       }
-      assert(0 && "hash table error: unable to find new rid");
+      assert(0 && "hash table error: unable to create new rid");
       return false;
+    }
+
+    void
+    Clear()
+    {
+      for(int i = 0; i < MAX_PATH_COUNT; i++)
+      {
+        this->Assets[i] = {};
+        this->Paths[i]  = {};
+      }
     }
   };
 }

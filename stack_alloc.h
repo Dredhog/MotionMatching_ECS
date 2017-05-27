@@ -37,8 +37,10 @@ namespace Memory
     void FreeToMarker(marker Marker);
     void Clear();
 
-    marker GetMarker() const;
-    size_t GetByteCountAboveMarker(marker Marker) const;
+    void NullifyClear();
+
+    marker  GetMarker() const;
+    size_t  GetByteCountAboveMarker(marker Marker) const;
     int32_t GetAllocCount() const;
     int32_t GetUsedSize() const;
     int32_t GetCapacity() const;
@@ -54,6 +56,7 @@ namespace Memory
   };
 
   stack_allocator* CreateStackAllocatorInPlace(void* Base, uint32_t Capacity);
+
   inline uint32_t
   SafeTruncate_size_t_To_uint32_t(size_t Value)
   {

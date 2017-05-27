@@ -37,13 +37,11 @@ namespace Anim
 
   struct animation_controller
   {
-    animation_state States[ANIM_CONTROLLER_MAX_ANIM_COUNT];
-    animation*      Animations[ANIM_CONTROLLER_MAX_ANIM_COUNT];
-    rid             AnimationIDs[ANIM_CONTROLLER_MAX_ANIM_COUNT];
     skeleton*       Skeleton;
+    animation_state States[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    rid             AnimationIDs[ANIM_CONTROLLER_MAX_ANIM_COUNT];
+    animation*      Animations[ANIM_CONTROLLER_MAX_ANIM_COUNT];
 
-    uint8_t*         DynamicDataStart;
-    size_t           DynamicDataSizeBytes;
     Anim::transform* OutputTransforms;
     mat4*            BoneSpaceMatrices;
     mat4*            ModelSpaceMatrices;

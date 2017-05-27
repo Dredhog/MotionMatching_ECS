@@ -6,8 +6,10 @@
 #include "model.h"
 #include "anim.h"
 #include "edit_animation.h"
-#include "stack_allocator.h"
+#include "stack_alloc.h"
 #include "render_data.h"
+
+#define ASSET_HEADER_CHECKSUM 123456
 
 namespace Asset
 {
@@ -16,6 +18,7 @@ namespace Asset
     ASSET_Model,
     ASSET_Actor,
     ASSET_AnimationGroup,
+    ASSET_Scene,
   };
 
   struct asset_file_header

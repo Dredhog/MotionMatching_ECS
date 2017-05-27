@@ -56,3 +56,16 @@ Render::SetUpMesh(Render::mesh* Mesh)
   // Unbind VAO
   glBindVertexArray(0);
 }
+
+void
+Render::CleanUpMesh(Render::mesh* Mesh)
+{
+  glDeleteBuffers(1, &Mesh->VBO);
+  glDeleteBuffers(1, &Mesh->EBO);
+
+  // Delete vertex array
+  glDeleteVertexArrays(1, &Mesh->VAO);
+
+  // Unbind VAO
+  glBindVertexArray(0);
+}

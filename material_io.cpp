@@ -226,10 +226,7 @@ ImportMaterial(Resource::resource_manager* Resources, const char* Path)
     Line       = NULL;
     LineLength = 0;
   }
-
   fclose(FilePointer);
-
-  printf("Material %s loaded.\n", Path);
 
   return Material;
 }

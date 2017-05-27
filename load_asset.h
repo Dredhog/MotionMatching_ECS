@@ -3,7 +3,7 @@
 #include "asset.h"
 #include "file_io.h"
 #include "load_shader.h"
-#include "stack_allocator.h"
+#include "stack_alloc.h"
 
 void
 CheckedLoadAndSetUpModel(Memory::stack_allocator* Alloc, const char* RelativePath,

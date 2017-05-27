@@ -62,7 +62,7 @@ ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName)
 }
 
 bool
-WriteEntireFile(char* Filename, uint64_t MemorySize, void* Memory)
+WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
 {
   int FileHandle = open(Filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
