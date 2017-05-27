@@ -56,11 +56,21 @@ Text::LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize)
 
   font Result = {};
   strcpy(Result.Name, FontName);
+
+  int32_t Sum = 0;
   for(int i = 0; i < SizeCount; i++)
   {
     Result.SizedFonts[i] = LoadSizedFont(FontName, MinSize + i * DeltaSize);
+
+    int32_t SymbolWidth;
+    if(TTF_GlyphMetrics(Result.SizedFonts[i].Font, 'a', NULL, NULL, NULL, NULL, &SymbolWidth) == -1)
+    {
+      printf("Error when acquiring SymbolWidth for %s font\nError: %s\n", FontName, SDL_GetError());
+    }
+    Sum += SymbolWidth;
   }
-  Result.SizeCount = SizeCount;
+  Result.SizeCount          = SizeCount;
+  Result.AverageSymbolWidth = (float)Sum / (float)SizeCount;
   return Result;
 }
 

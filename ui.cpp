@@ -163,22 +163,59 @@ DrawBox(game_state* GameState, UI::im_layout* Layout, vec4 InnerColor, vec4 Bord
 }
 
 void
+UI::DrawText(game_state* GameState, vec3 TopLeft, float Width, float Height, const char* InputText)
+{
+  float   TextPaddingX = 0.001f;
+  float   TextPaddingY = 0.005f;
+  int32_t TextureWidth;
+  int32_t TextureHeight;
+  char    Text[100];
+
+  int32_t FontSize = (int32_t)((Height + 2.0f * TextPaddingY) * SCREEN_HEIGHT / 3.0f);
+
+  float LengthDiff =
+    Width - ((float)(strlen(InputText) * GameState->Font.AverageSymbolWidth) / SCREEN_WIDTH) -
+    2 * TextPaddingX;
+  if(LengthDiff < 0)
+  {
+    float   SymbolWidth = (float)GameState->Font.AverageSymbolWidth / SCREEN_WIDTH;
+    int32_t Count       = 0;
+    while(LengthDiff < 0)
+    {
+      LengthDiff += SymbolWidth;
+      ++Count;
+    }
+    Count += 3;
+    int32_t NewLength = (int32_t)strlen(InputText) - Count;
+    if(NewLength > 0)
+    {
+      strncpy(Text, InputText, NewLength);
+      strcpy(&Text[NewLength], "...\0");
+    }
+    else
+    {
+      strcpy(Text, "...\0");
+    }
+  }
+  else
+  {
+    strcpy(Text, InputText);
+  }
+  uint32_t TextureID = Text::GetTextTextureID(&GameState->Font, FontSize, Text, g_FontColor,
+                                              &TextureWidth, &TextureHeight);
+  Debug::PushTopLeftTexturedQuad(TextureID,
+                                 vec3{ TopLeft.X +
+                                         ((Width - ((float)TextureWidth / SCREEN_WIDTH)) / 2.0f),
+                                       TopLeft.Y - TextPaddingY, TopLeft.Z },
+                                 (float)TextureWidth / SCREEN_WIDTH, Height - 2 * TextPaddingY);
+}
+
+void
 UI::DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, const char* Text,
                 vec4 InnerColor, vec4 BorderColor)
 {
-  float TextPadding = 0.005f;
   DrawBox(GameState, TopLeft, Width, Height, InnerColor, BorderColor);
-  int32_t  TextureWidth;
-  int32_t  TextureHeight;
-  uint32_t TextureID = Text::GetTextTextureID(&GameState->Font, (int32_t)(10 * (Width / Height)),
-                                              Text, g_FontColor, &TextureWidth, &TextureHeight);
-  Debug::PushTopLeftTexturedQuad(TextureID,
-                                 vec3{ TopLeft.X + TextPadding +
-                                         ((Width - (((float)TextureWidth / SCREEN_WIDTH) +
-                                                    2.0f * TextPadding)) /
-                                          2.0f),
-                                       TopLeft.Y - TextPadding, TopLeft.Z },
-                                 (float)TextureWidth / SCREEN_WIDTH, Height - 2 * TextPadding);
+  DrawText(GameState, TopLeft, Width, Height, Text);
 }
 
 void

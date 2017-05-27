@@ -22,7 +22,6 @@ namespace Text
   {
     TTF_Font* Font;
     int32_t   Size;
-    int32_t   SymbolWidth;
   };
 
   struct font
@@ -30,6 +29,7 @@ namespace Text
     char       Name[FONT_NAME_MAX_SIZE];
     sized_font SizedFonts[MAX_FONT_SIZE_COUNT];
     int32_t    SizeCount;
+    float      AverageSymbolWidth;
   };
 
   sized_font LoadSizedFont(const char* FontName, int FontSize);

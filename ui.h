@@ -43,6 +43,8 @@ namespace UI
   void      Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text,
                 vec4 DescriptionColor = { 0.5f, 0.0f, 0.5f, 1 });
   void      DrawSquareTexture(game_state* GameState, UI::im_layout* Layout, uint32_t TextureId);
+  void      DrawText(game_state* GameState, vec3 TopLeft, float Width, float Height,
+                     const char* InputText);
   void DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, const char* Text,
                    vec4 InnerColor, vec4 BorderColor);
   void DrawTextBox(game_state* GameState, im_layout* Layout, const char* Text,

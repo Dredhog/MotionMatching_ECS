@@ -102,7 +102,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->ExpandedTextureID);
 
     //--------------LOAD FONT--------------
-    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14, 8, 1);
+    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 14, 8, 1);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);

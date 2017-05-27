@@ -163,7 +163,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
             CurrentMaterial->Common.UseBlending = true;
           }
         }
-        if(UI::ReleaseButton(GameState, &Layout, Input, "  Next  "))
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Next"))
         {
           if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
           {
@@ -699,7 +699,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::SliderVec3Color(GameState, &Layout, Input, "Font", (vec3*)&g_FontColor);
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Scene     ", &g_ShowSceneSettings))
+  if(UI::_ExpandableButton(&Layout, Input, "Scene", &g_ShowSceneSettings))
   {
     UI::Row(&Layout);
     if(UI::ReleaseButton(GameState, &Layout, Input, "Export Scene"))
