@@ -10,7 +10,7 @@
 
 #define TEST_TEXT_CACHE 0
 
-#if TEST_TEXT_CACHE 
+#if TEST_TEXT_CACHE
 #define TEXTURE_CACHE_LINE_COUNT 6
 #else
 #define TEXTURE_CACHE_LINE_COUNT 256
@@ -22,6 +22,7 @@ namespace Text
   {
     TTF_Font* Font;
     int32_t   Size;
+    int32_t   SymbolWidth;
   };
 
   struct font
@@ -32,9 +33,9 @@ namespace Text
   };
 
   sized_font LoadSizedFont(const char* FontName, int FontSize);
-  font LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize);
-  uint32_t GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color,
-                            int32_t* Width = 0, int32_t* Height = 0);
-  void ClearTextRequestCounts();
-  void ResetCache();
+  font       LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize);
+  uint32_t   GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color,
+                              int32_t* Width = 0, int32_t* Height = 0);
+  void       ClearTextRequestCounts();
+  void       ResetCache();
 }

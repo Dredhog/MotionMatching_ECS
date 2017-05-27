@@ -170,15 +170,15 @@ UI::DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, 
   DrawBox(GameState, TopLeft, Width, Height, InnerColor, BorderColor);
   int32_t  TextureWidth;
   int32_t  TextureHeight;
-  uint32_t TextureID =
-    Text::GetTextTextureID(&GameState->Font, (int32_t)(10 * ((float)Width / (float)Height)), Text,
-                           g_FontColor, &TextureWidth, &TextureHeight);
-  float TextAspect = (float)Width / (float)Height;
+  uint32_t TextureID = Text::GetTextTextureID(&GameState->Font, (int32_t)(10 * (Width / Height)),
+                                              Text, g_FontColor, &TextureWidth, &TextureHeight);
   Debug::PushTopLeftTexturedQuad(TextureID,
-                                 vec3{ TopLeft.X + TextPadding, TopLeft.Y - TextPadding,
-                                       TopLeft.Z },
-                                 TextAspect * (Height - 2 * TextPadding), Height - 2 * TextPadding);
-  // TextAspect * Height, Height);
+                                 vec3{ TopLeft.X + TextPadding +
+                                         ((Width - (((float)TextureWidth / SCREEN_WIDTH) +
+                                                    2.0f * TextPadding)) /
+                                          2.0f),
+                                       TopLeft.Y - TextPadding, TopLeft.Z },
+                                 (float)TextureWidth / SCREEN_WIDTH, Height - 2 * TextPadding);
 }
 
 void

@@ -50,7 +50,7 @@ namespace Resource
     {
       if(!Path)
       {
-        assert(Path && "hash table error: ueried path is NULL");
+        assert(Path && "hash table error: queried path is NULL");
         return false;
       }
       for(int i = 0; i < MAX_PATH_COUNT; i++)

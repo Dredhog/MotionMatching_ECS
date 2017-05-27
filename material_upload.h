@@ -26,11 +26,11 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
   {
     glUseProgram(GameState->R.ShaderPhong);
     glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "flags"), Material->Phong.Flags);
-    glUniform4fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.ambientColor"), 1,
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.ambientColor"), 1,
                  (float*)&Material->Phong.AmbientColor);
     glUniform4fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.diffuseColor"), 1,
                  (float*)&Material->Phong.DiffuseColor);
-    glUniform4fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.specularColor"), 1,
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.specularColor"), 1,
                  (float*)&Material->Phong.SpecularColor);
     glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.diffuseMap"), 0);
     glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.specularMap"), 1);

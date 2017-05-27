@@ -7,9 +7,9 @@
 
 struct Material
 {
-  vec4 ambientColor;
+  vec3 ambientColor;
   vec4 diffuseColor;
-  vec4 specularColor;
+  vec3 specularColor;
 
   sampler2D diffuseMap;
   sampler2D specularMap;
@@ -81,7 +81,7 @@ main()
   }
   else
   {
-    ambient *= material.ambientColor.rgb;
+    ambient *= material.ambientColor;
     diffuse *= material.diffuseColor.rgb;
   }
 
@@ -95,7 +95,7 @@ main()
   }
   else
   {
-    specular *= material.specularColor.rgb;
+    specular *= material.specularColor;
   }
 
   // --------FINAL----------

@@ -132,7 +132,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           case SHADER_Phong:
           {
             SliderVec3Color(GameState, &Layout, Input, "Ambient Color",
-                            &CurrentMaterial->Phong.AmbientColor.XYZ, 0.0f, 1.0f, 5.0f);
+                            &CurrentMaterial->Phong.AmbientColor, 0.0f, 1.0f, 5.0f);
 
             bool UseDIffuse = (CurrentMaterial->Phong.Flags & PHONG_UseDiffuseMap);
 
@@ -220,7 +220,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
             else
             {
               CurrentMaterial->Phong.Flags &= ~PHONG_UseSpecularMap;
-              SliderVec4Color(GameState, &Layout, Input, "Specular Color",
+              SliderVec3Color(GameState, &Layout, Input, "Specular Color",
                               &CurrentMaterial->Phong.SpecularColor, 0.0f, 1.0f, 5.0f);
             }
 
@@ -594,9 +594,9 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::_BoolButton(&Layout, Input, "Toggle", &GameState->DrawDebugSpheres);
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Camera     ", &g_ShowCameraSettings))
+  if(UI::_ExpandableButton(&Layout, Input, "Camera", &g_ShowCameraSettings))
   {
-    UI::Row(GameState, &Layout, 1, "FOV    ");
+    UI::Row(GameState, &Layout, 1, "FOV");
     UI::SliderFloat(GameState, &Layout, Input, "FieldOfView", &GameState->Camera.FieldOfView, 0,
                     200.0f, 50.0f);
     UI::Row(GameState, &Layout, 1, "Near  ");
@@ -608,9 +608,15 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::Row(GameState, &Layout, 1, "Speed");
     UI::SliderFloat(GameState, &Layout, Input, "Far Clip Plane", &GameState->Camera.Speed, 0, 200,
                     50.0f);
+    UI::Row(GameState, &Layout, 1, "Cubemap");
+    UI::_BoolButton(&Layout, Input, "Toggle", &GameState->DrawCubemap);
+
+    if(GameState->DrawCubemap)
+    {
+    }
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "GUI Colors     ", &g_ShowGUISettings))
+  if(UI::_ExpandableButton(&Layout, Input, "GUI Colors", &g_ShowGUISettings))
   {
     UI::SliderVec3Color(GameState, &Layout, Input, "Border", (vec3*)&g_BorderColor);
     UI::SliderVec3Color(GameState, &Layout, Input, "Base", (vec3*)&g_NormalColor);

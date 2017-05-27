@@ -66,11 +66,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // END SEGMENTATION
 
     // --------LOAD MODELS/ACTORS--------
-    GameState->GizmoModelID = GameState->Resources.RegisterModel("data/built/gizmo1.model");
-    GameState->QuadModelID  = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
-    GameState->CubemapModelID =
-      GameState->Resources.RegisterModel("./data/built/inverse_cube.model");
-    GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
+    GameState->GizmoModelID   = GameState->Resources.RegisterModel("data/built/gizmo1.model");
+    GameState->QuadModelID    = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
+    GameState->CubemapModelID = GameState->Resources.RegisterModel("data/built/inverse_cube.model");
+    GameState->SphereModelID  = GameState->Resources.RegisterModel("data/built/sphere.model");
     GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
 
     // -----------LOAD SHADERS------------
@@ -92,6 +91,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     //
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/expanded.bmp");
+    strcpy(GameState->Cubemap.Name, "data/textures/skybox/iceflats");
+    strcpy(GameState->Cubemap.Format, "tga");
+    GetCubemapRIDs(GameState->Cubemap.Faces, &GameState->Resources, GameState->TemporaryMemStack,
+                   GameState->Cubemap.Name, GameState->Cubemap.Format);
+    GameState->Cubemap.CubemapTexture = -1;
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
 
@@ -579,6 +583,30 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+
+  // TODO (rytis): Finish cubemap loading
+  if(GameState->DrawCubemap)
+  {
+    if(GameState->Cubemap.CubemapTexture == -1)
+    {
+      GameState->Cubemap.CubemapTexture =
+        LoadCubemap(&GameState->Resources, GameState->Cubemap.Faces);
+    }
+    glDepthFunc(GL_LEQUAL);
+    glUseProgram(GameState->R.ShaderCubemap);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_projection"), 1,
+                       GL_FALSE, GameState->Camera.ProjectionMatrix.e);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_view"), 1, GL_FALSE,
+                       Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
+    glBindVertexArray(GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0]->VAO);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
+    glDrawElements(GL_TRIANGLES,
+                   GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0]->IndiceCount,
+                   GL_UNSIGNED_INT, 0);
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glBindVertexArray(0);
   }
 
   Debug::DrawWireframeSpheres(GameState);

@@ -10,7 +10,7 @@ for file in $dir*.mtl; do
   do
     if [ "$(echo $line | grep "newmtl")" ]
     then
-      newmat=$dir$(echo $line | cut -d ' ' -f 2)".mat"
+      newmat=$dir$(echo $line | cut -d $'\n' -f 1 | cut -d $'\r' -f 1 | cut -d ' ' -f 2)".mat"
       if [ -e $newmat ]
       then
         dirfound=0
