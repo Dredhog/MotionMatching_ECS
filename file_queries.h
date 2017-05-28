@@ -86,10 +86,9 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
     }
     else
     {
-      double TimeDiff = difftime(g_Stats[PathIndex].st_mtime, Stat->st_mtime);
+      double TimeDiff = difftime(Stat->st_mtime, g_Stats[PathIndex].st_mtime);
       if(TimeDiff > 0)
       {
-        printf("%f\n", TimeDiff);
         g_Stats[PathIndex] = *Stat;
 
         strcpy(g_DiffPaths[*g_DiffCount].Path.Name, Path);

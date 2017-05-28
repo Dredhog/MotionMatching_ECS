@@ -8,7 +8,7 @@
 #include "skeleton.h"
 
 static const int ANIM_CONTROLLER_MAX_ANIM_COUNT     = 5;
-static const int ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT = 1;
+static const int ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT = 3;
 
 namespace Anim
 {
@@ -35,6 +35,12 @@ namespace Anim
     bool  Loop;
   };
 
+  struct animation_group
+  {
+    animation** Animations;
+    int32_t     AnimationCount;
+  };
+
   struct animation_controller
   {
     skeleton*       Skeleton;
@@ -48,32 +54,33 @@ namespace Anim
     mat4*            HierarchicalModelSpaceMatrices;
     float            GlobalTimeSec;
     int32_t          AnimStateCount;
+
+    void (*BlendFunc)(animation_controller*);
   };
 
-  struct animation_group
-  {
-    animation** Animations;
-    int32_t     AnimationCount;
-  };
-
-  // Keyframe blending and sampling facilities
-  void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
-                      float T, Anim::transform* Out);
-  // Animation
-  void LinearAnimationSample(const Anim::animation* Animation, float Time,
-                             Anim::transform* OutputTransforms);
-  void SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
-                          int OutputBlockIndex);
+  // Sampling / Blending
+  void SampleAtGlobalTime(animation_controller*, int AnimationIndex, int OutputBlockIndex);
+  void LinearBlend(animation_controller*, int AnimA, int AnimB, float t, int ResultInd);
+  void AdditiveBlend(animation_controller*, int AnimBase, int AnimAdd, float t, int ResultInd);
+  void UpdateController(animation_controller*, float dt,
+                        void BlendFunction(animation_controller*) = NULL);
 
   // Animation controller interface
-  void UpdateController(Anim::animation_controller* Controller, float dt);
-  void AddAnimation(Anim::animation_controller* AnimController, rid AnimationID);
-  void SetAnimation(Anim::animation_controller* AnimController, rid AnimationID,
-                    int32_t ControllerIndex);
-  void StartAnimationAtIndex(Anim::animation_controller* AnimController, int Index, float Time);
-  void StopAnimation(Anim::animation_controller* AnimController, int AnimationIndex);
-  void StartAnimationAtGlobalTime(Anim::animation_controller* AnimController, int AnimationIndex,
-                                  bool Loop = true);
+  void AddAnimation(animation_controller*, rid AnimationID);
+  void SetAnimation(animation_controller*, rid AnimationID, int32_t AnimationIndex);
+
+  void StopAnimation(animation_controller*, int AnimationIndex);
+  void StartAnimationAtTime(animation_controller*, int Index, float Time);
+  void StartAnimationAtGlobalTime(animation_controller*, int AnimationIndex, bool Loop = true);
+  void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
+                  int AnimationIndex, bool Loop = true);
+
+  // Blending and sampling facilities
+  void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
+                      float T, Anim::transform* Out);
+  void AddTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
+                     float T, Anim::transform* Out);
+  void LinearAnimationSample(animation_controller*, int AnimAInd, float Time, int ResultIndex);
 
   // Matrix palette generation
   void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,

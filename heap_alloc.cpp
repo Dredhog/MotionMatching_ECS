@@ -25,6 +25,12 @@ namespace Memory
     m_AllocCount = 0;
   }
 
+  void
+  heap_allocator::Clear()
+  {
+    this->Create(this->m_Base, this->m_Capacity);
+  }
+
   uint8_t*
   heap_allocator::Alloc(int32_t Size)
   {
@@ -177,5 +183,23 @@ namespace Memory
     {
       assert(0 && "heap error: no block to free at specified address");
     }
+  }
+
+  uint8_t*
+  heap_allocator::GetBase() const
+  {
+    return this->m_Base;
+  }
+
+  int32_t
+  heap_allocator::GetAllocationCount() const
+  {
+    return this->m_AllocCount;
+  }
+
+  allocation_info*
+  heap_allocator::GetAllocationInfos() const
+  {
+    return &m_AllocInfos[-m_AllocCount];
   }
 }

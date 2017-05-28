@@ -5,8 +5,9 @@ namespace Resource
   template<typename T, int MAX_PATH_COUNT>
   class resource_hash_table // Disregard the current implementation (currently array)
   {
-    path Paths[MAX_PATH_COUNT];
-    T    Assets[MAX_PATH_COUNT];
+    path    Paths[MAX_PATH_COUNT];
+    T       Assets[MAX_PATH_COUNT];
+    int32_t References[MAX_PATH_COUNT];
 
   public:
     void
@@ -27,6 +28,13 @@ namespace Resource
       {
         this->Paths[RID.Value - 1] = {};
       }
+    }
+
+    void
+    SetAsset(rid RID, T Asset)
+    {
+      assert(0 < RID.Value && RID.Value <= MAX_PATH_COUNT);
+      this->Assets[RID.Value - 1] = Asset;
     }
 
     bool
@@ -86,12 +94,35 @@ namespace Resource
     }
 
     void
-    Clear()
+    AddReference(rid RID)
+    {
+      assert(0 < RID.Value && RID.Value <= MAX_PATH_COUNT);
+      this->References[RID.Value - 1]++;
+    }
+
+    bool
+    RemoveReference(rid RID)
+    {
+      assert(0 < RID.Value && RID.Value <= MAX_PATH_COUNT);
+      this->References[RID.Value - 1]--;
+      return (this->References[RID.Value - 1] > 0);
+    }
+
+    int32_t
+    QueryReferences(rid RID)
+    {
+      assert(0 < RID.Value && RID.Value <= MAX_PATH_COUNT);
+      return this->References[RID.Value - 1]--;
+    }
+
+    void
+    Reset()
     {
       for(int i = 0; i < MAX_PATH_COUNT; i++)
       {
-        this->Assets[i] = {};
-        this->Paths[i]  = {};
+        this->Assets[i]     = {};
+        this->Paths[i]      = {};
+        this->References[i] = {};
       }
     }
   };

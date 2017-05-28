@@ -12,6 +12,28 @@ int32_t ReadPaths(asset_diff* AssedDiffs, path* Paths, struct stat* Stats, int32
                   const char* StartPath, const char* Extension);
 namespace Resource
 {
+  void
+  resource_manager::Create(uint8_t* MemoryStart, uint32_t TotalMemorySize)
+  {
+    *this                      = {};
+    uint32_t ModelHeapSize     = (uint32_t)((float)TotalMemorySize * 0.9f);
+    uint32_t AnimationHeapSize = (uint32_t)((float)TotalMemorySize * 0.05f);
+    uint32_t MaterialStackSize = TotalMemorySize - ModelHeapSize - AnimationHeapSize;
+
+    uint8_t* ModelHeapStart     = MemoryStart;
+    uint8_t* AnimationHeapStart = ModelHeapStart + ModelHeapSize;
+    uint8_t* MaterialStackStart = AnimationHeapStart + AnimationHeapSize;
+
+    this->ModelHeap.Create(ModelHeapStart, ModelHeapSize);
+    this->ModelHeap.Clear();
+
+    this->AnimationHeap.Create(AnimationHeapStart, AnimationHeapSize);
+    this->ModelHeap.Clear();
+
+    this->MaterialStack.Create(MaterialStackStart, MaterialStackSize);
+    this->MaterialStack.NullifyClear();
+  }
+
   bool
   resource_manager::LoadModel(rid RID)
   {
@@ -25,7 +47,7 @@ namespace Resource
       }
       else
       {
-        debug_read_file_result AssetReadResult = ReadEntireFile(&this->ModelStack, Path);
+        debug_read_file_result AssetReadResult = ReadEntireFile(&this->ModelHeap, Path);
 
         assert(AssetReadResult.Contents);
         if(AssetReadResult.ContentsSize <= 0)
@@ -74,11 +96,11 @@ namespace Resource
     {
       if(Animation)
       {
-        assert(0 && "Reloading model");
+        assert(0 && "Reloading animation");
       }
       else
       {
-        debug_read_file_result AssetReadResult = ReadEntireFile(&this->AnimationStack, Path);
+        debug_read_file_result AssetReadResult = ReadEntireFile(&this->AnimationHeap, Path);
 
         assert(AssetReadResult.Contents);
         if(AssetReadResult.ContentsSize <= 0)
@@ -162,7 +184,7 @@ namespace Resource
         }
       }
     }
-    this->Textures.Clear();
+    this->Textures.Reset();
   }
 
   void
@@ -170,35 +192,62 @@ namespace Resource
   {
     for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
     {
-      Render::model* Model;
-      char*          Path;
-      if(this->Models.Get({ i + 1 }, &Model, &Path))
+      this->FreeModel({ i + 1 });
+    }
+    this->Models.Reset();
+    this->ModelHeap.Clear();
+  }
+
+  void
+  resource_manager::FreeModel(rid RID)
+  {
+    Render::model* Model;
+    char*          Path;
+    if(this->Models.Get(RID, &Model, &Path))
+    {
+      if(Model)
       {
-        if(Model)
+        for(int m = 0; m < Model->MeshCount; m++)
         {
-          for(int m = 0; m < Model->MeshCount; m++)
-          {
-            Render::CleanUpMesh(Model->Meshes[m]);
-          }
+          Render::CleanUpMesh(Model->Meshes[m]);
         }
+        //(TODO): Do not do this at home black magic (ad-hoc offset)
+        this->ModelHeap.Dealloc((uint8_t*)Model - sizeof(Asset::asset_file_header) + 8);
+        this->Models.SetAsset(RID, NULL);
       }
     }
-    this->Models.Clear();
-    this->ModelStack.NullifyClear();
+  }
+
+  void
+  resource_manager::FreeAnimation(rid RID)
+  {
+    Anim::animation* Animation;
+    char*            Path;
+    if(this->Animations.Get(RID, &Animation, &Path))
+    {
+      if(Animation)
+      {
+        // TODO(LUKAS) TOTAL HACK will work if only one animation in anim file
+        this->AnimationHeap.Dealloc((uint8_t*)Animation - sizeof(Asset::asset_file_header) -
+                                    sizeof(Anim::animation_group) - sizeof(Anim::animation*));
+        this->Animations.SetAsset(RID, NULL);
+      }
+    }
   }
 
   void
   resource_manager::WipeAllMaterialData()
   {
-    this->Materials.Clear();
+    this->Materials.Reset();
     this->MaterialStack.NullifyClear();
   }
 
   void
   resource_manager::WipeAllAnimationData()
   {
-    this->Animations.Clear();
-    this->AnimationStack.NullifyClear();
+    this->Animations.Reset();
+    this->AnimationHeap.Clear();
+    // this->AnimationStack.NullifyClear();
   }
 
 #define _STRING(X) #X
@@ -270,7 +319,7 @@ namespace Resource
       }                                                                                            \
       else                                                                                         \
       {                                                                                            \
-        printf("%-10s %-10s: rid %d, %s\n", "seeking", _STRING(TYPE_NAME), RID.Value, Path);       \
+        /*printf("%-10s %-10s: rid %d, %s\n", "seeking", _STRING(TYPE_NAME), RID.Value, Path);*/   \
         if(this->Load##TYPE_NAME(RID))                                                             \
         {                                                                                          \
           this->TYPE_NAME##s.Get(RID, &TYPE_NAME, &Path);                                          \
@@ -324,25 +373,23 @@ namespace Resource
   resource_manager::UpdateHardDriveAssetPathLists()
   {
     // Update models paths
-    int DiffCount = ReadPaths(this->DiffedAssets, this->ModelPaths, this->ModelStats,
-                              &this->ModelPathCount, "data/built", NULL);
+    this->DiffedModelCount = ReadPaths(this->DiffedModels, this->ModelPaths, this->ModelStats,
+                                       &this->ModelPathCount, "data/built", NULL);
     // Update texture paths
-    DiffCount = ReadPaths(this->DiffedAssets, this->TexturePaths, this->TextureStats,
-                          &this->TexturePathCount, "data/textures", NULL);
+    this->DiffedTextureCount =
+      ReadPaths(this->DiffedTextures, this->TexturePaths, this->TextureStats,
+                &this->TexturePathCount, "data/textures", NULL);
     // Update animation paths
-    DiffCount = ReadPaths(this->DiffedAssets, this->AnimationPaths, this->AnimationStats,
-                          &this->AnimationPathCount, "data/animations", "anim");
-    // Update material paths
-    DiffCount = ReadPaths(this->DiffedAssets, this->MaterialPaths, this->MaterialStats,
-                          &this->MaterialPathCount, "data/materials", "mat");
-#define LOG_HARD_DRIVE_CHANGES 0
-#if LOG_HARD_DRIVE_CHANGES
-    if(DiffCount > 0)
+    this->DiffedAnimationCount =
+      ReadPaths(this->DiffedAnimations, this->AnimationPaths, this->AnimationStats,
+                &this->AnimationPathCount, "data/animations", "anim");
+#if 0
+    if(this->DiffedAnimationCount > 0)
     {
-      printf("DIFF COUNT: %d\n", DiffCount);
-      for(int i = 0; i < DiffCount; i++)
+      printf("ANIMATION DIFF COUNT: %d\n", this->DiffedAnimationCount);
+      for(int i = 0; i < this->DiffedAnimationCount; i++)
       {
-        switch(this->DiffedAssets[i].Type)
+        switch(this->DiffedAnimations[i].Type)
         {
           case DIFF_Added:
             printf("Added: ");
@@ -357,11 +404,91 @@ namespace Resource
             assert(0 && "assert: overflowed stat enum");
             break;
         }
-        printf("%s\n", DiffedAssets[i].Path.Name);
+        printf("%s\n", DiffedAnimations[i].Path.Name);
       }
     }
 #endif
-#undef LOG_HARD_DRIVE_CHANGES
+    // Update material paths
+    this->DiffedMaterialCount =
+      ReadPaths(this->DiffedMaterials, this->MaterialPaths, this->MaterialStats,
+                &this->MaterialPathCount, "data/materials", "mat");
+  }
+
+  void
+  resource_manager::ReloadModified()
+  {
+    for(int i = 0; i < this->DiffedAnimationCount; i++)
+    {
+      printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+      if(this->DiffedAnimations[i].Type == DIFF_Modified)
+      {
+        printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+        rid RID;
+        if(this->Animations.GetPathRID(&RID, DiffedAnimations[i].Path.Name))
+        {
+          printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
+          Anim::animation* Animation;
+          char*            Path;
+          if(this->Animations.Get(RID, &Animation, &Path))
+          {
+            if(Animation)
+            {
+              printf("Reloading animation: %s\n", DiffedAnimations[i].Path.Name);
+              FreeAnimation(RID);
+              LoadAnimation(RID);
+            }
+          }
+        }
+      }
+    }
+
+    for(int i = 0; i < this->DiffedModelCount; i++)
+    {
+      printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+      if(this->DiffedModels[i].Type == DIFF_Modified)
+      {
+        printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+        rid RID;
+        if(this->Models.GetPathRID(&RID, DiffedModels[i].Path.Name))
+        {
+          printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
+          Render::model* Model;
+          char*          Path;
+          if(this->Models.Get(RID, &Model, &Path))
+          {
+            if(Model)
+            {
+              printf("Reloading animation: %s\n", DiffedAnimations[i].Path.Name);
+              FreeModel(RID);
+              LoadModel(RID);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void
+  resource_manager::DeleteUnused()
+  {
+    for(int i = 1; i <= RESOURCE_MAX_COUNT; i++)
+    {
+      Render::model* Model;
+      char*          Path;
+      rid            RID = { i };
+      if(this->Models.Get(RID, &Model, &Path))
+      {
+        if(Model)
+        {
+          int32_t RefCount = this->Models.QueryReferences(RID);
+          if(RefCount <= 0)
+          {
+            printf("deleting model rid: %d, refs: %d\n", RID.Value, RefCount);
+            FreeModel(RID);
+          }
+        }
+      }
+    }
   }
 }
 

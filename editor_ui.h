@@ -5,6 +5,7 @@
 #include "skeleton.h"
 #include "time.h"
 #include "scene.h"
+#include "player_controller.h"
 
 #include <limits>
 
@@ -24,8 +25,19 @@ ModelPathToCharPtr(void* CharArray)
 char*
 TexturePathToCharPtr(void* CharArray)
 {
-  static const size_t PrefixLength = strlen("data/textures/");
-  return ((char*)CharArray) + PrefixLength;
+  // static const size_t PrefixLength = strlen("data/textures/");
+
+  char* Path = (char*)CharArray;
+
+  int i = (int)strlen(Path);
+  for(; i > 0; i--)
+  {
+    if(Path[i - 1] == '/')
+    {
+      break;
+    }
+  }
+  return ((char*)CharArray) + i;
 }
 
 char*
@@ -56,9 +68,9 @@ VisualizeTimeline(game_state* GameState)
   {
     const EditAnimation::animation_editor* Editor = &GameState->AnimEditor;
 
-    const float TimelineStartX     = 0.20f;
+    const float TimelineStartX     = 0.15f;
     const float TimelineStartY     = 0.1f;
-    const float TimelineWidth      = 0.6f;
+    const float TimelineWidth      = 0.55f;
     const float TimelineHeight     = 0.05f;
     const float CurrentMarkerWidth = 0.002f;
     const float FirstTime          = MinFloat(Editor->PlayHeadTime, Editor->SampleTimes[0]);
@@ -75,19 +87,80 @@ VisualizeTimeline(game_state* GameState)
     {
       float PosPercentage = (Editor->SampleTimes[i] - FirstTime) / TimeDiff;
       Debug::PushQuad(vec3{ TimelineStartX + PosPercentage * TimelineWidth - 0.5f * KeyframeWidth,
-                            TimelineStartY, -0.1f },
+                            TimelineStartY, 0 },
                       KeyframeWidth, TimelineHeight, { 0.5f, 0.3f, 0.3f, 1 });
     }
     float PlayheadPercentage = (Editor->PlayHeadTime - FirstTime) / TimeDiff;
     Debug::PushQuad(vec3{ TimelineStartX + PlayheadPercentage * TimelineWidth -
                             0.5f * KeyframeWidth,
-                          TimelineStartY, -0.2f },
+                          TimelineStartY, -0.05f },
                     KeyframeWidth, TimelineHeight, { 1, 0, 0, 1 });
     float CurrentPercentage = (Editor->SampleTimes[Editor->CurrentKeyframe] - FirstTime) / TimeDiff;
     Debug::PushQuad(vec3{ TimelineStartX + CurrentPercentage * TimelineWidth -
                             0.5f * CurrentMarkerWidth,
-                          TimelineStartY, -0.3f },
+                          TimelineStartY, -0.1f },
                     CurrentMarkerWidth, TimelineHeight, { 0.5f, 0.5f, 0.5f, 1 });
+  }
+}
+
+void
+VisualizeHeap(game_state* GameState, const Memory::heap_allocator* Heap, vec3 LowerLeft,
+              float Width, float Height)
+{
+  const uint8_t*           HeapBase        = Heap->GetBase();
+  const int32_t            AllocationCount = Heap->GetAllocationCount();
+  Memory::allocation_info* AllocInfos      = Heap->GetAllocationInfos();
+  if(HeapBase)
+  {
+    Debug::PushTopLeftQuad(LowerLeft, Width, 3 * Height, { 1, 1, 1, 1 });
+
+    char AllocBlockSizeString[32];
+    for(int i = 0; i < AllocationCount; i++)
+    {
+      Memory::allocation_info* AllocInfo = &AllocInfos[i];
+
+      size_t  BlockOffset      = AllocInfo->Base - HeapBase;
+      int32_t BlockSize        = AllocInfo->Size;
+      float   OffsetPercentage = (float)BlockOffset / (float)Heap->m_Capacity;
+      float   SizePercentage   = (float)BlockSize / (float)Heap->m_Capacity;
+      sprintf(AllocBlockSizeString, "%d", BlockSize);
+
+      size_t InfoOffset           = (uint8_t*)AllocInfo - HeapBase;
+      float  InfoOffsetPercentage = (float)InfoOffset / (float)Heap->m_Capacity;
+      float  InfoSizePercentage = (float)sizeof(Memory::allocation_info) / (float)Heap->m_Capacity;
+
+      UI::DrawTextBox(GameState,
+                      { LowerLeft.X + OffsetPercentage * Width, LowerLeft.Y, LowerLeft.Z },
+                      SizePercentage * Width, Height, AllocBlockSizeString, { 0.7f, 0.1f, 0.2f, 1 },
+                      { 0.1f, 0.1f, 0.1f, 1 });
+
+      DrawBox(GameState, { LowerLeft.X + InfoOffsetPercentage * Width, LowerLeft.Y, LowerLeft.Z },
+              InfoSizePercentage * Width, Height, { 1, 0, 0, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
+    }
+    Memory::free_block* CurrentBlock = Heap->m_FirstFreeBlock;
+    while(CurrentBlock)
+    {
+      size_t  BlockOffset      = (uint8_t*)CurrentBlock - HeapBase;
+      int32_t BlockSize        = CurrentBlock->Size;
+      float   OffsetPercentage = (float)BlockOffset / (float)Heap->m_Capacity;
+      float   SizePercentage   = (float)BlockSize / (float)Heap->m_Capacity;
+      sprintf(AllocBlockSizeString, "%d", BlockSize);
+      UI::DrawTextBox(GameState,
+                      { LowerLeft.X + OffsetPercentage * Width, LowerLeft.Y - Height, LowerLeft.Z },
+                      SizePercentage * Width, Height, AllocBlockSizeString, { 0.3f, 0.6f, 0.4f, 1 },
+                      { 0.1f, 0.1f, 0.1f, 1 });
+
+      CurrentBlock = CurrentBlock->Next;
+    }
+    if(HeapBase < Heap->m_Barrier)
+    {
+      size_t BlockSize      = Heap->m_Barrier - HeapBase;
+      float  SizePercentage = (float)BlockSize / (float)Heap->m_Capacity;
+      sprintf(AllocBlockSizeString, "%ld", BlockSize);
+      UI::DrawTextBox(GameState, { LowerLeft.X, LowerLeft.Y - 2.0f * Height, LowerLeft.Z },
+                      SizePercentage * Width, Height, AllocBlockSizeString,
+                      { 0.25f, 0.35f, 0.8f, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
+    }
   }
 }
 
@@ -97,7 +170,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   // Humble beginnings of the editor GUI system
   const float StartX      = 0.75f;
   const float StartY      = 1;
-  const float LayoutWidth = 0.15f;
+  const float LayoutWidth = 0.2f;
   const float RowHeight   = 0.035f;
   const float SliderWidth = 0.05f;
 
@@ -109,6 +182,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   static bool g_ShowLightSettings   = false;
   static bool g_ShowGUISettings     = false;
   static bool g_ShowSceneSettings   = false;
+  static bool g_ShowHeapParameters  = true;
+  static bool g_DrawMemoryMaps      = true;
 
   UI::im_layout Layout = UI::NewLayout({ StartX, StartY }, LayoutWidth, RowHeight, SliderWidth);
 
@@ -483,26 +558,10 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
                                        GameState->SelectedEntityIndex);
               g_ShowAnimationEditor = true;
             }
+            UI::Row(&Layout, 2);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Play Animation"))
             {
-              static int32_t ActivePathIndex = 0;
-              UI::Row(&Layout);
-              UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
-                           GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
-                           sizeof(path), AnimationPathToCharPtr);
-              rid NewRID = { 0 };
-              if(!GameState->Resources
-                    .GetAnimationPathRID(&NewRID,
-                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
-              {
-                GameState->CurrentAnimationID = GameState->Resources.RegisterAnimation(
-                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
-              }
-              GameState->CurrentAnimationID = NewRID;
-            }
-            if(GameState->CurrentAnimationID.Value > 0)
-            {
-              UI::Row(&Layout);
-              if(UI::ReleaseButton(GameState, &Layout, Input, "Add Animation"))
+              if(GameState->CurrentAnimationID.Value > 0)
               {
                 if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount ==
                    SelectedModel->Skeleton->BoneCount)
@@ -520,7 +579,119 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
                 }
                 else if(SelectedEntity->AnimController->AnimStateCount != 0)
                 {
-                  Anim::StopAnimation(SelectedEntity->AnimController, 0);
+                  StopAnimation(SelectedEntity->AnimController, 0);
+                }
+              }
+            }
+            {
+              static int32_t ActivePathIndex = 0;
+              UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
+                           GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
+                           sizeof(path), AnimationPathToCharPtr);
+              rid NewRID = { 0 };
+              if(GameState->Resources.AnimationPathCount > 0 &&
+                 !GameState->Resources
+                    .GetAnimationPathRID(&NewRID,
+                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
+              {
+                NewRID = GameState->Resources.RegisterAnimation(
+                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+              }
+              GameState->CurrentAnimationID = NewRID;
+            }
+            UI::Row(&Layout);
+            char CurrentAnimationIDString[30];
+            sprintf(CurrentAnimationIDString, "Current Anim ID: %d",
+                    GameState->CurrentAnimationID.Value);
+            UI::DrawTextBox(GameState, &Layout, CurrentAnimationIDString);
+            UI::Row(&Layout);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Play as entity"))
+            {
+              Gameplay::ResetPlayer();
+              GameState->PlayerEntityIndex = GameState->SelectedEntityIndex;
+              StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0, true);
+              StartAnimationAtGlobalTime(SelectedEntity->AnimController, 1, true);
+              StartAnimationAtGlobalTime(SelectedEntity->AnimController, 2, true);
+            }
+            if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
+            {
+              UI::Row(GameState, &Layout, 1, "Acceleration");
+              UI::SliderFloat(GameState, &Layout, Input, "Acceleration", &g_Acceleration, 0, 40,
+                              50);
+              UI::Row(GameState, &Layout, 1, "Decceleration");
+              UI::SliderFloat(GameState, &Layout, Input, "Deceleration", &g_Decceleration, 0, 40,
+                              50);
+              UI::Row(GameState, &Layout, 1, "MaxSpeed");
+              UI::SliderFloat(GameState, &Layout, Input, "Max Speed", &g_MaxSpeed, 0, 50, 50);
+
+              { // Walk animation
+                UI::Row(GameState, &Layout, 1, "Walk");
+                static int32_t ActivePathIndex = 0;
+                UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
+                             GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
+                             sizeof(path), AnimationPathToCharPtr);
+                rid NewRID = { 0 };
+                if(GameState->Resources.AnimationPathCount > 0 &&
+                   !GameState->Resources.GetAnimationPathRID(&NewRID,
+                                                             GameState->Resources
+                                                               .AnimationPaths[ActivePathIndex]
+                                                               .Name))
+                {
+                  NewRID = GameState->Resources.RegisterAnimation(
+                    GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+                }
+                if(GameState->Resources.AnimationPathCount &&
+                   SelectedEntity->AnimController->AnimationIDs[0].Value != NewRID.Value)
+                {
+                  Anim::SetAnimation(SelectedEntity->AnimController, NewRID, 0);
+                  printf("Setting walk\n");
+                  Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0, true);
+                }
+              }
+              { // Run animation
+                UI::Row(GameState, &Layout, 1, "Run");
+                static int32_t ActivePathIndex = 0;
+                UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
+                             GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
+                             sizeof(path), AnimationPathToCharPtr);
+                rid NewRID = { 0 };
+                if(GameState->Resources.AnimationPathCount > 0 &&
+                   !GameState->Resources.GetAnimationPathRID(&NewRID,
+                                                             GameState->Resources
+                                                               .AnimationPaths[ActivePathIndex]
+                                                               .Name))
+                {
+                  NewRID = GameState->Resources.RegisterAnimation(
+                    GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+                }
+                if(SelectedEntity->AnimController->AnimationIDs[1].Value != NewRID.Value)
+                {
+                  Anim::SetAnimation(SelectedEntity->AnimController, NewRID, 1);
+                  printf("Setting run\n");
+                  Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 1, true);
+                }
+              }
+              { // Idle animation
+                UI::Row(GameState, &Layout, 1, "Idle");
+                static int32_t ActivePathIndex = 0;
+                UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
+                             GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
+                             sizeof(path), AnimationPathToCharPtr);
+                rid NewRID = { 0 };
+                if(GameState->Resources.AnimationPathCount > 0 &&
+                   !GameState->Resources.GetAnimationPathRID(&NewRID,
+                                                             GameState->Resources
+                                                               .AnimationPaths[ActivePathIndex]
+                                                               .Name))
+                {
+                  NewRID = GameState->Resources.RegisterAnimation(
+                    GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+                }
+                if(SelectedEntity->AnimController->AnimationIDs[2].Value != NewRID.Value)
+                {
+                  Anim::SetAnimation(SelectedEntity->AnimController, NewRID, 2);
+                  printf("Setting idle\n");
+                  Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 2, true);
                 }
               }
             }
@@ -656,6 +827,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Render Switches", &g_ShowDisplaySet))
   {
+    UI::Row(GameState, &Layout, 1, "Memory");
+    UI::_BoolButton(&Layout, Input, "Toggle", &g_DrawMemoryMaps);
     UI::Row(GameState, &Layout, 1, "Timeline");
     UI::_BoolButton(&Layout, Input, "Toggle", &GameState->DrawTimeline);
     UI::Row(GameState, &Layout, 1, "Gizmos");
@@ -713,9 +886,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     }
   }
 
-  static bool g_ShowHeapActions = true;
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Heap Test", &g_ShowHeapActions))
+  if(UI::_ExpandableButton(&Layout, Input, "Heap Test", &g_ShowHeapParameters))
   {
     static float g_ActionSize = Kibibytes(1);
 
@@ -729,51 +901,24 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
       uint8_t* MemForHeap = GameState->PersistentMemStack->Alloc((int32_t)g_ActionSize);
       GameState->HeapAllocator.Create(MemForHeap, (int32_t)g_ActionSize);
     }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Alloc"))
-    {
-      GameState->HeapAllocator.Alloc((int32_t)g_ActionSize);
-    }
 
     if(GameState->HeapAllocator.m_Base != NULL)
     {
-      static float g_MemStartX    = 0.1f;
-      static float g_MemStartY    = 0.8f;
-      static float g_MemBarZ      = 0.1f;
-      static float g_MemBarWidth  = 0.6f;
-      static float g_MemBarHeight = 0.03f;
-
-      Debug::PushTopLeftQuad({ g_MemStartX, g_MemStartY, g_MemBarZ }, g_MemBarWidth, g_MemBarHeight,
-                             { 1, 1, 1, 1 });
+      UI::Row(&Layout);
+      if(UI::ReleaseButton(GameState, &Layout, Input, "Allocate"))
+      {
+        GameState->HeapAllocator.Alloc((int32_t)g_ActionSize);
+      }
 
       char AllocInfoString[64];
-      char AllocBlockSizeString[32];
       for(int i = 0; i < GameState->HeapAllocator.m_AllocCount; i++)
       {
         Memory::allocation_info* AllocInfo =
           &GameState->HeapAllocator.m_AllocInfos[-GameState->HeapAllocator.m_AllocCount + i];
 
-        size_t  BlockOffset      = AllocInfo->Base - GameState->HeapAllocator.m_Base;
-        int32_t BlockSize        = AllocInfo->Size;
-        float   OffsetPercentage = (float)BlockOffset / (float)GameState->HeapAllocator.m_Capacity;
-        float   SizePercentage   = (float)BlockSize / (float)GameState->HeapAllocator.m_Capacity;
-
-        sprintf(AllocBlockSizeString, "%d", BlockSize);
-        UI::DrawTextBox(GameState,
-                        { g_MemStartX + OffsetPercentage * g_MemBarWidth, g_MemStartY, g_MemBarZ },
-                        SizePercentage * g_MemBarWidth, g_MemBarHeight, AllocBlockSizeString,
-                        { 0.7f, 0.1f, 0.2f, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
-
-        size_t InfoOffset          = (uint8_t*)AllocInfo - GameState->HeapAllocator.m_Base;
-        float InfoOffsetPercentage = (float)InfoOffset / (float)GameState->HeapAllocator.m_Capacity;
-        float InfoSizePercentage =
-          (float)sizeof(Memory::allocation_info) / (float)GameState->HeapAllocator.m_Capacity;
-
-        DrawBox(GameState,
-                { g_MemStartX + InfoOffsetPercentage * g_MemBarWidth, g_MemStartY, g_MemBarZ },
-                InfoSizePercentage * g_MemBarWidth, g_MemBarHeight, { 1, 0, 0, 1 },
-                { 0.1f, 0.1f, 0.1f, 1 });
-
+        size_t  BlockOffset = AllocInfo->Base - GameState->HeapAllocator.m_Base;
+        int32_t BlockSize   = AllocInfo->Size;
+        size_t  InfoOffset  = (uint8_t*)AllocInfo - GameState->HeapAllocator.m_Base;
         sprintf(AllocInfoString, "delete Base: %ld, Size: %d, Align: %u, InfoS: %ld", BlockOffset,
                 BlockSize, AllocInfo->AlignmentOffset, InfoOffset);
 
@@ -783,32 +928,13 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           GameState->HeapAllocator.Dealloc(AllocInfo->Base);
         }
       }
-      Memory::free_block* CurrentBlock = GameState->HeapAllocator.m_FirstFreeBlock;
-      while(CurrentBlock)
-      {
-        size_t  BlockOffset      = (uint8_t*)CurrentBlock - GameState->HeapAllocator.m_Base;
-        int32_t BlockSize        = CurrentBlock->Size;
-        float   OffsetPercentage = (float)BlockOffset / (float)GameState->HeapAllocator.m_Capacity;
-        float   SizePercentage   = (float)BlockSize / (float)GameState->HeapAllocator.m_Capacity;
-        sprintf(AllocBlockSizeString, "%d", BlockSize);
-        UI::DrawTextBox(GameState,
-                        { g_MemStartX + OffsetPercentage * g_MemBarWidth,
-                          g_MemStartY - g_MemBarHeight, g_MemBarZ },
-                        SizePercentage * g_MemBarWidth, g_MemBarHeight, AllocBlockSizeString,
-                        { 0.3f, 0.6f, 0.4f, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
-
-        CurrentBlock = CurrentBlock->Next;
-      }
-      if(GameState->HeapAllocator.m_Base < GameState->HeapAllocator.m_Barrier)
-      {
-        size_t BlockSize = GameState->HeapAllocator.m_Barrier - GameState->HeapAllocator.m_Base;
-        float   SizePercentage = (float)BlockSize / (float)GameState->HeapAllocator.m_Capacity;
-        sprintf(AllocBlockSizeString, "%ld", BlockSize);
-        UI::DrawTextBox(GameState, { g_MemStartX, g_MemStartY - 2 * g_MemBarHeight, g_MemBarZ },
-                        SizePercentage * g_MemBarWidth, g_MemBarHeight, AllocBlockSizeString,
-                        { 0.25f, 0.35f, 0.8f, 1 }, { 0.1f, 0.1f, 0.1f, 1 });
-      }
     }
+    // VisualizeHeap(GameState, &GameState->HeapAllocator, { 0.1f, 0.8f, 0 }, 0.6f, 0.015f);
+  }
+  if(g_DrawMemoryMaps)
+  {
+    VisualizeHeap(GameState, &GameState->Resources.ModelHeap, { 0.1f, 0.9f, 0 }, 0.6f, 0.02f);
+    VisualizeHeap(GameState, &GameState->Resources.AnimationHeap, { 0.1f, 0.8f, 0 }, 0.6f, 0.02f);
   }
 #if 0
   char FrameRateString[20];

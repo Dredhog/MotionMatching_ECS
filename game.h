@@ -87,6 +87,7 @@ struct game_state
   int32_t EntityCount;
   int32_t SelectedEntityIndex;
   int32_t SelectedMeshIndex;
+  int32_t PlayerEntityIndex;
 
   // Fonts/text
   Text::font Font;
@@ -167,8 +168,13 @@ DeleteEntity(game_state* GameState, int32_t Index)
 {
   if(0 <= Index && GameState->EntityCount)
   {
+    GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
     GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
     --GameState->EntityCount;
+    if(GameState->PlayerEntityIndex == Index)
+    {
+      GameState->PlayerEntityIndex = -1;
+    }
     return true;
   }
   return false;
@@ -298,3 +304,4 @@ LoadCubemap(Resource::resource_manager* Resources, rid* RIDs)
 
   return Texture;
 }
+

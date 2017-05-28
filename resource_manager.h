@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stack_alloc.h"
+#include "heap_alloc.h"
 #include "load_texture.h"
 #include "asset.h"
 #include "model.h"
@@ -47,7 +48,16 @@ namespace Resource
 
   class resource_manager
   {
-    asset_diff  DiffedAssets[RESOURCE_MAX_COUNT];
+    asset_diff DiffedModels[RESOURCE_MAX_COUNT];
+    asset_diff DiffedAnimations[RESOURCE_MAX_COUNT];
+    asset_diff DiffedTextures[RESOURCE_MAX_COUNT];
+    asset_diff DiffedMaterials[RESOURCE_MAX_COUNT];
+
+    int32_t DiffedModelCount;
+    int32_t DiffedAnimationCount;
+    int32_t DiffedMaterialCount;
+    int32_t DiffedTextureCount;
+
     struct stat ModelStats[RESOURCE_MAX_COUNT];
     struct stat TextureStats[RESOURCE_MAX_COUNT];
     struct stat AnimationStats[RESOURCE_MAX_COUNT];
@@ -58,9 +68,12 @@ namespace Resource
     bool LoadAnimation(rid RID);
     bool LoadMaterial(rid RID);
 
+    void FreeModel(rid RID);
+    void FreeAnimation(rid RID);
+
   public:
-    Memory::stack_allocator ModelStack;
-    Memory::stack_allocator AnimationStack;
+    Memory::heap_allocator  ModelHeap;
+    Memory::heap_allocator  AnimationHeap;
     Memory::stack_allocator MaterialStack;
 
     model_hash_table           Models;
@@ -110,5 +123,9 @@ namespace Resource
     void WipeAllTextureData();
 
     void UpdateHardDriveAssetPathLists();
+    void DeleteUnused();
+    void ReloadModified();
+
+    void Create(uint8_t* Memory, uint32_t TotalMemorySize);
   };
 }

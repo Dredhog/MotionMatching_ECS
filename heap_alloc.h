@@ -36,8 +36,12 @@ namespace Memory
     void Dealloc(uint8_t* Start);
     void Clear();
 
-    int32_t GetTotalUsedSize() const;
-    int32_t GetInterfalFragmentation() const;
+    uint8_t* GetBase() const;
+    int32_t  GetTotalUsedSize() const;
+    int32_t  GetInterfalFragmentation() const;
+
+    int32_t          GetAllocationCount() const;
+    allocation_info* GetAllocationInfos() const;
   };
 
   heap_allocator* CreateHeapAllocatorInPlace(void* Base, int32_t Capacity);

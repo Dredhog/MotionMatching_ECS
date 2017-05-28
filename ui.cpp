@@ -13,12 +13,12 @@
   ((X <= (Input)->NormMouseX) && ((Input)->NormMouseX < (X) + (Width)) &&                          \
    ((Y) - (Height) < (Input)->NormMouseY) && ((Input)->NormMouseY <= (Y)))
 
-// Internal drawing API
+// API internal drawing API
 void DrawBox(game_state* GameState, vec3 TopLeft, float Width, float Height, vec4 InnerColor,
              vec4 BorderColor);
 void DrawBox(game_state* GameState, UI::im_layout* Layout, vec4 InnerColor, vec4 BorderColor);
 
-static const float ANOTATION_WIDTH_PERCENTAGE = 0.4f;
+static const float ANOTATION_WIDTH_PERCENTAGE = 0.35f;
 
 struct ui_id
 {
@@ -341,7 +341,7 @@ UI::SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Inpu
   char FloatTextBuffer[20];
 
   *Var = ClampFloat(Min, *Var, Max);
-  sprintf(FloatTextBuffer, "%5.3f", (double)*Var);
+  sprintf(FloatTextBuffer, "%5.2f", (double)*Var);
 
   vec4 InnerColor = IsActive(ID) ? g_PressedColor : (IsHot(ID) ? g_HighlightColor : g_NormalColor);
   UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor, g_BorderColor);

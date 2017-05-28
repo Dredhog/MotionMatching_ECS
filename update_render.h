@@ -48,27 +48,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     uint32_t AvailableSubsystemMemory = GameMemory.PersistentMemorySize - sizeof(game_state);
     uint32_t PersistentStackSize      = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
-    uint32_t ModelStackSize           = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
-    uint32_t AnimationStackSize       = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
-    uint32_t MaterialStackSize =
-      AvailableSubsystemMemory - PersistentStackSize - ModelStackSize - AnimationStackSize;
+    uint8_t* PersistentStackStart     = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
 
-    uint8_t* PersistentStackStart = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
-    uint8_t* ModelStackStart      = PersistentStackStart + PersistentStackSize;
-    uint8_t* AnimationStackStart  = ModelStackStart + ModelStackSize;
-    uint8_t* MaterialStackStart   = AnimationStackStart + AnimationStackSize;
+    uint32_t ResourceMemorySize = AvailableSubsystemMemory - PersistentStackSize;
+    uint8_t* ResouceMemoryStart = PersistentStackStart + PersistentStackSize;
 
     GameState->PersistentMemStack =
       Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
+    GameState->Resources.Create(ResouceMemoryStart, ResourceMemorySize);
 
-    GameState->Resources.ModelStack.Create(ModelStackStart, ModelStackSize);
-    GameState->Resources.ModelStack.NullifyClear();
-
-    GameState->Resources.AnimationStack.Create(AnimationStackStart, AnimationStackSize);
-    GameState->Resources.AnimationStack.NullifyClear();
-
-    GameState->Resources.MaterialStack.Create(MaterialStackStart, MaterialStackSize);
-    GameState->Resources.MaterialStack.NullifyClear();
     // END SEGMENTATION
 
     // --------LOAD MODELS/ACTORS--------
@@ -102,7 +90,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->ExpandedTextureID);
 
     //--------------LOAD FONT--------------
-    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 14, 8, 1);
+    GameState->Font =
+      Text::LoadFont("/usr/share/fonts/truetype/ubuntu-font-family/UbuntuMono-R.ttf", 8, 8, 2);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
@@ -165,10 +154,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->IsAnimationPlaying      = false;
     GameState->EditorBoneRotationSpeed = 45.0f;
     GameState->CurrentMaterialID       = { 0 };
+    GameState->PlayerEntityIndex       = -1;
   }
   //---------------------END INIT -------------------------
 
   GameState->Resources.UpdateHardDriveAssetPathLists();
+  GameState->Resources.DeleteUnused();
+  GameState->Resources.ReloadModified();
+
   if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
   {
     GameState->CurrentMaterialID = {};
@@ -302,6 +295,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
 
+  if(GameState->PlayerEntityIndex != -1)
+  {
+    entity* PlayerEntity = {};
+    if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
+    {
+      Gameplay::UpdatePlayer(PlayerEntity, Input);
+    }
+  }
+
   if(GameState->R.ShowLightPosition)
   {
     mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
@@ -318,7 +320,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         assert(Controller->AnimationIDs[i].Value > 0);
         Controller->Animations[i] = GameState->Resources.GetAnimation(Controller->AnimationIDs[i]);
       }
-      Anim::UpdateController(Controller, Input->dt);
+      Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
     }
   }
 
@@ -396,6 +398,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EditAnimation::CalculateHierarchicalmatricesAtTime(&GameState->AnimEditor);
     }
 
+    float CurrentlySelectedDistance = INFINITY;
     // Bone Selection
     for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
     {
@@ -415,20 +418,31 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if(RaycastResult.Success)
       {
         Debug::PushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius, { 1, 1, 0, 1 });
-        if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
+        float DistanceToIntersection =
+          Math::Length(RaycastResult.IntersectP - GameState->Camera.Position);
+
+        if(Input->MouseRight.EndedDown && Input->MouseRight.Changed &&
+           DistanceToIntersection < CurrentlySelectedDistance)
         {
           EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, i);
+          CurrentlySelectedDistance = DistanceToIntersection;
         }
       }
       else
       {
         Debug::PushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius);
       }
-
-      if(i == GameState->AnimEditor.CurrentBone)
-      {
-        Debug::PushGizmo(&GameState->Camera, &Mat4Bone);
-      }
+    }
+    if(GameState->AnimEditor.Skeleton)
+    {
+      mat4 Mat4Bone =
+        Math::MulMat4(TransformToMat4(GameState->AnimEditor.Transform),
+                      Math::MulMat4(GameState->AnimEditor.HierarchicalModelSpaceMatrices
+                                      [GameState->AnimEditor.CurrentBone],
+                                    GameState->AnimEditor.Skeleton
+                                      ->Bones[GameState->AnimEditor.CurrentBone]
+                                      .BindPose));
+      Debug::PushGizmo(&GameState->Camera, &Mat4Bone);
     }
     // Copy editor poses to entity anim controller
     assert(0 <= GameState->AnimEditor.EntityIndex &&
@@ -631,12 +645,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     Debug::DrawGizmos(GameState);
   }
-  else
-  {
-		
-  }
   Debug::DrawColoredQuads(GameState);
   Debug::DrawTexturedQuads(GameState);
+  Debug::ClearDrawArrays();
   Text::ClearTextRequestCounts();
 }
 
@@ -649,6 +660,7 @@ AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform 
   NewEntity.ModelID     = ModelID;
   NewEntity.MaterialIDs = MaterialIDs;
   NewEntity.Transform   = Transform;
+  GameState->Resources.Models.AddReference(ModelID);
 
   GameState->Entities[GameState->EntityCount++] = NewEntity;
 }
@@ -667,4 +679,3 @@ GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
   mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
   return MVPMatrix;
 }
-

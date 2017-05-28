@@ -61,6 +61,56 @@ ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName)
   return Result;
 }
 
+debug_read_file_result
+ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName)
+{
+  assert(Allocator);
+  debug_read_file_result Result     = {};
+  int                    FileHandle = open(FileName, O_RDONLY);
+  if(FileHandle == -1)
+  {
+    printf("runtime error: cannot find file: %s\n", FileName);
+    return Result;
+  }
+
+  struct stat FileStatus;
+  if(fstat(FileHandle, &FileStatus) == -1)
+  {
+    printf("runtime error: cannot obtain status for file: %s\n", FileName);
+    close(FileHandle);
+    return Result;
+  }
+  Result.ContentsSize = SafeTruncateUint64((uint64_t)FileStatus.st_size);
+
+  Result.Contents = Allocator->Alloc(Result.ContentsSize);
+  if(!Result.Contents)
+  {
+    printf("runtime error: allocation returns null\n");
+    Result.ContentsSize = 0;
+    close(FileHandle);
+    return Result;
+  }
+
+  uint64_t BytesStoread     = Result.ContentsSize;
+  uint8_t* NextByteLocation = (uint8_t*)Result.Contents;
+  while(BytesStoread)
+  {
+    int64_t BytesRead = read(FileHandle, NextByteLocation, BytesStoread);
+    if(BytesRead == -1)
+    {
+      printf("runtime error: went over end while reading file\n");
+      Result.Contents     = 0;
+      Result.ContentsSize = 0;
+      close(FileHandle);
+      return Result;
+    }
+    BytesStoread -= (uint64_t)BytesRead;
+    NextByteLocation += BytesRead;
+  }
+  close(FileHandle);
+  return Result;
+}
+
 bool
 WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
 {

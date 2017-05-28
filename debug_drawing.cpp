@@ -4,7 +4,7 @@
 #define SPHERE_MAX_COUNT 100
 #define GIZMO_MAX_COUNT 100
 #define TEXTURED_QUAD_MAX_COUNT 300
-#define COLORED_QUAD_MAX_COUNT 300
+#define COLORED_QUAD_MAX_COUNT 500
 
 mat4    g_SphereMatrices[SPHERE_MAX_COUNT];
 vec4    g_SphereColors[SPHERE_MAX_COUNT];
@@ -185,4 +185,13 @@ Debug::DrawTexturedQuads(game_state* GameState)
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_BLEND);
   g_TexturedQuadCount = 0;
+}
+
+void
+Debug::ClearDrawArrays()
+{
+  g_TexturedQuadCount = 0;
+  g_ColoredQuadCount  = 0;
+  g_GizmoCount        = 0;
+  g_SphereCount       = 0;
 }
