@@ -112,7 +112,7 @@ namespace Resource
     QueryReferences(rid RID)
     {
       assert(0 < RID.Value && RID.Value <= MAX_PATH_COUNT);
-      return this->References[RID.Value - 1]--;
+      return this->References[RID.Value - 1];
     }
 
     void

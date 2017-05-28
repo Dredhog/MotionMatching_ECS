@@ -31,7 +31,8 @@ struct scene
   rid_path_pair* MaterialIDPaths;
 
   // AuxillaryElements
-  camera Camera;
+  //int32_t PlayerEntityIndex;
+  camera  Camera;
 
   vec3 LightPosition;
 };
@@ -236,6 +237,7 @@ ImportScene(game_state* GameState, const char* Path)
   for(int e = 0; e < Scene->EntityCount; e++)
   {
     assert(GameState->Entities[e].ModelID.Value > 0);
+    GameState->Resources.Models.AddReference(GameState->Entities[e].ModelID);
     Render::model* Model = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
     if(Scene->Entities[e].AnimController)
     {

@@ -419,14 +419,14 @@ namespace Resource
   {
     for(int i = 0; i < this->DiffedAnimationCount; i++)
     {
-      printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+      //printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
       if(this->DiffedAnimations[i].Type == DIFF_Modified)
       {
-        printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+        //printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
         rid RID;
         if(this->Animations.GetPathRID(&RID, DiffedAnimations[i].Path.Name))
         {
-          printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
+          //printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
           Anim::animation* Animation;
           char*            Path;
           if(this->Animations.Get(RID, &Animation, &Path))
@@ -444,21 +444,21 @@ namespace Resource
 
     for(int i = 0; i < this->DiffedModelCount; i++)
     {
-      printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+      //printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
       if(this->DiffedModels[i].Type == DIFF_Modified)
       {
-        printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+        //printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
         rid RID;
         if(this->Models.GetPathRID(&RID, DiffedModels[i].Path.Name))
         {
-          printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
+          //printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
           Render::model* Model;
           char*          Path;
           if(this->Models.Get(RID, &Model, &Path))
           {
             if(Model)
             {
-              printf("Reloading animation: %s\n", DiffedAnimations[i].Path.Name);
+              printf("Reloading model: %s\n", DiffedAnimations[i].Path.Name);
               FreeModel(RID);
               LoadModel(RID);
             }
@@ -483,12 +483,32 @@ namespace Resource
           int32_t RefCount = this->Models.QueryReferences(RID);
           if(RefCount <= 0)
           {
-            printf("deleting model rid: %d, refs: %d\n", RID.Value, RefCount);
+            //printf("deleting model rid: %d, refs: %d\n", RID.Value, RefCount);
             FreeModel(RID);
           }
         }
       }
     }
+#if 0
+    for(int i = 1; i <= RESOURCE_MAX_COUNT; i++)
+    {
+      Anim::animation* Animation;
+      char*            Path;
+      rid              RID = { i };
+      if(this->Animations.Get(RID, &Animation, &Path))
+      {
+        if(Animation)
+        {
+          int32_t RefCount = this->Animations.QueryReferences(RID);
+          if(RefCount <= 0)
+          {
+            printf("deleting model rid: %d, refs: %d\n", RID.Value, RefCount);
+            FreeAnimation(RID);
+          }
+        }
+      }
+    }
+#endif
   }
 }
 

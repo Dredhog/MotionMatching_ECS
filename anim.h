@@ -74,6 +74,7 @@ namespace Anim
   void StartAnimationAtGlobalTime(animation_controller*, int AnimationIndex, bool Loop = true);
   void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
                   int AnimationIndex, bool Loop = true);
+	void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
 
   // Blending and sampling facilities
   void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,

@@ -8,6 +8,7 @@ float g_PlayerHeadMotionAngle = 30.0f;
 float g_MaxSpeed              = 10;
 float g_Acceleration          = 30;
 float g_Decceleration         = 15;
+float g_MovePlaybackRate      = 1;
 
 const vec3 Forward = { 0, 0, -1 };
 const vec3 Right   = { 1, 0, 0 };
@@ -29,6 +30,8 @@ struct player
 void
 ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
 {
+  //Anim::SetPlaybackRate(C, 0, g_MovePlaybackRate);
+  //Anim::SetPlaybackRate(C, 1, g_MovePlaybackRate);
   Anim::SampleAtGlobalTime(C, 0, 0);           // Sample Walk
   Anim::SampleAtGlobalTime(C, 1, 1);           // Sample Run
   Anim::LinearBlend(C, 0, 1, g_SpeedBlend, 1); // LERP(Walk, Run) => move
@@ -52,7 +55,7 @@ Gameplay::UpdatePlayer(entity* Player, const game_input* Input)
 {
   float MaxTiltAngle     = 0.25f;
   float InitialJumpSpeed = 5;
-  float AngularVelocity  = 720;
+  float AngularVelocity  = 2000;
 
   // Assign blend func for assurance
   if(Player->AnimController != NULL)

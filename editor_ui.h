@@ -624,9 +624,20 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               UI::Row(GameState, &Layout, 1, "MaxSpeed");
               UI::SliderFloat(GameState, &Layout, Input, "Max Speed", &g_MaxSpeed, 0, 50, 50);
 
+              UI::Row(GameState, &Layout, 1, "MaxSpeed");
+              UI::SliderFloat(GameState, &Layout, Input, "Playback Rate", &g_MovePlaybackRate, 0.1f,
+                              10, 40);
+
               { // Walk animation
                 UI::Row(GameState, &Layout, 1, "Walk");
                 static int32_t ActivePathIndex = 0;
+#if 0
+                if(SelectedEntity->AnimController->AnimationIDs[0].Value > 0)
+                {
+                  ActivePathIndex = GameState->Resources.GetAnimationPathIndex(
+                    SelectedEntity->AnimController->AnimationIDs[0]);
+                }
+#endif
                 UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
                              GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
                              sizeof(path), AnimationPathToCharPtr);
@@ -651,6 +662,13 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               { // Run animation
                 UI::Row(GameState, &Layout, 1, "Run");
                 static int32_t ActivePathIndex = 0;
+#if 0
+                if(SelectedEntity->AnimController->AnimationIDs[1].Value > 0)
+                {
+                  ActivePathIndex = GameState->Resources.GetAnimationPathIndex(
+                    SelectedEntity->AnimController->AnimationIDs[1]);
+                }
+#endif
                 UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
                              GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
                              sizeof(path), AnimationPathToCharPtr);
@@ -674,6 +692,13 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               { // Idle animation
                 UI::Row(GameState, &Layout, 1, "Idle");
                 static int32_t ActivePathIndex = 0;
+#if 0
+                if(SelectedEntity->AnimController->AnimationIDs[2].Value > 0)
+                {
+                  ActivePathIndex = GameState->Resources.GetAnimationPathIndex(
+                    SelectedEntity->AnimController->AnimationIDs[2]);
+                }
+#endif
                 UI::ComboBox(&ActivePathIndex, GameState->Resources.AnimationPaths,
                              GameState->Resources.AnimationPathCount, GameState, &Layout, Input,
                              sizeof(path), AnimationPathToCharPtr);
@@ -933,8 +958,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   }
   if(g_DrawMemoryMaps)
   {
-    VisualizeHeap(GameState, &GameState->Resources.ModelHeap, { 0.1f, 0.9f, 0 }, 0.6f, 0.02f);
-    VisualizeHeap(GameState, &GameState->Resources.AnimationHeap, { 0.1f, 0.8f, 0 }, 0.6f, 0.02f);
+    VisualizeHeap(GameState, &GameState->Resources.ModelHeap, { 0.1f, 0.9f, 0 }, 0.6f, 0.03f);
+    VisualizeHeap(GameState, &GameState->Resources.AnimationHeap, { 0.1f, 0.8f, 0 }, 0.6f, 0.03f);
   }
 #if 0
   char FrameRateString[20];

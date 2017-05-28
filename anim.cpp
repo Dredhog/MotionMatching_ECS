@@ -104,6 +104,14 @@ Anim::StopAnimation(Anim::animation_controller* Controller, int AnimationIndex)
 }
 
 void
+Anim::SetPlaybackRate(Anim::animation_controller* Controller, int32_t Index, float Rate)
+{
+  assert(Rate >= 0);
+  assert(0 <= Index && Index <= Controller->AnimStateCount);
+  Controller->States[Index].PlaybackRateSec = Rate;
+}
+
+void
 Anim::LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
                      float T, Anim::transform* Out)
 {

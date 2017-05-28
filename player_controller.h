@@ -11,6 +11,7 @@ extern float g_PlayerHeadMotionAngle;
 extern float g_MaxSpeed;
 extern float g_Acceleration;
 extern float g_Decceleration;
+extern float g_MovePlaybackRate;
 
 namespace Gameplay
 {
