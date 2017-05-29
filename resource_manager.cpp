@@ -158,10 +158,10 @@ namespace Resource
     }
     else
     {
-      ExportMaterial(this, &Material, Path);
+      ExportMaterial(this, &Material, FinalPath.Name);
     }
 
-    rid RID = this->RegisterMaterial(Path);
+    rid RID = this->RegisterMaterial(FinalPath.Name);
     return RID;
   }
 
