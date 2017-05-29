@@ -158,9 +158,10 @@ namespace Resource
     }
     else
     {
-      ExportMaterial(this, &Material, FinalPath.Name);
+      sprintf(FinalPath.Name, "%s", Path);
     }
 
+    ExportMaterial(this, &Material, FinalPath.Name);
     rid RID = this->RegisterMaterial(FinalPath.Name);
     return RID;
   }
@@ -355,7 +356,7 @@ namespace Resource
         return i;                                                                                  \
       }                                                                                            \
     }                                                                                              \
-    printf("could not find " _STRING(texture) ": %s\n", Path);                                     \
+    printf("could not find " _STRING(TYPE_NAME) ": %s\n", Path);                                   \
     assert(0 && _STRING(texture) " path not found");                                               \
     return -1;                                                                                     \
   }

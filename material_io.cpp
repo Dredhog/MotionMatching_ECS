@@ -239,7 +239,7 @@ ExportMaterial(Resource::resource_manager* ResourceManager, const material* Mate
   assert(strncmp("data/materials/", Path, strlen("data/materials/")) == 0);
   char FileName[30];
 
-  FILE* FilePointer = fopen(Path, "w+");
+  FILE* FilePointer = fopen(Path, "w");
 
   fprintf(FilePointer, "newmtl %s\n", Path + strlen("data/materials/"));
   if(Material->Common.ShaderType == SHADER_Phong)

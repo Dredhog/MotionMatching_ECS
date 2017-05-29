@@ -430,19 +430,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           *CurrentMaterial                   = {};
           CurrentMaterial->Common.ShaderType = ShaderType;
         }
-        UI::Row(&Layout);
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
-        {
-          GameState->CurrentMaterialID =
-            GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
-        }
-        UI::Row(&Layout);
-        if(UI::ReleaseButton(GameState, &Layout, Input, "Duplicate Current"))
-        {
-          GameState->CurrentMaterialID =
-            GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
-        }
-        if(GameState->Resources.MaterialPathCount > 0)
+        if(GameState->Resources.MaterialPathCount > 0 && GameState->CurrentMaterialID.Value > 0)
         {
           int CurrentMaterialPathIndex =
             GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
@@ -456,6 +444,20 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               ExportMaterial(&GameState->Resources, CurrentMaterial, CurrentMaterialPath);
             }
           }
+        }
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Create New"))
+        {
+          GameState->CurrentMaterialID =
+            GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
+          printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
+        }
+        UI::Row(&Layout);
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Duplicate Current"))
+        {
+          GameState->CurrentMaterialID =
+            GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
+          printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
         }
         entity* SelectedEntity = {};
         if(GetSelectedEntity(GameState, &SelectedEntity))
