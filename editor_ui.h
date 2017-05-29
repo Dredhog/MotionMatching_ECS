@@ -55,6 +55,13 @@ MaterialPathToCharPtr(void* CharArray)
 }
 
 char*
+ScenePathToCharPtr(void* CharArray)
+{
+  static const size_t PrefixLength = strlen("data/scenes/");
+  return ((char*)CharArray) + PrefixLength;
+}
+
+char*
 BonePtrToCharPtr(void* Bone)
 {
   return ((Anim::bone*)Bone)->Name;
@@ -182,8 +189,8 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   static bool g_ShowLightSettings   = false;
   static bool g_ShowGUISettings     = false;
   static bool g_ShowSceneSettings   = false;
-  static bool g_ShowHeapParameters  = true;
-  static bool g_DrawMemoryMaps      = true;
+  static bool g_ShowHeapParameters  = false;
+  static bool g_DrawMemoryMaps      = false;
 
   UI::im_layout Layout = UI::NewLayout({ StartX, StartY }, LayoutWidth, RowHeight, SliderWidth);
 
@@ -435,6 +442,21 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           GameState->CurrentMaterialID =
             GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
         }
+        if(GameState->Resources.MaterialPathCount > 0)
+        {
+          int CurrentMaterialPathIndex =
+            GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
+          if(CurrentMaterialPathIndex != -1)
+          {
+            char* CurrentMaterialPath =
+              GameState->Resources.MaterialPaths[CurrentMaterialPathIndex].Name;
+            UI::Row(&Layout);
+            if(UI::ReleaseButton(GameState, &Layout, Input, "Save"))
+            {
+              ExportMaterial(&GameState->Resources, CurrentMaterial, CurrentMaterialPath);
+            }
+          }
+        }
         entity* SelectedEntity = {};
         if(GetSelectedEntity(GameState, &SelectedEntity))
         {
@@ -599,11 +621,13 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               }
               GameState->CurrentAnimationID = NewRID;
             }
+#if 0
             UI::Row(&Layout);
             char CurrentAnimationIDString[30];
             sprintf(CurrentAnimationIDString, "Current Anim ID: %d",
                     GameState->CurrentAnimationID.Value);
             UI::DrawTextBox(GameState, &Layout, CurrentAnimationIDString);
+#endif
             UI::Row(&Layout);
             if(UI::ReleaseButton(GameState, &Layout, Input, "Play as entity"))
             {
@@ -624,7 +648,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
               UI::Row(GameState, &Layout, 1, "MaxSpeed");
               UI::SliderFloat(GameState, &Layout, Input, "Max Speed", &g_MaxSpeed, 0, 50, 50);
 
-              UI::Row(GameState, &Layout, 1, "MaxSpeed");
+              UI::Row(GameState, &Layout, 1, "Play Rate");
               UI::SliderFloat(GameState, &Layout, Input, "Playback Rate", &g_MovePlaybackRate, 0.1f,
                               10, 40);
 
@@ -782,13 +806,13 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
           if(UI::ReleaseButton(GameState, &Layout, Input, "Export Animation"))
           {
             UI::Row(&Layout);
-            time_t     current_time;
-            struct tm* time_info;
+            time_t     CurrentTime;
+            struct tm* TimeInfo;
             char       AnimGroupName[30];
-            time(&current_time);
-            time_info = localtime(&current_time);
+            time(&CurrentTime);
+            TimeInfo = localtime(&CurrentTime);
             strftime(AnimGroupName, sizeof(AnimGroupName), "data/animations/%H_%M_%S.anim",
-                     time_info);
+                     TimeInfo);
             Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
                                         AnimGroupName);
           }
@@ -902,15 +926,43 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::Row(&Layout);
     if(UI::ReleaseButton(GameState, &Layout, Input, "Export Scene"))
     {
-      ExportScene(GameState, "data/scenes/fist_scene_export.scene");
+      struct tm* TimeInfo;
+      time_t     CurrentTime;
+      char       PathName[60];
+      time(&CurrentTime);
+      TimeInfo = localtime(&CurrentTime);
+      strftime(PathName, sizeof(PathName), "data/scenes/%H_%M_%S.scene", TimeInfo);
+      ExportScene(GameState, PathName);
     }
-    UI::Row(&Layout);
-    if(UI::ReleaseButton(GameState, &Layout, Input, "Import Scene"))
+    if(GameState->Resources.ScenePathCount > 0)
     {
-      ImportScene(GameState, "data/scenes/fist_scene_export.scene");
+      {
+
+        UI::Row(&Layout, 2);
+        static int32_t SelectedSceneIndex = 0;
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Export As"))
+        {
+          ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
+        }
+        UI::ComboBox(&SelectedSceneIndex, GameState->Resources.ScenePaths,
+                     GameState->Resources.ScenePathCount, GameState, &Layout, Input, sizeof(path),
+                     ScenePathToCharPtr);
+      }
+      {
+        UI::Row(&Layout, 2);
+        static int32_t SelectedSceneIndex = 0;
+        if(UI::ReleaseButton(GameState, &Layout, Input, "Import Scene"))
+        {
+          ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
+        }
+        UI::ComboBox(&SelectedSceneIndex, GameState->Resources.ScenePaths,
+                     GameState->Resources.ScenePathCount, GameState, &Layout, Input, sizeof(path),
+                     ScenePathToCharPtr);
+      }
     }
   }
 
+#if 0
   UI::Row(&Layout);
   if(UI::_ExpandableButton(&Layout, Input, "Heap Test", &g_ShowHeapParameters))
   {
@@ -954,8 +1006,9 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
         }
       }
     }
-    // VisualizeHeap(GameState, &GameState->HeapAllocator, { 0.1f, 0.8f, 0 }, 0.6f, 0.015f);
+    VisualizeHeap(GameState, &GameState->HeapAllocator, { 0.1f, 0.8f, 0 }, 0.6f, 0.015f);
   }
+#endif
   if(g_DrawMemoryMaps)
   {
     VisualizeHeap(GameState, &GameState->Resources.ModelHeap, { 0.1f, 0.9f, 0 }, 0.6f, 0.03f);

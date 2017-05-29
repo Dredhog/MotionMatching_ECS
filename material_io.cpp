@@ -233,14 +233,15 @@ ImportMaterial(Resource::resource_manager* Resources, const char* Path)
 
 void
 ExportMaterial(Resource::resource_manager* ResourceManager, const material* Material,
-               const char* Directory, const char* Name)
+               const char* Path)
 {
-  assert(Directory && Name);
+  assert(Path);
+  assert(strncmp("data/materials/", Path, strlen("data/materials/")) == 0);
   char FileName[30];
-  sprintf(FileName, "%s/%s.mat", Directory, Name);
-  FILE* FilePointer = fopen(FileName, "w");
 
-  fprintf(FilePointer, "newmtl %s\n", Name);
+  FILE* FilePointer = fopen(Path, "w+");
+
+  fprintf(FilePointer, "newmtl %s\n", Path + strlen("data/materials/"));
   if(Material->Common.ShaderType == SHADER_Phong)
   {
     fprintf(FilePointer, "\tNs %f\n", Material->Phong.Shininess);

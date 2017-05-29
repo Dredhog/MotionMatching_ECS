@@ -81,11 +81,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     //
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/expanded.bmp");
-    strcpy(GameState->Cubemap.Name, "data/textures/skybox/iceflats");
-    strcpy(GameState->Cubemap.Format, "tga");
-    GetCubemapRIDs(GameState->Cubemap.Faces, &GameState->Resources, GameState->TemporaryMemStack,
-                   GameState->Cubemap.Name, GameState->Cubemap.Format);
-    GameState->Cubemap.CubemapTexture = -1;
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
 
@@ -148,7 +143,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
     GameState->R.ShowLightPosition  = true;
 
-    GameState->DrawCubemap             = false;
+    GameState->DrawCubemap             = true;
     GameState->DrawTimeline            = true;
     GameState->DrawGizmos              = true;
     GameState->IsAnimationPlaying      = false;
@@ -175,10 +170,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     else
     {
-      material TempMaterial = NewPhongMaterial();
-      // ExportMaterial(&GameState->Resources, &TempMaterial, "data/materials/", "default");
-      GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(TempMaterial, "default");
-      // GameState->Resources.RegisterMaterial("data/materials/default.mat");
+      GameState->CurrentMaterialID =
+        GameState->Resources.CreateMaterial(NewPhongMaterial(), "data/materials/default.mat");
     }
   }
 
@@ -621,7 +614,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     if(GameState->Cubemap.CubemapTexture == -1)
     {
       GameState->Cubemap.CubemapTexture =
-        LoadCubemap(&GameState->Resources, GameState->Cubemap.Faces);
+        LoadCubemap(&GameState->Resources, GameState->Cubemap.FaceIDs);
     }
     glDepthFunc(GL_LEQUAL);
     glUseProgram(GameState->R.ShaderCubemap);

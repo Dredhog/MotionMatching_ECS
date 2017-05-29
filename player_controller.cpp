@@ -4,15 +4,18 @@
 float g_SpeedBlend            = 0;
 float g_VerticalBlend         = 0;
 float g_HeadBlend             = 0;
-float g_PlayerHeadMotionAngle = 30.0f;
+float g_PlayerHeadMotionAngle = 30;
 float g_MaxSpeed              = 10;
 float g_Acceleration          = 30;
 float g_Decceleration         = 15;
-float g_MovePlaybackRate      = 1;
+float g_MovePlaybackRate      = 1.5f;
+float g_MaxTiltAngle          = 15;
 
 const vec3 Forward = { 0, 0, -1 };
 const vec3 Right   = { 1, 0, 0 };
-const vec3 ZAxis   = { 0, 0, 1 };
+
+const vec3 YAxis = { 0, 1, 0 };
+const vec3 ZAxis = { 0, 0, 1 };
 
 struct player
 {
@@ -21,6 +24,7 @@ struct player
   vec3  Dir;
   vec3  AccDir;
   vec3  Up;
+  vec3  TiltAxis;
   bool  InAir;
   float Angle;
   float DestAngle;
@@ -30,8 +34,8 @@ struct player
 void
 ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
 {
-  //Anim::SetPlaybackRate(C, 0, g_MovePlaybackRate);
-  //Anim::SetPlaybackRate(C, 1, g_MovePlaybackRate);
+  Anim::SetPlaybackRate(C, 0, g_MovePlaybackRate);
+  Anim::SetPlaybackRate(C, 1, g_MovePlaybackRate);
   Anim::SampleAtGlobalTime(C, 0, 0);           // Sample Walk
   Anim::SampleAtGlobalTime(C, 1, 1);           // Sample Run
   Anim::LinearBlend(C, 0, 1, g_SpeedBlend, 1); // LERP(Walk, Run) => move
@@ -48,14 +52,14 @@ Gameplay::ResetPlayer()
 {
   g_Player     = {};
   g_Player.Dir = -Forward;
+  g_Player.Up  = YAxis;
 }
 
 void
 Gameplay::UpdatePlayer(entity* Player, const game_input* Input)
 {
-  float MaxTiltAngle     = 0.25f;
   float InitialJumpSpeed = 5;
-  float AngularVelocity  = 2000;
+  float AngularVelocity  = 720;
 
   // Assign blend func for assurance
   if(Player->AnimController != NULL)
@@ -85,17 +89,19 @@ Gameplay::UpdatePlayer(entity* Player, const game_input* Input)
     }
   }
 
-  vec3 VelocityDir = Math::Normalized(g_Player.dP);
+  float rtd         = 180 / 3.1415926535f;
+  vec3  VelocityDir = Math::Normalized(g_Player.dP);
   if(Math::Length(g_Player.AccDir) != 0)
   {
     g_Player.AccDir = Math::Normalized(g_Player.AccDir);
-    // vec3 Temp = player.Up.Normalize().Add(player.AccDirection.Mul(3 * deltaTime));
-    // if(math.Acos(float64(temp.Normalize().Dot(world.yAxis))) < float64(maxTiltAngle))
+    g_Player.Up     = Math::Normalized(g_Player.Up);
+    vec3 Temp       = g_Player.Up + (g_Player.AccDir * 3 * Input->dt);
+    if(rtd * acosf(Math::Dot(Math::Normalized(Temp), YAxis)) < g_MaxTiltAngle)
     {
-      // player.Up = temp.Mul(1 / player.Up[1])
+      g_Player.Up = Temp / g_Player.Up.Y;
     }
     g_Player.dP += g_Player.AccDir * g_Acceleration * Input->dt;
-    g_Player.Dir += g_Player.Dir + (g_Player.AccDir * g_Acceleration * Input->dt * 2.0f);
+    g_Player.Dir += g_Player.Dir + (g_Player.AccDir * g_Acceleration * Input->dt * 2);
   }
   else if(Math::Length(g_Player.dP) >= g_Decceleration * Input->dt)
   {
@@ -104,6 +110,14 @@ Gameplay::UpdatePlayer(entity* Player, const game_input* Input)
   else
   {
     g_Player.dP = {};
+  }
+
+  // Determine the player's tilt
+  vec3 TiltAxis = Math::Cross(YAxis, Math::Normalized(g_Player.Up));
+  if(Math::Length(TiltAxis) != 0)
+  {
+    g_Player.TiltAngle = rtd * asinf(Math::Length(TiltAxis));
+    g_Player.TiltAxis  = Math::Normalized(g_Player.TiltAxis);
   }
 
   // Limit the player's velocity float
@@ -118,7 +132,6 @@ Gameplay::UpdatePlayer(entity* Player, const game_input* Input)
   }
 
   // Determine rotation around y axis
-  float rtd          = 180 / 3.1415926535f;
   g_Player.DestAngle = rtd * acosf(Math::Dot(g_Player.Dir, ZAxis));
   if(g_Player.Dir.X < 0)
   {
@@ -180,4 +193,5 @@ Gameplay::UpdatePlayer(entity* Player, const game_input* Input)
   }
   Player->Transform.Translation += g_Player.dP * Input->dt;
   Player->Transform.Rotation.Y = g_Player.Angle;
+  Player->Transform.Rotation.X = g_Player.TiltAngle;
 }

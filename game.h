@@ -22,7 +22,7 @@ struct cubemap
 {
   char     Name[TEXT_LINE_MAX_LENGTH];
   char     Format[TEXT_LINE_MAX_LENGTH];
-  rid      Faces[6];
+  rid      FaceIDs[6];
   uint32_t CubemapTexture;
 };
 
@@ -205,21 +205,6 @@ DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animatio
 }
 
 inline void
-RegisterDebugModels(game_state* GameState)
-{
-  GameState->GizmoModelID    = GameState->Resources.RegisterModel("data/built/gizmo1.model");
-  GameState->QuadModelID     = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
-  GameState->CubemapModelID  = GameState->Resources.RegisterModel("data/built/inverse_cube.model");
-  GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
-  GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
-  GameState->Resources.Models.AddReference(GameState->GizmoModelID);
-  GameState->Resources.Models.AddReference(GameState->QuadModelID);
-  GameState->Resources.Models.AddReference(GameState->CubemapModelID);
-  GameState->Resources.Models.AddReference(GameState->SphereModelID);
-  GameState->Resources.Models.AddReference(GameState->UVSphereModelID);
-}
-
-inline void
 GetCubemapRIDs(rid* RIDs, Resource::resource_manager* Resources,
                Memory::stack_allocator* const Allocator, char* CubemapPath, char* FileFormat)
 {
@@ -267,6 +252,31 @@ GetCubemapRIDs(rid* RIDs, Resource::resource_manager* Resources,
     {
       RIDs[i] = Resources->RegisterTexture(FileNames[i]);
     }
+  }
+}
+
+inline void
+RegisterDebugModels(game_state* GameState)
+{
+  GameState->GizmoModelID    = GameState->Resources.RegisterModel("data/built/gizmo1.model");
+  GameState->QuadModelID     = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
+  GameState->CubemapModelID  = GameState->Resources.RegisterModel("data/built/inverse_cube.model");
+  GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
+  GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
+  GameState->Resources.Models.AddReference(GameState->GizmoModelID);
+  GameState->Resources.Models.AddReference(GameState->QuadModelID);
+  GameState->Resources.Models.AddReference(GameState->CubemapModelID);
+  GameState->Resources.Models.AddReference(GameState->SphereModelID);
+  GameState->Resources.Models.AddReference(GameState->UVSphereModelID);
+
+  strcpy(GameState->Cubemap.Name, "data/textures/skybox/morning");
+  strcpy(GameState->Cubemap.Format, "tga");
+  GetCubemapRIDs(GameState->Cubemap.FaceIDs, &GameState->Resources, GameState->TemporaryMemStack,
+                 GameState->Cubemap.Name, GameState->Cubemap.Format);
+  GameState->Cubemap.CubemapTexture = -1;
+  for(int i = 0; i < 6; i++)
+  {
+    GameState->Resources.Models.AddReference(GameState->Cubemap.FaceIDs[i]);
   }
 }
 

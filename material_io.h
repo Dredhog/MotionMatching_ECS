@@ -5,5 +5,4 @@
 
 material ImportMaterial(Resource::resource_manager* Resources, const char* Path);
 void
-ExportMaterial(Resource::resource_manager* ResourceManager, const material* Material, const char* Directory,
-               const char* Name);
+ExportMaterial(Resource::resource_manager* ResourceManager, const material* Material, const char* Path);

@@ -62,6 +62,7 @@ namespace Resource
     struct stat TextureStats[RESOURCE_MAX_COUNT];
     struct stat AnimationStats[RESOURCE_MAX_COUNT];
     struct stat MaterialStats[RESOURCE_MAX_COUNT];
+    struct stat SceneStats[RESOURCE_MAX_COUNT];
 
     bool LoadModel(rid RID);
     bool LoadTexture(rid RID);
@@ -85,11 +86,13 @@ namespace Resource
     path TexturePaths[RESOURCE_MAX_COUNT];
     path AnimationPaths[RESOURCE_MAX_COUNT];
     path MaterialPaths[RESOURCE_MAX_COUNT];
+    path ScenePaths[RESOURCE_MAX_COUNT];
 
     int32_t ModelPathCount;
     int32_t TexturePathCount;
     int32_t AnimationPathCount;
     int32_t MaterialPathCount;
+    int32_t ScenePathCount;
 
     rid CreateMaterial(material Material, const char* Path);
 

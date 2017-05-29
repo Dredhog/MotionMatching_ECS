@@ -145,27 +145,23 @@ namespace Resource
   }
 
   rid
-  resource_manager::CreateMaterial(material Material, const char* Name)
+  resource_manager::CreateMaterial(material Material, const char* Path)
   {
     path FinalPath = {};
-    if(!Name)
+    if(!Path)
     {
       time_t     current_time;
       struct tm* time_info;
-      char       MaterialName[30];
       time(&current_time);
       time_info = localtime(&current_time);
-      strftime(MaterialName, sizeof(MaterialName), "%H_%M_%S", time_info);
-      ExportMaterial(this, &Material, "data/materials/", MaterialName);
       strftime(FinalPath.Name, sizeof(FinalPath.Name), "data/materials/%H_%M_%S.mat", time_info);
     }
     else
     {
-      ExportMaterial(this, &Material, "data/materials/", Name);
-      sprintf(FinalPath.Name, "data/materials/%s.mat", Name);
+      ExportMaterial(this, &Material, Path);
     }
 
-    rid RID = this->RegisterMaterial(FinalPath.Name);
+    rid RID = this->RegisterMaterial(Path);
     return RID;
   }
 
@@ -383,31 +379,9 @@ namespace Resource
     this->DiffedAnimationCount =
       ReadPaths(this->DiffedAnimations, this->AnimationPaths, this->AnimationStats,
                 &this->AnimationPathCount, "data/animations", "anim");
-#if 0
-    if(this->DiffedAnimationCount > 0)
-    {
-      printf("ANIMATION DIFF COUNT: %d\n", this->DiffedAnimationCount);
-      for(int i = 0; i < this->DiffedAnimationCount; i++)
-      {
-        switch(this->DiffedAnimations[i].Type)
-        {
-          case DIFF_Added:
-            printf("Added: ");
-            break;
-          case DIFF_Modified:
-            printf("Modified: ");
-            break;
-          case DIFF_Deleted:
-            printf("Deleted: ");
-            break;
-          default:
-            assert(0 && "assert: overflowed stat enum");
-            break;
-        }
-        printf("%s\n", DiffedAnimations[i].Path.Name);
-      }
-    }
-#endif
+    // Update scene paths
+    ReadPaths(this->DiffedMaterials, this->ScenePaths, this->SceneStats, &this->ScenePathCount,
+              "data/scenes", "scene");
     // Update material paths
     this->DiffedMaterialCount =
       ReadPaths(this->DiffedMaterials, this->MaterialPaths, this->MaterialStats,
@@ -419,14 +393,14 @@ namespace Resource
   {
     for(int i = 0; i < this->DiffedAnimationCount; i++)
     {
-      //printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+      // printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
       if(this->DiffedAnimations[i].Type == DIFF_Modified)
       {
-        //printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+        // printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
         rid RID;
         if(this->Animations.GetPathRID(&RID, DiffedAnimations[i].Path.Name))
         {
-          //printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
+          // printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
           Anim::animation* Animation;
           char*            Path;
           if(this->Animations.Get(RID, &Animation, &Path))
@@ -444,14 +418,14 @@ namespace Resource
 
     for(int i = 0; i < this->DiffedModelCount; i++)
     {
-      //printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+      // printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
       if(this->DiffedModels[i].Type == DIFF_Modified)
       {
-        //printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
+        // printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
         rid RID;
         if(this->Models.GetPathRID(&RID, DiffedModels[i].Path.Name))
         {
-          //printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
+          // printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
           Render::model* Model;
           char*          Path;
           if(this->Models.Get(RID, &Model, &Path))
@@ -483,7 +457,7 @@ namespace Resource
           int32_t RefCount = this->Models.QueryReferences(RID);
           if(RefCount <= 0)
           {
-            //printf("deleting model rid: %d, refs: %d\n", RID.Value, RefCount);
+            // printf("deleting model rid: %d, refs: %d\n", RID.Value, RefCount);
             FreeModel(RID);
           }
         }

@@ -40,6 +40,7 @@ namespace Math
   mat4 Mat4RotateZ(float Angle);
   mat4 Mat4RotateX(float Angle);
   mat4 Mat4Rotate(vec3 EulerAngles);
+  mat4 Mat4RotateAxisAngle(vec3 RotationAxis, float Angle);
   mat4 Mat4Scale(float Sx, float Sy, float Sz);
   mat4 Mat4Scale(vec3 S);
   mat4 Mat4Scale(float S);

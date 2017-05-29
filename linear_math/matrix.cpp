@@ -197,6 +197,37 @@ namespace Math
   }
 
   mat4
+  Mat4RotateAxisAngle(vec3 RotationAxis, float Angle)
+  {
+
+    float x   = RotationAxis.X;
+    float y   = RotationAxis.Y;
+    float z   = RotationAxis.Z;
+
+    float DTR = 3.1415926f / 180;
+    float s   = sinf(Angle * DTR);
+    float c   = cosf(Angle * DTR);
+    float k   = 1 - c;
+
+    return mat4{ x * x * k + c,
+                 x * y * k + z * s,
+                 x * z * k - y * s,
+                 0,
+                 x * y * k - z * s,
+                 y * y * k + c,
+                 y * z * k + x * s,
+                 0,
+                 x * z * k + y * s,
+                 y * z * k - x * s,
+                 z * z * k + c,
+                 0,
+                 0,
+                 0,
+                 0,
+                 1 };
+  }
+
+  mat4
   Mat4Scale(float Sx, float Sy, float Sz)
   {
     return mat4{ Sx, 0, 0, 0, 0, Sy, 0, 0, 0, 0, Sz, 0, 0, 0, 0, 1 };
