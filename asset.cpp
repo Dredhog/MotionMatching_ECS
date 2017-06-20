@@ -87,60 +87,12 @@ Asset::UnpackAnimationGroup(Anim::animation_group* AnimationGroup)
 }
 
 void
-Asset::PackAsset(Asset::asset_file_header* Header, int32_t TotalAssetSize)
-{
-  uint64_t HeaderBase = (uint64_t)Header;
-
-  if(Header->AssetType == Asset::ASSET_Actor || Header->AssetType == Asset::ASSET_Model)
-  {
-    if(Header->AssetType == Asset::ASSET_Actor)
-    {
-      assert(((Render::model*)Header->Model)->Skeleton);
-    }
-
-    PackModel((Render::model*)Header->Model);
-    Header->Model = Header->Model - HeaderBase;
-  }
-  else if(Header->AssetType == ASSET_AnimationGroup)
-  {
-    PackAnimationGroup((Anim::animation_group*)Header->AnimationGroup);
-    Header->AnimationGroup = Header->AnimationGroup - HeaderBase;
-  }
-
-  Header->TotalSize = (uint32_t)TotalAssetSize;
-  Header->Checksum  = ASSET_HEADER_CHECKSUM;
-}
-
-void
-Asset::UnpackAsset(Asset::asset_file_header* Header)
-{
-  assert(Header->Checksum == ASSET_HEADER_CHECKSUM);
-  uint64_t HeaderBase = (uint64_t)Header;
-
-  if(Header->AssetType == Asset::ASSET_Actor || Header->AssetType == Asset::ASSET_Model)
-  {
-    Header->Model = Header->Model + HeaderBase;
-    UnpackModel((Render::model*)Header->Model);
-  }
-  else if(Header->AssetType == ASSET_AnimationGroup)
-  {
-    Header->AnimationGroup = Header->AnimationGroup + HeaderBase;
-    UnpackAnimationGroup((Anim::animation_group*)Header->AnimationGroup);
-  }
-}
-
-void
 Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
                             const EditAnimation::animation_editor* AnimEditor, char* FileName)
 {
   Memory::marker Marker = Alloc->GetMarker();
 
-  Asset::asset_file_header* Header = PushStruct(Alloc, Asset::asset_file_header);
-  *Header                          = {};
-  Header->AssetType                = Asset::ASSET_AnimationGroup;
-
   Anim::animation_group* AnimGroup = PushStruct(Alloc, Anim::animation_group);
-  Header->AnimationGroup           = (uint64_t)AnimGroup;
 
   AnimGroup->AnimationCount = 1;
   AnimGroup->Animations     = PushArray(Alloc, AnimGroup->AnimationCount, Anim::animation*);
@@ -176,11 +128,12 @@ Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
 
   int32_t TotalSize =
     Memory::SafeTruncate_size_t_To_uint32_t(Alloc->GetByteCountAboveMarker(Marker));
-  PackAsset(Header, TotalSize);
+  PackAnimationGroup(AnimGroup);
 
-  WriteEntireFile(FileName, Header->TotalSize, Header);
+  WriteEntireFile(FileName, TotalSize, AnimGroup);
 }
 
+#if 0
 void
 Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
                             char* FileName)
@@ -194,5 +147,21 @@ Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_grou
   UnpackAsset(AssetHeader);
 
   *OutputAnimGroup = (Anim::animation_group*)AssetHeader->AnimationGroup;
+  assert(*OutputAnimGroup);
+}
+#endif
+
+void
+Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
+                            char* FileName)
+{
+  assert(OutputAnimGroup);
+  debug_read_file_result AssetReadResult = ReadEntireFile(Alloc, FileName);
+
+  assert(AssetReadResult.Contents);
+  
+  *OutputAnimGroup = (Anim::animation_group*)AssetReadResult.Contents;;
+	UnpackAnimationGroup(*OutputAnimGroup);
+
   assert(*OutputAnimGroup);
 }

@@ -41,11 +41,9 @@ void
 ExportScene(game_state* GameState, const char* Path)
 {
   GameState->TemporaryMemStack->Clear();
-  Asset::asset_file_header* AssetHeader =
-    PushStruct(GameState->TemporaryMemStack, Asset::asset_file_header);
-  *AssetHeader       = {};
+
   scene*   Scene     = PushStruct(GameState->TemporaryMemStack, scene);
-  uint64_t AssetBase = (uint64_t)AssetHeader;
+  uint64_t AssetBase = (uint64_t)Scene;
 
   *Scene = {};
 
@@ -152,7 +150,6 @@ ExportScene(game_state* GameState, const char* Path)
   Scene->Camera        = GameState->Camera;
   Scene->LightPosition = GameState->R.LightPosition;
 
-  AssetHeader->Scene = (uint64_t)Scene - AssetBase;
   Scene->Entities    = (entity*)((uint64_t)Scene->Entities - AssetBase);
   Scene->AnimControllers =
     (Anim::animation_controller*)((uint64_t)Scene->AnimControllers - AssetBase);
@@ -160,11 +157,9 @@ ExportScene(game_state* GameState, const char* Path)
   Scene->AnimationIDPaths = (rid_path_pair*)((uint64_t)Scene->AnimationIDPaths - AssetBase);
   Scene->MaterialIDPaths  = (rid_path_pair*)((uint64_t)Scene->MaterialIDPaths - AssetBase);
 
-  AssetHeader->Checksum  = ASSET_HEADER_CHECKSUM;
-  AssetHeader->AssetType = Asset::ASSET_Scene;
-  AssetHeader->TotalSize = GameState->TemporaryMemStack->GetUsedSize();
+	uint32_t TotalSize = GameState->TemporaryMemStack->GetUsedSize();
 
-  WriteEntireFile(Path, AssetHeader->TotalSize, AssetHeader);
+  WriteEntireFile(Path, TotalSize, Scene);
 }
 
 void
@@ -179,13 +174,9 @@ ImportScene(game_state* GameState, const char* Path)
 
   debug_read_file_result ReadResult = ReadEntireFile(GameState->TemporaryMemStack, Path);
   assert(ReadResult.Contents);
-  Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)ReadResult.Contents;
-  assert(AssetHeader->Checksum == ASSET_HEADER_CHECKSUM);
 
-  uint64_t AssetBase = (uint64_t)AssetHeader;
-
-  AssetHeader->Scene = (uint64_t)AssetHeader->Scene + AssetBase;
-  scene* Scene       = (scene*)AssetHeader->Scene;
+  scene* Scene = (scene*)ReadResult.Contents;
+  uint64_t AssetBase = (uint64_t)Scene;
 
   Scene->Entities = (entity*)((uint64_t)Scene->Entities + AssetBase);
   for(int e = 0; e < Scene->EntityCount; e++)
@@ -271,6 +262,7 @@ ImportScene(game_state* GameState, const char* Path)
   // Saving camera and light parameters
   GameState->Camera          = Scene->Camera;
   GameState->R.LightPosition = Scene->LightPosition;
+	GameState->CurrentMaterialID = {-1};
 
   return;
 }

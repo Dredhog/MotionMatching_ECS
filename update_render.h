@@ -79,8 +79,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
     //------------LOAD TEXTURES-----------
     //
-    GameState->CollapsedTextureID = Texture::LoadTexture("./data/collapsed.bmp");
-    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/expanded.bmp");
+    GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
+    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);
 

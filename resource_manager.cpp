@@ -54,11 +54,10 @@ namespace Resource
         {
           return false;
         }
-        Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
 
-        UnpackAsset(AssetHeader);
+        Render::model* Model = (Render::model*)AssetReadResult.Contents;
 
-        Model = (Render::model*)AssetHeader->Model;
+        Asset::UnpackModel(Model);
         assert(Model);
 
         // Post load initialization
@@ -107,13 +106,10 @@ namespace Resource
         {
           return false;
         }
-        Asset::asset_file_header* AssetHeader = (Asset::asset_file_header*)AssetReadResult.Contents;
+        Anim::animation_group* AnimationGroup = (Anim::animation_group*)AssetReadResult.Contents;
+        Asset::UnpackAnimationGroup(AnimationGroup);
 
-        UnpackAsset(AssetHeader);
-
-        Animation =
-          (Anim::animation*)((Anim::animation_group*)AssetHeader->AnimationGroup)->Animations[0];
-        assert(Animation);
+        Animation = AnimationGroup->Animations[0];
 
         this->Animations.Set(RID, Animation, Path);
       }
@@ -208,8 +204,7 @@ namespace Resource
         {
           Render::CleanUpMesh(Model->Meshes[m]);
         }
-        //(TODO): Do not do this at home black magic (ad-hoc offset)
-        this->ModelHeap.Dealloc((uint8_t*)Model - sizeof(Asset::asset_file_header) + 8);
+        this->ModelHeap.Dealloc((uint8_t*)Model);
         this->Models.SetAsset(RID, NULL);
       }
     }
@@ -225,8 +220,8 @@ namespace Resource
       if(Animation)
       {
         // TODO(LUKAS) TOTAL HACK will work if only one animation in anim file
-        this->AnimationHeap.Dealloc((uint8_t*)Animation - sizeof(Asset::asset_file_header) -
-                                    sizeof(Anim::animation_group) - sizeof(Anim::animation*));
+        this->AnimationHeap.Dealloc((uint8_t*)Animation - sizeof(Anim::animation_group) -
+                                    sizeof(Anim::animation*));
         this->Animations.SetAsset(RID, NULL);
       }
     }

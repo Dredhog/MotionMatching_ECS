@@ -11,7 +11,7 @@ GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
   if(!GameState->WAVLoaded)
   {
     GameState->WAVLoaded = true;
-    Audio::LoadWAV(&GameState->AudioBuffer, "./data/sounds/Intruder_Alert.wav");
+    //Audio::LoadWAV(&GameState->AudioBuffer, "./data/sounds/Intruder_Alert.wav");
   }
 
   //Audio::GameOutputSound(SoundBuffer, &GameState->AudioBuffer);
