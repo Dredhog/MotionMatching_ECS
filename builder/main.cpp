@@ -10,10 +10,14 @@
 #include "asset.h"
 #include "anim.h"
 
-#include "stack_allocator.h"
-#include "stack_allocator.cpp"
+#include "stack_alloc.h"
+#include "stack_alloc.cpp"
+
+#include "heap_alloc.h"
+#include "heap_alloc.cpp"
 
 #include "file_io.h"
+#include "file_io.cpp"
 
 void InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight);
 void NormalizeVertexBoneWeights(Render::vertex* Verte);
