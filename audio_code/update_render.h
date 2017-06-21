@@ -37,6 +37,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //---------------------BEGIN INIT -------------------------
   if(GameState->MagicChecksum != 123456)
   {
+    GameState->WAVLoaded     = false;
     GameState->MagicChecksum = 123456;
 
     GameState->TemporaryMemStack =

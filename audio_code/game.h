@@ -26,6 +26,13 @@ struct cubemap
   uint32_t CubemapTexture;
 };
 
+struct loaded_wav
+{
+  int16_t* AudioData;
+  uint32_t AudioLength;
+  uint32_t AudioSampleIndex;
+};
+
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
 const int32_t MESH_SELECTION_MAX_COUNT   = 400;
@@ -93,6 +100,10 @@ struct game_state
   bool  IsAnimationPlaying;
   float EditorBoneRotationSpeed;
   bool  IsEntityCreationMode;
+
+  // Audio
+  loaded_wav AudioBuffer;
+  bool       WAVLoaded;
 
   uint32_t MagicChecksum;
   uint32_t SelectionMode;
@@ -308,3 +319,4 @@ LoadCubemap(Resource::resource_manager* Resources, rid* RIDs)
 
   return Texture;
 }
+
