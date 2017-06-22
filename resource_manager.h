@@ -34,6 +34,11 @@ struct asset_diff
   path     Path;
 };
 
+struct file_stat
+{
+  time_t LastTimeModified;
+};
+
 const int MODEL_MAX_COUNT     = RESOURCE_MAX_COUNT;
 const int ANIMATION_MAX_COUNT = RESOURCE_MAX_COUNT;
 const int MATERIAL_MAX_COUNT  = RESOURCE_MAX_COUNT;
@@ -58,11 +63,11 @@ namespace Resource
     int32_t DiffedMaterialCount;
     int32_t DiffedTextureCount;
 
-    struct stat ModelStats[RESOURCE_MAX_COUNT];
-    struct stat TextureStats[RESOURCE_MAX_COUNT];
-    struct stat AnimationStats[RESOURCE_MAX_COUNT];
-    struct stat MaterialStats[RESOURCE_MAX_COUNT];
-    struct stat SceneStats[RESOURCE_MAX_COUNT];
+    file_stat ModelStats[RESOURCE_MAX_COUNT];
+    file_stat TextureStats[RESOURCE_MAX_COUNT];
+    file_stat AnimationStats[RESOURCE_MAX_COUNT];
+    file_stat MaterialStats[RESOURCE_MAX_COUNT];
+    file_stat SceneStats[RESOURCE_MAX_COUNT];
 
     bool LoadModel(rid RID);
     bool LoadTexture(rid RID);

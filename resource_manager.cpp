@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <ftw.h>
 
-int32_t ReadPaths(asset_diff* AssedDiffs, path* Paths, struct stat* Stats, int32_t* ElementCount,
+int32_t ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t* ElementCount,
                   const char* StartPath, const char* Extension);
 namespace Resource
 {
