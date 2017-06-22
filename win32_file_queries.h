@@ -41,9 +41,14 @@ CheckFile(const WIN32_FIND_DATA* Stat)
 {
   char* Path = Stat->cFileName;
 
-  if((Stat->dwFileAttributes & FILE_ATTRIBUTE_DIRECROTY) && (Path[FileNameIndex(Path)] == '.'))
+  if((Stat->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (Path[FileNameIndex(Path)] == '.'))
   {
     return 0;
+  }
+
+  if(Stat->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+  {
+    return 1;
   }
 
   if(Stat->dwFileAttributes & FILE_ATTRIBUTE_NORMAL)
@@ -118,6 +123,30 @@ CheckFile(const WIN32_FIND_DATA* Stat)
   return 0;
 }
 
+void
+FindFilesRecursively(const char* StartPath)
+{
+  WIN32_FIND_DATA FileData;
+  HANDLE          FileHandle = FindFirstFile(StartPath, &FileData);
+
+  while(FileHandle != INVALID_HANDLE_VALUE)
+  {
+    if(CheckFile(&FileData))
+    {
+      FindFilesRecursively(FileData.cFileName);
+    }
+    if(!FindNextFile(FileHandle, &FileData))
+    {
+      break;
+    }
+  }
+
+  if(FileHandle != INVALID_HANDLE_VALUE)
+  {
+    FindClose(FileHandle);
+  }
+}
+
 int32_t
 ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t* ElementCount,
           const char* StartPath, const char* Extension)
@@ -142,7 +171,11 @@ ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t* Element
 
   while(FileHandle != INVALID_HANDLE_VALUE)
   {
-    CheckFile(&FileData);
+    if(CheckFile(&FileData))
+    {
+      FindFilesRecursively(FileData.cFileName);
+    }
+
     if(!FindNextFile(FileHandle, &FileData))
     {
       break;
