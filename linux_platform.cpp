@@ -10,12 +10,20 @@
 // Memory
 #include <sys/mman.h>
 
+// File queries
+#include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <ftw.h>
+
 #include "common.h"
 
 #define FRAME_TIME_MS 10
 #define SLOW_MOTION_COEFFICIENT 0.2f
 
 #include "update_render.h"
+
+#include "linux_file_queries.h"
 
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
