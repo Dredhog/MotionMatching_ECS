@@ -31,12 +31,12 @@ int32_t      g_TexturedQuadCount;
 void
 Debug::PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, vec4 Color)
 {
-  mat4 MVPMatrix = Math::MulMat4(Camera->VPMatrix, Math::MulMat4(Math::Mat4Translate(Position),
-                                                                 Math::Mat4Scale(Radius)));
+  mat4 MVPMatrix = Math::MulMat4(Camera->VPMatrix, Math::MulMat4(Math::Mat4Translate(Position), Math::Mat4Scale(Radius)));
   assert(0 <= g_SphereCount && g_SphereCount < SPHERE_MAX_COUNT);
   g_SphereColors[g_SphereCount]     = Color;
   g_SphereMatrices[g_SphereCount++] = MVPMatrix;
 }
+
 void
 Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase)
 {
@@ -95,14 +95,26 @@ Debug::PushTopLeftTexturedQuad(int32_t TextureID, vec3 TopLeft, float Width, flo
 }
 
 void
+Debug::UIPushQuad(vec3 Position, vec3 Size, vec4 Color)
+{
+  vec3 ScreenSize = { SCREEN_WIDTH, SCREEN_HEIGHT };
+  Debug::PushTopLeftQuad({ Position.X / ScreenSize.X, 1.0f - Position.Y / ScreenSize.Y }, Size.X / ScreenSize.X, Size.Y / ScreenSize.Y, Color);
+}
+void
+Debug::UIPushTexturedQuad(int32_t TextureID, vec3 Position, vec3 Size)
+{
+  vec3 ScreenSize = { SCREEN_WIDTH, SCREEN_HEIGHT };
+  Debug::PushTopLeftTexturedQuad(TextureID, { Position.X / ScreenSize.X, 1.0f - Position.Y / ScreenSize.Y }, Size.X / ScreenSize.X, Size.Y / ScreenSize.Y);
+}
+
+void
 Debug::DrawGizmos(game_state* GameState)
 {
   Render::model* GizmoModel = GameState->Resources.GetModel(GameState->GizmoModelID);
   glUseProgram(GameState->R.ShaderGizmo);
   for(int g = 0; g < g_GizmoCount; g++)
   {
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderGizmo, "mat_mvp"), 1, GL_FALSE,
-                       g_GizmoMatrices[g].e);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderGizmo, "mat_mvp"), 1, GL_FALSE, g_GizmoMatrices[g].e);
     glUniform1f(glGetUniformLocation(GameState->R.ShaderGizmo, "depth"), g_GizmoDepths[g]);
     for(int i = 0; i < GizmoModel->MeshCount; i++)
     {
@@ -127,15 +139,12 @@ Debug::DrawWireframeSpheres(game_state* GameState)
     // So as not to corrupt the position by the old bone data
     {
       mat4 Mat4Zeros = {};
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE,
-                         Mat4Zeros.e);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE, Mat4Zeros.e);
     }
     for(int i = 0; i < g_SphereCount; i++)
     {
-      glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
-                   (float*)&g_SphereColors[i]);
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
-                         g_SphereMatrices[i].e);
+      glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&g_SphereColors[i]);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE, g_SphereMatrices[i].e);
       glDrawElements(GL_TRIANGLES, SphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
     }
     glBindVertexArray(0);
@@ -147,20 +156,20 @@ Debug::DrawWireframeSpheres(game_state* GameState)
 void
 Debug::DrawColoredQuads(game_state* GameState)
 {
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glUseProgram(GameState->R.ShaderQuad);
   Render::model* QuadModel = GameState->Resources.GetModel(GameState->QuadModelID);
   glBindVertexArray(QuadModel->Meshes[1]->VAO);
   for(int i = 0; i < g_ColoredQuadCount; i++)
   {
-    glUniform4fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_color"), 1,
-                 (float*)&g_ColoredQuads[i].Color);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_position"), 1,
-                 (float*)&g_ColoredQuads[i].LowerLeft);
-    glUniform2fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_dimension"), 1,
-                 (float*)&g_ColoredQuads[i].Dimensions);
+    glUniform4fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_color"), 1, (float*)&g_ColoredQuads[i].Color);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_position"), 1, (float*)&g_ColoredQuads[i].LowerLeft);
+    glUniform2fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_dimension"), 1, (float*)&g_ColoredQuads[i].Dimensions);
     glDrawElements(GL_TRIANGLES, QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
   }
   glBindVertexArray(0);
+  glDisable(GL_BLEND);
   g_ColoredQuadCount = 0;
 }
 
@@ -175,10 +184,8 @@ Debug::DrawTexturedQuads(game_state* GameState)
   {
     glBindTexture(GL_TEXTURE_2D, g_TexturedQuads[i].TextureID);
     glUseProgram(GameState->R.ShaderTexturedQuad);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_position"), 1,
-                 (float*)&g_TexturedQuads[i].LowerLeft);
-    glUniform2fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_dimension"), 1,
-                 (float*)&g_TexturedQuads[i].Dimensions);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_position"), 1, (float*)&g_TexturedQuads[i].LowerLeft);
+    glUniform2fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_dimension"), 1, (float*)&g_TexturedQuads[i].Dimensions);
     glDrawElements(GL_TRIANGLES, QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
   }
   glBindVertexArray(0);

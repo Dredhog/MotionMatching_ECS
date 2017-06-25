@@ -14,6 +14,11 @@ struct game_button_state
 
 struct game_input
 {
+  int32_t MouseScreenX;
+  int32_t MouseScreenY;
+  int32_t dMouseScreenX;
+  int32_t dMouseScreenY;
+
   int32_t MouseX;
   int32_t MouseY;
   int32_t dMouseX;
@@ -78,6 +83,5 @@ struct game_memory
   void*    TemporaryMemory;
 };
 
-#define GAME_UPDATE_AND_RENDER(name)                                                               \
-  void name(game_memory GameMemory, const game_input* const Input)
+#define GAME_UPDATE_AND_RENDER(name) void name(game_memory GameMemory, const game_input* const Input)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
