@@ -262,7 +262,7 @@ ImportScene(game_state* GameState, const char* Path)
   // Saving camera and light parameters
   GameState->Camera          = Scene->Camera;
   GameState->R.LightPosition = Scene->LightPosition;
-	GameState->CurrentMaterialID = {-1};
+	GameState->CurrentMaterialID = {0};
 
   return;
 }

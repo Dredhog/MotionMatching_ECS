@@ -14,6 +14,19 @@ extern vec4 g_BoolHighlightColor;
 extern vec4 g_DescriptionColor;
 extern vec4 g_FontColor;
 
+enum ui_colors
+{
+  GUI_COLOR_Border,
+  GUI_COLOR_ButtonNormal,
+  GUI_COLOR_ButtonHover,
+  GUI_COLOR_ButtonPressed,
+  GUI_COLOR_BoolNormal,
+  GUI_COLOR_BoolPressed,
+  GUI_COLOR_BoolHighlight,
+  GUI_COLOR_DescriptionColor,
+  GUI_COLOR_Text,
+};
+
 void DrawBox(game_state* GameState, vec3 TopLeft, float Width, float Height, vec4 InnerColor,
              vec4 BorderColor);
 
@@ -63,7 +76,6 @@ namespace UI
   void ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_state* GameState,
                 im_layout* Layout, const game_input* Input, size_t ElementSize,
                 char* (*ElementToCharPtr)(void*));
-
   void SliderVec3(game_state* GameState, im_layout* Layout, const game_input* Input,
                   const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY,
                   float ValueScreenDelta = 10.0f);
@@ -78,7 +90,3 @@ namespace UI
 #define _DrawTextButton(Layout, Text) DrawTextButton(GameState, (Layout), (Text))
 #define _BoolButton(Layout, Input, Text, Bool)                                                     \
   BoolButton(GameState, (Layout), (Input), (Text), (Bool))
-#define _ExpandableButton(Layout, Input, Text, IsExpanded)                                         \
-  ExpandableButton(GameState, (Layout), (Input), (Text), (IsExpanded))
-#define _BeginScrollableList(Layout, Input, TotalRowCount, ScrollRowCount, g_ScrollK)              \
-  BeginScrollableList(GameState, (Layout), (Input), (TotalRowCount), (ScrollRowCount), (g_ScrollK))

@@ -200,7 +200,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   if(GameState->SelectionMode == SELECT_Mesh || GameState->SelectionMode == SELECT_Entity)
   {
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Material Editor", &g_ShowMaterialEditor))
+    if(UI::ExpandableButton(GameState, &Layout, Input, "Material Editor", &g_ShowMaterialEditor))
     {
       {
         int32_t ActivePathIndex = 0;
@@ -498,7 +498,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   if(GameState->SelectionMode == SELECT_Entity)
   {
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Entity Tools", &g_ShowEntityTools))
+    if(UI::ExpandableButton(GameState, &Layout, Input, "Entity Tools", &g_ShowEntityTools))
     {
       UI::Row(&Layout);
       static int32_t ActivePathIndex = 0;
@@ -765,7 +765,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     }
 
     UI::Row(&Layout);
-    if(UI::_ExpandableButton(&Layout, Input, "Animation Editor", &g_ShowAnimationEditor))
+    if(UI::ExpandableButton(GameState, &Layout, Input, "Animation Editor", &g_ShowAnimationEditor))
     {
       UI::Row(&Layout);
       if(UI::ReleaseButton(GameState, &Layout, Input, "Stop Editing"))
@@ -862,7 +862,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     }
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Light Settings", &g_ShowLightSettings))
+  if(UI::ExpandableButton(GameState, &Layout, Input, "Light Settings", &g_ShowLightSettings))
   {
     UI::SliderVec3Color(GameState, &Layout, Input, "Diffuse",
                         (vec3*)&GameState->R.LightDiffuseColor);
@@ -876,7 +876,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
   }
 
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Render Switches", &g_ShowDisplaySet))
+  if(UI::ExpandableButton(GameState, &Layout, Input, "Render Switches", &g_ShowDisplaySet))
   {
     UI::Row(GameState, &Layout, 1, "Memory");
     UI::_BoolButton(&Layout, Input, "Toggle", &g_DrawMemoryMaps);
@@ -888,7 +888,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::_BoolButton(&Layout, Input, "Toggle", &GameState->DrawDebugSpheres);
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Camera", &g_ShowCameraSettings))
+  if(UI::ExpandableButton(GameState, &Layout, Input, "Camera", &g_ShowCameraSettings))
   {
     UI::Row(GameState, &Layout, 1, "FOV");
     UI::SliderFloat(GameState, &Layout, Input, "FieldOfView", &GameState->Camera.FieldOfView, 0,
@@ -910,7 +910,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     }
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "GUI Colors", &g_ShowGUISettings))
+  if(UI::ExpandableButton(GameState, &Layout, Input, "GUI Colors", &g_ShowGUISettings))
   {
     UI::SliderVec3Color(GameState, &Layout, Input, "Border", (vec3*)&g_BorderColor);
     UI::SliderVec3Color(GameState, &Layout, Input, "Base", (vec3*)&g_NormalColor);
@@ -923,7 +923,7 @@ IMGUIControlPanel(game_state* GameState, const game_input* Input)
     UI::SliderVec3Color(GameState, &Layout, Input, "Font", (vec3*)&g_FontColor);
   }
   UI::Row(&Layout);
-  if(UI::_ExpandableButton(&Layout, Input, "Scene", &g_ShowSceneSettings))
+  if(UI::ExpandableButton(GameState, &Layout, Input, "Scene", &g_ShowSceneSettings))
   {
     UI::Row(&Layout);
     if(UI::ReleaseButton(GameState, &Layout, Input, "Export Scene"))

@@ -34,6 +34,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
   game_state* GameState = (game_state*)GameMemory.PersistentMemory;
   assert(GameMemory.HasBeenInitialized);
+
   //---------------------BEGIN INIT -------------------------
   if(GameState->MagicChecksum != 123456)
   {
@@ -55,7 +56,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->PersistentMemStack =
       Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
     GameState->Resources.Create(ResouceMemoryStart, ResourceMemorySize);
-
     // END SEGMENTATION
 
     // --------LOAD MODELS/ACTORS--------
@@ -76,8 +76,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_textured_quad");
     GameState->R.ShaderID =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
+
     //------------LOAD TEXTURES-----------
-    //
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
     assert(GameState->CollapsedTextureID);
