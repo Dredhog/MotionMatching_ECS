@@ -323,7 +323,7 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
     NewInput->dMouseY = NewInput->MouseY - OldInput->MouseY;
   }
   NewInput->dMouseScreenX = NewInput->dMouseX;
-  NewInput->dMouseScreenX = -NewInput->dMouseY;
+  NewInput->dMouseScreenY = -NewInput->dMouseY;
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {

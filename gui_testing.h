@@ -23,11 +23,35 @@ namespace UI
       UI::EndWindow();
     }
 
-    UI::BeginWindow("window C", { 200, 100 }, { 450, 700 });
+    UI::BeginWindow("window C", { 200, 100 }, { 450, 400 });
     {
+      static bool s_HeaderExpanded  = false;
+      static bool s_HeaderExpanded1 = false;
+
+      UI::ReleaseButton("Mee too!", { 300, 30 });
+      UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("Mee too!", { 300, 30 });
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("And me!", { 200, 50 });
+      if(UI::CollapsingHeader("I'm a header", &s_HeaderExpanded, { 350, 30 }))
+      {
+        UI::ReleaseButton("realease me!", { 150, 20 });
+        UI::ReleaseButton("realease me!", { 150, 20 });
+        UI::ReleaseButton("Mee too!", { 300, 30 });
+        UI::ReleaseButton("realease me!", { 150, 20 });
+        UI::ReleaseButton("And me!", { 200, 50 });
+        UI::ReleaseButton("Mee too!", { 300, 30 });
+        UI::ReleaseButton("realease me!", { 150, 20 });
+      }
+      UI::ReleaseButton("And me!", { 200, 50 });
+      if(UI::CollapsingHeader("I'm a header!", &s_HeaderExpanded1, { 350, 30 }))
+      {
+        UI::ReleaseButton("realease me!", { 150, 20 });
+        UI::ReleaseButton("Mee too!", { 300, 30 });
+        UI::ReleaseButton("realease me!", { 150, 20 });
+        UI::ReleaseButton("And me!", { 200, 50 });
+        UI::ReleaseButton("realease me!", { 150, 20 });
+      }
       UI::EndWindow();
     }
 

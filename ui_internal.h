@@ -6,15 +6,18 @@
 
 #define CONTEXT_CHECKSUM 12345
 
+//-----------------------------
 // Forward declarations
+//-----------------------------
 struct ui_id;
 struct rect;
 struct gui_window;
 struct gui_context;
 
+//-----------------------------
 // Internal API
+//-----------------------------
 uint32_t IDHash(const void* data, int data_size, uint32_t seed);
-bool     AreUI_IDsEqual(ui_id A, ui_id B);
 bool     IsActive(ui_id ID);
 void     SetActive(ui_id ID);
 bool     IsHot(ui_id ID);
@@ -22,7 +25,7 @@ void     SetHot(ui_id ID);
 void     UnsetHot(ui_id ID);
 
 void PushSize(const vec3& Size);
-bool PushForClipping(const rect& Rect);
+bool TestIfVisible(const rect& Rect);
 
 void         Create(gui_context* Context);
 int          Destroy(gui_context* Context);
@@ -31,7 +34,7 @@ gui_window*  GetCurrentWindow();
 
 void DrawText(vec3 TopLeft, float Width, float Height, const char* InputText);
 void DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor);
-//-------------
+//-----------------------------
 
 struct ui_id
 {
@@ -66,7 +69,7 @@ struct rect
   bool
   Encloses(vec3 Point) const
   {
-    return (MinP.X <= Point.X && Point.X <= MaxP.X && MinP.Y <= Point.Y && Point.Y <= MaxP.Y) ? true : false;
+    return (MinP.X <= Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y < MaxP.Y) ? true : false;
   }
 
   bool
@@ -107,15 +110,18 @@ struct gui_window
   gui_window* RootWindow;
   gui_window* ParentWindow;
 
-  vec3 StartPos;
+  vec3 Position;
   vec3 Size;
 
-  vec3  CurrentPos;
-  float CurrentItemWidth;
-  float CurrentItemHeight;
+  vec3 CurrentPos;
+
+  vec3 MaxPos;
 
   vec3 ContentsSize;
   rect ClipRect;
+
+  vec3 ScrollNorm;
+  vec3 ScrollRange;
 
   ui_id
   GetID(const char* Label)
@@ -126,6 +132,7 @@ struct gui_window
 
 struct gui_context
 {
+  game_state*   GameState;
   int           InitChecksum;
   UI::gui_style Style;
   Text::font*   Font;
@@ -152,12 +159,12 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
   int32_t TextureHeight;
   char    Text[100];
 
-  int32_t FontSize = (int32_t)((Height + 2.0f * TextPaddingY) * SCREEN_HEIGHT / 3.0f);
+  int32_t FontSize = (int32_t)((Height + 2.0f * TextPaddingY) / 3.0f);
 
-  float LengthDiff = Width - ((float)(strlen(InputText) * G.Font->AverageSymbolWidth) / SCREEN_WIDTH) - 2 * TextPaddingX;
+  float LengthDiff = Width - ((float)(strlen(InputText) * G.Font->AverageSymbolWidth)) - 2 * TextPaddingX;
   if(LengthDiff < 0)
   {
-    float   SymbolWidth = (float)G.Font->AverageSymbolWidth / SCREEN_WIDTH;
+    float   SymbolWidth = (float)G.Font->AverageSymbolWidth;
     int32_t Count       = 0;
     while(LengthDiff < 0)
     {
@@ -180,17 +187,17 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
   {
     strcpy(Text, InputText);
   }
-  uint32_t TextureID = Text::GetTextTextureID(G.Font, FontSize, Text, G.Style.Colors[UI::GUI_COLOR_Text], &TextureWidth, &TextureHeight);
-  Debug::PushTopLeftTexturedQuad(TextureID, vec3{ TopLeft.X + ((Width - ((float)TextureWidth / SCREEN_WIDTH)) / 2.0f), TopLeft.Y - TextPaddingY, TopLeft.Z }, (float)TextureWidth / SCREEN_WIDTH,
-                                 Height - 2 * TextPaddingY);
+  uint32_t TextureID = Text::GetTextTextureID(G.Font, FontSize, Text, G.Style.Colors[UI::COLOR_Text], &TextureWidth, &TextureHeight);
+  Debug::UIPushTexturedQuad(TextureID, vec3{ TopLeft.X + ((Width - (float)TextureWidth) / 2), TopLeft.Y - TextPaddingY, TopLeft.Z }, { (float)TextureWidth, Height - 2 * TextPaddingY });
 }
 
 void
 DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor)
 {
-  float ButtonBorder = 0.002f;
+  gui_context& g            = *GetContext();
+  float        ButtonBorder = g.Style.StyleVars[UI::VAR_BorderWidth].X;
   Debug::UIPushQuad(TopLeft, { Width, Height }, BorderColor);
-  Debug::UIPushQuad(vec3{ TopLeft.X + ButtonBorder, TopLeft.Y - ButtonBorder, TopLeft.Z }, { Width - 2 * ButtonBorder, Height - 2 * ButtonBorder }, InnerColor);
+  Debug::UIPushQuad(vec3{ TopLeft.X + ButtonBorder, TopLeft.Y + ButtonBorder, TopLeft.Z }, { Width - 2 * ButtonBorder, Height - 2 * ButtonBorder }, InnerColor);
 }
 
 void
@@ -209,8 +216,7 @@ DrawTextBox(vec3 TopLeft, float Width, float Height, const char* Text, vec4 Inne
 void
 DrawTextBox(vec3 TopLeft, vec3 Size, const char* Text, vec4 InnerColor, vec4 BorderColor)
 {
-  DrawBox(TopLeft, Size.X, Size.Y, InnerColor, BorderColor);
-  DrawText(TopLeft, Size.X, Size.Y, Text);
+  DrawTextBox(TopLeft, Size.X, Size.Y, Text, InnerColor, BorderColor);
 }
 
 uint32_t
@@ -311,34 +317,47 @@ void
 PushSize(const vec3& Size)
 {
   gui_window& Window = *GetCurrentWindow();
+  Window.MaxPos.X    = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X);
+  Window.MaxPos.Y    = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y);
+
   Window.CurrentPos.Y += Size.Y;
 }
 
 bool
-PushForClipping(const rect& Rect)
+TestIfVisible(const rect& Rect)
 {
   gui_window& Window = *GetCurrentWindow();
-  return Window.ClipRect.Intersects(Rect) ? true : false;
+  return Rect.Intersects(Window.ClipRect) ? true : false;
 }
 
 void
 Create(gui_context* Context, game_state* GameState)
 {
-  Context->Style.Colors[UI::GUI_COLOR_Border]           = { 0.1f, 0.1f, 0.1f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_ButtonNormal]     = { 0.4f, 0.4f, 0.4f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_ButtonHover]      = { 0.5f, 0.5f, 0.5f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_ButtonPressed]    = { 0.3f, 0.3f, 0.3f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_CheckboxNormal]   = { 0.3f, 0.3f, 0.3f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_CheckboxPressed]  = { 0.2f, 0.2f, 0.4f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_CheckboxHover]    = { 0.3f, 0.3f, 0.5f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_WindowBackground] = { 0.5f, 0.1f, 0.1f, 0.5f };
-  Context->Style.Colors[UI::GUI_COLOR_WindowBorder]     = { 0.4f, 0.4f, 0.4f, 1 };
-  Context->Style.Colors[UI::GUI_COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
+  Context->Style.Colors[UI::COLOR_Border]           = { 0.1f, 0.1f, 0.1f, 0.5f };
+  Context->Style.Colors[UI::COLOR_ButtonNormal]     = { 0.4f, 0.4f, 0.4f, 1 };
+  Context->Style.Colors[UI::COLOR_ButtonHover]      = { 0.5f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_ButtonPressed]    = { 0.3f, 0.3f, 0.3f, 1 };
+  Context->Style.Colors[UI::COLOR_HeaderNormal]     = { 0.2f, 0.4f, 0.4f, 1 };
+  Context->Style.Colors[UI::COLOR_HeaderHover]      = { 0.3f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_HeaderPressed]    = { 0.1f, 0.3f, 0.3f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxNormal]   = { 0.3f, 0.3f, 0.3f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.2f, 0.2f, 0.4f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxHover]    = { 0.3f, 0.3f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_ScrollbarBox]     = { 0.3f, 0.3f, 0.5f, 0.5f };
+  Context->Style.Colors[UI::COLOR_ScrollbarDrag]    = { 0.2f, 0.2f, 0.4f, 0.5f };
+  Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.5f, 0.1f, 0.1f, 0.5f };
+  Context->Style.Colors[UI::COLOR_WindowBorder]     = { 0.4f, 0.4f, 0.4f, 0.5f };
+  Context->Style.Colors[UI::COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
+
+  Context->Style.StyleVars[UI::VAR_BorderWidth]   = { 1 };
+  Context->Style.StyleVars[UI::VAR_ScrollbarSize] = { 20 };
+  Context->Style.StyleVars[UI::VAR_DragMinSize]   = { 20 };
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
   Context->Windows.HardClear();
   Context->CurrentWindow = NULL;
+  Context->GameState     = GameState;
 }
 
 int
