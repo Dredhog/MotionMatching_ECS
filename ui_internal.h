@@ -5,6 +5,7 @@
 #include "basic_data_structures.h"
 
 #define CONTEXT_CHECKSUM 12345
+#define GetUIColor(Index) (g.Style.Colors[UI::COLOR_##Index])
 
 //-----------------------------
 // Forward declarations
@@ -24,7 +25,7 @@ bool     IsHot(ui_id ID);
 void     SetHot(ui_id ID);
 void     UnsetHot(ui_id ID);
 
-void PushSize(const vec3& Size);
+void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
 
 void         Create(gui_context* Context);
@@ -66,10 +67,22 @@ struct rect
     return MaxP - MinP;
   }
 
+	float
+	Width() const
+	{
+		return MaxP.X - MinP.X;
+	}
+
+	float
+	Height() const
+	{
+		return MaxP.Y - MinP.Y;
+	}
+
   bool
   Encloses(vec3 Point) const
   {
-    return (MinP.X <= Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y < MaxP.Y) ? true : false;
+    return (MinP.X < Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y <= MaxP.Y) ? true : false;
   }
 
   bool
@@ -151,7 +164,7 @@ static gui_context g_Context;
 void
 DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
 {
-  const gui_context& G = *GetContext();
+  const gui_context& g = *GetContext();
 
   float   TextPaddingX = 0.001f;
   float   TextPaddingY = 0.005f;
@@ -161,10 +174,10 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
 
   int32_t FontSize = (int32_t)((Height + 2.0f * TextPaddingY) / 3.0f);
 
-  float LengthDiff = Width - ((float)(strlen(InputText) * G.Font->AverageSymbolWidth)) - 2 * TextPaddingX;
+  float LengthDiff = Width - ((float)(strlen(InputText) * g.Font->AverageSymbolWidth)) - 2 * TextPaddingX;
   if(LengthDiff < 0)
   {
-    float   SymbolWidth = (float)G.Font->AverageSymbolWidth;
+    float   SymbolWidth = (float)g.Font->AverageSymbolWidth;
     int32_t Count       = 0;
     while(LengthDiff < 0)
     {
@@ -187,7 +200,7 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
   {
     strcpy(Text, InputText);
   }
-  uint32_t TextureID = Text::GetTextTextureID(G.Font, FontSize, Text, G.Style.Colors[UI::COLOR_Text], &TextureWidth, &TextureHeight);
+  uint32_t TextureID = Text::GetTextTextureID(g.Font, FontSize, Text, GetUIColor(Text), &TextureWidth, &TextureHeight);
   Debug::UIPushTexturedQuad(TextureID, vec3{ TopLeft.X + ((Width - (float)TextureWidth) / 2), TopLeft.Y - TextPaddingY, TopLeft.Z }, { (float)TextureWidth, Height - 2 * TextPaddingY });
 }
 
@@ -314,7 +327,7 @@ GetCurrentWindow()
 }
 
 void
-PushSize(const vec3& Size)
+AddSize(const vec3& Size)
 {
   gui_window& Window = *GetCurrentWindow();
   Window.MaxPos.X    = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X);
@@ -351,7 +364,7 @@ Create(gui_context* Context, game_state* GameState)
 
   Context->Style.StyleVars[UI::VAR_BorderWidth]   = { 1 };
   Context->Style.StyleVars[UI::VAR_ScrollbarSize] = { 20 };
-  Context->Style.StyleVars[UI::VAR_DragMinSize]   = { 20 };
+  Context->Style.StyleVars[UI::VAR_DragMinSize]   = { 10 };
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;

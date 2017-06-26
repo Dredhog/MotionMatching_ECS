@@ -53,7 +53,7 @@ namespace UI
   bool ClickButton(const char* Text, vec3 Size);
   void Checkbox(const char* Text, bool* Toggle);
 
-  void SliderFloat(char* Text, float* Var, float Min, float Max, float ScreenValue);
+  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Horizontal, vec3 Size, float DragSize = 0);
   void SliderFloat3(const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY, float ValueScreenDelta = 10.0f);
   void SliderFloat4(const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f, float ValueScreenDelta = 3.0f);
 
