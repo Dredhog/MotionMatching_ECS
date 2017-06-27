@@ -29,6 +29,8 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
   assert(Label);
   assert(Value);
   assert(MinValue < MaxValue);
+  assert(0 < Size.X && 0 < Size.Y);
+  assert(Vertical && DragSize < Size.Y || !Vertical && DragSize < Size.X);
 
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
@@ -36,8 +38,8 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
   ui_id ID = Window.GetID(Label);
 
   const float ValueRange   = MaxValue - MinValue;
-  const float NormDragSize = DragSize / ValueRange;
-  float       NormValue    = (*Value) / ValueRange;
+  const float NormDragSize = DragSize / (Vertical ? Size.Y : Size.X);
+  float       NormValue    = ((*Value) - MinValue) / ValueRange;
 
   rect SliderRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
   AddSize(Size);
@@ -69,18 +71,27 @@ Scrollbar(gui_window* Window, bool Vertical)
   ui_id ID = Window->GetID(Vertical ? "##VertScrollbar" : "##HirizScrollbar");
 
   // Determine drag size
-  const float NormDragSize = MaxFloat((Window->Size.Y < Window->ContentsSize.Y) ? Window->Size.Y / Window->ContentsSize.Y : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->Size.Y);
-  float&      ScrollNorm   = (Vertical) ? Window->ScrollNorm.Y : Window->ScrollNorm.X;
-  rect        ScrollRect   = NewRect(Window->Position + vec3{ Window->Size.X - g.Style.StyleVars[UI::VAR_ScrollbarSize].X, 0 }, Window->Position + Window->Size);
+  float*      ScrollNorm   = (Vertical) ? &Window->ScrollNorm.Y : &Window->ScrollNorm.X;
+  const float NormDragSize = (Vertical) ? MaxFloat((Window->Size.Y < Window->ContentsSize.Y) ? Window->Size.Y / Window->ContentsSize.Y : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->Size.Y)
+                                        : MaxFloat((Window->Size.X < Window->ContentsSize.X) ? Window->Size.X / Window->ContentsSize.X : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->Size.X);
+  rect ScrollRect = (Vertical) ? NewRect(Window->Position + vec3{ Window->Size.X - g.Style.StyleVars[UI::VAR_ScrollbarSize].X, 0 }, Window->Position + Window->Size)
+                               : NewRect(Window->Position + vec3{ 0, Window->Size.Y - g.Style.StyleVars[UI::VAR_ScrollbarSize].X }, Window->Position + Window->Size);
 
   bool Held;
   bool Hovering;
-  rect DragRect = SliderBehavior(ID, ScrollRect, &ScrollNorm, NormDragSize, true, &Held, &Hovering);
+  rect DragRect = SliderBehavior(ID, ScrollRect, ScrollNorm, NormDragSize, Vertical, &Held, &Hovering);
 
   DrawBox(ScrollRect.MinP, ScrollRect.GetSize(), GetUIColor(ScrollbarBox), GetUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? GetUIColor(ScrollbarBox) : GetUIColor(ScrollbarDrag), GetUIColor(ScrollbarDrag));
 
-  Window->ScrollRange.Y = (Window->Size.Y < Window->ContentsSize.Y) ? Window->ContentsSize.Y - Window->Size.Y : 0; // Delta in screen space that the window content can scroll
+  if(Vertical)
+  {
+    Window->ScrollRange.Y = (Window->Size.Y < Window->ContentsSize.Y) ? Window->ContentsSize.Y - Window->Size.Y : 0; // Delta in screen space that the window content can scroll
+  }
+  else
+  {
+    Window->ScrollRange.X = (Window->Size.X < Window->ContentsSize.X) ? Window->ContentsSize.X - Window->Size.X : 0; // Delta in screen space that the window content can scroll
+  }
 }
 
 /*
@@ -158,15 +169,16 @@ UI::BeginWindow(const char* Name, vec3 Position, vec3 Size)
     strcpy(NewWindow.Name.Name, Name);
     NewWindow.ID       = ID;
     NewWindow.Size     = Size;
-    NewWindow.ClipRect = NewRect(Position, Position + Size);
+    NewWindow.ClipRect = NewRect(Position, Position + Size - vec3{ g.Style.StyleVars[UI::VAR_ScrollbarSize].X, g.Style.StyleVars[UI::VAR_ScrollbarSize].X });
     Window             = g.Windows.Append(NewWindow);
   }
   g.CurrentWindow = Window;
 
   Window->Position = Window->MaxPos = Window->CurrentPos = Position;
-  Window->CurrentPos.Y -= Window->ScrollNorm.Y * Window->ScrollRange.Y;
+  Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
 
   DrawBox(Window->Position, Window->Size, GetUIColor(WindowBackground), GetUIColor(WindowBorder));
+  Debug::UIPushClipQuad(Window->ClipRect.MinP, Window->ClipRect.GetSize());
 }
 
 void
@@ -178,6 +190,7 @@ UI::EndWindow()
   Window.ContentsSize = Window.MaxPos - MinPos;
   // DrawBox(MinPos, Window.ContentsSize, { 1, 0, 1, 1 }, { 1, 1, 1, 1 });
   Scrollbar(g.CurrentWindow, true);
+  Scrollbar(g.CurrentWindow, false);
   g.CurrentWindow = NULL;
 }
 
@@ -407,9 +420,8 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
 {
   assert(BB.MinP.X < BB.MaxP.X);
   assert(BB.MinP.Y < BB.MaxP.Y);
-  *ScrollNorm = ClampFloat(0, *ScrollNorm, 1);
-  assert(0 <= *ScrollNorm && *ScrollNorm <= 1);
-  assert(0 < NormDragSize && NormDragSize <= 1);
+  *ScrollNorm  = ClampFloat(0, *ScrollNorm, 1);
+  NormDragSize = ClampFloat(0, NormDragSize, 1);
 
   gui_context& g = *GetContext();
 

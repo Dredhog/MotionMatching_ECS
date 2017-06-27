@@ -22,6 +22,10 @@ struct QuadInstance
   int32_t TextureID;
 };
 
+#define CLIP_COLOR                                                                                                                                                                                     \
+  vec4 { 3.14f, 159, 265, 535 }
+#define CLIP_TEXTURE_ID 314159535
+
 QuadInstance g_ColoredQuads[TEXTURED_QUAD_MAX_COUNT];
 int32_t      g_ColoredQuadCount;
 
@@ -108,6 +112,13 @@ Debug::UIPushTexturedQuad(int32_t TextureID, vec3 Position, vec3 Size)
 }
 
 void
+Debug::UIPushClipQuad(vec3 Position, vec3 Size)
+{
+  Debug::UIPushQuad(Position, Size, CLIP_COLOR);
+  // Debug::UIPushTexturedQuad(CLIP_TEXTURE_ID, Position, Size);
+}
+
+void
 Debug::DrawGizmos(game_state* GameState)
 {
   Render::model* GizmoModel = GameState->Resources.GetModel(GameState->GizmoModelID);
@@ -158,6 +169,9 @@ Debug::DrawColoredQuads(game_state* GameState)
 {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_STENCIL_TEST);
+  glStencilFunc(GL_ALWAYS, 1, 0x00);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
   glUseProgram(GameState->R.ShaderQuad);
   Render::model* QuadModel = GameState->Resources.GetModel(GameState->QuadModelID);
   glBindVertexArray(QuadModel->Meshes[1]->VAO);
@@ -166,10 +180,22 @@ Debug::DrawColoredQuads(game_state* GameState)
     glUniform4fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_color"), 1, (float*)&g_ColoredQuads[i].Color);
     glUniform3fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_position"), 1, (float*)&g_ColoredQuads[i].LowerLeft);
     glUniform2fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_dimension"), 1, (float*)&g_ColoredQuads[i].Dimensions);
+
+    if(g_ColoredQuads[i].Color == CLIP_COLOR)
+    {
+      glStencilFunc(GL_NEVER, 1, 0xFF);
+      glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+    }
     glDrawElements(GL_TRIANGLES, QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
+    if(g_ColoredQuads[i].Color == CLIP_COLOR)
+    {
+      glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    }
   }
   glBindVertexArray(0);
   glDisable(GL_BLEND);
+  glDisable(GL_STENCIL_TEST);
   g_ColoredQuadCount = 0;
 }
 
@@ -177,6 +203,9 @@ void
 Debug::DrawTexturedQuads(game_state* GameState)
 {
   glEnable(GL_BLEND);
+	glEnable(GL_STENCIL_TEST);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+  glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
   Render::model* QuadModel = GameState->Resources.GetModel(GameState->QuadModelID);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glBindVertexArray(QuadModel->Meshes[1]->VAO);
@@ -191,6 +220,7 @@ Debug::DrawTexturedQuads(game_state* GameState)
   glBindVertexArray(0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_BLEND);
+  glDisable(GL_STENCIL_TEST);
   g_TexturedQuadCount = 0;
 }
 

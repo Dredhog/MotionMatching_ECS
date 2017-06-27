@@ -16,6 +16,7 @@ namespace Debug
   // These are in y down and pixel space coordinates
   void UIPushQuad(vec3 Position, vec3 Size, vec4 Color = { 0.5f, 0.5f, 0.5f, 1.0f });
   void UIPushTexturedQuad(int32_t TextureID, vec3 BottomLeft, vec3 Size);
+  void UIPushClipQuad(vec3 Position, vec3 Size);
 
   void DrawGizmos(game_state* GameState);
   void DrawColoredQuads(game_state* GameState);

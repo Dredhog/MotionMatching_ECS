@@ -571,7 +571,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   Debug::DrawWireframeSpheres(GameState);
-  glClear(GL_DEPTH_BUFFER_BIT);
+  glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   if(GameState->DrawGizmos)
   {
     Debug::DrawGizmos(GameState);
