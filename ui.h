@@ -60,7 +60,7 @@ namespace UI
   void BeginFrame(game_state* GameState, const game_input* Input);
   void EndFrame();
 
-  void BeginWindow(const char* Name, vec3 Position, vec3 Size, window_flags_t Flags = WINDOW_UseVerticalScrollbar);
+  void BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_t Flags = 0 /*  WINDOW_UseVerticalScrollbar | WINDOW_UseHorizontalScrollbar*/);
   void EndWindow();
 
   void SameLine();

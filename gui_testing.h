@@ -7,7 +7,7 @@ namespace UI
   {
     UI::BeginFrame(GameState, Input);
 
-    UI::BeginWindow("window A", {300, 500}, { 450, 400 });
+    UI::BeginWindow("window A", { 300, 500 }, { 450, 400 });
     {
       static bool s_HeaderExpanded  = false;
       static bool s_HeaderExpanded1 = false;
@@ -16,14 +16,9 @@ namespace UI
       static bool s_HeaderExpanded4 = false;
       static bool s_HeaderExpanded5 = false;
 
-      UI::ReleaseButton("Mee too!", { 300, 30 });
-      UI::ReleaseButton("realease me!", { 150, 20 });
-      UI::ReleaseButton("Mee too!", { 300, 30 });
-      UI::ReleaseButton("realease me!", { 150, 20 });
-      UI::ReleaseButton("And me!", { 200, 50 });
-      if(UI::CollapsingHeader("Header 1", &s_HeaderExpanded, { 350, 30 }))
+      if(UI::CollapsingHeader("Wide Inside", &s_HeaderExpanded, { 350, 30 }))
       {
-        UI::ReleaseButton("realease me!", { 150, 20 });
+        UI::ReleaseButton("realease me!", { 500, 30 });
         UI::ReleaseButton("realease me!", { 150, 20 });
         UI::ReleaseButton("Mee too!", { 300, 30 });
         UI::ReleaseButton("realease me!", { 150, 20 });

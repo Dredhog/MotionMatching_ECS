@@ -119,6 +119,7 @@ struct gui_window
 {
   path               Name;
   ui_id              ID;
+  ui_id              MoveID;
   UI::window_flags_t Flags;
 
   gui_window* RootWindow;
@@ -126,9 +127,11 @@ struct gui_window
 
   vec3 Position;
   vec3 Size;
+  vec3 SizeNoScroll; // Entire window except scrollbars
 
   vec3 CurrentPos;
   vec3 MaxPos;
+
   rect ClipRect;
 
   vec3 ContentsSize;
@@ -137,7 +140,7 @@ struct gui_window
   vec3 ScrollRange;
 
   ui_id
-  GetID(const char* Label)
+  GetID(const char* Label) const
   {
     return IDHash(Label, (int)strlen(Label), this->ID);
   }
@@ -151,6 +154,7 @@ struct gui_context
   Text::font*   Font;
   ui_id         ActiveID;
   ui_id         HotID;
+  ui_id         MoveWindowMoveID;
 
   fixed_stack<rect, 10>       ClipStack;
   fixed_array<gui_window, 10> Windows;

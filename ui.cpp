@@ -22,11 +22,19 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
   g.HotID         = 0;
   g.HoveredWindow = NULL;
   int WindowCount = g.Windows.GetCount();
-  for(int i = 0; i < WindowCount; i++)
+  for(int i = WindowCount - 1; 0 <= i; i--)
   {
     if(IsMouseInsideRect(g.Windows[i].Position, g.Windows[i].Position + g.Windows[i].Size))
     {
       g.HoveredWindow = &g.Windows[i];
+      break;
+    }
+  }
+  for(int i = 0; i < WindowCount; i++)
+  {
+    if(g.ActiveID && g.Windows[i].MoveID == g.ActiveID)
+    {
+      g.Windows[i].Position += { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
       break;
     }
   }
@@ -79,28 +87,29 @@ Scrollbar(gui_window* Window, bool Vertical)
   gui_context& g = *GetContext();
 
   assert(Window);
-  assert(0 <= Window->ContentsSize.X);
-  assert(0 <= Window->ContentsSize.Y);
-  assert(g.Style.StyleVars[UI::VAR_ScrollbarSize].X <= Window->Size.X);
-  assert(g.Style.StyleVars[UI::VAR_ScrollbarSize].X <= Window->Size.Y);
   if(Window->ContentsSize.X == 0 || Window->ContentsSize.Y == 0)
   {
     return;
   }
+  assert(0 < Window->ContentsSize.X);
+  assert(0 < Window->ContentsSize.Y);
+  assert(0 < Window->SizeNoScroll.X);
+  assert(0 < Window->SizeNoScroll.Y);
+  assert(g.Style.StyleVars[UI::VAR_ScrollbarSize].X <= Window->Size.X);
+  assert(g.Style.StyleVars[UI::VAR_ScrollbarSize].X <= Window->Size.Y);
 
   ui_id ID = Window->GetID(Vertical ? "##VertScrollbar" : "##HirizScrollbar");
+
   // WithoutScrollbars
-  rect FunctionalSizeBB =
-    (Vertical)
-      ? NewRect(Window->Position, Window->Position + vec3{ Window->Size.X, Window->Size.Y - ((Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0) })
-      : NewRect(Window->Position, Window->Position + vec3 { Window->Size.X - ((Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0), Window->Size.Y });
+  const float ScrollbarSize = g.Style.StyleVars[UI::VAR_ScrollbarSize].X;
 
   // Determine drag size
-  float*      ScrollNorm   = (Vertical) ? &Window->ScrollNorm.Y : &Window->ScrollNorm.X;
-  const float NormDragSize = (Vertical) ? MaxFloat((Window->Size.Y < Window->ContentsSize.Y) ? Window->Size.Y / Window->ContentsSize.Y : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->Size.Y)
-                                        : MaxFloat((Window->Size.X < Window->ContentsSize.X) ? Window->Size.X / Window->ContentsSize.X : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->Size.X);
-  rect ScrollRect = (Vertical) ? NewRect(Window->Position + vec3{ Window->Size.X - g.Style.StyleVars[UI::VAR_ScrollbarSize].X, 0 }, Window->Position + Window->Size)
-                               : NewRect(Window->Position + vec3{ 0, Window->Size.Y - g.Style.StyleVars[UI::VAR_ScrollbarSize].X }, Window->Position + Window->Size);
+  float*      ScrollNorm = (Vertical) ? &Window->ScrollNorm.Y : &Window->ScrollNorm.X;
+  const float NormDragSize =
+    (Vertical) ? MaxFloat((Window->SizeNoScroll.Y < Window->ContentsSize.Y) ? Window->SizeNoScroll.Y / Window->ContentsSize.Y : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->SizeNoScroll.Y)
+               : MaxFloat((Window->SizeNoScroll.X < Window->ContentsSize.X) ? Window->SizeNoScroll.X / Window->ContentsSize.X : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->SizeNoScroll.X);
+  rect ScrollRect = (Vertical) ? NewRect(Window->Position + vec3{ Window->SizeNoScroll.X, 0 }, Window->Position + vec3{ Window->Size.X, Window->SizeNoScroll.Y })
+                               : NewRect(Window->Position + vec3{ 0, Window->SizeNoScroll.Y }, Window->Position + vec3{ Window->SizeNoScroll.X, Window->Size.Y });
 
   bool Held;
   bool Hovering;
@@ -111,11 +120,11 @@ Scrollbar(gui_window* Window, bool Vertical)
 
   if(Vertical)
   {
-    Window->ScrollRange.Y = (Window->Size.Y < Window->ContentsSize.Y) ? Window->ContentsSize.Y - Window->Size.Y : 0; // Delta in screen space that the window content can scroll
+    Window->ScrollRange.Y = (Window->SizeNoScroll.Y < Window->ContentsSize.Y) ? Window->ContentsSize.Y - Window->SizeNoScroll.Y : 0; // Delta in screen space that the window content can scroll
   }
   else
   {
-    Window->ScrollRange.X = (Window->Size.X < Window->ContentsSize.X) ? Window->ContentsSize.X - Window->Size.X : 0; // Delta in screen space that the window content can scroll
+    Window->ScrollRange.X = (Window->SizeNoScroll.X < Window->ContentsSize.X) ? Window->ContentsSize.X - Window->SizeNoScroll.X : 0; // Delta in screen space that the window content can scroll
   }
 }
 
@@ -170,7 +179,7 @@ Scrollbar(gui_window* Window, bool Vertical)
 */
 
 void
-UI::BeginWindow(const char* Name, vec3 Position, vec3 Size, window_flags_t Flags)
+UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_t Flags)
 {
   gui_context& g      = *GetContext();
   gui_window*  Window = NULL;
@@ -192,24 +201,56 @@ UI::BeginWindow(const char* Name, vec3 Position, vec3 Size, window_flags_t Flags
     size_t     NameLength = strlen(Name);
     assert(strlen(Name) < ARRAY_SIZE(NewWindow.Name.Name));
     strcpy(NewWindow.Name.Name, Name);
-    NewWindow.ID    = ID;
-    NewWindow.Flags = Flags;
-    NewWindow.Size  = Size;
-    Window          = g.Windows.Append(NewWindow);
+    NewWindow.ID       = ID;
+    NewWindow.MoveID   = NewWindow.GetID("##Move");
+    NewWindow.Flags    = Flags;
+    NewWindow.Size     = Size;
+    NewWindow.Position = InitialPosition;
+    Window             = g.Windows.Append(NewWindow);
   }
   g.CurrentWindow = Window;
 
-  Window->Position = Window->MaxPos = Window->CurrentPos = Position;
-  Window->ClipRect                                       = NewRect(Position, Position + Size);
+  Window->MaxPos = Window->CurrentPos = Window->Position;
+  Window->ClipRect                    = NewRect(Window->Position, Window->Position + Size);
 
   PushClipRect(Window->ClipRect);
   DrawBox(Window->Position, Window->Size, GetUIColor(WindowBackground), GetUIColor(WindowBorder));
 
-  Scrollbar(g.CurrentWindow, true);
-  Scrollbar(g.CurrentWindow, false);
-  Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
+  // Order matters
+  //#1
+  Window->SizeNoScroll = Window->Size;
+  Window->SizeNoScroll -= vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0,
+                                (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0 };
+  if(Window->SizeNoScroll.Y < Window->ContentsSize.Y) // Add vertical Scrollbar
+  {
+    Window->Flags |= UI::WINDOW_UseVerticalScrollbar;
+  }
+  if(Window->SizeNoScroll.X < Window->ContentsSize.X) // Add horizontal Scrollbar
+  {
+    Window->Flags |= UI::WINDOW_UseHorizontalScrollbar;
+  }
+  if(Window->SizeNoScroll.Y >= Window->ContentsSize.Y) // Remove vertical Scrollbar
+  {
+    Window->Flags        = (Window->Flags & ~UI::WINDOW_UseVerticalScrollbar);
+    Window->ScrollNorm.Y = 0;
+  }
+  if(Window->SizeNoScroll.X >= Window->ContentsSize.X) // Remove horizontal Scrollbar
+  {
+    Window->Flags        = (Window->Flags & ~UI::WINDOW_UseHorizontalScrollbar);
+    Window->ScrollNorm.X = 0;
+  }
+  Window->SizeNoScroll = Window->Size;
+  Window->SizeNoScroll -= vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0,
+                                (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0 };
+  //#2
+  if(Window->Flags & UI::WINDOW_UseVerticalScrollbar)
+    Scrollbar(g.CurrentWindow, true);
+  if(Window->Flags & UI::WINDOW_UseHorizontalScrollbar)
+    Scrollbar(g.CurrentWindow, false);
 
-  PushClipRect(NewRect(Window->Position, Window->Position + Window->Size - vec3{ g.Style.StyleVars[UI::VAR_ScrollbarSize].X, g.Style.StyleVars[UI::VAR_ScrollbarSize].X }));
+  //#3
+  Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
+  PushClipRect(NewRect(Window->Position, Window->Position + Window->SizeNoScroll));
 }
 
 void
@@ -219,6 +260,12 @@ UI::EndWindow()
   gui_window&  Window = *GetCurrentWindow();
   vec3         MinPos = Window.Position - vec3{ Window.ScrollNorm.X * Window.ScrollRange.X, Window.ScrollNorm.Y * Window.ScrollRange.Y };
   Window.ContentsSize = Window.MaxPos - MinPos;
+
+  //----------Window mooving-----------
+  // Automatically sets g.ActiveID = Window.MoveID
+  ButtonBehavior(NewRect(Window.Position, Window.Position + Window.Size), Window.MoveID);
+  //----------------------------------
+
   // DrawBox(MinPos, Window.ContentsSize, { 1, 0, 1, 1 }, { 1, 1, 1, 1 });
   g.CurrentWindow = NULL;
 }
@@ -397,11 +444,10 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, bool PressOnC
 
   bool PressOnRelease = !(PressOnClick || PressOnHold);
 
-  // TODO(Lukas) look into mouse precision
   bool Hovered = IsHovered(BB, ID);
-  if(g.HotID == 0 || ID == g.HotID)
+  if(Hovered)
   {
-    Hovered ? SetHot(ID) : UnsetHot(ID);
+    SetHot(ID);
   }
 
   bool Result = false;
