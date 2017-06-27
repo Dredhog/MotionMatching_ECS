@@ -27,6 +27,12 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
     if(IsMouseInsideRect(g.Windows[i].Position, g.Windows[i].Position + g.Windows[i].Size))
     {
       g.HoveredWindow = &g.Windows[i];
+      // Perform mouse scrolling
+      if(g.Input->dMouseWheelScreen)
+      {
+        const float MagicScrollPixelAmount = 20;
+        g.Windows[i].ScrollNorm.Y              = ClampFloat(0, g.Windows[i].ScrollNorm.Y + (g.Input->dMouseWheelScreen * MagicScrollPixelAmount / g.Windows[i].SizeNoScroll.Y), 1);
+      }
       break;
     }
   }

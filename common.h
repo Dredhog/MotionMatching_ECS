@@ -30,6 +30,9 @@ struct game_input
   float NormdMouseX;
   float NormdMouseY;
 
+  int32_t MouseWheelScreen;
+  int32_t dMouseWheelScreen;
+
   bool IsMouseInEditorMode;
 
   union {

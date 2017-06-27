@@ -306,6 +306,18 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         }
         break;
       }
+      case SDL_MOUSEWHEEL:
+      {
+        if(Event->wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+        {
+          NewInput->MouseWheelScreen -= Event->wheel.y;
+        }
+        else
+        {
+          NewInput->MouseWheelScreen += Event->wheel.y;
+        }
+      }
+      break;
     }
   }
 
@@ -324,6 +336,8 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
   }
   NewInput->dMouseScreenX = NewInput->dMouseX;
   NewInput->dMouseScreenY = -NewInput->dMouseY;
+
+  NewInput->dMouseWheelScreen = NewInput->MouseWheelScreen - OldInput->MouseWheelScreen;
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {

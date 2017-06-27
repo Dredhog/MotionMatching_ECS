@@ -82,7 +82,9 @@ namespace UI
     UI::BeginWindow("window B", { 1500, 200 }, { 350, 200 });
     {
       static float s_SliderValue = 0.001f;
-      UI::ReleaseButton("Mee too!", { 300, 30 });
+      char         TempBuff[20];
+      snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+      UI::ReleaseButton(TempBuff, { 300, 30 });
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("And me!", { 400, 50 });
       UI::SliderFloat("FPS", &s_SliderValue, 10, 50, false, { 300, 30 }, s_SliderValue);
