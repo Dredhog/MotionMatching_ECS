@@ -10,7 +10,7 @@ struct fixed_stack
   void
   Push(const T& NewElement)
   {
-    assert(this->Count < this->Capacity);
+    assert(this->Count < Capacity);
     assert(0 <= this->Count);
 
     this->Elements[this->Count++] = NewElement;
@@ -35,6 +35,13 @@ struct fixed_stack
       return &this->Elements[this->Count - 1];
     }
     return NULL;
+  }
+
+  void
+  Resize(int NewSize)
+  {
+    assert(NewSize <= Count);
+    this->Count = NewSize;
   }
 
   int

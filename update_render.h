@@ -576,7 +576,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     Debug::DrawGizmos(GameState);
   }
+
   Debug::DrawColoredQuads(GameState);
+  //glClear(GL_STENCIL_BUFFER_BIT);
   Debug::DrawTexturedQuads(GameState);
   Debug::ClearDrawArrays();
   Text::ClearTextRequestCounts();

@@ -34,16 +34,33 @@ namespace UI
     VAR_Count
   };
 
+  enum ui_window_flags
+  {
+    WINDOW_UseVerticalScrollbar   = 1 << 0,
+    WINDOW_UseHorizontalScrollbar = 1 << 1,
+    WINDOW_Usetitlebar            = 1 << 2,
+    WINDOW_ISCollapsable          = 1 << 3,
+  };
+
+  enum ui_button_flags
+  {
+    BUTTON_ActivateOnRelease,
+    BUTTON_ActivateOnClick,
+  };
+
   struct gui_style
   {
     vec4 Colors[COLOR_Count];
     vec3 StyleVars[VAR_Count];
   };
 
+  typedef uint32_t window_flags_t;
+  typedef uint32_t button_flags_t;
+
   void BeginFrame(game_state* GameState, const game_input* Input);
   void EndFrame();
 
-  void BeginWindow(const char* Name, vec3 StartP, vec3 Size);
+  void BeginWindow(const char* Name, vec3 Position, vec3 Size, window_flags_t Flags = WINDOW_UseVerticalScrollbar);
   void EndWindow();
 
   void SameLine();

@@ -10,7 +10,7 @@
 //-----------------------------
 // Forward declarations
 //-----------------------------
-struct ui_id;
+typedef uint32_t ui_id;
 struct rect;
 struct gui_window;
 struct gui_context;
@@ -19,14 +19,18 @@ struct gui_context;
 // Internal API
 //-----------------------------
 uint32_t IDHash(const void* data, int data_size, uint32_t seed);
-bool     IsActive(ui_id ID);
 void     SetActive(ui_id ID);
-bool     IsHot(ui_id ID);
 void     SetHot(ui_id ID);
 void     UnsetHot(ui_id ID);
 
+bool IsMouseInsideRect(const vec3& MinP, const vec3& MaxP);
+bool IsMouseInsideRect(const rect& BB);
+bool IsHovered(const rect& BB, ui_id ID);
+
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
+
+static void PushClipRect(const rect& BB);
 
 void         Create(gui_context* Context);
 int          Destroy(gui_context* Context);
@@ -36,23 +40,6 @@ gui_window*  GetCurrentWindow();
 void DrawText(vec3 TopLeft, float Width, float Height, const char* InputText);
 void DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor);
 //-----------------------------
-
-struct ui_id
-{
-  uint32_t Value;
-
-  bool
-  operator==(ui_id Other)
-  {
-    return this->Value == Other.Value;
-  }
-
-  bool
-  operator!=(ui_id Other)
-  {
-    return this->Value != Other.Value;
-  }
-};
 
 ui_id NOT_ACTIVE = {};
 
@@ -67,17 +54,17 @@ struct rect
     return MaxP - MinP;
   }
 
-	float
-	Width() const
-	{
-		return MaxP.X - MinP.X;
-	}
+  float
+  GetWidth() const
+  {
+    return MaxP.X - MinP.X;
+  }
 
-	float
-	Height() const
-	{
-		return MaxP.Y - MinP.Y;
-	}
+  float
+  GetHeight() const
+  {
+    return MaxP.Y - MinP.Y;
+  }
 
   bool
   Encloses(vec3 Point) const
@@ -94,6 +81,19 @@ struct rect
       return false;
     }
     return true;
+  }
+
+  void
+  Clip(const rect ClipRect)
+  {
+    if(MinP.X < ClipRect.MinP.X)
+      MinP.X = ClipRect.MinP.X;
+    if(MinP.Y < ClipRect.MinP.Y)
+      MinP.Y = ClipRect.MinP.Y;
+    if(MaxP.X > ClipRect.MaxP.X)
+      MaxP.X = ClipRect.MaxP.X;
+    if(MaxP.Y > ClipRect.MaxP.Y)
+      MaxP.Y = ClipRect.MaxP.Y;
   }
 };
 
@@ -117,8 +117,9 @@ NewRect(float MinX, float MinY, float MaxX, float MaxY)
 
 struct gui_window
 {
-  path  Name;
-  ui_id ID;
+  path               Name;
+  ui_id              ID;
+  UI::window_flags_t Flags;
 
   gui_window* RootWindow;
   gui_window* ParentWindow;
@@ -127,11 +128,10 @@ struct gui_window
   vec3 Size;
 
   vec3 CurrentPos;
-
   vec3 MaxPos;
+  rect ClipRect;
 
   vec3 ContentsSize;
-  rect ClipRect;
 
   vec3 ScrollNorm;
   vec3 ScrollRange;
@@ -139,7 +139,7 @@ struct gui_window
   ui_id
   GetID(const char* Label)
   {
-    return { IDHash(Label, (int)strlen(Label), this->ID.Value) };
+    return IDHash(Label, (int)strlen(Label), this->ID);
   }
 };
 
@@ -152,14 +152,24 @@ struct gui_context
   ui_id         ActiveID;
   ui_id         HotID;
 
+  fixed_stack<rect, 10>       ClipStack;
   fixed_array<gui_window, 10> Windows;
 
   const game_input* Input;
   gui_window*       CurrentWindow;
+  gui_window*       HoveredWindow;
 };
 
 // GLOBAL CONTEXT
 static gui_context g_Context;
+
+static void
+PushClipRect(const rect& BB)
+{
+  gui_context& g = *GetContext();
+  g.ClipStack.Push(BB);
+  Debug::UIPushClipQuad(BB.MinP, BB.GetSize(), g.ClipStack.Count);
+}
 
 void
 DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
@@ -275,18 +285,6 @@ IDHash(const void* data, int data_size, uint32_t seed)
   return ~crc;
 }
 
-bool
-IsHot(ui_id ID)
-{
-  return ID == GetContext()->HotID;
-}
-
-bool
-IsActive(ui_id ID)
-{
-  return ID == GetContext()->ActiveID;
-}
-
 void
 SetActive(ui_id ID)
 {
@@ -296,19 +294,53 @@ SetActive(ui_id ID)
 void
 SetHot(ui_id ID)
 {
-  if(IsActive(NOT_ACTIVE) || IsActive(ID))
+  gui_context& g = *GetContext();
+  if(g.ActiveID == 0 || g.ActiveID == ID)
   {
-    GetContext()->HotID = ID;
+    g.HotID = ID;
   }
 }
 
 void
 UnsetHot(ui_id ID)
 {
-  if(IsActive(NOT_ACTIVE) || IsActive(ID))
+  gui_context& g = *GetContext();
+  if(g.ActiveID == 0 || g.ActiveID == ID)
   {
-    GetContext()->HotID = NOT_ACTIVE;
+    g.HotID = 0;
   }
+}
+
+bool
+IsHovered(const rect& BB, ui_id ID)
+{
+  gui_context& g = *GetContext();
+  if(g.HotID == 0 || g.HotID == ID)
+  {
+    gui_window* Window = GetCurrentWindow();
+    if(Window == g.HoveredWindow)
+    {
+      if((g.ActiveID == 0 || g.ActiveID == ID) && IsMouseInsideRect(BB))
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool
+IsMouseInsideRect(const vec3& MinP, const vec3& MaxP)
+{
+  gui_context& g     = *GetContext();
+  vec3         Point = { (float)g.Input->MouseScreenX, (float)g.Input->MouseScreenY };
+  return (MinP.X < Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y <= MaxP.Y) ? true : false;
+}
+
+bool
+IsMouseInsideRect(const rect& BB)
+{
+  return IsMouseInsideRect(BB.MinP, BB.MaxP);
 }
 
 gui_context*
@@ -369,6 +401,7 @@ Create(gui_context* Context, game_state* GameState)
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
   Context->Windows.HardClear();
+  Context->ClipStack.Clear();
   Context->CurrentWindow = NULL;
   Context->GameState     = GameState;
 }

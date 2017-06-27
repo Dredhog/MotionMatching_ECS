@@ -7,7 +7,7 @@ namespace UI
   {
     UI::BeginFrame(GameState, Input);
 
-    UI::BeginWindow("window A", { 200, 100 }, { 450, 400 });
+    UI::BeginWindow("window A", {300, 500}, { 450, 400 });
     {
       static bool s_HeaderExpanded  = false;
       static bool s_HeaderExpanded1 = false;
