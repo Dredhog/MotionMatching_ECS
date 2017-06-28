@@ -346,9 +346,14 @@ Init(SDL_Window** Window)
 #endif
 
     // Create an SDL window
+#if WIN32_DEBUG
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+#else
     SDL_ShowCursor(SDL_DISABLE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
                                SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+#endif
 
     if(!Window)
     {
@@ -470,10 +475,13 @@ main(int argc, char** argv)
       }
     }
     // Should go after mouse mode switch to avoid jerking the camera
+#if WIN32_DEBUG
+#else
     if(!NewInput.IsMouseInEditorMode)
     {
       SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
     }
+#endif
 
     // Set noramlised mouse after all mouse editing is done
     {
