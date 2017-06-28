@@ -4,89 +4,75 @@
 #include "common.h"
 #include "linear_math/vector.h"
 
-extern vec4 g_BorderColor;
-extern vec4 g_NormalColor;
-extern vec4 g_HighlightColor;
-extern vec4 g_PressedColor;
-extern vec4 g_BoolNormalColor;
-extern vec4 g_BoolPressedColor;
-extern vec4 g_BoolHighlightColor;
-extern vec4 g_DescriptionColor;
-extern vec4 g_FontColor;
-
-enum ui_colors
-{
-  GUI_COLOR_Border,
-  GUI_COLOR_ButtonNormal,
-  GUI_COLOR_ButtonHover,
-  GUI_COLOR_ButtonPressed,
-  GUI_COLOR_BoolNormal,
-  GUI_COLOR_BoolPressed,
-  GUI_COLOR_BoolHighlight,
-  GUI_COLOR_DescriptionColor,
-  GUI_COLOR_Text,
-};
-
-void DrawBox(game_state* GameState, vec3 TopLeft, float Width, float Height, vec4 InnerColor,
-             vec4 BorderColor);
-
 namespace UI
 {
-  struct im_layout
+  enum ui_colors
   {
-    union {
-      struct
-      {
-        float X;
-        float Y;
-        float Z;
-      };
-      vec3 CurrentP;
-    };
-    float Width;
-    float RowHeight;
-    float ColumnWidth;
-    vec3  TopLeft;
-    float AspectRatio;
+    COLOR_Border,
+    COLOR_ButtonNormal,
+    COLOR_ButtonHover,
+    COLOR_ButtonPressed,
+    COLOR_HeaderNormal,
+    COLOR_HeaderHover,
+    COLOR_HeaderPressed,
+    COLOR_CheckboxNormal,
+    COLOR_CheckboxPressed,
+    COLOR_CheckboxHover,
+    COLOR_WindowBackground,
+    COLOR_WindowBorder,
+    COLOR_ScrollbarBox,
+    COLOR_ScrollbarDrag,
+    COLOR_Text,
+    COLOR_Count
   };
 
-  im_layout NewLayout(vec3 TopLeft, float Width, float RowHeight, float ScrollbarWidth = 0.05f,
-                      float AspectRatio = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT);
-  void      Row(im_layout* Layout, int ColumnCount = 1);
-  void      Row(game_state* GameState, UI::im_layout* Layout, int ColumnCount, const char* Text,
-                vec4 DescriptionColor = { 0.5f, 0.0f, 0.5f, 1 });
-  void      DrawSquareTexture(game_state* GameState, UI::im_layout* Layout, uint32_t TextureId);
-  void      DrawText(game_state* GameState, vec3 TopLeft, float Width, float Height,
-                     const char* InputText);
-  void DrawTextBox(game_state* GameState, vec3 TopLeft, float Width, float Height, const char* Text,
-                   vec4 InnerColor, vec4 BorderColor);
-  void DrawTextBox(game_state* GameState, im_layout* Layout, const char* Text,
-                   vec4 InnerColor  = vec4{ 0.4f, 0.4f, 0.4f, 1 },
-                   vec4 BorderColor = vec4{ 0, 0, 0, 1 });
-  bool ExpandableButton(game_state* GameState, im_layout* Layout, const game_input* Input,
-                        const char* Text, bool* IsExpanded);
-  void BoolButton(game_state* GameState, im_layout* Layout, const game_input* Input,
-                  const char* Text, bool* Toggle);
-  bool PushButton(game_state* GameState, im_layout* Layout, const game_input* Input,
-                  const char* Text, const void* OwnerID);
-  bool ReleaseButton(game_state* GameState, im_layout* Layout, const game_input* Input,
-                     const char* Text, const void* ID = 0);
-  void SliderFloat(game_state* GameState, im_layout* Layout, const game_input* Input, char* Text,
-                   float* Var, float Min, float Max, float ScreenValue);
-  void ComboBox(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, game_state* GameState,
-                im_layout* Layout, const game_input* Input, size_t ElementSize,
-                char* (*ElementToCharPtr)(void*));
-  void SliderVec3(game_state* GameState, im_layout* Layout, const game_input* Input,
-                  const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY,
-                  float ValueScreenDelta = 10.0f);
-  void SliderVec3Color(game_state* GameState, im_layout* Layout, const game_input* Input,
-                       const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f,
-                       float ValueScreenDelta = 3.0f);
-  void SliderVec4Color(game_state* GameState, im_layout* Layout, const game_input* Input,
-                       const char* Text, vec4* VecPtr, float Min = 0.0f, float Max = 1.0f,
-                       float ValueScreenDelta = 3.0f);
-}
+  enum ui_style_vars
+  {
+    VAR_BorderWidth,
+    VAR_ScrollbarSize,
+    VAR_DragMinSize,
+    VAR_Count
+  };
 
-#define _DrawTextButton(Layout, Text) DrawTextButton(GameState, (Layout), (Text))
-#define _BoolButton(Layout, Input, Text, Bool)                                                     \
-  BoolButton(GameState, (Layout), (Input), (Text), (Bool))
+  enum ui_window_flags
+  {
+    WINDOW_UseVerticalScrollbar   = 1 << 0,
+    WINDOW_UseHorizontalScrollbar = 1 << 1,
+    WINDOW_Usetitlebar            = 1 << 2,
+    WINDOW_ISCollapsable          = 1 << 3,
+  };
+
+  enum ui_button_flags
+  {
+    BUTTON_ActivateOnRelease,
+    BUTTON_ActivateOnClick,
+  };
+
+  struct gui_style
+  {
+    vec4 Colors[COLOR_Count];
+    vec3 StyleVars[VAR_Count];
+  };
+
+  typedef uint32_t window_flags_t;
+  typedef uint32_t button_flags_t;
+
+  void BeginFrame(game_state* GameState, const game_input* Input);
+  void EndFrame();
+
+  void BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_t Flags = 0 /*  WINDOW_UseVerticalScrollbar | WINDOW_UseHorizontalScrollbar*/);
+  void EndWindow();
+
+  void SameLine();
+
+  bool CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size);
+  bool ReleaseButton(const char* Text, vec3 Size);
+  bool ClickButton(const char* Text, vec3 Size);
+  void Checkbox(const char* Text, bool* Toggle);
+
+  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Horizontal, vec3 Size, float DragSize = 0);
+  void SliderFloat3(const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY, float ValueScreenDelta = 10.0f);
+  void SliderFloat4(const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f, float ValueScreenDelta = 3.0f);
+
+  void Combo(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, size_t ElementSize, char* (*ElementToCharPtr)(void*));
+}

@@ -304,11 +304,24 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         }
         break;
       }
+      case SDL_MOUSEWHEEL:
+      {
+        if(Event->wheel.direction == SDL_MOUSEWHEEL_NORMAL)
+        {
+          NewInput->MouseWheelScreen -= Event->wheel.y;
+        }
+        else
+        {
+          NewInput->MouseWheelScreen += Event->wheel.y;
+        }
+      }
+      break;
     }
   }
 
-  SDL_GetMouseState(&NewInput->MouseX, &NewInput->MouseY);
-  NewInput->MouseY = SCREEN_HEIGHT - NewInput->MouseY;
+  SDL_GetMouseState(&NewInput->MouseScreenX, &NewInput->MouseScreenY);
+  NewInput->MouseX = NewInput->MouseScreenX;
+  NewInput->MouseY = SCREEN_HEIGHT - NewInput->MouseScreenY;
   if(!NewInput->IsMouseInEditorMode)
   {
     NewInput->dMouseX = NewInput->MouseX - SCREEN_WIDTH / 2;
@@ -319,11 +332,14 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
     NewInput->dMouseX = NewInput->MouseX - OldInput->MouseX;
     NewInput->dMouseY = NewInput->MouseY - OldInput->MouseY;
   }
+  NewInput->dMouseScreenX = NewInput->dMouseX;
+  NewInput->dMouseScreenY = -NewInput->dMouseY;
+
+  NewInput->dMouseWheelScreen = NewInput->MouseWheelScreen - OldInput->MouseWheelScreen;
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {
-    NewInput->Buttons[Index].Changed =
-      (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
+    NewInput->Buttons[Index].Changed = (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
   }
 
   return true;
@@ -355,8 +371,7 @@ Init(SDL_Window** Window)
 
     // Create an SDL window
     SDL_ShowCursor(SDL_DISABLE);
-    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
-                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
 
     if(!Window)
     {
@@ -402,8 +417,7 @@ main(int argc, char* argv[])
     return -1;
   }
 
-  if(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) !=
-     (IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF))
+  if(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) != (IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF))
   {
     printf("Image loading could not be initialized!\nError: %s\n", SDL_GetError());
   }
@@ -488,10 +502,7 @@ main(int argc, char* argv[])
     }
     //---------END INPUT MANAGEMENT
 
-    NewInput.dt =
-      (float)((((double)CurrentFrameStart.tv_sec - (double)LastFrameStart.tv_sec) * 1e9 +
-               (double)CurrentFrameStart.tv_nsec - (double)LastFrameStart.tv_nsec) /
-              1e9);
+    NewInput.dt = (float)((((double)CurrentFrameStart.tv_sec - (double)LastFrameStart.tv_sec) * 1e9 + (double)CurrentFrameStart.tv_nsec - (double)LastFrameStart.tv_nsec) / 1e9);
     if(NewInput.LeftCtrl.EndedDown)
     {
       NewInput.dt *= SLOW_MOTION_COEFFICIENT;

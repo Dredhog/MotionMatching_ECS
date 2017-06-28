@@ -11,8 +11,13 @@ namespace Debug
   void PushTopLeftQuad(vec3 Position, float Width, float Height, vec4 Color);
   void PushTopLeftTexturedQuad(int32_t TextureID, vec3 Position, float Width, float Height);
   void PushGizmo(const camera* Camera, const mat4* GizmoBase);
-  void PushWireframeSphere(const camera* Camera, vec3 Position, float Radius,
-                           vec4 Color = vec4{ 1, 0, 0, 1 });
+  void PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, vec4 Color = vec4{ 1, 0, 0, 1 });
+
+  // These are in y down and pixel space coordinates
+  void UIPushQuad(vec3 Position, vec3 Size, vec4 Color = { 0.5f, 0.5f, 0.5f, 1.0f });
+  void UIPushTexturedQuad(int32_t TextureID, vec3 BottomLeft, vec3 Size);
+  void UIPushClipQuad(vec3 Position, vec3 Size, int32_t StencilValue);
+  void UIPushClipTexturedQuad(vec3 Position, vec3 Size, int32_t StencilValue);
 
   void DrawGizmos(game_state* GameState);
   void DrawColoredQuads(game_state* GameState);
@@ -24,7 +29,6 @@ namespace Debug
 inline mat4
 TransformToGizmoMat4(const Anim::transform* Transform)
 {
-  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
-                              Math::Mat4Rotate(Transform->Rotation));
+  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation), Math::Mat4Rotate(Transform->Rotation));
   return Result;
 }
