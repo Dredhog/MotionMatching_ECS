@@ -17,7 +17,7 @@
 #include "heap_alloc.cpp"
 
 #include "file_io.h"
-#include "file_io.cpp"
+#include "win32_file_io.cpp"
 
 void InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight);
 void NormalizeVertexBoneWeights(Render::vertex* Verte);

@@ -1,14 +1,12 @@
-#define GLEW_STATIC
+#include <windows.h>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
-
-// Memory
-#include <sys/mman.h>
 
 #include "common.h"
 
@@ -16,10 +14,6 @@
 #define SLOW_MOTION_COEFFICIENT 0.2f
 
 #include "update_render.h"
-
-#include <windows.h>
-
-#include "win32_file_queries.h"
 
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
@@ -392,7 +386,7 @@ Init(SDL_Window** Window)
 }
 
 int
-main(int argc, char* argv[])
+main(int argc, char** argv)
 {
   SDL_Window* Window = nullptr;
   if(!Init(&Window))
@@ -480,6 +474,7 @@ main(int argc, char* argv[])
     {
       SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
     }
+
     // Set noramlised mouse after all mouse editing is done
     {
       // 0.0f-1.0f mouse coords

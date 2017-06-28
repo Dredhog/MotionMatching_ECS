@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL2/SDL_ttf.h>
+#include <stdio.h>
 #include "linear_math/vector.h"
 
 #define MAX_FONT_SIZE_COUNT 8

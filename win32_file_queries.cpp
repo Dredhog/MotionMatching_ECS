@@ -1,4 +1,7 @@
-#pragma once
+#include <windows.h>
+#include <string.h>
+#include <time.h>
+#include "file_queries.h"
 
 asset_diff* g_DiffPaths;
 path*       g_Paths;
@@ -8,23 +11,47 @@ int32_t*    g_DiffCount;
 const char* g_Extension;
 bool        g_WasTraversed[1000];
 
-int32_t GetPathIndex(path* PathArray, int32_t PathCount, const char* Path);
-
 int32_t
-CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* FileName)
+FileNameIndex(const char* Path)
 {
-  if((Flag == FTW_D) && (Path[FileName->base] == '.'))
+  int Index  = 0;
+  int Length = strlen(Path);
+  for(int i = 0; i < Length; i++)
   {
-    return FTW_SKIP_SUBTREE;
+    if(Path[i] == '/')
+    {
+      Index = i;
+    }
   }
 
-  if(Flag == FTW_F)
-  {
-    if(Path[FileName->base] == '.')
-    {
-      return FTW_CONTINUE;
-    }
+  return Index + 1;
+}
 
+time_t
+FileTimeToTime(FILETIME FileTime)
+{
+  ULARGE_INTEGER FullValue;
+  FullValue.LowPart  = FileTime.dwLowDateTime;
+  FullValue.HighPart = FileTime.dwHighDateTime;
+
+  return FullValue.QuadPart / 10000000 - 116444736000000000;
+}
+
+int32_t
+CheckFile(const WIN32_FIND_DATA* Stat, const char* Path)
+{
+  if(Stat->cFileName[0] == '.')
+  {
+    return 0;
+  }
+
+  if(Stat->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+  {
+    return 1;
+  }
+
+  if(!(Stat->dwFileAttributes & (FILE_ATTRIBUTE_DEVICE | FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_VIRTUAL)))
+  {
     size_t PathLength = strlen(Path);
     if(PathLength > TEXT_LINE_MAX_LENGTH)
     {
@@ -51,7 +78,8 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
       }
       else
       {
-        assert(0 && "Extension length is less than or equal to zero! Did you mean to type NULL?");
+        assert(0 && "Extension length is less than or equal to zero! Did you "
+                    "mean to type NULL?");
         return 0;
       }
     }
@@ -63,7 +91,7 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
     if(PathIndex == -1)
     {
       strcpy(g_Paths[*g_ElementCount].Name, Path);
-      g_Stats[*g_ElementCount].LastTimeModified = Stat->st_mtime;
+      g_Stats[*g_ElementCount].LastTimeModified = FileTimeToTime(Stat->ftLastWriteTime);
       g_WasTraversed[*g_ElementCount]           = true;
       ++(*g_ElementCount);
 
@@ -73,10 +101,11 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
     }
     else
     {
-      double TimeDiff = difftime(Stat->st_mtime, g_Stats[PathIndex].LastTimeModified);
+      double TimeDiff =
+        difftime(FileTimeToTime(Stat->ftLastWriteTime), g_Stats[PathIndex].LastTimeModified);
       if(TimeDiff > 0)
       {
-        g_Stats[PathIndex].LastTimeModified = Stat->st_mtime;
+        g_Stats[PathIndex].LastTimeModified = FileTimeToTime(Stat->ftLastWriteTime);
 
         strcpy(g_DiffPaths[*g_DiffCount].Path.Name, Path);
         g_DiffPaths[*g_DiffCount].Type = DIFF_Modified;
@@ -86,6 +115,40 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
     }
   }
   return 0;
+}
+
+void
+FindFilesRecursively(const char* StartPath)
+{
+  char SubPath[100];
+  strcpy(SubPath, StartPath);
+  strcat(SubPath, "/*");
+
+  WIN32_FIND_DATA FileData;
+  HANDLE          FileHandle = FindFirstFile(SubPath, &FileData);
+
+  while(FileHandle != INVALID_HANDLE_VALUE)
+  {
+    char FilePath[100];
+    strcpy(FilePath, StartPath);
+    strcat(FilePath, "/");
+    strcat(FilePath, FileData.cFileName);
+
+    if(CheckFile(&FileData, FilePath))
+    {
+      FindFilesRecursively(FilePath);
+    }
+
+    if(!FindNextFile(FileHandle, &FileData))
+    {
+      break;
+    }
+  }
+
+  if(FileHandle != INVALID_HANDLE_VALUE)
+  {
+    FindClose(FileHandle);
+  }
 }
 
 int32_t
@@ -101,14 +164,32 @@ ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t* Element
   g_DiffCount    = &DiffCount;
   g_Extension    = Extension;
 
-  int Size = sizeof(g_WasTraversed) / sizeof(g_WasTraversed[0]);
-  for(int i = 0; i < Size; i++)
+  int Length = sizeof(g_WasTraversed) / sizeof(g_WasTraversed[0]);
+  for(int i = 0; i < Length; i++)
   {
     g_WasTraversed[i] = false;
   }
 
-  if(nftw(StartPath, CheckFile, 100, FTW_ACTIONRETVAL) != -1)
+  WIN32_FIND_DATA FileData;
+  HANDLE          FileHandle = FindFirstFile(StartPath, &FileData);
+
+  while(FileHandle != INVALID_HANDLE_VALUE)
   {
+    if(CheckFile(&FileData, StartPath))
+    {
+      FindFilesRecursively(StartPath);
+    }
+
+    if(!FindNextFile(FileHandle, &FileData))
+    {
+      break;
+    }
+  }
+
+  if(FileHandle != INVALID_HANDLE_VALUE)
+  {
+    FindClose(FileHandle);
+
     for(int i = 0; i < *ElementCount; i++)
     {
       if(!g_WasTraversed[i])

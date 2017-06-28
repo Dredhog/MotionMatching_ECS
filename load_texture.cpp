@@ -13,7 +13,7 @@ namespace Texture
     {
       SDL_Surface* DestSurface =
         SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ABGR8888, 0);
-      free(ImageSurface);
+      SDL_FreeSurface(ImageSurface);
 
       uint32_t Texture;
       glGenTextures(1, &Texture);
@@ -23,8 +23,7 @@ namespace Texture
       glGenerateMipmap(GL_TEXTURE_2D);
       glBindTexture(GL_TEXTURE_2D, 0);
 
-      free(DestSurface->pixels);
-      free(DestSurface);
+      SDL_FreeSurface(DestSurface);
 
       return Texture;
     }

@@ -23,8 +23,6 @@
 
 #include "update_render.h"
 
-#include "linux_file_queries.h"
-
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
 {

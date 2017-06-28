@@ -265,7 +265,7 @@ RegisterDebugModels(game_state* GameState)
   GameState->Cubemap.CubemapTexture = -1;
   for(int i = 0; i < 6; i++)
   {
-    GameState->Resources.Models.AddReference(GameState->Cubemap.FaceIDs[i]);
+    GameState->Resources.Textures.AddReference(GameState->Cubemap.FaceIDs[i]);
   }
 }
 
@@ -285,12 +285,11 @@ LoadCubemap(Resource::resource_manager* Resources, rid* RIDs)
     {
       SDL_Surface* DestSurface =
         SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ABGR8888, 0);
-      free(ImageSurface);
+      SDL_FreeSurface(ImageSurface);
 
       glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, DestSurface->w, DestSurface->h,
                    0, GL_RGBA, GL_UNSIGNED_BYTE, DestSurface->pixels);
-      free(DestSurface->pixels);
-      free(DestSurface);
+      SDL_FreeSurface(DestSurface);
     }
     else
     {
