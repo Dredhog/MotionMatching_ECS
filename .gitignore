@@ -1,5 +1,5 @@
 engine
 builder/assimp_build
 data
-win32_build
+msvs_build
 .exrc
