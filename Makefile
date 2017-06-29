@@ -5,6 +5,6 @@ linker_flags = -lGLEW -lGL `sdl2-config --cflags --libs` -lm -lSDL2_image -lSDL2
 
 
 all:
-	@$(compiler) $(warning_flags) -std=c++11 *.cpp linear_math/*.cpp -o engine $(linker_flags)
+	@$(compiler) $(warning_flags) -std=c++11 linux\*.cpp *.cpp linear_math/*.cpp -o engine $(linker_flags)
 	@./engine
 

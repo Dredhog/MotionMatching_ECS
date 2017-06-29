@@ -2,9 +2,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <GL/glew.h>
 
 #include "stack_alloc.h"
+#include "file_io.h"
 
 namespace Shader
 {
@@ -12,6 +14,7 @@ namespace Shader
   ReadASCIIFileIntoMemory(Memory::stack_allocator* const Allocator, const char* FileName,
                           GLint* Success)
   {
+#if 0
     FILE* FilePointer = fopen(FileName, "r");
 
     if(!FilePointer)
@@ -41,7 +44,12 @@ namespace Shader
 
     ShaderCode[FileSize] = '\0';
     fclose(FilePointer);
-    return ShaderCode;
+#endif
+    debug_read_file_result ReadFile = ReadEntireFile(Allocator,FileName);
+    assert(ReadFile.ContentsSize && ReadFile.Contents);
+    char* LastChar = PushStruct(Allocator, char);
+    *LastChar = '\0';
+    return (GLchar*)ReadFile.Contents;
   }
 
   GLint

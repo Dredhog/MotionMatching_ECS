@@ -1,5 +1,6 @@
 #include <GL/glew.h>
 #include <cassert>
+#include <stddef.h>
 
 #include "mesh.h"
 

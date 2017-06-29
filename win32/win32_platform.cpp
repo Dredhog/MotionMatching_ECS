@@ -1,20 +1,12 @@
-#define GLEW_STATIC
+#include <windows.h>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
-
-// Memory
-#include <sys/mman.h>
-
-// File queries
-#include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <ftw.h>
 
 #include "common.h"
 
@@ -22,8 +14,6 @@
 #define SLOW_MOTION_COEFFICIENT 0.2f
 
 #include "update_render.h"
-
-#include "linux_file_queries.h"
 
 static bool
 ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
@@ -306,24 +296,11 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         }
         break;
       }
-      case SDL_MOUSEWHEEL:
-      {
-        if(Event->wheel.direction == SDL_MOUSEWHEEL_NORMAL)
-        {
-          NewInput->MouseWheelScreen -= Event->wheel.y;
-        }
-        else
-        {
-          NewInput->MouseWheelScreen += Event->wheel.y;
-        }
-      }
-      break;
     }
   }
 
-  SDL_GetMouseState(&NewInput->MouseScreenX, &NewInput->MouseScreenY);
-  NewInput->MouseX = NewInput->MouseScreenX;
-  NewInput->MouseY = SCREEN_HEIGHT - NewInput->MouseScreenY;
+  SDL_GetMouseState(&NewInput->MouseX, &NewInput->MouseY);
+  NewInput->MouseY = SCREEN_HEIGHT - NewInput->MouseY;
   if(!NewInput->IsMouseInEditorMode)
   {
     NewInput->dMouseX = NewInput->MouseX - SCREEN_WIDTH / 2;
@@ -334,14 +311,11 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
     NewInput->dMouseX = NewInput->MouseX - OldInput->MouseX;
     NewInput->dMouseY = NewInput->MouseY - OldInput->MouseY;
   }
-  NewInput->dMouseScreenX = NewInput->dMouseX;
-  NewInput->dMouseScreenY = -NewInput->dMouseY;
-
-  NewInput->dMouseWheelScreen = NewInput->MouseWheelScreen - OldInput->MouseWheelScreen;
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {
-    NewInput->Buttons[Index].Changed = (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
+    NewInput->Buttons[Index].Changed =
+      (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
   }
 
   return true;
@@ -372,8 +346,14 @@ Init(SDL_Window** Window)
 #endif
 
     // Create an SDL window
+#if WIN32_DEBUG
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+#else
     SDL_ShowCursor(SDL_DISABLE);
-    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH,
+                               SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+#endif
 
     if(!Window)
     {
@@ -411,7 +391,7 @@ Init(SDL_Window** Window)
 }
 
 int
-main(int argc, char* argv[])
+main(int argc, char** argv)
 {
   SDL_Window* Window = nullptr;
   if(!Init(&Window))
@@ -419,7 +399,8 @@ main(int argc, char* argv[])
     return -1;
   }
 
-  if(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) != (IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF))
+  if(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) !=
+     (IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF))
   {
     printf("Image loading could not be initialized!\nError: %s\n", SDL_GetError());
   }
@@ -464,12 +445,16 @@ main(int argc, char* argv[])
   ProcessInput(&OldInput, &NewInput, &Event);
   OldInput = NewInput;
 
-  struct timespec LastFrameStart;
-  clock_gettime(CLOCK_MONOTONIC_RAW, &LastFrameStart);
+  LARGE_INTEGER PerformanceFrequencyResult;
+  QueryPerformanceFrequency(&PerformanceFrequencyResult);
+  int64_t PerformanceFrequency = PerformanceFrequencyResult.QuadPart;
+
+  LARGE_INTEGER LastFrameStart;
+  QueryPerformanceCounter(&LastFrameStart);
   while(true)
   {
-    struct timespec CurrentFrameStart;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &CurrentFrameStart);
+    LARGE_INTEGER CurrentFrameStart;
+    QueryPerformanceCounter(&CurrentFrameStart);
 
     //---------INPUT MANAGEMENT
     ProcessInput(&OldInput, &NewInput, &Event);
@@ -490,10 +475,14 @@ main(int argc, char* argv[])
       }
     }
     // Should go after mouse mode switch to avoid jerking the camera
+#if WIN32_DEBUG
+#else
     if(!NewInput.IsMouseInEditorMode)
     {
       SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
     }
+#endif
+
     // Set noramlised mouse after all mouse editing is done
     {
       // 0.0f-1.0f mouse coords
@@ -504,7 +493,8 @@ main(int argc, char* argv[])
     }
     //---------END INPUT MANAGEMENT
 
-    NewInput.dt = (float)((((double)CurrentFrameStart.tv_sec - (double)LastFrameStart.tv_sec) * 1e9 + (double)CurrentFrameStart.tv_nsec - (double)LastFrameStart.tv_nsec) / 1e9);
+    NewInput.dt = (float)(((double)CurrentFrameStart.QuadPart - (double)LastFrameStart.QuadPart) /
+                          (double)PerformanceFrequency);
     if(NewInput.LeftCtrl.EndedDown)
     {
       NewInput.dt *= SLOW_MOTION_COEFFICIENT;

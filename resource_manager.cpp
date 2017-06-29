@@ -1,15 +1,12 @@
 #include "resource_manager.h"
 #include "file_io.h"
 #include "material_io.h"
+#include "file_queries.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <ftw.h>
 
-int32_t ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t* ElementCount,
-                  const char* StartPath, const char* Extension);
 namespace Resource
 {
   void
@@ -132,7 +129,7 @@ namespace Resource
       else
       {
         Material  = PushStruct(&this->MaterialStack, material);
-        *Material = ImportMaterial(this, Path);
+        *Material = ImportMaterial(&this->MaterialStack, this, Path);
         this->Materials.Set(RID, Material, Path);
       }
       return true;
@@ -481,7 +478,3 @@ namespace Resource
 #endif
   }
 }
-
-//-----------------------------------FILE QUERIES--------------------------------------
-
-#include "file_queries.h"

@@ -8,7 +8,6 @@
 #include "game.h"
 #include "mesh.h"
 #include "model.h"
-#include "file_io.h"
 #include "asset.h"
 #include "load_texture.h"
 #include "misc.h"
@@ -75,7 +74,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->ExpandedTextureID);
 
     //--------------LOAD FONT--------------
-    GameState->Font = Text::LoadFont("/usr/share/fonts/truetype/ubuntu-font-family/UbuntuMono-R.ttf", 8, 8, 2);
+    GameState->Font =
+      Text::LoadFont("data/UbuntuMono.ttf", 8, 8, 2);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);

@@ -1,4 +1,7 @@
 engine
-builder/builder
+builder/assimp_build
 data
+include
+lib
+msvs_build
 .exrc
