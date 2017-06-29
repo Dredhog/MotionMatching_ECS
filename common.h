@@ -40,8 +40,8 @@ struct game_input
   int32_t MouseWheelScreen;
   int32_t dMouseWheelScreen;
 
-  bool    IsMouseInEditorMode;
-  bool    ToggledEditorMode;
+  bool IsMouseInEditorMode;
+  bool ToggledEditorMode;
 
   union {
     game_button_state Buttons[32];
@@ -93,6 +93,11 @@ struct game_memory
   uint32_t TemporaryMemorySize;
   void*    TemporaryMemory;
 };
+
+namespace Platform
+{
+  float GetTimeInSeconds();
+}
 
 #define GAME_UPDATE_AND_RENDER(name) void name(game_memory GameMemory, const game_input* const Input)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);

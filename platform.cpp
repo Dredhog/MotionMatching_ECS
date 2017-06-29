@@ -3,17 +3,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
-#include <math.h>
 #include <stdio.h>
-#include <time.h>
 #include <assert.h>
 
 #include "common.h"
-
-namespace Platform
-{
-  float GetTimeInSeconds();
-}
 
 static bool
 ProcessInput(const game_input* OldInput, game_input* NewInput, SDL_Event* Event, SDL_Window* Window)
