@@ -30,7 +30,13 @@ bool IsHovered(const rect& BB, ui_id ID);
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
 
-static void PushClipRect(const rect& BB);
+// TODO(Lukas) Fix quad submission api, reduce levels of abstraction up to shader minimize getters
+// these currently store quads with faulty quad data, which is currently resubmitted to other API
+void PushClipQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size);
+void PushColoredQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, const vec4& Color);
+void PushTexturedQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, int32_t TextureID);
+
+void MoveWindowToFront(gui_window* Window);
 
 void         Create(gui_context* Context);
 int          Destroy(gui_context* Context);
@@ -139,6 +145,8 @@ struct gui_window
   vec3 ScrollNorm;
   vec3 ScrollRange;
 
+  fixed_array<quad_instance, 80> DrawArray;
+
   ui_id
   GetID(const char* Label) const
   {
@@ -156,8 +164,9 @@ struct gui_context
   ui_id         HotID;
   ui_id         MoveWindowMoveID;
 
-  fixed_stack<rect, 10>       ClipStack;
-  fixed_array<gui_window, 10> Windows;
+  int32_t                      ClipQuadCount;
+  fixed_array<gui_window, 10>  Windows;
+  fixed_stack<gui_window*, 10> OrderedWindows;
 
   const game_input* Input;
   gui_window*       CurrentWindow;
@@ -167,18 +176,66 @@ struct gui_context
 // GLOBAL CONTEXT
 static gui_context g_Context;
 
-static void
-PushClipRect(const rect& BB)
+void
+PushClipQuad(gui_window* Window, const vec3& Position, const vec3& Size)
 {
-  gui_context& g = *GetContext();
-  g.ClipStack.Push(BB);
-  Debug::UIPushClipQuad(BB.MinP, BB.GetSize(), g.ClipStack.Count);
+  gui_context&  g    = *GetContext();
+  quad_instance Quad = {};
+  Quad.Type          = QuadType_Clip;
+  Quad.LowerLeft     = Position;
+  Quad.Dimensions    = Size;
+  Quad.Color         = { 1, 0, 1, (float)g.ClipQuadCount++ };
+  Window->DrawArray.Append(Quad);
+}
+
+void
+PushColoredQuad(gui_window* Window, const vec3& Position, const vec3& Size, const vec4& Color)
+{
+  quad_instance Quad = {};
+  Quad.Type          = QuadType_Colored;
+  Quad.LowerLeft     = Position;
+  Quad.Dimensions    = Size;
+  Quad.Color         = Color;
+  Window->DrawArray.Append(Quad);
+}
+
+void
+PushTexturedQuad(gui_window* Window, const vec3& Position, const vec3& Size, int32_t TextureID)
+{
+  quad_instance Quad = {};
+  Quad.Type          = QuadType_Textured;
+  Quad.LowerLeft     = Position;
+  Quad.Dimensions    = Size;
+  Quad.TextureID     = TextureID;
+  Window->DrawArray.Append(Quad);
+}
+
+void
+MoveWindowToFront(gui_window* Window)
+{
+  assert(Window);
+
+  gui_context& g     = *GetContext();
+  int          Index = -1;
+  for(int i = 0; i < g.OrderedWindows.Count; i++)
+  {
+    if(g.OrderedWindows[i] == Window)
+    {
+      Index = i;
+      break;
+    }
+  }
+
+  assert(0 <= Index);
+  g.OrderedWindows.Delete(Index);
+  g.OrderedWindows.Push(Window);
 }
 
 void
 DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
 {
-  const gui_context& g = *GetContext();
+  const gui_context& g      = *GetContext();
+  gui_window*        Window = GetCurrentWindow();
 
   float   TextPaddingX = 0.001f;
   float   TextPaddingY = 0.005f;
@@ -215,16 +272,17 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
     strcpy(Text, InputText);
   }
   uint32_t TextureID = Text::GetTextTextureID(g.Font, FontSize, Text, GetUIColor(Text), &TextureWidth, &TextureHeight);
-  Debug::UIPushTexturedQuad(TextureID, vec3{ TopLeft.X + ((Width - (float)TextureWidth) / 2), TopLeft.Y - TextPaddingY, TopLeft.Z }, { (float)TextureWidth, Height - 2 * TextPaddingY });
+  PushTexturedQuad(Window, vec3{ TopLeft.X + ((Width - (float)TextureWidth) / 2), TopLeft.Y - TextPaddingY, TopLeft.Z }, { (float)TextureWidth, Height - 2 * TextPaddingY }, TextureID);
 }
 
 void
 DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor)
 {
   gui_context& g            = *GetContext();
+  gui_window*  Window       = GetCurrentWindow();
   float        ButtonBorder = g.Style.StyleVars[UI::VAR_BorderWidth].X;
-  Debug::UIPushQuad(TopLeft, { Width, Height }, BorderColor);
-  Debug::UIPushQuad(vec3{ TopLeft.X + ButtonBorder, TopLeft.Y + ButtonBorder, TopLeft.Z }, { Width - 2 * ButtonBorder, Height - 2 * ButtonBorder }, InnerColor);
+  PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
+  PushColoredQuad(Window, vec3{ TopLeft.X + ButtonBorder, TopLeft.Y + ButtonBorder, TopLeft.Z }, { Width - 2 * ButtonBorder, Height - 2 * ButtonBorder }, InnerColor);
 }
 
 void
@@ -405,7 +463,6 @@ Create(gui_context* Context, game_state* GameState)
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
   Context->Windows.HardClear();
-  Context->ClipStack.Clear();
   Context->CurrentWindow = NULL;
   Context->GameState     = GameState;
 }

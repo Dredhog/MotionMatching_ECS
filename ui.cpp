@@ -25,28 +25,29 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
   {
     g.ActiveID = 0;
   }
-  int WindowCount = g.Windows.GetCount();
-  for(int i = WindowCount - 1; 0 <= i; i--)
+  for(int i = g.OrderedWindows.Count - 1; 0 <= i; i--)
   {
-    if(IsMouseInsideRect(g.Windows[i].Position, g.Windows[i].Position + g.Windows[i].Size))
+    if(IsMouseInsideRect(g.OrderedWindows[i]->Position, g.OrderedWindows[i]->Position + g.OrderedWindows[i]->Size))
     {
       // Perform mouse scrolling
       if(g.Input->dMouseWheelScreen)
       {
         const float MagicScrollPixelAmount = 50;
-        const float NormScrollDistance =
-          (g.Windows[i].SizeNoScroll.Y < g.Windows[i].ContentsSize.Y) ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.Windows[i].ContentsSize.Y - g.Windows[i].SizeNoScroll.Y) : 0;
-        g.Windows[i].ScrollNorm.Y = ClampFloat(0, g.Windows[i].ScrollNorm.Y + NormScrollDistance, 1);
+        const float NormScrollDistance     = (g.OrderedWindows[i]->SizeNoScroll.Y < g.OrderedWindows[i]->ContentsSize.Y)
+                                           ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.OrderedWindows[i]->ContentsSize.Y - g.OrderedWindows[i]->SizeNoScroll.Y)
+                                           : 0;
+        g.OrderedWindows[i]->ScrollNorm.Y = ClampFloat(0, g.OrderedWindows[i]->ScrollNorm.Y + NormScrollDistance, 1);
       }
 
-      g.HoveredWindow = &g.Windows[i];
+      g.HoveredWindow = g.OrderedWindows[i];
       break;
     }
   }
-  for(int i = 0; i < WindowCount; i++)
+  for(int i = 0; i < g.Windows.Count; i++)
   {
     if(g.ActiveID && g.Windows[i].MoveID == g.ActiveID)
     {
+      MoveWindowToFront(&g.Windows[i]);
       g.Windows[i].Position += { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
       break;
     }
@@ -57,7 +58,35 @@ void
 UI::EndFrame()
 {
   gui_context& g = *GetContext();
-  g.ClipStack.Clear();
+  for(int i = 0; i < g.OrderedWindows.Count; i++)
+  {
+    gui_window* Window = g.OrderedWindows[i];
+
+    for(int j = 0; j < Window->DrawArray.Count; j++)
+    {
+      const quad_instance& Quad = Window->DrawArray[j];
+      switch(Quad.Type)
+      {
+        case QuadType_Colored:
+        {
+          Debug::UIPushQuad(Quad.LowerLeft, Quad.Dimensions, Quad.Color);
+          break;
+        }
+        case QuadType_Textured:
+        {
+          Debug::UIPushTexturedQuad(Quad.TextureID, Quad.LowerLeft, Quad.Dimensions);
+          break;
+        }
+        case QuadType_Clip:
+        {
+          Debug::UIPushClipQuad(Quad.LowerLeft, Quad.Dimensions, (int32_t)Quad.Color.A);
+          break;
+        }
+      }
+    }
+    g.OrderedWindows[i]->DrawArray.Clear();
+  }
+  g.ClipQuadCount = 0;
 }
 
 void
@@ -220,13 +249,14 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     NewWindow.Size     = Size;
     NewWindow.Position = InitialPosition;
     Window             = g.Windows.Append(NewWindow);
+    g.OrderedWindows.Push(Window);
   }
   g.CurrentWindow = Window;
 
   Window->MaxPos = Window->CurrentPos = Window->Position;
   Window->ClipRect                    = NewRect(Window->Position, Window->Position + Size);
 
-  PushClipRect(Window->ClipRect);
+  PushClipQuad(Window, Window->ClipRect.MinP, Window->ClipRect.GetSize());
   DrawBox(Window->Position, Window->Size, GetUIColor(WindowBackground), GetUIColor(WindowBorder));
 
   // Order matters
@@ -263,7 +293,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
 
   //#3
   Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
-  PushClipRect(NewRect(Window->Position, Window->Position + Window->SizeNoScroll));
+  PushClipQuad(Window, Window->Position, Window->SizeNoScroll);
 }
 
 void
@@ -327,7 +357,7 @@ UI::CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size)
 
   // draw square icon
   int32_t TextureID = (*IsExpanded) ? g.GameState->ExpandedTextureID : g.GameState->CollapsedTextureID;
-  Debug::UIPushTexturedQuad(TextureID, Rect.MinP, { Size.Y, Size.Y });
+  PushTexturedQuad(&Window, Rect.MinP, { Size.Y, Size.Y }, TextureID);
 
   vec4 InnerColor = (ID == g.ActiveID) ? GetUIColor(HeaderPressed) : ((ID == g.HotID) ? GetUIColor(HeaderHover) : GetUIColor(HeaderNormal));
   DrawTextBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, Text, InnerColor, GetUIColor(Border));
@@ -590,6 +620,6 @@ UI::Image(int32_t TextureID, const char* Name, vec3 Size)
     AddSize(Size);
     return;
   }
-  Debug::UIPushTexturedQuad(TextureID, Window.CurrentPos, Size);
+  PushTexturedQuad(&Window, Window.CurrentPos, Size, TextureID);
   AddSize(Size);
 }

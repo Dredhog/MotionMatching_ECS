@@ -27,6 +27,19 @@ struct fixed_stack
     return NULL;
   }
 
+  void
+  Delete(int Index)
+  {
+    assert(0 < this->Count);
+    assert(0 <= Index && Index < this->Count);
+
+    for(int i = Index; i < Count - 1; i++)
+    {
+      this->Elements[i] = this->Elements[i + 1];
+    }
+    this->Count--;
+  }
+
   T*
   Back()
   {

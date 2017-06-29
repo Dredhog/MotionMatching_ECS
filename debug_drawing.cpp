@@ -1,5 +1,4 @@
 #include "debug_drawing.h"
-#include "camera.h"
 
 #define SPHERE_MAX_COUNT 100
 #define GIZMO_MAX_COUNT 100
@@ -13,22 +12,6 @@ int32_t g_SphereCount;
 mat4    g_GizmoMatrices[GIZMO_MAX_COUNT];
 float   g_GizmoDepths[GIZMO_MAX_COUNT];
 int32_t g_GizmoCount;
-
-enum quad_type
-{
-  QuadType_Colored  = 1 << 0,
-  QuadType_Textured = 1 << 1,
-  QuadType_Clip     = 1 << 2,
-};
-
-struct quad_instance
-{
-  vec4    Color;
-  vec3    LowerLeft;
-  int32_t Type;
-  vec3    Dimensions;
-  int32_t TextureID;
-};
 
 quad_instance g_DrawQuads[TEXTURED_QUAD_MAX_COUNT];
 int32_t       g_DrawQuadCount;

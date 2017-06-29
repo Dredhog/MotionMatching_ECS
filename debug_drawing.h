@@ -4,10 +4,24 @@
 
 #include "game.h"
 
+enum quad_type
+{
+  QuadType_Colored  = 1 << 0,
+  QuadType_Textured = 1 << 1,
+  QuadType_Clip     = 1 << 2,
+};
+
+struct quad_instance
+{
+  vec4    Color;
+  vec3    LowerLeft;
+  int32_t Type;
+  vec3    Dimensions;
+  int32_t TextureID;
+};
+
 namespace Debug
 {
-  void PushQuad(vec3 Position, float Width, float Height, vec4 Color = { 0.5f, 0.5f, 0.5f, 1.0f });
-  void PushTexturedQuad(int32_t TextureID, vec3 BottomLeft, float Width, float Height);
   void PushTopLeftQuad(vec3 Position, float Width, float Height, vec4 Color);
   void PushTopLeftTexturedQuad(int32_t TextureID, vec3 Position, float Width, float Height);
   void PushGizmo(const camera* Camera, const mat4* GizmoBase);
@@ -17,7 +31,6 @@ namespace Debug
   void UIPushQuad(vec3 Position, vec3 Size, vec4 Color = { 0.5f, 0.5f, 0.5f, 1.0f });
   void UIPushTexturedQuad(int32_t TextureID, vec3 BottomLeft, vec3 Size);
   void UIPushClipQuad(vec3 Position, vec3 Size, int32_t StencilValue);
-  void UIPushClipTexturedQuad(vec3 Position, vec3 Size, int32_t StencilValue);
 
   void DrawGizmos(game_state* GameState);
   void DrawQuads(game_state* GameState);
