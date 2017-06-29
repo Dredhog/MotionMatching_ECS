@@ -1,5 +1,3 @@
-#pragma once
-
 #include "load_shader.h"
 
 #include "linear_math/matrix.h"

@@ -6,27 +6,16 @@
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
+#include <assert.h>
 
-// Memory
-#include <sys/mman.h>
-
-// File queries
-#include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <ftw.h>
-
-#include "common.h"
-
-#define FRAME_TIME_MS 10
-#define SLOW_MOTION_COEFFICIENT 0.2f
-
-#include "update_render.h"
+#include "../common.h"
 
 static bool
-ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
+ProcessInput(const game_input* OldInput, game_input* NewInput, SDL_Event* Event, SDL_Window* Window)
 {
-  *NewInput = *OldInput;
+  *NewInput               = *OldInput;
+  NewInput->dMouseScreenX = 0;
+  NewInput->dMouseScreenY = 0;
   while(SDL_PollEvent(Event) != 0)
   {
     switch(Event->type)
@@ -314,38 +303,53 @@ ProcessInput(game_input* OldInput, game_input* NewInput, SDL_Event* Event)
         {
           NewInput->MouseWheelScreen += Event->wheel.y;
         }
+        break;
       }
-      break;
+      case SDL_MOUSEMOTION:
+      {
+        NewInput->MouseScreenX = Event->motion.x;
+        NewInput->MouseScreenY = Event->motion.y;
+        NewInput->dMouseScreenX += Event->motion.xrel;
+        NewInput->dMouseScreenY += Event->motion.yrel;
+        break;
+      }
     }
   }
-
-  SDL_GetMouseState(&NewInput->MouseScreenX, &NewInput->MouseScreenY);
-  NewInput->MouseX = NewInput->MouseScreenX;
-  NewInput->MouseY = SCREEN_HEIGHT - NewInput->MouseScreenY;
-  if(!NewInput->IsMouseInEditorMode)
-  {
-    NewInput->dMouseX = NewInput->MouseX - SCREEN_WIDTH / 2;
-    NewInput->dMouseY = NewInput->MouseY - SCREEN_HEIGHT / 2;
-  }
-  else
-  {
-    NewInput->dMouseX = NewInput->MouseX - OldInput->MouseX;
-    NewInput->dMouseY = NewInput->MouseY - OldInput->MouseY;
-  }
-  NewInput->dMouseScreenX = NewInput->dMouseX;
-  NewInput->dMouseScreenY = -NewInput->dMouseY;
-
-  NewInput->dMouseWheelScreen = NewInput->MouseWheelScreen - OldInput->MouseWheelScreen;
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {
     NewInput->Buttons[Index].Changed = (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
   }
 
+  if(NewInput->Tab.EndedDown && NewInput->Tab.Changed)
+  {
+    NewInput->IsMouseInEditorMode = !NewInput->IsMouseInEditorMode;
+    SDL_SetRelativeMouseMode((NewInput->IsMouseInEditorMode) ? SDL_FALSE : SDL_TRUE);
+    SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+
+    NewInput->MouseScreenX  = SCREEN_WIDTH / 2;
+    NewInput->MouseScreenY  = SCREEN_HEIGHT / 2;
+    NewInput->dMouseScreenX = 0;
+    NewInput->dMouseScreenY = 0;
+  }
+  NewInput->ToggledEditorMode = (OldInput->IsMouseInEditorMode != NewInput->IsMouseInEditorMode);
+
+  NewInput->MouseX  = NewInput->MouseScreenX;
+  NewInput->MouseY  = SCREEN_HEIGHT - NewInput->MouseScreenY;
+  NewInput->dMouseX = NewInput->dMouseScreenX;
+  NewInput->dMouseY = -NewInput->dMouseScreenY;
+
+  NewInput->NormMouseX  = (float)NewInput->MouseX / (float)(SCREEN_WIDTH);
+  NewInput->NormMouseY  = (float)NewInput->MouseY / (float)(SCREEN_HEIGHT);
+  NewInput->NormdMouseX = (float)NewInput->dMouseX / (float)(SCREEN_WIDTH);
+  NewInput->NormdMouseY = (float)NewInput->dMouseY / (float)(SCREEN_HEIGHT);
+
+  NewInput->dMouseWheelScreen = NewInput->MouseWheelScreen - OldInput->MouseWheelScreen;
+
   return true;
 }
 
-bool
+static bool
 Init(SDL_Window** Window)
 {
   bool Success = true;
@@ -370,7 +374,7 @@ Init(SDL_Window** Window)
 #endif
 
     // Create an SDL window
-    SDL_ShowCursor(SDL_DISABLE);
+    SDL_SetRelativeMouseMode(SDL_TRUE);
     *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
 
     if(!Window)
@@ -459,7 +463,7 @@ main(int argc, char* argv[])
     SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
   }
 
-  ProcessInput(&OldInput, &NewInput, &Event);
+  ProcessInput(&OldInput, &NewInput, &Event, Window);
   OldInput = NewInput;
 
   struct timespec LastFrameStart;
@@ -469,39 +473,10 @@ main(int argc, char* argv[])
     struct timespec CurrentFrameStart;
     clock_gettime(CLOCK_MONOTONIC_RAW, &CurrentFrameStart);
 
-    //---------INPUT MANAGEMENT
-    ProcessInput(&OldInput, &NewInput, &Event);
-    if(NewInput.Escape.EndedDown)
+    if(!ProcessInput(&OldInput, &NewInput, &Event, Window))
     {
       break;
     }
-    if(NewInput.Tab.EndedDown && NewInput.Tab.Changed)
-    {
-      NewInput.IsMouseInEditorMode = !NewInput.IsMouseInEditorMode;
-      if(NewInput.IsMouseInEditorMode)
-      {
-        SDL_ShowCursor(SDL_ENABLE);
-      }
-      else
-      {
-        SDL_ShowCursor(SDL_DISABLE);
-      }
-    }
-    // Should go after mouse mode switch to avoid jerking the camera
-    if(!NewInput.IsMouseInEditorMode)
-    {
-      SDL_WarpMouseInWindow(Window, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
-    }
-    // Set noramlised mouse after all mouse editing is done
-    {
-      // 0.0f-1.0f mouse coords
-      NewInput.NormMouseX  = (float)NewInput.MouseX / (float)(SCREEN_WIDTH);
-      NewInput.NormMouseY  = (float)NewInput.MouseY / (float)(SCREEN_HEIGHT);
-      NewInput.NormdMouseX = (float)NewInput.dMouseX / (float)(SCREEN_WIDTH);
-      NewInput.NormdMouseY = (float)NewInput.dMouseY / (float)(SCREEN_HEIGHT);
-    }
-    //---------END INPUT MANAGEMENT
-
     NewInput.dt = (float)((((double)CurrentFrameStart.tv_sec - (double)LastFrameStart.tv_sec) * 1e9 + (double)CurrentFrameStart.tv_nsec - (double)LastFrameStart.tv_nsec) / 1e9);
     if(NewInput.LeftCtrl.EndedDown)
     {

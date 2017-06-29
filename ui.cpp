@@ -21,6 +21,10 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
 
   g.HotID         = 0;
   g.HoveredWindow = NULL;
+  if(g.Input->ToggledEditorMode)
+  {
+    g.ActiveID = 0;
+  }
   int WindowCount = g.Windows.GetCount();
   for(int i = WindowCount - 1; 0 <= i; i--)
   {

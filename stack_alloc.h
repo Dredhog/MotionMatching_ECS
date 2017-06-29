@@ -6,12 +6,7 @@
 #include <cassert>
 #include <stdio.h>
 
-#define Kibibytes(Count) (1024 * (Count))
-#define Mibibytes(Count) (1024 * Kibibytes(Count))
-#define Gibibytes(Count) (1024 * Mibibytes(Count))
-
 #define PushStruct(Allocator, Type) (Type*)(Allocator)->Alloc(sizeof(Type))
-
 #define PushArray(Allocator, Count, Type) (Type*)(Allocator)->Alloc(sizeof(Type) * (Count))
 namespace Memory
 {

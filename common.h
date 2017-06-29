@@ -3,6 +3,13 @@
 #include <stdint.h>
 
 #define ArrayCount(Array) sizeof((Array)) / sizeof(Array[0])
+
+#define Kibibytes(Count) (1024 * (Count))
+#define Mibibytes(Count) (1024 * Kibibytes(Count))
+#define Gibibytes(Count) (1024 * Mibibytes(Count))
+
+#define FRAME_TIME_MS 10
+#define SLOW_MOTION_COEFFICIENT 0.2f
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 
@@ -33,7 +40,8 @@ struct game_input
   int32_t MouseWheelScreen;
   int32_t dMouseWheelScreen;
 
-  bool IsMouseInEditorMode;
+  bool    IsMouseInEditorMode;
+  bool    ToggledEditorMode;
 
   union {
     game_button_state Buttons[32];
@@ -88,3 +96,4 @@ struct game_memory
 
 #define GAME_UPDATE_AND_RENDER(name) void name(game_memory GameMemory, const game_input* const Input)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
+game_update_and_render GameUpdateAndRender;

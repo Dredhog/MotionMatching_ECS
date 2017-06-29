@@ -1,9 +1,11 @@
-#include "file_io.h"
-
 #include <unistd.h>
-
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <ftw.h>
+#include <time.h>
+
+#include "../file_io.h"
+#include "../file_queries.h"
 
 uint32_t
 SafeTruncateUint64(uint64_t Value)
@@ -138,4 +140,131 @@ WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
   }
   close(FileHandle);
   return true;
+}
+
+asset_diff* g_DiffPaths;
+path*       g_Paths;
+file_stat*  g_Stats;
+int32_t*    g_ElementCount;
+int32_t*    g_DiffCount;
+const char* g_Extension;
+bool        g_WasTraversed[1000];
+
+int32_t
+CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* FileName)
+{
+  if((Flag == FTW_D) && (Path[FileName->base] == '.'))
+  {
+    return FTW_SKIP_SUBTREE;
+  }
+
+  if(Flag == FTW_F)
+  {
+    if(Path[FileName->base] == '.')
+    {
+      return FTW_CONTINUE;
+    }
+
+    size_t PathLength = strlen(Path);
+    if(PathLength > TEXT_LINE_MAX_LENGTH)
+    {
+      printf("Cannot fit: length: %lu, %s\n", strlen(Path), Path);
+    }
+    assert(PathLength <= TEXT_LINE_MAX_LENGTH);
+
+    if(g_Extension)
+    {
+      size_t ExtensionLength = strlen(g_Extension);
+      if(0 < ExtensionLength)
+      {
+        if(PathLength <= ExtensionLength + 1)
+        {
+          return 0;
+        }
+
+        size_t ExtensionStartIndex = PathLength - ExtensionLength;
+        if(!(Path[ExtensionStartIndex - 1] == '.' && strcmp(&Path[ExtensionStartIndex], g_Extension) == 0))
+        {
+          return 0;
+        }
+      }
+      else
+      {
+        assert(0 && "Extension length is less than or equal to zero! Did you mean to type NULL?");
+        return 0;
+      }
+    }
+
+    assert(*g_ElementCount < RESOURCE_MAX_COUNT);
+    assert(*g_DiffCount < 2 * RESOURCE_MAX_COUNT);
+
+    int PathIndex = GetPathIndex(g_Paths, *g_ElementCount, Path);
+    if(PathIndex == -1)
+    {
+      strcpy(g_Paths[*g_ElementCount].Name, Path);
+      g_Stats[*g_ElementCount].LastTimeModified = Stat->st_mtime;
+      g_WasTraversed[*g_ElementCount]           = true;
+      ++(*g_ElementCount);
+
+      strcpy(g_DiffPaths[*g_DiffCount].Path.Name, Path);
+      g_DiffPaths[*g_DiffCount].Type = DIFF_Added;
+      ++(*g_DiffCount);
+    }
+    else
+    {
+      double TimeDiff = difftime(Stat->st_mtime, g_Stats[PathIndex].LastTimeModified);
+      if(TimeDiff > 0)
+      {
+        g_Stats[PathIndex].LastTimeModified = Stat->st_mtime;
+
+        strcpy(g_DiffPaths[*g_DiffCount].Path.Name, Path);
+        g_DiffPaths[*g_DiffCount].Type = DIFF_Modified;
+        ++(*g_DiffCount);
+      }
+      g_WasTraversed[PathIndex] = true;
+    }
+  }
+  return 0;
+}
+
+int32_t
+ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t* ElementCount, const char* StartPath, const char* Extension)
+{
+  int32_t DiffCount = 0;
+
+  g_DiffPaths    = DiffPaths;
+  g_Paths        = Paths;
+  g_Stats        = Stats;
+  g_ElementCount = ElementCount;
+  g_DiffCount    = &DiffCount;
+  g_Extension    = Extension;
+
+  int Size = sizeof(g_WasTraversed) / sizeof(g_WasTraversed[0]);
+  for(int i = 0; i < Size; i++)
+  {
+    g_WasTraversed[i] = false;
+  }
+
+  if(nftw(StartPath, CheckFile, 100, FTW_ACTIONRETVAL) != -1)
+  {
+    for(int i = 0; i < *ElementCount; i++)
+    {
+      if(!g_WasTraversed[i])
+      {
+        --(*ElementCount);
+        Paths[i] = Paths[*ElementCount];
+        Stats[i] = Stats[*ElementCount];
+
+        DiffPaths[DiffCount].Path = Paths[i];
+        DiffPaths[DiffCount].Type = DIFF_Deleted;
+        ++DiffCount;
+      }
+    }
+  }
+  else
+  {
+    printf("Error occured when trying to access path %s\n", StartPath);
+  }
+
+  return DiffCount;
 }
