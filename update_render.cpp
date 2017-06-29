@@ -72,8 +72,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->ExpandedTextureID);
 
     //--------------LOAD FONT--------------
-    GameState->Font =
-      Text::LoadFont("data/UbuntuMono.ttf", 8, 8, 2);
+    GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 8, 8, 2);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
@@ -575,9 +574,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Debug::DrawGizmos(GameState);
   }
 
-  Debug::DrawColoredQuads(GameState);
-  //glClear(GL_STENCIL_BUFFER_BIT);
-  Debug::DrawTexturedQuads(GameState);
+  Debug::DrawQuads(GameState);
   Debug::ClearDrawArrays();
   Text::ClearTextRequestCounts();
 }

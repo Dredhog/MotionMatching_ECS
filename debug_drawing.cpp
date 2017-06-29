@@ -14,29 +14,24 @@ mat4    g_GizmoMatrices[GIZMO_MAX_COUNT];
 float   g_GizmoDepths[GIZMO_MAX_COUNT];
 int32_t g_GizmoCount;
 
+enum quad_type
+{
+  QuadType_Colored  = 1 << 0,
+  QuadType_Textured = 1 << 1,
+  QuadType_Clip     = 1 << 2,
+};
+
 struct quad_instance
 {
   vec4    Color;
   vec3    LowerLeft;
+  int32_t Type;
   vec3    Dimensions;
   int32_t TextureID;
 };
 
-quad_instance g_ColoredQuads[TEXTURED_QUAD_MAX_COUNT];
-int32_t       g_ColoredQuadCount;
-
-quad_instance g_TexturedQuads[COLORED_QUAD_MAX_COUNT];
-int32_t       g_TexturedQuadCount;
-
-#define CLIP_COLOR                                                                                                                                                                                     \
-  vec4 { 3.14f, 159, 265 }
-#define CLIP_TEXTURE_ID 314159535
-
-bool
-IsClipQuad(const quad_instance& Quad)
-{
-  return Quad.TextureID == CLIP_TEXTURE_ID || ((Quad.Color.R == CLIP_COLOR.R) && (Quad.Color.G == CLIP_COLOR.G) && (Quad.Color.B == CLIP_COLOR.B));
-}
+quad_instance g_DrawQuads[TEXTURED_QUAD_MAX_COUNT];
+int32_t       g_DrawQuadCount;
 
 void
 Debug::PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, vec4 Color)
@@ -60,48 +55,54 @@ Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase)
   ++g_GizmoCount;
 }
 
+#if 0
 void
 Debug::PushQuad(vec3 BottomLeft, float Width, float Height, vec4 Color)
 {
-  assert(0 <= g_ColoredQuadCount && g_ColoredQuadCount < COLORED_QUAD_MAX_COUNT);
-  g_ColoredQuads[g_ColoredQuadCount]            = {};
-  g_ColoredQuads[g_ColoredQuadCount].Dimensions = { Width, Height };
-  g_ColoredQuads[g_ColoredQuadCount].LowerLeft  = BottomLeft;
-  g_ColoredQuads[g_ColoredQuadCount].Color      = Color;
-  ++g_ColoredQuadCount;
+  assert(0 <= g_DrawQuadCount && g_DrawQuadCount < COLORED_QUAD_MAX_COUNT);
+  g_DrawQuads[g_DrawQuadCount]            = {};
+  g_DrawQuads[g_DrawQuadCount].Type       = QuadType_Colored;
+  g_DrawQuads[g_DrawQuadCount].Dimensions = { Width, Height };
+  g_DrawQuads[g_DrawQuadCount].LowerLeft  = BottomLeft;
+  g_DrawQuads[g_DrawQuadCount].Color      = Color;
+  ++g_DrawQuadCount;
 }
 
 void
 Debug::PushTexturedQuad(int32_t TextureID, vec3 BottomLeft, float Width, float Height)
 {
-  assert(0 <= g_TexturedQuadCount && g_TexturedQuadCount < TEXTURED_QUAD_MAX_COUNT);
-  g_TexturedQuads[g_TexturedQuadCount]            = {};
-  g_TexturedQuads[g_TexturedQuadCount].Dimensions = { Width, Height };
-  g_TexturedQuads[g_TexturedQuadCount].LowerLeft  = BottomLeft;
-  g_TexturedQuads[g_TexturedQuadCount].TextureID  = TextureID;
-  ++g_TexturedQuadCount;
+  assert(0 <= g_DrawQuadCount && g_DrawQuadCount < TEXTURED_QUAD_MAX_COUNT);
+  g_DrawQuads[g_DrawQuadCount]            = {};
+  g_DrawQuads[g_DrawQuadCount].Type       = QuadType_Textured;
+  g_DrawQuads[g_DrawQuadCount].Dimensions = { Width, Height };
+  g_DrawQuads[g_DrawQuadCount].LowerLeft  = BottomLeft;
+  g_DrawQuads[g_DrawQuadCount].TextureID  = TextureID;
+  ++g_DrawQuadCount;
 }
+#endif
 
 void
 Debug::PushTopLeftQuad(vec3 TopLeft, float Width, float Height, vec4 Color)
 {
-  assert(0 <= g_ColoredQuadCount && g_ColoredQuadCount < COLORED_QUAD_MAX_COUNT);
-  g_ColoredQuads[g_ColoredQuadCount]            = {};
-  g_ColoredQuads[g_ColoredQuadCount].Dimensions = { Width, Height };
-  g_ColoredQuads[g_ColoredQuadCount].LowerLeft  = TopLeft - vec3{ 0, Height };
-  g_ColoredQuads[g_ColoredQuadCount].Color      = Color;
-  ++g_ColoredQuadCount;
+  assert(0 <= g_DrawQuadCount && g_DrawQuadCount < COLORED_QUAD_MAX_COUNT);
+  g_DrawQuads[g_DrawQuadCount]            = {};
+  g_DrawQuads[g_DrawQuadCount].Type       = QuadType_Colored;
+  g_DrawQuads[g_DrawQuadCount].Dimensions = { Width, Height };
+  g_DrawQuads[g_DrawQuadCount].LowerLeft  = TopLeft - vec3{ 0, Height };
+  g_DrawQuads[g_DrawQuadCount].Color      = Color;
+  ++g_DrawQuadCount;
 }
 
 void
 Debug::PushTopLeftTexturedQuad(int32_t TextureID, vec3 TopLeft, float Width, float Height)
 {
-  assert(0 <= g_TexturedQuadCount && g_TexturedQuadCount < TEXTURED_QUAD_MAX_COUNT);
-  g_TexturedQuads[g_TexturedQuadCount]            = {};
-  g_TexturedQuads[g_TexturedQuadCount].Dimensions = { Width, Height };
-  g_TexturedQuads[g_TexturedQuadCount].LowerLeft  = TopLeft - vec3{ 0, Height };
-  g_TexturedQuads[g_TexturedQuadCount].TextureID  = TextureID;
-  ++g_TexturedQuadCount;
+  assert(0 <= g_DrawQuadCount && g_DrawQuadCount < TEXTURED_QUAD_MAX_COUNT);
+  g_DrawQuads[g_DrawQuadCount]            = {};
+  g_DrawQuads[g_DrawQuadCount].Type       = QuadType_Textured;
+  g_DrawQuads[g_DrawQuadCount].Dimensions = { Width, Height };
+  g_DrawQuads[g_DrawQuadCount].LowerLeft  = TopLeft - vec3{ 0, Height };
+  g_DrawQuads[g_DrawQuadCount].TextureID  = TextureID;
+  ++g_DrawQuadCount;
 }
 
 void
@@ -120,20 +121,9 @@ Debug::UIPushTexturedQuad(int32_t TextureID, vec3 Position, vec3 Size)
 void
 Debug::UIPushClipQuad(vec3 Position, vec3 Size, int32_t StencilValue)
 {
-  vec4 Color = CLIP_COLOR;
-  Color.A    = StencilValue;
-  Debug::UIPushQuad(Position, Size, Color);
-  // Debug::UIPushTexturedQuad(CLIP_TEXTURE_ID, Position, Size);
-  // g_TexturedQuads[g_TexturedQuadCount - 1].Color.A = StencilValue;
-  Debug::UIPushClipTexturedQuad(Position, Size, StencilValue);
-}
 
-void
-Debug::UIPushClipTexturedQuad(vec3 Position, vec3 Size, int32_t StencilValue)
-{
-  // TODO(Lukas) Move this crap to its rightful place
-  Debug::UIPushTexturedQuad(CLIP_TEXTURE_ID, Position, Size);
-  g_TexturedQuads[g_TexturedQuadCount - 1].Color.A = StencilValue;
+  Debug::UIPushQuad(Position, Size, { 1, 0, 1, (float)StencilValue });
+  g_DrawQuads[g_DrawQuadCount - 1].Type = QuadType_Clip;
 }
 
 void
@@ -183,82 +173,63 @@ Debug::DrawWireframeSpheres(game_state* GameState)
 }
 
 void
-Debug::DrawColoredQuads(game_state* GameState)
+Debug::DrawQuads(game_state* GameState)
 {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
   glEnable(GL_STENCIL_TEST);
   glStencilFunc(GL_ALWAYS, 0, 0xFF);
   glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-  glUseProgram(GameState->R.ShaderQuad);
+
   Render::model* QuadModel = GameState->Resources.GetModel(GameState->QuadModelID);
   glBindVertexArray(QuadModel->Meshes[1]->VAO);
-  for(int i = 0; i < g_ColoredQuadCount; i++)
-  {
-    glUniform4fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_color"), 1, (float*)&g_ColoredQuads[i].Color);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_position"), 1, (float*)&g_ColoredQuads[i].LowerLeft);
-    glUniform2fv(glGetUniformLocation(GameState->R.ShaderQuad, "g_dimension"), 1, (float*)&g_ColoredQuads[i].Dimensions);
 
-    if(IsClipQuad(g_ColoredQuads[i]))
+  for(int i = 0; i < g_DrawQuadCount; i++)
+  {
+    const quad_instance& Quad         = g_DrawQuads[i];
+    const int32_t        ShaderHandle = (Quad.Type == QuadType_Textured) ? GameState->R.ShaderTexturedQuad : GameState->R.ShaderQuad;
+
+    if(Quad.Type == QuadType_Textured)
     {
-      glStencilFunc(GL_NEVER, (int)g_ColoredQuads[i].Color.A, 0xFF);
-      glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+      glBindTexture(GL_TEXTURE_2D, Quad.TextureID);
     }
-    glDrawElements(GL_TRIANGLES, QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
-    if(IsClipQuad(g_ColoredQuads[i]))
+
+    glUseProgram(ShaderHandle);
+    glUniform3fv(glGetUniformLocation(ShaderHandle, "g_position"), 1, (float*)&Quad.LowerLeft);
+    glUniform2fv(glGetUniformLocation(ShaderHandle, "g_dimension"), 1, (float*)&Quad.Dimensions);
+
+    if(Quad.Type == QuadType_Colored)
     {
-      glStencilFunc(GL_EQUAL, (int)g_ColoredQuads[i].Color.A, 0xFF);
+      glUniform4fv(glGetUniformLocation(ShaderHandle, "g_color"), 1, (float*)&Quad.Color);
+    }
+
+    if(Quad.Type == QuadType_Clip)
+    {
+      glStencilFunc(GL_NEVER, (int)Quad.Color.A, 0xFF);
+      glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+
+      glDrawElements(GL_TRIANGLES, QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
+
+      glStencilFunc(GL_EQUAL, (int)Quad.Color.A, 0xFF);
       glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     }
+    else
+    {
+      glDrawElements(GL_TRIANGLES, QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
+    }
   }
+
   glBindVertexArray(0);
   glDisable(GL_BLEND);
   glDisable(GL_STENCIL_TEST);
-  g_ColoredQuadCount = 0;
-}
-
-void
-Debug::DrawTexturedQuads(game_state* GameState)
-{
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glEnable(GL_STENCIL_TEST);
-  glStencilFunc(GL_ALWAYS, 0, 0xFF);
-  glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-  Render::model* QuadModel = GameState->Resources.GetModel(GameState->QuadModelID);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glBindVertexArray(QuadModel->Meshes[1]->VAO);
-  glUseProgram(GameState->R.ShaderTexturedQuad);
-  for(int i = 0; i < g_TexturedQuadCount; i++)
-  {
-    glBindTexture(GL_TEXTURE_2D, g_TexturedQuads[i].TextureID);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_position"), 1, (float*)&g_TexturedQuads[i].LowerLeft);
-    glUniform2fv(glGetUniformLocation(GameState->R.ShaderTexturedQuad, "g_dimension"), 1, (float*)&g_TexturedQuads[i].Dimensions);
-
-    if(IsClipQuad(g_TexturedQuads[i]))
-    {
-      glStencilFunc(GL_NEVER, (int)g_TexturedQuads[i].Color.A, 0xFF);
-      glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
-    }
-    glDrawElements(GL_TRIANGLES, QuadModel->Meshes[1]->IndiceCount, GL_UNSIGNED_INT, 0);
-    if(IsClipQuad(g_TexturedQuads[i]))
-    {
-      glStencilFunc(GL_EQUAL, (int)g_TexturedQuads[i].Color.A, 0xFF);
-      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    }
-  }
-  glBindVertexArray(0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  glDisable(GL_BLEND);
-  glDisable(GL_STENCIL_TEST);
-  g_TexturedQuadCount = 0;
+  g_DrawQuadCount = 0;
 }
 
 void
 Debug::ClearDrawArrays()
 {
-  g_TexturedQuadCount = 0;
-  g_ColoredQuadCount  = 0;
-  g_GizmoCount        = 0;
-  g_SphereCount       = 0;
+  g_DrawQuadCount = 0;
+  g_GizmoCount    = 0;
+  g_SphereCount   = 0;
 }

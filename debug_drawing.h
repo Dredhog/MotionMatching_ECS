@@ -20,7 +20,7 @@ namespace Debug
   void UIPushClipTexturedQuad(vec3 Position, vec3 Size, int32_t StencilValue);
 
   void DrawGizmos(game_state* GameState);
-  void DrawColoredQuads(game_state* GameState);
+  void DrawQuads(game_state* GameState);
   void DrawTexturedQuads(game_state* GameState);
   void DrawWireframeSpheres(game_state* GameState);
   void ClearDrawArrays();
