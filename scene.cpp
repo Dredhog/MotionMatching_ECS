@@ -159,7 +159,7 @@ ExportScene(game_state* GameState, const char* Path)
 
 	uint32_t TotalSize = GameState->TemporaryMemStack->GetUsedSize();
 
-  WriteEntireFile(Path, TotalSize, Scene);
+	Platform::WriteEntireFile(Path, TotalSize, Scene);
 }
 
 void
@@ -172,7 +172,7 @@ ImportScene(game_state* GameState, const char* Path)
   // Load the scene into the temp memory stack and fix pointers
   GameState->TemporaryMemStack->NullifyClear();
 
-  debug_read_file_result ReadResult = ReadEntireFile(GameState->TemporaryMemStack, Path);
+  debug_read_file_result ReadResult = Platform::ReadEntireFile(GameState->TemporaryMemStack, Path);
   assert(ReadResult.Contents);
 
   scene* Scene = (scene*)ReadResult.Contents;

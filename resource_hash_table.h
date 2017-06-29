@@ -1,4 +1,5 @@
 #pragma once
+#include "file_queries.h"
 
 namespace Resource
 {

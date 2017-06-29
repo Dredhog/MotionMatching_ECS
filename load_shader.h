@@ -45,7 +45,7 @@ namespace Shader
     ShaderCode[FileSize] = '\0';
     fclose(FilePointer);
 #endif
-    debug_read_file_result ReadFile = ReadEntireFile(Allocator,FileName);
+    debug_read_file_result ReadFile = Platform::ReadEntireFile(Allocator,FileName);
     assert(ReadFile.ContentsSize && ReadFile.Contents);
     char* LastChar = PushStruct(Allocator, char);
     *LastChar = '\0';

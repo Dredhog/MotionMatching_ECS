@@ -9,35 +9,10 @@
 #include "anim.h"
 #include "render_data.h"
 #include "text.h"
-#include <sys/stat.h>
 #include "rid.h"
 
-struct path
-{
-  char Name[TEXT_LINE_MAX_LENGTH];
-};
 #include "resource_hash_table.h"
 static const int RESOURCE_MAX_COUNT = 200;
-
-enum asset_diff_type
-{
-  DIFF_Added,
-  DIFF_Modified,
-  DIFF_Deleted,
-
-  DIFF_EnumCount
-};
-
-struct asset_diff
-{
-  uint32_t Type;
-  path     Path;
-};
-
-struct file_stat
-{
-  time_t LastTimeModified;
-};
 
 const int MODEL_MAX_COUNT     = RESOURCE_MAX_COUNT;
 const int ANIMATION_MAX_COUNT = RESOURCE_MAX_COUNT;

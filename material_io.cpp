@@ -40,7 +40,7 @@ ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* R
 
   bool LoadingMaterial = false;
 
-  debug_read_file_result FileData = ReadEntireFile(Allocator, Path);
+  debug_read_file_result FileData = Platform::ReadEntireFile(Allocator, Path);
   int32_t CharCounter = 0;
 
   if(FileData.ContentsSize <= 0)
@@ -267,7 +267,7 @@ ImportMaterial(Memory::heap_allocator* Allocator, Resource::resource_manager* Re
 
   bool LoadingMaterial = false;
 
-  debug_read_file_result FileData = ReadEntireFile(Allocator, Path);
+  debug_read_file_result FileData = Platform::ReadEntireFile(Allocator, Path);
   int32_t CharCounter = 0;
 
   if(FileData.ContentsSize <= 0)

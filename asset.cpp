@@ -130,7 +130,7 @@ Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
     Memory::SafeTruncate_size_t_To_uint32_t(Alloc->GetByteCountAboveMarker(Marker));
   PackAnimationGroup(AnimGroup);
 
-  WriteEntireFile(FileName, TotalSize, AnimGroup);
+	Platform::WriteEntireFile(FileName, TotalSize, AnimGroup);
 }
 
 #if 0
@@ -156,7 +156,7 @@ Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_grou
                             char* FileName)
 {
   assert(OutputAnimGroup);
-  debug_read_file_result AssetReadResult = ReadEntireFile(Alloc, FileName);
+  debug_read_file_result AssetReadResult = Platform::ReadEntireFile(Alloc, FileName);
 
   assert(AssetReadResult.Contents);
   

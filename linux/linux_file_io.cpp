@@ -7,16 +7,8 @@
 #include "../file_io.h"
 #include "../file_queries.h"
 
-uint32_t
-SafeTruncateUint64(uint64_t Value)
-{
-  assert(Value <= 0xffffffff);
-  uint32_t Result = (uint32_t)Value;
-  return Result;
-}
-
 debug_read_file_result
-ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName)
+Platform::ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName)
 {
   assert(Allocator);
   debug_read_file_result Result     = {};
@@ -66,7 +58,7 @@ ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName)
 }
 
 debug_read_file_result
-ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName)
+Platform::ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName)
 {
   assert(Allocator);
   debug_read_file_result Result     = {};
@@ -116,7 +108,7 @@ ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName)
 }
 
 bool
-WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
+Platform::WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
 {
   int FileHandle = open(Filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -149,6 +141,7 @@ int32_t*    g_ElementCount;
 int32_t*    g_DiffCount;
 const char* g_Extension;
 bool        g_WasTraversed[1000];
+int32_t     g_MAX_ALLOWED_ELEMENT_COUNT;
 
 int32_t
 CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* FileName)
@@ -166,11 +159,11 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
     }
 
     size_t PathLength = strlen(Path);
-    if(PathLength > TEXT_LINE_MAX_LENGTH)
+    if(PathLength > PATH_MAX_LENGTH)
     {
       printf("Cannot fit: length: %lu, %s\n", strlen(Path), Path);
     }
-    assert(PathLength <= TEXT_LINE_MAX_LENGTH);
+    assert(PathLength <= PATH_MAX_LENGTH);
 
     if(g_Extension)
     {
@@ -195,8 +188,8 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
       }
     }
 
-    assert(*g_ElementCount < RESOURCE_MAX_COUNT);
-    assert(*g_DiffCount < 2 * RESOURCE_MAX_COUNT);
+    assert(*g_ElementCount < g_MAX_ALLOWED_ELEMENT_COUNT);
+    assert(*g_DiffCount < 2 * g_MAX_ALLOWED_ELEMENT_COUNT);
 
     int PathIndex = GetPathIndex(g_Paths, *g_ElementCount, Path);
     if(PathIndex == -1)
@@ -228,16 +221,17 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
 }
 
 int32_t
-ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t* ElementCount, const char* StartPath, const char* Extension)
+Platform::ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t MAX_ELEMENT_COUNT, int32_t* ElementCount, const char* StartPath, const char* Extension)
 {
   int32_t DiffCount = 0;
 
-  g_DiffPaths    = DiffPaths;
-  g_Paths        = Paths;
-  g_Stats        = Stats;
-  g_ElementCount = ElementCount;
-  g_DiffCount    = &DiffCount;
-  g_Extension    = Extension;
+  g_DiffPaths                 = DiffPaths;
+  g_Paths                     = Paths;
+  g_Stats                     = Stats;
+  g_ElementCount              = ElementCount;
+  g_DiffCount                 = &DiffCount;
+  g_Extension                 = Extension;
+  g_MAX_ALLOWED_ELEMENT_COUNT = MAX_ELEMENT_COUNT;
 
   int Size = sizeof(g_WasTraversed) / sizeof(g_WasTraversed[0]);
   for(int i = 0; i < Size; i++)

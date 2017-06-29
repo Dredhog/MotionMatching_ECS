@@ -8,7 +8,12 @@
 #include <time.h>
 #include <assert.h>
 
-#include "../common.h"
+#include "common.h"
+
+namespace Platform
+{
+  float GetTimeInSeconds();
+}
 
 static bool
 ProcessInput(const game_input* OldInput, game_input* NewInput, SDL_Event* Event, SDL_Window* Window)
@@ -466,18 +471,16 @@ main(int argc, char* argv[])
   ProcessInput(&OldInput, &NewInput, &Event, Window);
   OldInput = NewInput;
 
-  struct timespec LastFrameStart;
-  clock_gettime(CLOCK_MONOTONIC_RAW, &LastFrameStart);
+  float LastFrameStart;
   while(true)
   {
-    struct timespec CurrentFrameStart;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &CurrentFrameStart);
+    float CurrentFrameStart = Platform::GetTimeInSeconds();
 
     if(!ProcessInput(&OldInput, &NewInput, &Event, Window))
     {
       break;
     }
-    NewInput.dt = (float)((((double)CurrentFrameStart.tv_sec - (double)LastFrameStart.tv_sec) * 1e9 + (double)CurrentFrameStart.tv_nsec - (double)LastFrameStart.tv_nsec) / 1e9);
+    NewInput.dt = CurrentFrameStart - LastFrameStart;
     if(NewInput.LeftCtrl.EndedDown)
     {
       NewInput.dt *= SLOW_MOTION_COEFFICIENT;
