@@ -40,7 +40,7 @@ namespace UI
       UI::ReleaseButton("Mee too!", { 300, 30 });
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("And me!", { 200, 50 });
-      if(UI::CollapsingHeader("Header 3", &s_HeaderExpanded2, { 350, 30 }))
+      if(UI::CollapsingHeader("Header 2", &s_HeaderExpanded2, { 350, 30 }))
       {
         UI::ReleaseButton("realease me!", { 150, 20 });
         UI::ReleaseButton("realease me!", { 150, 20 });
@@ -95,6 +95,7 @@ namespace UI
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("Mee too!", { 300, 30 });
       UI::ReleaseButton("And me!", { 200, 50 });
+      UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
       UI::EndWindow();
     }
 

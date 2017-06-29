@@ -44,8 +44,9 @@ namespace UI
 
   enum ui_button_flags
   {
-    BUTTON_ActivateOnRelease,
-    BUTTON_ActivateOnClick,
+    BUTTON_PressOnRelease = 1 << 0,
+    BUTTON_PressOnClick   = 1 << 1,
+    BUTTON_PressOnHold    = 1 << 2,
   };
 
   struct gui_style
@@ -75,4 +76,7 @@ namespace UI
   void SliderFloat4(const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f, float ValueScreenDelta = 3.0f);
 
   void Combo(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, size_t ElementSize, char* (*ElementToCharPtr)(void*));
+
+  void Image(int32_t TextureID, const char* Name, vec3 Size);
+  void Text(const char* Name);
 }

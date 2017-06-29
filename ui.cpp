@@ -4,7 +4,7 @@
 #include "misc.h"
 #include "text.h"
 
-static bool ButtonBehavior(rect BoundingBox, ui_id ID, bool* OutHeld = NULL, bool* OutHovered = NULL, bool PressOnClick = false, bool PressOnHold = false);
+static bool ButtonBehavior(rect BoundingBox, ui_id ID, bool* OutHeld = NULL, bool* OutHovered = NULL, UI::button_flags_t Flags = 0);
 static rect SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Vertical = false, bool* OutHeld = NULL, bool* OutHovering = NULL);
 static void Scrollbar(gui_window* Window, bool Vertical);
 
@@ -26,13 +26,16 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
   {
     if(IsMouseInsideRect(g.Windows[i].Position, g.Windows[i].Position + g.Windows[i].Size))
     {
-      g.HoveredWindow = &g.Windows[i];
       // Perform mouse scrolling
       if(g.Input->dMouseWheelScreen)
       {
-        const float MagicScrollPixelAmount = 20;
-        g.Windows[i].ScrollNorm.Y              = ClampFloat(0, g.Windows[i].ScrollNorm.Y + (g.Input->dMouseWheelScreen * MagicScrollPixelAmount / g.Windows[i].SizeNoScroll.Y), 1);
+        const float MagicScrollPixelAmount = 50;
+        const float NormScrollDistance =
+          (g.Windows[i].SizeNoScroll.Y < g.Windows[i].ContentsSize.Y) ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.Windows[i].ContentsSize.Y - g.Windows[i].SizeNoScroll.Y) : 0;
+        g.Windows[i].ScrollNorm.Y = ClampFloat(0, g.Windows[i].ScrollNorm.Y + NormScrollDistance, 1);
       }
+
+      g.HoveredWindow = &g.Windows[i];
       break;
     }
   }
@@ -443,12 +446,15 @@ UI::Checkbox(const char* Text, bool* Toggle)
 */
 
 static bool
-ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, bool PressOnClick, bool PressOnHold)
+ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, UI::button_flags_t Flags)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  bool PressOnRelease = !(PressOnClick || PressOnHold);
+  if(!(Flags & (UI::BUTTON_PressOnClick | UI::BUTTON_PressOnHold)))
+  {
+    Flags = UI::BUTTON_PressOnRelease;
+  }
 
   bool Hovered = IsHovered(BB, ID);
   if(Hovered)
@@ -459,11 +465,11 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, bool PressOnC
   bool Result = false;
   if(ID == g.HotID)
   {
-    if(PressOnRelease && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+    if((Flags & UI::BUTTON_PressOnRelease) && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
       SetActive(ID);
     }
-    else if(PressOnClick && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+    else if((Flags & UI::BUTTON_PressOnClick) && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
       SetActive(NOT_ACTIVE);
       Result = true;
@@ -477,7 +483,7 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, bool PressOnC
     {
       Held = true;
     }
-    else if(PressOnRelease && !g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+    else if((Flags & UI::BUTTON_PressOnRelease) && !g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
       if(ID == g.HotID)
       {
@@ -566,4 +572,20 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
   }
 
   return DragRect;
+}
+
+void
+UI::Image(int32_t TextureID, const char* Name, vec3 Size)
+{
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  rect ImageRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  if(!TestIfVisible(ImageRect))
+  {
+    AddSize(Size);
+    return;
+  }
+  Debug::UIPushTexturedQuad(TextureID, Window.CurrentPos, Size);
+  AddSize(Size);
 }
