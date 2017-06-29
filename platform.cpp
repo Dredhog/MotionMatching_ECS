@@ -1,4 +1,6 @@
+#ifdef __linux__
 #define GLEW_STATIC
+#endif
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>

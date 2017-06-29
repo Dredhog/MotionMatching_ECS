@@ -5,4 +5,5 @@ data
 include
 lib
 msvs_build
+msvc_build
 .exrc

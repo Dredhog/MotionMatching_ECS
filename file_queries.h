@@ -1,7 +1,8 @@
 #pragma once
 
-#include "time.h"
-#include "string.h"
+#include <time.h>
+#include <string.h>
+#include <stdint.h>
 
 #define PATH_MAX_LENGTH 64
 
@@ -34,6 +35,7 @@ namespace Platform
 {
   int32_t ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t MaxElementCount, int32_t* ElementCount, const char* StartPath, const char* Extension);
 }
+
 inline int32_t
 GetPathIndex(path* PathArray, int32_t PathCount, const char* Path)
 {
