@@ -40,14 +40,11 @@ struct fixed_stack
     this->Count--;
   }
 
-  T*
+  T
   Back()
   {
-    if(0 < this->Count)
-    {
-      return &this->Elements[this->Count - 1];
-    }
-    return NULL;
+    assert(0 < this->Count);
+    return this->Elements[this->Count - 1];
   }
 
   void

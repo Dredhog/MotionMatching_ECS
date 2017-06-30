@@ -32,7 +32,7 @@ bool TestIfVisible(const rect& Rect);
 
 // TODO(Lukas) Fix quad submission api, reduce levels of abstraction up to shader minimize getters
 // these currently store quads with faulty quad data, which is currently resubmitted to other API
-void PushClipQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size);
+void PushClipQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, bool IntersectWithPrevious = true);
 void PushColoredQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, const vec4& Color);
 void PushTexturedQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, int32_t TextureID);
 
@@ -101,6 +101,14 @@ struct rect
     if(MaxP.Y > ClipRect.MaxP.Y)
       MaxP.Y = ClipRect.MaxP.Y;
   }
+
+  rect
+  GetIntersection(const rect& BB) const
+  {
+    rect Result = *this;
+    Result.Clip(BB);
+    return Result;
+  }
 };
 
 rect
@@ -138,7 +146,7 @@ struct gui_window
   vec3 CurrentPos;
   vec3 MaxPos;
 
-  rect ClipRect;
+  // rect ClipRect;
 
   vec3 ContentsSize;
 
@@ -164,8 +172,10 @@ struct gui_context
   ui_id         HotID;
   ui_id         MoveWindowMoveID;
 
-  int32_t                      ClipQuadCount;
+  int32_t                      LatestClipRectIndex;
+  fixed_stack<rect, 20>        ClipRectStack;
   fixed_array<gui_window, 10>  Windows;
+  fixed_stack<gui_window*, 10> CurrentWindowStack;
   fixed_stack<gui_window*, 10> OrderedWindows;
 
   const game_input* Input;
@@ -177,14 +187,21 @@ struct gui_context
 static gui_context g_Context;
 
 void
-PushClipQuad(gui_window* Window, const vec3& Position, const vec3& Size)
+PushClipQuad(gui_window* Window, const vec3& Position, const vec3& Size, bool IntersectWithPrevious)
 {
-  gui_context&  g    = *GetContext();
+  gui_context& g        = *GetContext();
+  rect         ClipRect = NewRect(Position, Position + Size);
+  if(0 < g.ClipRectStack.Count && IntersectWithPrevious)
+  {
+    ClipRect.Clip(g.ClipRectStack.Back());
+  }
+  g.ClipRectStack.Push(ClipRect);
+
   quad_instance Quad = {};
   Quad.Type          = QuadType_Clip;
-  Quad.LowerLeft     = Position;
-  Quad.Dimensions    = Size;
-  Quad.Color         = { 1, 0, 1, (float)g.ClipQuadCount++ };
+  Quad.LowerLeft     = ClipRect.MinP;
+  Quad.Dimensions    = ClipRect.GetSize();
+  Quad.Color         = { 1, 0, 1, (float)g.LatestClipRectIndex++ };
   Window->DrawArray.Append(Quad);
 }
 
@@ -382,7 +399,8 @@ IsHovered(const rect& BB, ui_id ID)
     gui_window* Window = GetCurrentWindow();
     if(Window == g.HoveredWindow)
     {
-      if((g.ActiveID == 0 || g.ActiveID == ID) && IsMouseInsideRect(BB))
+      rect TestRect = BB.GetIntersection(g.ClipRectStack.Back());
+      if((g.ActiveID == 0 || g.ActiveID == ID) && IsMouseInsideRect(TestRect))
       {
         return true;
       }
@@ -433,8 +451,10 @@ AddSize(const vec3& Size)
 bool
 TestIfVisible(const rect& Rect)
 {
-  gui_window& Window = *GetCurrentWindow();
-  return Rect.Intersects(Window.ClipRect) ? true : false;
+  // gui_window& Window   = *GetCurrentWindow();
+  gui_context& g        = *GetContext();
+  rect         ClipRect = g.ClipRectStack.Back();
+  return Rect.Intersects(ClipRect) ? true : false;
 }
 
 void

@@ -25,32 +25,34 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
   {
     g.ActiveID = 0;
   }
+
   for(int i = g.OrderedWindows.Count - 1; 0 <= i; i--)
   {
     if(IsMouseInsideRect(g.OrderedWindows[i]->Position, g.OrderedWindows[i]->Position + g.OrderedWindows[i]->Size))
     {
+      // Set hovered window
+      g.HoveredWindow = g.OrderedWindows[i];
+
       // Perform mouse scrolling
       if(g.Input->dMouseWheelScreen)
       {
         const float MagicScrollPixelAmount = 50;
         if(g.Input->LeftShift.EndedDown) // Horizontal scrolling
         {
-          const float NormScrollDistance = (g.OrderedWindows[i]->SizeNoScroll.X < g.OrderedWindows[i]->ContentsSize.X)
-                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.OrderedWindows[i]->ContentsSize.X - g.OrderedWindows[i]->SizeNoScroll.X)
+          const float NormScrollDistance = (g.HoveredWindow->SizeNoScroll.X < g.HoveredWindow->ContentsSize.X)
+                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.HoveredWindow->ContentsSize.X - g.HoveredWindow->SizeNoScroll.X)
                                              : 0;
-          g.OrderedWindows[i]->ScrollNorm.X = ClampFloat(0, g.OrderedWindows[i]->ScrollNorm.X + NormScrollDistance, 1);
+          g.HoveredWindow->ScrollNorm.X = ClampFloat(0, g.HoveredWindow->ScrollNorm.X + NormScrollDistance, 1);
         }
         else // Vertical scrolling
         {
-          const float NormScrollDistance = (g.OrderedWindows[i]->SizeNoScroll.Y < g.OrderedWindows[i]->ContentsSize.Y)
-                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.OrderedWindows[i]->ContentsSize.Y - g.OrderedWindows[i]->SizeNoScroll.Y)
+          const float NormScrollDistance = (g.HoveredWindow->SizeNoScroll.Y < g.HoveredWindow->ContentsSize.Y)
+                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.HoveredWindow->ContentsSize.Y - g.HoveredWindow->SizeNoScroll.Y)
                                              : 0;
-          g.OrderedWindows[i]->ScrollNorm.Y = ClampFloat(0, g.OrderedWindows[i]->ScrollNorm.Y + NormScrollDistance, 1);
+          g.HoveredWindow->ScrollNorm.Y = ClampFloat(0, g.HoveredWindow->ScrollNorm.Y + NormScrollDistance, 1);
         }
       }
 
-      // Set hovered window
-      g.HoveredWindow = g.OrderedWindows[i];
       break;
     }
   }
@@ -97,7 +99,8 @@ UI::EndFrame()
     }
     g.OrderedWindows[i]->DrawArray.Clear();
   }
-  g.ClipQuadCount = 0;
+  g.ClipRectStack.Clear();
+  g.LatestClipRectIndex = 0;
 }
 
 void
@@ -245,6 +248,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     if(g.Windows[i].ID == ID)
     {
       Window = &g.Windows[i];
+      break;
     }
   }
 
@@ -263,11 +267,23 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     g.OrderedWindows.Push(Window);
   }
   g.CurrentWindow = Window;
+  if(0 < g.CurrentWindowStack.Count)
+  {
+    assert(Window->Flags & WINDOW_IsChildWindow);
+    Window->ParentWindow = g.CurrentWindowStack.Back();
+  }
+  g.CurrentWindowStack.Push(g.CurrentWindow);
+
+  if(Window->Flags & WINDOW_IsChildWindow)
+  {
+    assert(Window->ParentWindow);
+    Window->Position = Window->ParentWindow->CurrentPos;
+  }
 
   Window->MaxPos = Window->CurrentPos = Window->Position;
-  Window->ClipRect                    = NewRect(Window->Position, Window->Position + Size);
+  // Window->ClipRect                    = NewRect(Window->Position, Window->Position + Size);
 
-  PushClipQuad(Window, Window->ClipRect.MinP, Window->ClipRect.GetSize());
+  PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) ? true : false);
   DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground), _GetGUIColor(WindowBorder));
 
   // Order matters
@@ -319,9 +335,27 @@ UI::EndWindow()
   // Automatically sets g.ActiveID = Window.MoveID
   ButtonBehavior(NewRect(Window.Position, Window.Position + Window.Size), Window.MoveID);
   //----------------------------------
+  g.ClipRectStack.Pop();
+  g.ClipRectStack.Pop();
 
   // DrawBox(MinPos, Window.ContentsSize, { 1, 0, 1, 1 }, { 1, 1, 1, 1 });
-  g.CurrentWindow = NULL;
+  g.CurrentWindowStack.Pop();
+  g.CurrentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Back() : NULL;
+}
+
+void
+UI::BeginChildWindow(const char* Name, vec3 Size, window_flags_t Flags)
+{
+  UI::BeginWindow(Name, {}, Size, Flags | WINDOW_IsChildWindow);
+}
+
+void
+UI::EndChildWindow()
+{
+  gui_window* Window = GetCurrentWindow();
+  assert(Window->Flags & WINDOW_IsChildWindow);
+  UI::EndWindow();
+  AddSize(Window->Size);
 }
 
 bool

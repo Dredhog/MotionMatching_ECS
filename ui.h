@@ -40,6 +40,10 @@ namespace UI
     WINDOW_UseHorizontalScrollbar = 1 << 1,
     WINDOW_Usetitlebar            = 1 << 2,
     WINDOW_ISCollapsable          = 1 << 3,
+    WINDOW_IsChildWindow          = 1 << 4,
+    WINDOW_IsNotMovable           = 1 << 6,
+    WINDOW_IsNotResizable         = 1 << 7,
+    WINDOW_Popup                  = 1 << 8,
   };
 
   enum ui_button_flags
@@ -61,8 +65,10 @@ namespace UI
   void BeginFrame(game_state* GameState, const game_input* Input);
   void EndFrame();
 
-  void BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_t Flags = 0 /*  WINDOW_UseVerticalScrollbar | WINDOW_UseHorizontalScrollbar*/);
+  void BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_t Flags = 0);
   void EndWindow();
+  void BeginChildWindow(const char* Name, vec3 Size, window_flags_t Flags = 0);
+  void EndChildWindow();
 
   void SameLine();
 

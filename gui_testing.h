@@ -26,7 +26,6 @@ namespace UI
         UI::ReleaseButton("Mee too!", { 300, 30 });
         UI::ReleaseButton("realease me!", { 150, 20 });
       }
-      UI::ReleaseButton("And me!", { 200, 50 });
       if(UI::CollapsingHeader("Header 2", &s_HeaderExpanded1, { 350, 30 }))
       {
         UI::ReleaseButton("realease me!", { 150, 20 });
@@ -35,12 +34,7 @@ namespace UI
         UI::ReleaseButton("And me!", { 200, 50 });
         UI::ReleaseButton("realease me!", { 150, 20 });
       }
-      UI::ReleaseButton("Mee too!", { 300, 30 });
-      UI::ReleaseButton("realease me!", { 150, 20 });
-      UI::ReleaseButton("Mee too!", { 300, 30 });
-      UI::ReleaseButton("realease me!", { 150, 20 });
-      UI::ReleaseButton("And me!", { 200, 50 });
-      if(UI::CollapsingHeader("Header 2", &s_HeaderExpanded2, { 350, 30 }))
+      if(UI::CollapsingHeader("Header 3", &s_HeaderExpanded2, { 350, 30 }))
       {
         UI::ReleaseButton("realease me!", { 150, 20 });
         UI::ReleaseButton("realease me!", { 150, 20 });
@@ -76,8 +70,8 @@ namespace UI
         UI::ReleaseButton("And me!", { 200, 50 });
         UI::ReleaseButton("realease me!", { 150, 20 });
       }
-      UI::EndWindow();
     }
+    UI::EndWindow();
 
     UI::BeginWindow("window B", { 1500, 200 }, { 350, 200 });
     {
@@ -88,16 +82,53 @@ namespace UI
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("And me!", { 400, 50 });
       UI::SliderFloat("FPS", &s_SliderValue, 10, 50, false, { 300, 30 }, s_SliderValue);
-      UI::EndWindow();
     }
+    UI::EndWindow();
+
     UI::BeginWindow("window C", { 800, 400 }, { 400, 500 });
     {
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("Mee too!", { 300, 30 });
       UI::ReleaseButton("And me!", { 200, 50 });
+      UI::BeginChildWindow("Child Window A ", { 350, 400 });
+      {
+        static bool s_HeaderExpanded  = false;
+        static bool s_HeaderExpanded1 = false;
+        static bool s_HeaderExpanded2 = false;
+        if(UI::CollapsingHeader("Wide Inside", &s_HeaderExpanded, { 350, 30 }))
+        {
+          UI::ReleaseButton("realease me!", { 500, 30 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::ReleaseButton("Mee too!", { 300, 30 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::ReleaseButton("And me!", { 200, 50 });
+          UI::ReleaseButton("Mee too!", { 300, 30 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+        }
+        if(UI::CollapsingHeader("Header 2", &s_HeaderExpanded1, { 350, 30 }))
+        {
+          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::ReleaseButton("Mee too!", { 300, 30 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::ReleaseButton("And me!", { 200, 50 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+        }
+        if(UI::CollapsingHeader("Header 3", &s_HeaderExpanded2, { 350, 30 }))
+        {
+          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::ReleaseButton("Mee too!", { 300, 30 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::ReleaseButton("And me!", { 200, 50 });
+          UI::ReleaseButton("Mee too!", { 300, 30 });
+          UI::ReleaseButton("realease me!", { 150, 20 });
+        }
+      }
+      UI::EndChildWindow();
       UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
-      UI::EndWindow();
+      UI::ReleaseButton("realease me!", { 500, 30 });
     }
+    UI::EndWindow();
 
     UI::EndFrame();
   }
