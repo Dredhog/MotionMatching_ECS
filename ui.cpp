@@ -33,12 +33,23 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
       if(g.Input->dMouseWheelScreen)
       {
         const float MagicScrollPixelAmount = 50;
-        const float NormScrollDistance     = (g.OrderedWindows[i]->SizeNoScroll.Y < g.OrderedWindows[i]->ContentsSize.Y)
-                                           ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.OrderedWindows[i]->ContentsSize.Y - g.OrderedWindows[i]->SizeNoScroll.Y)
-                                           : 0;
-        g.OrderedWindows[i]->ScrollNorm.Y = ClampFloat(0, g.OrderedWindows[i]->ScrollNorm.Y + NormScrollDistance, 1);
+        if(g.Input->LeftShift.EndedDown) // Horizontal scrolling
+        {
+          const float NormScrollDistance = (g.OrderedWindows[i]->SizeNoScroll.X < g.OrderedWindows[i]->ContentsSize.X)
+                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.OrderedWindows[i]->ContentsSize.X - g.OrderedWindows[i]->SizeNoScroll.X)
+                                             : 0;
+          g.OrderedWindows[i]->ScrollNorm.X = ClampFloat(0, g.OrderedWindows[i]->ScrollNorm.X + NormScrollDistance, 1);
+        }
+        else // Vertical scrolling
+        {
+          const float NormScrollDistance = (g.OrderedWindows[i]->SizeNoScroll.Y < g.OrderedWindows[i]->ContentsSize.Y)
+                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.OrderedWindows[i]->ContentsSize.Y - g.OrderedWindows[i]->SizeNoScroll.Y)
+                                             : 0;
+          g.OrderedWindows[i]->ScrollNorm.Y = ClampFloat(0, g.OrderedWindows[i]->ScrollNorm.Y + NormScrollDistance, 1);
+        }
       }
 
+      // Set hovered window
       g.HoveredWindow = g.OrderedWindows[i];
       break;
     }
@@ -119,8 +130,8 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
   rect DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
   *Value        = NormValue * ValueRange + MinValue;
 
-  DrawBox(SliderRect.MinP, SliderRect.GetSize(), GetUIColor(ScrollbarBox), GetUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? GetUIColor(ScrollbarBox) : GetUIColor(ScrollbarDrag), GetUIColor(ScrollbarDrag));
+  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
 }
 
 static void
@@ -157,8 +168,8 @@ Scrollbar(gui_window* Window, bool Vertical)
   bool Hovering;
   rect DragRect = SliderBehavior(ID, ScrollRect, ScrollNorm, NormDragSize, Vertical, &Held, &Hovering);
 
-  DrawBox(ScrollRect.MinP, ScrollRect.GetSize(), GetUIColor(ScrollbarBox), GetUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? GetUIColor(ScrollbarBox) : GetUIColor(ScrollbarDrag), GetUIColor(ScrollbarDrag));
+  DrawBox(ScrollRect.MinP, ScrollRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
 
   if(Vertical)
   {
@@ -212,9 +223,9 @@ Scrollbar(gui_window* Window, bool Vertical)
     }
   }
 
-  DrawBox(ScrollRect.MinP + vec3{ g.Style.StyleVars[UI::VAR_DragMinSize].X, 0 }, { g.Style.StyleVars[UI::VAR_DragMinSize].X, SliderRange }, { 1, 0, 1, 1 }, GetUIColor(ScrollbarBox));
-  DrawBox(ScrollRect.MinP, ScrollRect.MaxP - ScrollRect.MinP, GetUIColor(ScrollbarBox), GetUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.MaxP - DragRect.MinP, Held ? GetUIColor(ScrollbarBox) : GetUIColor(ScrollbarDrag), GetUIColor(ScrollbarDrag));
+  DrawBox(ScrollRect.MinP + vec3{ g.Style.StyleVars[UI::VAR_DragMinSize].X, 0 }, { g.Style.StyleVars[UI::VAR_DragMinSize].X, SliderRange }, { 1, 0, 1, 1 }, _GetGUIColor(ScrollbarBox));
+  DrawBox(ScrollRect.MinP, ScrollRect.MaxP - ScrollRect.MinP, _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.MaxP - DragRect.MinP, Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
 
   Window->ScrollRange.Y = (Window->Size.Y < Window->ContentsSize.Y) ? Window->ContentsSize.Y - Window->Size.Y : 0; // Delta in screen space that the window content can scroll
 }
@@ -257,7 +268,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   Window->ClipRect                    = NewRect(Window->Position, Window->Position + Size);
 
   PushClipQuad(Window, Window->ClipRect.MinP, Window->ClipRect.GetSize());
-  DrawBox(Window->Position, Window->Size, GetUIColor(WindowBackground), GetUIColor(WindowBorder));
+  DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground), _GetGUIColor(WindowBorder));
 
   // Order matters
   //#1
@@ -330,8 +341,8 @@ UI::ReleaseButton(const char* Text, vec3 Size)
   }
 
   bool Result     = ButtonBehavior(Rect, ID);
-  vec4 InnerColor = (ID == g.ActiveID) ? GetUIColor(ButtonPressed) : ((ID == g.HotID) ? GetUIColor(ButtonHover) : GetUIColor(ButtonNormal));
-  DrawTextBox(Rect.MinP, Size, Text, InnerColor, GetUIColor(Border));
+  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(ButtonPressed) : ((ID == g.HotID) ? _GetGUIColor(ButtonHover) : _GetGUIColor(ButtonNormal));
+  DrawTextBox(Rect.MinP, Size, Text, InnerColor, _GetGUIColor(Border));
 
   return Result;
 }
@@ -359,49 +370,13 @@ UI::CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size)
   int32_t TextureID = (*IsExpanded) ? g.GameState->ExpandedTextureID : g.GameState->CollapsedTextureID;
   PushTexturedQuad(&Window, Rect.MinP, { Size.Y, Size.Y }, TextureID);
 
-  vec4 InnerColor = (ID == g.ActiveID) ? GetUIColor(HeaderPressed) : ((ID == g.HotID) ? GetUIColor(HeaderHover) : GetUIColor(HeaderNormal));
-  DrawTextBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, Text, InnerColor, GetUIColor(Border));
+  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(HeaderPressed) : ((ID == g.HotID) ? _GetGUIColor(HeaderHover) : _GetGUIColor(HeaderNormal));
+  DrawTextBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, Text, InnerColor, _GetGUIColor(Border));
 
   return *IsExpanded;
 }
 
 /*
-bool
-UI::ClickButton(const char* Text, vec3 Size)
-{
-  gui_context& g      = *GetContext();
-  gui_window&  Window = *GetCurrentWindow();
-
-  ui_id ID = { IDHash(Text, sizeof(Text), 0) };
-
-  const rect& Rect = NewRect(Window.CurrentPos, Window.CurrentPos + vec3{ Size.X, -Size.Y });
-  AddSize(Size);
-
-  if(Rect.Encloses({ g.Input->NormMouseX, g.Input->NormMouseY, 0 }))
-  {
-    SetHot(ID);
-  }
-  else
-  {
-    UnsetHot(ID);
-  }
-
-  bool Result = false;
-  if(IsHot(ID) && (ID == g.ActiveID)
-  {
-    if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
-    {
-      SetActive(ID);
-      Result = true;
-    }
-  }
-
-  vec4 InnerColor = (ID == g.ActiveID) ? GetUIColor(ButtonPressed) : (IsHot(ID) ? GetUIColor(ButtonHover) : GetUIColor(ButtonNormal));
-  DrawTextBox(Window.CurrentPos, Size, Text, InnerColor, GetUIColor(Border));
-
-  return Result;
-}
-
 void
 UI::SliderFloat(char* Text, float* Var, float Min, float Max, float ScreenValue)
 {
@@ -440,41 +415,6 @@ UI::SliderFloat(char* Text, float* Var, float Min, float Max, float ScreenValue)
 
   vec4 InnerColor = (ID == g.ActiveID) ? g_PressedColor : (IsHot(ID) ? g_HighlightColor : g_NormalColor);
   UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor, g_BorderColor);
-  Layout->X += Layout->ColumnWidth;
-}
-
-void
-UI::Checkbox(const char* Text, bool* Toggle)
-{
-  ui_id ID   = {};
-  ID.NamePtr = (uintptr_t)Text;
-  ID.DataPtr = (uintptr_t)Toggle;
-
-  if(_LayoutIntersects(Layout, Input))
-  {
-    SetHot(ID);
-  }
-  else
-  {
-    UnsetHot(ID);
-  }
-
-  if((ID == g.ActiveID)
-  {
-    SetActive(NOT_ACTIVE);
-  }
-  else if(IsHot(ID))
-  {
-    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
-    {
-      SetActive(ID);
-      *Toggle = !*Toggle;
-    }
-  }
-
-  vec4 InnerColor = ((*Toggle) ? g_BoolPressedColor : (IsHot(ID) ? g_BoolHighlightColor : g_BoolNormalColor));
-
-  UI::DrawTextBox(GameState, Layout, Text, InnerColor, g_BorderColor);
   Layout->X += Layout->ColumnWidth;
 }
 */

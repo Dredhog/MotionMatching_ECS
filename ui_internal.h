@@ -5,7 +5,7 @@
 #include "basic_data_structures.h"
 
 #define CONTEXT_CHECKSUM 12345
-#define GetUIColor(Index) (g.Style.Colors[UI::COLOR_##Index])
+#define _GetGUIColor(Index) (g.Style.Colors[UI::COLOR_##Index])
 
 //-----------------------------
 // Forward declarations
@@ -271,7 +271,7 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
   {
     strcpy(Text, InputText);
   }
-  uint32_t TextureID = Text::GetTextTextureID(g.Font, FontSize, Text, GetUIColor(Text), &TextureWidth, &TextureHeight);
+  uint32_t TextureID = Text::GetTextTextureID(g.Font, FontSize, Text, _GetGUIColor(Text), &TextureWidth, &TextureHeight);
   PushTexturedQuad(Window, vec3{ TopLeft.X + ((Width - (float)TextureWidth) / 2), TopLeft.Y - TextPaddingY, TopLeft.Z }, { (float)TextureWidth, Height - 2 * TextPaddingY }, TextureID);
 }
 
