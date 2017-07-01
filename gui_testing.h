@@ -81,7 +81,7 @@ namespace UI
       UI::ReleaseButton(TempBuff, { 300, 30 });
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("And me!", { 400, 50 });
-      UI::SliderFloat("FPS", &s_SliderValue, 10, 50, false, { 300, 30 }, s_SliderValue);
+      UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false, { 300, 30 }, s_SliderValue);
     }
     UI::EndWindow();
 
@@ -98,9 +98,18 @@ namespace UI
         if(UI::CollapsingHeader("Wide Inside", &s_HeaderExpanded, { 350, 30 }))
         {
           UI::ReleaseButton("realease me!", { 500, 30 });
-          UI::ReleaseButton("realease me!", { 150, 20 });
-          UI::ReleaseButton("Mee too!", { 300, 30 });
-          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::BeginChildWindow("window 5", { 350, 200 });
+          {
+            static float s_SliderValue = 0.001f;
+            char         TempBuff[20];
+            snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+            UI::ReleaseButton(TempBuff, { 300, 30 });
+            UI::ReleaseButton("realease me!", { 150, 20 });
+            UI::ReleaseButton("And me!", { 400, 50 });
+            UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false, { 300, 30 }, s_SliderValue);
+            UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
+          }
+          UI::EndChildWindow();
           UI::ReleaseButton("And me!", { 200, 50 });
           UI::ReleaseButton("Mee too!", { 300, 30 });
           UI::ReleaseButton("realease me!", { 150, 20 });
@@ -115,13 +124,18 @@ namespace UI
         }
         if(UI::CollapsingHeader("Header 3", &s_HeaderExpanded2, { 350, 30 }))
         {
-          UI::ReleaseButton("realease me!", { 150, 20 });
-          UI::ReleaseButton("realease me!", { 150, 20 });
-          UI::ReleaseButton("Mee too!", { 300, 30 });
-          UI::ReleaseButton("realease me!", { 150, 20 });
-          UI::ReleaseButton("And me!", { 200, 50 });
-          UI::ReleaseButton("Mee too!", { 300, 30 });
-          UI::ReleaseButton("realease me!", { 150, 20 });
+          UI::BeginChildWindow("window 6", { 350, 200 });
+          {
+            static float s_SliderValue = 0.001f;
+            char         TempBuff[20];
+            snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+            UI::ReleaseButton(TempBuff, { 300, 30 });
+            UI::ReleaseButton("realease me!", { 150, 20 });
+            UI::ReleaseButton("And me!", { 400, 50 });
+            UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false, { 300, 30 }, s_SliderValue);
+            UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
+          }
+          UI::EndChildWindow();
         }
       }
       UI::EndChildWindow();

@@ -28,7 +28,7 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
 
   for(int i = g.OrderedWindows.Count - 1; 0 <= i; i--)
   {
-    if(IsMouseInsideRect(g.OrderedWindows[i]->Position, g.OrderedWindows[i]->Position + g.OrderedWindows[i]->Size))
+    if(IsMouseInsideRect(g.OrderedWindows[i]->ClippedSizeRect))
     {
       // Set hovered window
       g.HoveredWindow = g.OrderedWindows[i];
@@ -68,9 +68,34 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
 }
 
 void
+AddWindowToSortedBuffer(fixed_stack<gui_window*, 10>* SortedWindows, gui_window* Window)
+{
+  SortedWindows->Push(Window);
+  for(int i = 0; i < Window->ChildWindows.Count; i++)
+  {
+    gui_window* ChildWindow = Window->ChildWindows[i];
+    AddWindowToSortedBuffer(SortedWindows, ChildWindow);
+  }
+}
+
+void
 UI::EndFrame()
 {
-  gui_context& g = *GetContext();
+  gui_context&                 g = *GetContext();
+  fixed_stack<gui_window*, 10> SortBuffer;
+  SortBuffer.Clear();
+  // Order windows back to front
+  for(int i = 0; i < g.OrderedWindows.Count; i++)
+  {
+    gui_window* Window = g.OrderedWindows[i];
+    if(!(Window->Flags & WINDOW_IsChildWindow))
+    {
+      AddWindowToSortedBuffer(&SortBuffer, Window);
+    }
+  }
+  g.OrderedWindows = SortBuffer;
+
+  // Submit for drawing
   for(int i = 0; i < g.OrderedWindows.Count; i++)
   {
     gui_window* Window = g.OrderedWindows[i];
@@ -98,6 +123,7 @@ UI::EndFrame()
       }
     }
     g.OrderedWindows[i]->DrawArray.Clear();
+    g.OrderedWindows[i]->ChildWindows.Clear();
   }
   g.ClipRectStack.Clear();
   g.LatestClipRectIndex = 0;
@@ -134,7 +160,9 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
   *Value        = NormValue * ValueRange + MinValue;
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
+  char TempBuffer[20];
+  snprintf(TempBuffer, sizeof(TempBuffer), "%.0f", *Value);
+  DrawTextBox(DragRect.MinP, DragRect.GetSize(), TempBuffer, Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
 }
 
 static void
@@ -184,56 +212,6 @@ Scrollbar(gui_window* Window, bool Vertical)
   }
 }
 
-/*
-// currently only vertical supported
-static void
-Scrollbar(gui_window* Window, bool Vertical)
-{
-  gui_context& g = *GetContext();
-
-  assert(Window);
-  assert(Window->ContentsSize.X > 0 && Window->ContentsSize.Y > 0);
-  assert(Window->Size.X >= g.Style.StyleVars[UI::VAR_ScrollbarSize].X);
-  assert(Window->Size.Y >= g.Style.StyleVars[UI::VAR_ScrollbarSize].X);
-
-  ui_id ID = Window->GetID(Vertical ? "##VertScrollbar" : "##HirizScrollbar");
-
-  // Determine drag size
-  const float DragOverWindowSize = MaxFloat((Window->Size.Y < Window->ContentsSize.Y) ? Window->Size.Y / Window->ContentsSize.Y : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->Size.Y);
-  const float DragSize           = DragOverWindowSize * Window->Size.Y;
-
-  // Determine min and max positions is screen space
-  assert(Window->Size.Y - DragSize >= 0);
-  const float SliderRange = Window->Size.Y - DragSize;
-
-  float& ScrollNorm = (Vertical) ? Window->ScrollNorm.Y : Window->ScrollNorm.X;
-
-  rect ScrollRect = NewRect(Window->Position + vec3{ Window->Size.X - g.Style.StyleVars[UI::VAR_ScrollbarSize].X, 0 }, Window->Position + Window->Size);
-  rect DragRect =
-    NewRect(ScrollRect.MinP.X, ScrollRect.MinP.Y + ScrollNorm * SliderRange, ScrollRect.MinP.X + g.Style.StyleVars[UI::VAR_ScrollbarSize].X, ScrollRect.MinP.Y + ScrollNorm * SliderRange + DragSize);
-
-  // Handle movement
-  bool Held = false;
-  ButtonBehavior(DragRect, ID, NULL, &Held);
-  if(Held)
-  {
-    // Clamp ScrollNorm between min and max positions
-    if(SliderRange > 0)
-    {
-      ScrollNorm    = ClampFloat(0, ScrollNorm + (float)g.Input->dMouseScreenY / SliderRange, 1);
-      rect DragRect = NewRect(ScrollRect.MinP.X, ScrollRect.MinP.Y + ScrollNorm * SliderRange, ScrollRect.MinP.X + g.Style.StyleVars[UI::VAR_ScrollbarSize].X,
-                              ScrollRect.MinP.Y + ScrollNorm * SliderRange + DragSize);
-    }
-  }
-
-  DrawBox(ScrollRect.MinP + vec3{ g.Style.StyleVars[UI::VAR_DragMinSize].X, 0 }, { g.Style.StyleVars[UI::VAR_DragMinSize].X, SliderRange }, { 1, 0, 1, 1 }, _GetGUIColor(ScrollbarBox));
-  DrawBox(ScrollRect.MinP, ScrollRect.MaxP - ScrollRect.MinP, _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.MaxP - DragRect.MinP, Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
-
-  Window->ScrollRange.Y = (Window->Size.Y < Window->ContentsSize.Y) ? Window->ContentsSize.Y - Window->Size.Y : 0; // Delta in screen space that the window content can scroll
-}
-*/
-
 void
 UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_t Flags)
 {
@@ -277,13 +255,18 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   if(Window->Flags & WINDOW_IsChildWindow)
   {
     assert(Window->ParentWindow);
-    Window->Position = Window->ParentWindow->CurrentPos;
+    Window->Position          = Window->ParentWindow->CurrentPos;
+    Window->IndexWithinParent = g.CurrentWindowStack.Count - 1;
+    assert(0 < Window->IndexWithinParent);
+    assert(Window->ParentWindow);
+    Window->ParentWindow->ChildWindows.Append(Window);
   }
 
   Window->MaxPos = Window->CurrentPos = Window->Position;
-  // Window->ClipRect                    = NewRect(Window->Position, Window->Position + Size);
 
   PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) ? true : false);
+  Window->ClippedSizeRect = NewRect(Window->Position, Window->Position + Size); // used for hovering
+  Window->ClippedSizeRect.Clip(g.ClipRectStack.Back());
   DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground), _GetGUIColor(WindowBorder));
 
   // Order matters
@@ -338,7 +321,10 @@ UI::EndWindow()
   g.ClipRectStack.Pop();
   g.ClipRectStack.Pop();
 
-  // DrawBox(MinPos, Window.ContentsSize, { 1, 0, 1, 1 }, { 1, 1, 1, 1 });
+  /*PushClipQuad(&Window, {}, { SCREEN_WIDTH, SCREEN_HEIGHT }, false);
+  DrawBox(MinPos, Window.ContentsSize, { 1, 0, 1, 1 }, { 1, 1, 1, 1 });
+  g.ClipRectStack.Pop();*/
+
   g.CurrentWindowStack.Pop();
   g.CurrentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Back() : NULL;
 }

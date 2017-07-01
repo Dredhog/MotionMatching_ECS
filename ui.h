@@ -20,6 +20,7 @@ namespace UI
     COLOR_CheckboxHover,
     COLOR_WindowBackground,
     COLOR_WindowBorder,
+    COLOR_ChildWindowBackground,
     COLOR_ScrollbarBox,
     COLOR_ScrollbarDrag,
     COLOR_Text,

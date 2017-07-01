@@ -136,8 +136,10 @@ struct gui_window
   ui_id              MoveID;
   UI::window_flags_t Flags;
 
-  gui_window* RootWindow;
-  gui_window* ParentWindow;
+  gui_window*                  RootWindow;
+  gui_window*                  ParentWindow;
+  fixed_array<gui_window*, 10> ChildWindows;
+  int32_t                      IndexWithinParent;
 
   vec3 Position;
   vec3 Size;
@@ -146,7 +148,7 @@ struct gui_window
   vec3 CurrentPos;
   vec3 MaxPos;
 
-  // rect ClipRect;
+  rect ClippedSizeRect; // Used for hovered window calculations
 
   vec3 ContentsSize;
 
