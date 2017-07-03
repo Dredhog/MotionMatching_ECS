@@ -13,7 +13,7 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
 {
   if(g_Context.InitChecksum != CONTEXT_CHECKSUM)
   {
-    Create(&g_Context, GameState);
+    Init(&g_Context, GameState);
   }
   g_Context.Input = Input;
 
@@ -135,6 +135,7 @@ UI::EndFrame()
     if(g.FocusedWindow != NULL)
     {
       FocusWindow(NULL);
+      CloseCurrentPopup();
     }
   }
 
@@ -143,16 +144,19 @@ UI::EndFrame()
 }
 
 void
-UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Vertical, vec3 Size, float DragSize)
+UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Vertical)
 {
   assert(Label);
   assert(Value);
   assert(MinValue < MaxValue);
-  assert(0 < Size.X && 0 < Size.Y);
-  assert(Vertical && DragSize < Size.Y || !Vertical && DragSize < Size.X);
+  // assert(0 < Size.X && 0 < Size.Y);
+  // assert(Vertical && DragSize < Size.Y || !Vertical && DragSize < Size.X);
 
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
+
+  float DragSize = g.Style.Vars[UI::VAR_DragMinSize];
+  vec3  Size     = Window.GetDefaultItemSize();
 
   ui_id ID = Window.GetID(Label);
 
@@ -173,9 +177,12 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
   *Value        = NormValue * ValueRange + MinValue;
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
+
   char TempBuffer[20];
   snprintf(TempBuffer, sizeof(TempBuffer), "%.0f", *Value);
-  DrawTextBox(DragRect.MinP, DragRect.GetSize(), TempBuffer, Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
+  DrawText(SliderRect.MinP, SliderRect.GetWidth(), SliderRect.GetHeight(), TempBuffer);
+  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 }
 
 static void
@@ -192,19 +199,19 @@ Scrollbar(gui_window* Window, bool Vertical)
   assert(0 < Window->ContentsSize.Y);
   assert(0 < Window->SizeNoScroll.X);
   assert(0 < Window->SizeNoScroll.Y);
-  assert(g.Style.StyleVars[UI::VAR_ScrollbarSize].X <= Window->Size.X);
-  assert(g.Style.StyleVars[UI::VAR_ScrollbarSize].X <= Window->Size.Y);
+  assert(g.Style.Vars[UI::VAR_ScrollbarSize] <= Window->Size.X);
+  assert(g.Style.Vars[UI::VAR_ScrollbarSize] <= Window->Size.Y);
 
   ui_id ID = Window->GetID(Vertical ? "##VertScrollbar" : "##HirizScrollbar");
 
   // WithoutScrollbars
-  const float ScrollbarSize = g.Style.StyleVars[UI::VAR_ScrollbarSize].X;
+  const float ScrollbarSize = g.Style.Vars[UI::VAR_ScrollbarSize];
 
   // Determine drag size
   float*      ScrollNorm = (Vertical) ? &Window->ScrollNorm.Y : &Window->ScrollNorm.X;
   const float NormDragSize =
-    (Vertical) ? MaxFloat((Window->SizeNoScroll.Y < Window->ContentsSize.Y) ? Window->SizeNoScroll.Y / Window->ContentsSize.Y : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->SizeNoScroll.Y)
-               : MaxFloat((Window->SizeNoScroll.X < Window->ContentsSize.X) ? Window->SizeNoScroll.X / Window->ContentsSize.X : 1, g.Style.StyleVars[UI::VAR_DragMinSize].X / Window->SizeNoScroll.X);
+    (Vertical) ? MaxFloat((Window->SizeNoScroll.Y < Window->ContentsSize.Y) ? Window->SizeNoScroll.Y / Window->ContentsSize.Y : 1, g.Style.Vars[UI::VAR_DragMinSize] / Window->SizeNoScroll.Y)
+               : MaxFloat((Window->SizeNoScroll.X < Window->ContentsSize.X) ? Window->SizeNoScroll.X / Window->ContentsSize.X : 1, g.Style.Vars[UI::VAR_DragMinSize] / Window->SizeNoScroll.X);
   rect ScrollRect = (Vertical) ? NewRect(Window->Position + vec3{ Window->SizeNoScroll.X, 0 }, Window->Position + vec3{ Window->Size.X, Window->SizeNoScroll.Y })
                                : NewRect(Window->Position + vec3{ 0, Window->SizeNoScroll.Y }, Window->Position + vec3{ Window->SizeNoScroll.X, Window->Size.Y });
 
@@ -300,8 +307,8 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   // Order matters
   //#1
   Window->SizeNoScroll = Window->Size;
-  Window->SizeNoScroll -= vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0,
-                                (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0 };
+  Window->SizeNoScroll -=
+    vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0, (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0 };
   if(Window->SizeNoScroll.Y < Window->ContentsSize.Y) // Add vertical Scrollbar
   {
     Window->Flags |= UI::WINDOW_UseVerticalScrollbar;
@@ -321,8 +328,8 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     Window->ScrollNorm.X = 0;
   }
   Window->SizeNoScroll = Window->Size;
-  Window->SizeNoScroll -= vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0,
-                                (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.StyleVars[UI::VAR_ScrollbarSize].X : 0 };
+  Window->SizeNoScroll -=
+    vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0, (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0 };
   //#2
   if(Window->Flags & UI::WINDOW_UseVerticalScrollbar)
     Scrollbar(g.CurrentWindow, true);
@@ -332,6 +339,8 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   //#3
   Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
   PushClipQuad(Window, Window->Position, Window->SizeNoScroll);
+
+  Window->DefaultItemWidth = 0.65f * Window->SizeNoScroll.X;
 }
 
 void
@@ -389,12 +398,14 @@ UI::EndPopupWindow()
 }
 
 void
-UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, vec3 ButtonSize, int HeightInItems)
+UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems)
 {
   gui_context& g      = *GetContext();
   gui_window*  Window = GetCurrentWindow();
 
   const ui_id ID = Window->GetID(Label);
+
+  vec3 ButtonSize = Window->GetDefaultItemSize();
 
   const rect ButtonBB     = NewRect(Window->CurrentPos, Window->CurrentPos + ButtonSize);
   const rect ButtonTextBB = NewRect(ButtonBB.MinP, ButtonBB.MaxP - vec3{ ButtonSize.Y, 0 });
@@ -411,49 +422,50 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
     return;
   }
 
-  bool        Hovered     = IsHovered(ButtonBB, ID);
-  static bool OpenPopup   = false;
-  vec4        InnerColor  = (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal);
-  vec4        BorderColor = _GetGUIColor(ButtonNormal);
+  bool Hovered    = IsHovered(ButtonBB, ID);
+  vec4 InnerColor = (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal);
   if(Hovered)
   {
     if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
       SetActive(0, NULL);
-      if(OpenPopup)
+      if(IsPopupOpen(ID))
       {
-        OpenPopup = false;
+        g.IsPopupOpen = false;
       }
       else
       {
         FocusWindow(Window);
-        OpenPopup = true;
+        g.IsPopupOpen = true;
       }
     }
   }
 
-  DrawTextBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), Label, InnerColor, BorderColor);
+  DrawTextBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), Label, InnerColor, _GetGUIColor(Border));
   PushTexturedQuad(Window, IconBB.MinP, IconBB.GetSize(), g.GameState->ExpandedTextureID);
+  DrawText(ButtonBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
-  if(OpenPopup)
+  if(IsPopupOpen(ID))
   {
     BeginPopupWindow("Combo", PopupBB.GetSize(), WINDOW_Combo);
     gui_window* PopupWindow = GetCurrentWindow();
     for(int i = 0; i < ItemCount; i++)
     {
-      UI::ReleaseButton(Items[i], { PopupWindow->SizeNoScroll.X, ItemHeight });
+      UI::ReleaseButton(Items[i]);
     }
     EndPopupWindow();
   }
 }
 
 bool
-UI::ReleaseButton(const char* Text, vec3 Size)
+UI::ReleaseButton(const char* Text)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
   ui_id ID = Window.GetID(Text);
+
+  vec3 Size = Window.GetDefaultItemSize();
 
   const rect& Rect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
   AddSize(Size);
@@ -466,9 +478,38 @@ UI::ReleaseButton(const char* Text, vec3 Size)
   bool Result     = ButtonBehavior(Rect, ID);
   vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(ButtonPressed) : ((ID == g.HotID) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal));
   DrawTextBox(Rect.MinP, Size, Text, InnerColor, _GetGUIColor(Border));
-	DrawText(Window.CurrentPos, "Hello");
 
   return Result;
+}
+
+void
+UI::Checkbox(const char* Label, bool* Toggle)
+{
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  ui_id ID = Window.GetID(Label);
+
+  float Height = Window.GetDefaultItemSize().Y;
+
+  const rect& CheckboxBB = NewRect(Window.CurrentPos, Window.CurrentPos + vec3{ Height, Height });
+
+  AddSize(CheckboxBB.GetSize());
+  if(!TestIfVisible(CheckboxBB))
+  {
+    return;
+  }
+
+  bool Released = ButtonBehavior(CheckboxBB, ID);
+  if(Released)
+  {
+    *Toggle = !(*Toggle);
+  }
+
+  vec4 InnerColor = ((ID == g.HotID) ? _GetGUIColor(CheckboxHovered) : _GetGUIColor(CheckboxNormal));
+  DrawBox(CheckboxBB.MinP, CheckboxBB.GetSize(), InnerColor, _GetGUIColor(Border));
+
+  DrawText(CheckboxBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 }
 
 bool
@@ -494,7 +535,7 @@ UI::CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size)
   int32_t TextureID = (*IsExpanded) ? g.GameState->ExpandedTextureID : g.GameState->CollapsedTextureID;
   PushTexturedQuad(&Window, Rect.MinP, { Size.Y, Size.Y }, TextureID);
 
-  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(HeaderPressed) : ((ID == g.HotID) ? _GetGUIColor(HeaderHover) : _GetGUIColor(HeaderNormal));
+  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(HeaderPressed) : ((ID == g.HotID) ? _GetGUIColor(HeaderHovered) : _GetGUIColor(HeaderNormal));
   DrawTextBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, Text, InnerColor, _GetGUIColor(Border));
 
   return *IsExpanded;
@@ -572,9 +613,9 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
 
   // Determine actual drag size
   const float RegionSize = (Vertical) ? BB.GetHeight() : BB.GetWidth();
-  assert(g.Style.StyleVars[UI::VAR_DragMinSize].X <= RegionSize);
+  assert(g.Style.Vars[UI::VAR_DragMinSize] <= RegionSize);
 
-  const float DragSize          = (NormDragSize * RegionSize < g.Style.StyleVars[UI::VAR_DragMinSize].X) ? g.Style.StyleVars[UI::VAR_DragMinSize].X : NormDragSize * RegionSize;
+  const float DragSize          = (NormDragSize * RegionSize < g.Style.Vars[UI::VAR_DragMinSize]) ? g.Style.Vars[UI::VAR_DragMinSize] : NormDragSize * RegionSize;
   const float MovableRegionSize = RegionSize - DragSize;
   const float DragOffset        = (*ScrollNorm) * MovableRegionSize;
 

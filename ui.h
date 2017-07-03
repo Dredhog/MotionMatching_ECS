@@ -13,11 +13,11 @@ namespace UI
     COLOR_ButtonHovered,
     COLOR_ButtonPressed,
     COLOR_HeaderNormal,
-    COLOR_HeaderHover,
+    COLOR_HeaderHovered,
     COLOR_HeaderPressed,
     COLOR_CheckboxNormal,
     COLOR_CheckboxPressed,
-    COLOR_CheckboxHover,
+    COLOR_CheckboxHovered,
     COLOR_WindowBackground,
     COLOR_WindowBorder,
     COLOR_ChildWindowBackground,
@@ -29,8 +29,10 @@ namespace UI
 
   enum ui_style_vars
   {
-    VAR_BorderWidth,
+    VAR_BorderThickness,
     VAR_FontSize,
+    VAR_BoxPaddingX,
+    VAR_BoxPaddingY,
     VAR_ScrollbarSize,
     VAR_DragMinSize,
     VAR_Count
@@ -58,8 +60,8 @@ namespace UI
 
   struct gui_style
   {
-    vec4 Colors[COLOR_Count];
-    vec3 StyleVars[VAR_Count];
+    vec4  Colors[COLOR_Count];
+    float Vars[VAR_Count];
   };
 
   typedef uint32_t window_flags_t;
@@ -78,16 +80,16 @@ namespace UI
   void SameLine();
 
   bool CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size);
-  bool ReleaseButton(const char* Text, vec3 Size);
-  bool ClickButton(const char* Text, vec3 Size);
-  void Checkbox(const char* Text, bool* Toggle);
+  bool ReleaseButton(const char* Text);
+  bool ClickButton(const char* Text);
+  void Checkbox(const char* Label, bool* Toggle);
 
-  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Horizontal, vec3 Size, float DragSize = 0);
+  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Horizontal);
   void SliderFloat3(const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY, float ValueScreenDelta = 10.0f);
   void SliderFloat4(const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f, float ValueScreenDelta = 3.0f);
 
   void Combo(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, size_t ElementSize, char* (*ElementToCharPtr)(void*));
-  void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, vec3 ButtonSize, int HeightInItems);
+  void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems);
 
   void Image(int32_t TextureID, const char* Name, vec3 Size);
   void Text(const char* Name);

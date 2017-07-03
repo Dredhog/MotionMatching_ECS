@@ -72,7 +72,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     assert(GameState->ExpandedTextureID);
 
     //--------------LOAD FONT--------------
-    GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 15, 8, 3);
+    GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);

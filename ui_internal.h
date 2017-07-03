@@ -31,6 +31,9 @@ void FocusWindow(gui_window* Window);
 
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
+bool IsPopupOpen(ui_id ID);
+void CloseCurrentPopup();
+vec3 GetItemSize(vec3 Size, float DefaultWidth, float DefaultHeight);
 
 void         Create(gui_context* Context);
 int          Destroy(gui_context* Context);
@@ -147,7 +150,8 @@ struct gui_window
   vec3 CurrentPos;
   vec3 MaxPos;
 
-  rect ClippedSizeRect; // Used for hovered window calculations
+  rect  ClippedSizeRect; // Used for hovered window calculations
+  float DefaultItemWidth;
 
   vec3 ContentsSize;
 
@@ -161,6 +165,7 @@ struct gui_window
   {
     return IDHash(Label, (int)strlen(Label), this->ID);
   }
+  vec3 GetDefaultItemSize() const;
 };
 
 struct gui_context
@@ -172,6 +177,9 @@ struct gui_context
   ui_id         ActiveID;
   ui_id         HotID;
   ui_id         MoveWindowMoveID;
+
+  // TODO(Lukas) replace bool with open popup stack
+  bool IsPopupOpen;
 
   int32_t                      LatestClipRectIndex;
   fixed_stack<rect, 20>        ClipRectStack;
@@ -185,6 +193,14 @@ struct gui_context
   gui_window*       ActiveIDWindow;
   gui_window*       FocusedWindow;
 };
+
+vec3
+gui_window::GetDefaultItemSize() const
+{
+  gui_context& g      = *GetContext();
+  vec3         Result = { this->DefaultItemWidth, g.Style.Vars[UI::VAR_FontSize] + 2 * g.Style.Vars[UI::VAR_BoxPaddingY] };
+  return Result;
+}
 
 // GLOBAL CONTEXT
 static gui_context g_Context;
@@ -306,7 +322,7 @@ DrawText(vec3 BottomLeft, const char* Text)
 
   int32_t  TextureWidth;
   int32_t  TextureHeight;
-  uint32_t TextureID = Text::GetTextTextureID(g.Font, (int32_t)g.Style.StyleVars[UI::VAR_FontSize].X, Text, _GetGUIColor(Text), &TextureWidth, &TextureHeight);
+  uint32_t TextureID = Text::GetTextTextureID(g.Font, (int32_t)g.Style.Vars[UI::VAR_FontSize], Text, _GetGUIColor(Text), &TextureWidth, &TextureHeight);
   PushTexturedQuad(Window, { BottomLeft.X, BottomLeft.Y - (float)TextureHeight }, { (float)TextureWidth, (float)TextureHeight }, TextureID);
 }
 
@@ -315,7 +331,7 @@ DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderCol
 {
   gui_context& g            = *GetContext();
   gui_window*  Window       = GetCurrentWindow();
-  float        ButtonBorder = g.Style.StyleVars[UI::VAR_BorderWidth].X;
+  float        ButtonBorder = g.Style.Vars[UI::VAR_BorderThickness];
   PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
   PushColoredQuad(Window, vec3{ TopLeft.X + ButtonBorder, TopLeft.Y + ButtonBorder, TopLeft.Z }, { Width - 2 * ButtonBorder, Height - 2 * ButtonBorder }, InnerColor);
 }
@@ -496,35 +512,66 @@ TestIfVisible(const rect& Rect)
   return Rect.Intersects(ClipRect) ? true : false;
 }
 
+bool
+IsPopupOpen(ui_id ID)
+{
+  gui_context& g = *GetContext();
+  return g.IsPopupOpen;
+}
+
 void
-Create(gui_context* Context, game_state* GameState)
+CloseCurrentPopup()
+{
+  gui_context& g = *GetContext();
+  g.IsPopupOpen  = false;
+}
+
+vec3
+GetItemSize(vec3 Size, float DefaultWidth, float DefaultHeight)
+{
+  if(Size.X == 0)
+  {
+    Size.X = DefaultWidth;
+  }
+  if(Size.Y == 0)
+  {
+    Size.Y = DefaultHeight;
+  }
+  return Size;
+}
+
+void
+Init(gui_context* Context, game_state* GameState)
 {
   Context->Style.Colors[UI::COLOR_Border]           = { 0.1f, 0.1f, 0.1f, 0.5f };
   Context->Style.Colors[UI::COLOR_ButtonNormal]     = { 0.4f, 0.4f, 0.4f, 1 };
   Context->Style.Colors[UI::COLOR_ButtonHovered]    = { 0.5f, 0.5f, 0.5f, 1 };
   Context->Style.Colors[UI::COLOR_ButtonPressed]    = { 0.3f, 0.3f, 0.3f, 1 };
   Context->Style.Colors[UI::COLOR_HeaderNormal]     = { 0.2f, 0.4f, 0.4f, 1 };
-  Context->Style.Colors[UI::COLOR_HeaderHover]      = { 0.3f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_HeaderHovered]    = { 0.3f, 0.5f, 0.5f, 1 };
   Context->Style.Colors[UI::COLOR_HeaderPressed]    = { 0.1f, 0.3f, 0.3f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxNormal]   = { 0.3f, 0.3f, 0.3f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.2f, 0.2f, 0.4f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxHover]    = { 0.3f, 0.3f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxNormal]   = { 0.4f, 0.4f, 0.4f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.5f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxHovered]  = { 0.3f, 0.3f, 0.3f, 1 };
   Context->Style.Colors[UI::COLOR_ScrollbarBox]     = { 0.3f, 0.3f, 0.5f, 0.5f };
   Context->Style.Colors[UI::COLOR_ScrollbarDrag]    = { 0.2f, 0.2f, 0.4f, 0.5f };
   Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.5f, 0.1f, 0.1f, 0.5f };
   Context->Style.Colors[UI::COLOR_WindowBorder]     = { 0.4f, 0.4f, 0.4f, 0.5f };
   Context->Style.Colors[UI::COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
 
-  Context->Style.StyleVars[UI::VAR_BorderWidth]   = { 1 };
-  Context->Style.StyleVars[UI::VAR_ScrollbarSize] = { 20 };
-  Context->Style.StyleVars[UI::VAR_DragMinSize]   = { 10 };
-  Context->Style.StyleVars[UI::VAR_FontSize]      = { (float)GameState->Font.SizedFonts[0].Size };
+  Context->Style.Vars[UI::VAR_BorderThickness] = 1;
+  Context->Style.Vars[UI::VAR_ScrollbarSize]   = 20;
+  Context->Style.Vars[UI::VAR_DragMinSize]     = 10;
+  Context->Style.Vars[UI::VAR_BoxPaddingX]     = 5;
+  Context->Style.Vars[UI::VAR_BoxPaddingY]     = 5;
+  Context->Style.Vars[UI::VAR_FontSize]        = (float)GameState->Font.SizedFonts[0].Size;
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
   Context->Windows.HardClear();
   Context->CurrentWindow = NULL;
   Context->GameState     = GameState;
+  Context->IsPopupOpen   = false;
 }
 
 int
