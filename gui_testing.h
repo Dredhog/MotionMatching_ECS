@@ -85,19 +85,19 @@ namespace UI
     }
     UI::EndWindow();
 
-    UI::BeginWindow("window C", { 800, 400 }, { 400, 500 });
+    UI::BeginWindow("window C", { 800, 300 }, { 600, 700 });
     {
       UI::ReleaseButton("realease me!", { 150, 20 });
       UI::ReleaseButton("Mee too!", { 300, 30 });
       UI::ReleaseButton("And me!", { 200, 50 });
-      UI::BeginChildWindow("Child Window A ", { 350, 400 });
+      UI::BeginChildWindow("Child Window A ", { 500, 400 });
       {
         static bool s_HeaderExpanded  = false;
         static bool s_HeaderExpanded1 = false;
         static bool s_HeaderExpanded2 = false;
         if(UI::CollapsingHeader("Wide Inside", &s_HeaderExpanded, { 350, 30 }))
         {
-          UI::ReleaseButton("realease me!", { 500, 30 });
+          UI::ReleaseButton("realease me!", { 200, 30 });
           UI::BeginChildWindow("window 5", { 350, 200 });
           {
             static float s_SliderValue = 0.001f;
@@ -126,12 +126,15 @@ namespace UI
         {
           UI::BeginChildWindow("window 6", { 350, 200 });
           {
-            static float s_SliderValue = 0.001f;
-            char         TempBuff[20];
+            static float       s_SliderValue = 0.001f;
+            static int         s_CurrentItem = -1;
+            static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
+            char               TempBuff[20];
             snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
             UI::ReleaseButton(TempBuff, { 300, 30 });
             UI::ReleaseButton("realease me!", { 150, 20 });
             UI::ReleaseButton("And me!", { 400, 50 });
+            UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), { 200, 30 }, 5);
             UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false, { 300, 30 }, s_SliderValue);
             UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
           }

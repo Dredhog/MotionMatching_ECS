@@ -37,6 +37,26 @@ ClampFloat(float Min, float T, float Max)
 }
 
 inline int32_t
+MinInt32(int32_t A, int32_t B)
+{
+  if(A < B)
+  {
+    return A;
+  }
+  return B;
+}
+
+inline int32_t
+MaxInt32(int32_t A, int32_t B)
+{
+  if(A > B)
+  {
+    return A;
+  }
+  return B;
+}
+
+inline int32_t
 ClampInt32InIn(int32_t Min, int32_t T, int32_t Max)
 {
   if(T < Min)

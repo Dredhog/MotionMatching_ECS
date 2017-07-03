@@ -56,12 +56,16 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
       break;
     }
   }
+
   for(int i = 0; i < g.Windows.Count; i++)
   {
     if(g.ActiveID && g.Windows[i].MoveID == g.ActiveID)
     {
-      MoveWindowToFront(&g.Windows[i]);
-      g.Windows[i].Position += { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
+      FocusWindow(&g.Windows[i]);
+      if(!(g.Windows[i].Flags & WINDOW_IsNotMovable))
+      {
+        g.Windows[i].Position += { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
+      }
       break;
     }
   }
@@ -125,6 +129,15 @@ UI::EndFrame()
     g.OrderedWindows[i]->DrawArray.Clear();
     g.OrderedWindows[i]->ChildWindows.Clear();
   }
+
+  if(g.ActiveID == 0 && g.HotID == 0 && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+  {
+    if(g.FocusedWindow != NULL)
+    {
+      FocusWindow(NULL);
+    }
+  }
+
   g.ClipRectStack.Clear();
   g.LatestClipRectIndex = 0;
 }
@@ -245,28 +258,43 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     g.OrderedWindows.Push(Window);
   }
   g.CurrentWindow = Window;
-  if(0 < g.CurrentWindowStack.Count)
-  {
-    assert(Window->Flags & WINDOW_IsChildWindow);
-    Window->ParentWindow = g.CurrentWindowStack.Back();
-  }
+
+  // Find parent and root windows
+  Window->ParentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Back() : NULL;
+  assert(!(Window->Flags & WINDOW_IsChildWindow) || Window->ParentWindow != NULL);
   g.CurrentWindowStack.Push(g.CurrentWindow);
+
+  int RootWindowIndex;
+  for(RootWindowIndex = g.CurrentWindowStack.Count - 1; RootWindowIndex >= 0; RootWindowIndex--)
+  {
+    if(!(g.CurrentWindowStack[RootWindowIndex]->Flags & WINDOW_IsChildWindow))
+    {
+      break;
+    }
+  }
+  Window->RootWindow = g.CurrentWindowStack[RootWindowIndex];
 
   if(Window->Flags & WINDOW_IsChildWindow)
   {
     assert(Window->ParentWindow);
+
     Window->Position          = Window->ParentWindow->CurrentPos;
     Window->IndexWithinParent = g.CurrentWindowStack.Count - 1;
     assert(0 < Window->IndexWithinParent);
     assert(Window->ParentWindow);
     Window->ParentWindow->ChildWindows.Append(Window);
   }
+  if(Window->Flags & WINDOW_Combo)
+  {
+    Window->Position = Window->ParentWindow->CurrentPos;
+    FocusWindow(Window);
+  }
 
   Window->MaxPos = Window->CurrentPos = Window->Position;
 
-  PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) ? true : false);
+  PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) && !(Window->Flags & (WINDOW_Popup | WINDOW_Combo)) ? true : false);
   Window->ClippedSizeRect = NewRect(Window->Position, Window->Position + Size); // used for hovering
-  Window->ClippedSizeRect.Clip(g.ClipRectStack.Back());
+  Window->ClippedSizeRect.Clip(g.ClipRectStack.Back());                         // used for hovering
   DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground), _GetGUIColor(WindowBorder));
 
   // Order matters
@@ -316,6 +344,7 @@ UI::EndWindow()
 
   //----------Window mooving-----------
   // Automatically sets g.ActiveID = Window.MoveID
+  //
   ButtonBehavior(NewRect(Window.Position, Window.Position + Window.Size), Window.MoveID);
   //----------------------------------
   g.ClipRectStack.Pop();
@@ -331,6 +360,7 @@ UI::EndWindow()
 
 void
 UI::BeginChildWindow(const char* Name, vec3 Size, window_flags_t Flags)
+
 {
   UI::BeginWindow(Name, {}, Size, Flags | WINDOW_IsChildWindow);
 }
@@ -342,6 +372,79 @@ UI::EndChildWindow()
   assert(Window->Flags & WINDOW_IsChildWindow);
   UI::EndWindow();
   AddSize(Window->Size);
+}
+
+void
+UI::BeginPopupWindow(const char* Name, vec3 Size, window_flags_t Flags)
+{
+  UI::BeginWindow(Name, {}, Size, Flags | WINDOW_Popup | WINDOW_IsNotMovable | WINDOW_IsNotResizable);
+}
+
+void
+UI::EndPopupWindow()
+{
+  gui_window* Window = GetCurrentWindow();
+  assert(Window->Flags & WINDOW_Popup);
+  UI::EndWindow();
+}
+
+void
+UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, vec3 ButtonSize, int HeightInItems)
+{
+  gui_context& g      = *GetContext();
+  gui_window*  Window = GetCurrentWindow();
+
+  const ui_id ID = Window->GetID(Label);
+
+  const rect ButtonBB     = NewRect(Window->CurrentPos, Window->CurrentPos + ButtonSize);
+  const rect ButtonTextBB = NewRect(ButtonBB.MinP, ButtonBB.MaxP - vec3{ ButtonSize.Y, 0 });
+  const rect IconBB       = NewRect({ ButtonTextBB.MaxP.X, ButtonTextBB.MinP.Y }, ButtonBB.MaxP);
+
+  const float ItemHeight  = ButtonBB.GetHeight();
+  const float ItemWidth   = ButtonBB.GetWidth();
+  const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount, HeightInItems);
+  const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y }, { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
+
+  AddSize(ButtonBB.GetSize());
+  if(!TestIfVisible(ButtonBB))
+  {
+    return;
+  }
+
+  bool        Hovered     = IsHovered(ButtonBB, ID);
+  static bool OpenPopup   = false;
+  vec4        InnerColor  = (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal);
+  vec4        BorderColor = _GetGUIColor(ButtonNormal);
+  if(Hovered)
+  {
+    if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+    {
+      SetActive(0, NULL);
+      if(OpenPopup)
+      {
+        OpenPopup = false;
+      }
+      else
+      {
+        FocusWindow(Window);
+        OpenPopup = true;
+      }
+    }
+  }
+
+  DrawTextBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), Label, InnerColor, BorderColor);
+  PushTexturedQuad(Window, IconBB.MinP, IconBB.GetSize(), g.GameState->ExpandedTextureID);
+
+  if(OpenPopup)
+  {
+    BeginPopupWindow("Combo", PopupBB.GetSize(), WINDOW_Combo);
+    gui_window* PopupWindow = GetCurrentWindow();
+    for(int i = 0; i < ItemCount; i++)
+    {
+      UI::ReleaseButton(Items[i], { PopupWindow->SizeNoScroll.X, ItemHeight });
+    }
+    EndPopupWindow();
+  }
 }
 
 bool
@@ -361,8 +464,9 @@ UI::ReleaseButton(const char* Text, vec3 Size)
   }
 
   bool Result     = ButtonBehavior(Rect, ID);
-  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(ButtonPressed) : ((ID == g.HotID) ? _GetGUIColor(ButtonHover) : _GetGUIColor(ButtonNormal));
+  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(ButtonPressed) : ((ID == g.HotID) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal));
   DrawTextBox(Rect.MinP, Size, Text, InnerColor, _GetGUIColor(Border));
+	DrawText(Window.CurrentPos, "Hello");
 
   return Result;
 }
@@ -396,49 +500,6 @@ UI::CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size)
   return *IsExpanded;
 }
 
-/*
-void
-UI::SliderFloat(char* Text, float* Var, float Min, float Max, float ScreenValue)
-{
-  ui_id ID   = {};
-  ID.DataPtr = (uintptr_t)Var;
-  ID.NamePtr = (uintptr_t)Text;
-
-  if(_LayoutIntersects(Layout, Input))
-  {
-    SetHot(ID);
-  }
-  else
-  {
-    SetHot(NOT_ACTIVE);
-  }
-
-  if((ID == g.ActiveID)
-  {
-    *Var += Input->NormdMouseX * ScreenValue;
-    if(!Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
-    {
-      SetActive(NOT_ACTIVE);
-    }
-  }
-  else if(IsHot(ID))
-  {
-    if(Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
-    {
-      SetActive(ID);
-    }
-  }
-  char FloatTextBuffer[20];
-
-  *Var = ClampFloat(Min, *Var, Max);
-  sprintf(FloatTextBuffer, "%5.2f", (double)*Var);
-
-  vec4 InnerColor = (ID == g.ActiveID) ? g_PressedColor : (IsHot(ID) ? g_HighlightColor : g_NormalColor);
-  UI::DrawTextBox(GameState, Layout, FloatTextBuffer, InnerColor, g_BorderColor);
-  Layout->X += Layout->ColumnWidth;
-}
-*/
-
 static bool
 ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, UI::button_flags_t Flags)
 {
@@ -461,11 +522,11 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, UI::button_fl
   {
     if((Flags & UI::BUTTON_PressOnRelease) && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
-      SetActive(ID);
+      SetActive(ID, &Window);
     }
     else if((Flags & UI::BUTTON_PressOnClick) && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
-      SetActive(NOT_ACTIVE);
+      SetActive(0, NULL);
       Result = true;
     }
   }
@@ -483,7 +544,7 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, UI::button_fl
       {
         Result = true;
       }
-      SetActive(NOT_ACTIVE);
+      SetActive(0, NULL);
     }
   }
 
@@ -575,11 +636,10 @@ UI::Image(int32_t TextureID, const char* Name, vec3 Size)
   gui_window&  Window = *GetCurrentWindow();
 
   rect ImageRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  AddSize(Size);
   if(!TestIfVisible(ImageRect))
   {
-    AddSize(Size);
     return;
   }
-  PushTexturedQuad(&Window, Window.CurrentPos, Size, TextureID);
-  AddSize(Size);
+  PushTexturedQuad(&Window, ImageRect.MinP, ImageRect.GetSize(), TextureID);
 }

@@ -10,7 +10,7 @@ namespace UI
   {
     COLOR_Border,
     COLOR_ButtonNormal,
-    COLOR_ButtonHover,
+    COLOR_ButtonHovered,
     COLOR_ButtonPressed,
     COLOR_HeaderNormal,
     COLOR_HeaderHover,
@@ -30,6 +30,7 @@ namespace UI
   enum ui_style_vars
   {
     VAR_BorderWidth,
+    VAR_FontSize,
     VAR_ScrollbarSize,
     VAR_DragMinSize,
     VAR_Count
@@ -42,9 +43,10 @@ namespace UI
     WINDOW_Usetitlebar            = 1 << 2,
     WINDOW_ISCollapsable          = 1 << 3,
     WINDOW_IsChildWindow          = 1 << 4,
-    WINDOW_IsNotMovable           = 1 << 6,
-    WINDOW_IsNotResizable         = 1 << 7,
-    WINDOW_Popup                  = 1 << 8,
+    WINDOW_IsNotMovable           = 1 << 5,
+    WINDOW_IsNotResizable         = 1 << 6,
+    WINDOW_Popup                  = 1 << 7,
+    WINDOW_Combo                  = 1 << 8,
   };
 
   enum ui_button_flags
@@ -70,6 +72,8 @@ namespace UI
   void EndWindow();
   void BeginChildWindow(const char* Name, vec3 Size, window_flags_t Flags = 0);
   void EndChildWindow();
+  void BeginPopupWindow(const char* Name, vec3 Size, window_flags_t Flags = 0);
+  void EndPopupWindow();
 
   void SameLine();
 
@@ -83,6 +87,7 @@ namespace UI
   void SliderFloat4(const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f, float ValueScreenDelta = 3.0f);
 
   void Combo(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, size_t ElementSize, char* (*ElementToCharPtr)(void*));
+  void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, vec3 ButtonSize, int HeightInItems);
 
   void Image(int32_t TextureID, const char* Name, vec3 Size);
   void Text(const char* Name);

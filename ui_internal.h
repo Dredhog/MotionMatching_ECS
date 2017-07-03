@@ -25,29 +25,28 @@ void     UnsetHot(ui_id ID);
 
 bool IsMouseInsideRect(const vec3& MinP, const vec3& MaxP);
 bool IsMouseInsideRect(const rect& BB);
+bool IsWindowHoverable(const gui_window* Window);
 bool IsHovered(const rect& BB, ui_id ID);
+void FocusWindow(gui_window* Window);
 
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
-
-// TODO(Lukas) Fix quad submission api, reduce levels of abstraction up to shader minimize getters
-// these currently store quads with faulty quad data, which is currently resubmitted to other API
-void PushClipQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, bool IntersectWithPrevious = true);
-void PushColoredQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, const vec4& Color);
-void PushTexturedQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, int32_t TextureID);
-
-void MoveWindowToFront(gui_window* Window);
 
 void         Create(gui_context* Context);
 int          Destroy(gui_context* Context);
 gui_context* GetContext();
 gui_window*  GetCurrentWindow();
 
-void DrawText(vec3 TopLeft, float Width, float Height, const char* InputText);
+void DrawText(vec3 TopLeft, float Width, float Height, const char* Text);
+void DrawText(vec3 Position, const char* Text);
 void DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor);
-//-----------------------------
 
-ui_id NOT_ACTIVE = {};
+// TODO(Lukas) Fix quad submission api, reduce levels of abstraction up to shader minimize getters
+// these currently store quads with faulty quad data, which is currently resubmitted to other API
+void PushClipQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, bool IntersectWithPrevious = true);
+void PushColoredQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, const vec4& Color);
+void PushTexturedQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, int32_t TextureID);
+//-----------------------------
 
 struct rect
 {
@@ -183,6 +182,8 @@ struct gui_context
   const game_input* Input;
   gui_window*       CurrentWindow;
   gui_window*       HoveredWindow;
+  gui_window*       ActiveIDWindow;
+  gui_window*       FocusedWindow;
 };
 
 // GLOBAL CONTEXT
@@ -230,12 +231,12 @@ PushTexturedQuad(gui_window* Window, const vec3& Position, const vec3& Size, int
 }
 
 void
-MoveWindowToFront(gui_window* Window)
+FocusWindow(gui_window* Window)
 {
-  assert(Window);
+  gui_context& g  = *GetContext();
+  g.FocusedWindow = Window;
 
-  gui_context& g     = *GetContext();
-  int          Index = -1;
+  int Index = -1;
   for(int i = 0; i < g.OrderedWindows.Count; i++)
   {
     if(g.OrderedWindows[i] == Window)
@@ -245,9 +246,12 @@ MoveWindowToFront(gui_window* Window)
     }
   }
 
-  assert(0 <= Index);
-  g.OrderedWindows.Delete(Index);
-  g.OrderedWindows.Push(Window);
+  if(Window)
+  {
+    assert(0 <= Index);
+    g.OrderedWindows.Delete(Index);
+    g.OrderedWindows.Push(Window);
+  }
 }
 
 void
@@ -292,6 +296,18 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
   }
   uint32_t TextureID = Text::GetTextTextureID(g.Font, FontSize, Text, _GetGUIColor(Text), &TextureWidth, &TextureHeight);
   PushTexturedQuad(Window, vec3{ TopLeft.X + ((Width - (float)TextureWidth) / 2), TopLeft.Y - TextPaddingY, TopLeft.Z }, { (float)TextureWidth, Height - 2 * TextPaddingY }, TextureID);
+}
+
+void
+DrawText(vec3 BottomLeft, const char* Text)
+{
+  gui_context& g      = *GetContext();
+  gui_window*  Window = GetCurrentWindow();
+
+  int32_t  TextureWidth;
+  int32_t  TextureHeight;
+  uint32_t TextureID = Text::GetTextTextureID(g.Font, (int32_t)g.Style.StyleVars[UI::VAR_FontSize].X, Text, _GetGUIColor(Text), &TextureWidth, &TextureHeight);
+  PushTexturedQuad(Window, { BottomLeft.X, BottomLeft.Y - (float)TextureHeight }, { (float)TextureWidth, (float)TextureHeight }, TextureID);
 }
 
 void
@@ -367,9 +383,11 @@ IDHash(const void* data, int data_size, uint32_t seed)
 }
 
 void
-SetActive(ui_id ID)
+SetActive(ui_id ID, gui_window* Window)
 {
-  GetContext()->ActiveID = ID;
+  gui_context& g   = *GetContext();
+  g.ActiveID       = ID;
+  g.ActiveIDWindow = Window;
 }
 
 void
@@ -393,13 +411,32 @@ UnsetHot(ui_id ID)
 }
 
 bool
+IsWindowHoverable(const gui_window* Window)
+{
+  gui_context& g             = *GetContext();
+  gui_window*  FocusedWindow = g.FocusedWindow;
+  if(FocusedWindow)
+  {
+    gui_window* FocusedRootWindow = FocusedWindow->RootWindow;
+    if(FocusedRootWindow)
+    {
+      if((FocusedRootWindow->Flags & UI::WINDOW_Popup) && FocusedRootWindow != Window->RootWindow)
+      {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool
 IsHovered(const rect& BB, ui_id ID)
 {
   gui_context& g = *GetContext();
   if(g.HotID == 0 || g.HotID == ID)
   {
     gui_window* Window = GetCurrentWindow();
-    if(Window == g.HoveredWindow)
+    if(Window == g.HoveredWindow && IsWindowHoverable(Window))
     {
       rect TestRect = BB.GetIntersection(g.ClipRectStack.Back());
       if((g.ActiveID == 0 || g.ActiveID == ID) && IsMouseInsideRect(TestRect))
@@ -464,7 +501,7 @@ Create(gui_context* Context, game_state* GameState)
 {
   Context->Style.Colors[UI::COLOR_Border]           = { 0.1f, 0.1f, 0.1f, 0.5f };
   Context->Style.Colors[UI::COLOR_ButtonNormal]     = { 0.4f, 0.4f, 0.4f, 1 };
-  Context->Style.Colors[UI::COLOR_ButtonHover]      = { 0.5f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_ButtonHovered]    = { 0.5f, 0.5f, 0.5f, 1 };
   Context->Style.Colors[UI::COLOR_ButtonPressed]    = { 0.3f, 0.3f, 0.3f, 1 };
   Context->Style.Colors[UI::COLOR_HeaderNormal]     = { 0.2f, 0.4f, 0.4f, 1 };
   Context->Style.Colors[UI::COLOR_HeaderHover]      = { 0.3f, 0.5f, 0.5f, 1 };
@@ -481,6 +518,7 @@ Create(gui_context* Context, game_state* GameState)
   Context->Style.StyleVars[UI::VAR_BorderWidth]   = { 1 };
   Context->Style.StyleVars[UI::VAR_ScrollbarSize] = { 20 };
   Context->Style.StyleVars[UI::VAR_DragMinSize]   = { 10 };
+  Context->Style.StyleVars[UI::VAR_FontSize]      = { (float)GameState->Font.SizedFonts[0].Size };
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
