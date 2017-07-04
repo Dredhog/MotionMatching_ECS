@@ -84,9 +84,12 @@ namespace UI
   bool ClickButton(const char* Text);
   void Checkbox(const char* Label, bool* Toggle);
 
+  void DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, float ScreenDelta, float Width = 0);
+
   void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Vertical = false);
-  void SliderFloat3(const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY, float ValueScreenDelta = 10.0f);
-  void SliderFloat4(const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f, float ValueScreenDelta = 3.0f);
+  void DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue, float ScreenDelta);
+
+  void SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical = false);
 
   void Combo(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, size_t ElementSize, char* (*ElementToCharPtr)(void*));
   void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems);

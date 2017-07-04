@@ -21,7 +21,12 @@ namespace UI
           gui_style& Style = *UI::GetStyle();
           UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
           UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
-          UI::SliderFloat("Border Thickness", &Style.Vars[UI::VAR_BorderThickness], 0, 10);
+          UI::DragFloat("Window opacity", &Style.Colors[UI::COLOR_WindowBackground].A, 0, 1, 5);
+          UI::DragFloat4("Window background", (float*)&Style.Colors[UI::COLOR_WindowBackground], 0, 1, 5);
+
+          int32_t Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
+          UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
+          Style.Vars[UI::VAR_BorderThickness] = Thickness;
         }
         UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5);
 

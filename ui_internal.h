@@ -30,6 +30,8 @@ bool IsHovered(const rect& BB, ui_id ID);
 
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
+void SameLine();
+
 bool IsPopupOpen();
 void ClosePopup(ui_id ID);
 void CloseInactivePopups();
@@ -149,6 +151,7 @@ struct gui_window
   vec3 SizeNoScroll; // Entire window except scrollbars
 
   vec3 CurrentPos;
+  vec3 PreviousPos;
   vec3 MaxPos;
 
   rect  ClippedSizeRect; // Used for hovered window calculations
@@ -165,6 +168,11 @@ struct gui_window
   GetID(const char* Label) const
   {
     return IDHash(Label, (int)strlen(Label), this->ID);
+  }
+  ui_id
+  GetID(const uintptr_t Pointer) const
+  {
+    return IDHash(&Pointer, (int)sizeof(uintptr_t*), this->ID);
   }
   vec3 GetDefaultItemSize() const;
 };
@@ -484,7 +492,27 @@ AddSize(const vec3& Size)
   Window.MaxPos.X    = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X);
   Window.MaxPos.Y    = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y);
 
+  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X, 0 };
   Window.CurrentPos.Y += Size.Y;
+}
+
+namespace UI
+{
+  void
+  SameLine()
+  {
+    gui_window& Window = *GetCurrentWindow();
+    Window.CurrentPos  = Window.PreviousPos;
+  }
+
+  void
+  NewLine()
+  {
+    gui_window& Window  = *GetCurrentWindow();
+    Window.PreviousPos  = Window.CurrentPos;
+    Window.CurrentPos.X = Window.Position.X;
+    Window.CurrentPos.Y = Window.MaxPos.Y;
+  }
 }
 
 bool

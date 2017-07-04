@@ -5,6 +5,7 @@
 #include "text.h"
 
 static bool ButtonBehavior(rect BoundingBox, ui_id ID, bool* OutHeld = NULL, bool* OutHovered = NULL, UI::button_flags_t Flags = 0);
+static void DragBehavior(ui_id ID, rect BB, float* Value, float MinValue, float MaxValue, float DeltaPerScreen, bool* OutHeld = NULL, bool* OutHovering = NULL);
 static rect SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Vertical = false, bool* OutHeld = NULL, bool* OutHovering = NULL);
 static void Scrollbar(gui_window* Window, bool Vertical);
 
@@ -194,7 +195,54 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
   DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
   char TempBuffer[20];
-  snprintf(TempBuffer, sizeof(TempBuffer), "%.0f", *Value);
+  snprintf(TempBuffer, sizeof(TempBuffer), "%.2f", *Value);
+  DrawText({ SliderRect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], SliderRect.MinP.Y + SliderRect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
+}
+
+void
+UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical)
+{
+  assert(Label);
+  assert(Value);
+  assert(MinValue < MaxValue);
+  // assert(0 < Size.X && 0 < Size.Y);
+  // assert(Vertical && DragSize < Size.Y || !Vertical && DragSize < Size.X);
+
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  float DragSize = g.Style.Vars[UI::VAR_DragMinSize];
+  vec3  Size     = Window.GetDefaultItemSize();
+
+  ui_id ID = Window.GetID(Label);
+
+  float       ValueF    = (float)*Value;
+  const float MinValueF = (float)MinValue;
+  const float MaxValueF = (float)MaxValue;
+
+  const float ValueRange   = MaxValue - MinValue;
+  const float NormDragSize = DragSize / (Vertical ? Size.Y : Size.X);
+  float       NormValue    = ((ValueF)-MinValue) / ValueRange;
+
+  rect SliderRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  AddSize(Size);
+  if(!TestIfVisible(SliderRect))
+  {
+    return;
+  }
+
+  bool Held     = false;
+  bool Hovered  = false;
+  rect DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
+  ValueF        = NormValue * ValueRange + MinValueF;
+  *Value        = (int32_t)(ValueF + 0.5f);
+
+  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
+  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+
+  char TempBuffer[20];
+  snprintf(TempBuffer, sizeof(TempBuffer), "%d", *Value);
   DrawText({ SliderRect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], SliderRect.MinP.Y + SliderRect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
 }
 
@@ -489,8 +537,8 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
     if(SelectedSomething)
     {
       ClosePopup(ID);
-			//TODO(Lukas) Add automatic focusing when pressing buttons and closing windows
-			FocusWindow(NULL);
+      // TODO(Lukas) Add automatic focusing when pressing buttons and closing windows
+      FocusWindow(NULL);
     }
   }
 
@@ -725,6 +773,102 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
   }
 
   return DragRect;
+}
+
+static void
+DragBehavior(ui_id ID, rect BB, float* Value, float MinValue, float MaxValue, float DeltaPerScreen, bool* OutHeld, bool* OutHovering)
+{
+  assert(BB.MinP.X < BB.MaxP.X);
+  assert(BB.MinP.Y < BB.MaxP.Y);
+  assert(MinValue < MaxValue);
+
+  gui_context& g = *GetContext();
+
+  bool Held     = false;
+  bool Hovering = false;
+  bool Clicked  = ButtonBehavior(BB, ID, &Held, &Hovering);
+
+  float Delta = 0;
+  if(Held)
+  {
+    Delta = ((float)g.Input->dMouseScreenX / (float)SCREEN_WIDTH) * DeltaPerScreen;
+  }
+  *Value = ClampFloat(MinValue, *Value + Delta, MaxValue);
+
+  if(OutHeld)
+  {
+    *OutHeld = Held;
+  }
+  if(OutHovering)
+  {
+    *OutHovering = Hovering;
+  }
+}
+
+void
+UI::DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, float ScreenDelta, float Width)
+{
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  ui_id ID;
+  if(Label)
+  {
+    ID = Window.GetID(Label);
+  }
+  else
+  {
+    ID = Window.GetID((uintptr_t)Value);
+  }
+
+  vec3 Size = Window.GetDefaultItemSize();
+  if(Width != 0)
+  {
+    Size.X = Width;
+  }
+
+  const rect& Rect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  AddSize(Size);
+
+  if(!TestIfVisible(Rect))
+  {
+    return;
+  }
+
+  bool Held    = false;
+  bool Hovered = false;
+  DragBehavior(ID, Rect, Value, MinValue, MaxValue, ScreenDelta, &Held, &Hovered);
+
+  vec4 InnerColor = (Held) ? _GetGUIColor(ButtonPressed) : ((Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal));
+  DrawBox(Rect.MinP, Size, InnerColor, _GetGUIColor(Border));
+  if(Label)
+  {
+    DrawText(Rect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  }
+
+  char TempBuffer[20];
+  snprintf(TempBuffer, sizeof(TempBuffer), "%.2f", *Value);
+  DrawText({ Rect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], Rect.MinP.Y + Rect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
+}
+
+void
+UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue, float ScreenDelta)
+{
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  vec3 Size         = Window.GetDefaultItemSize();
+  vec3 TextPosition = Window.CurrentPos + Size + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] };
+
+  UI::DragFloat(NULL, &Value[0], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  UI::SameLine();
+  UI::DragFloat(NULL, &Value[1], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  UI::SameLine();
+  UI::DragFloat(NULL, &Value[2], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  UI::SameLine();
+  UI::DragFloat(NULL, &Value[3], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  UI::NewLine();
+  DrawText(TextPosition, Label);
 }
 
 void
