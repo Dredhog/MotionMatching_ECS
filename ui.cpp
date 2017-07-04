@@ -99,7 +99,7 @@ UI::EndFrame()
   for(int i = 0; i < g.OrderedWindows.Count; i++)
   {
     gui_window* Window = g.OrderedWindows[i];
-    if(!(Window->Flags & WINDOW_IsChildWindow))
+    if(!(Window->Flags & WINDOW_IsChildWindow) && Window->UsedThisFrame)
     {
       AddWindowToSortedBuffer(&SortBuffer, Window);
     }
@@ -142,11 +142,17 @@ UI::EndFrame()
     if(g.FocusedWindow != NULL)
     {
       FocusWindow(NULL);
-      CloseCurrentPopup();
     }
+  }
+  for(int i = 0; i < g.Windows.Count; i++)
+  {
+    g.Windows[i].UsedLastFrame = g.Windows[i].UsedThisFrame;
+    g.Windows[i].UsedThisFrame = false;
   }
 
   g.ClipRectStack.Clear();
+  g.CurrentPopupStack.Clear();
+  CloseInactivePopups();
   g.LatestClipRectIndex = 0;
 }
 
@@ -263,15 +269,29 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     size_t     NameLength = strlen(Name);
     assert(strlen(Name) < ARRAY_SIZE(NewWindow.Name.Name));
     strcpy(NewWindow.Name.Name, Name);
-    NewWindow.ID       = ID;
-    NewWindow.MoveID   = NewWindow.GetID("##Move");
-    NewWindow.Flags    = Flags;
-    NewWindow.Size     = Size;
-    NewWindow.Position = InitialPosition;
-    Window             = g.Windows.Append(NewWindow);
+    NewWindow.ID            = ID;
+    NewWindow.MoveID        = NewWindow.GetID("##Move");
+    NewWindow.Flags         = Flags;
+    NewWindow.Size          = Size;
+    NewWindow.Position      = InitialPosition;
+    NewWindow.UsedThisFrame = false;
+    NewWindow.UsedLastFrame = false;
+    Window                  = g.Windows.Append(NewWindow);
+  }
+  g.CurrentWindow       = Window;
+  Window->UsedThisFrame = true;
+  if(!Window->UsedLastFrame && Window->UsedThisFrame)
+  {
     g.OrderedWindows.Push(Window);
   }
-  g.CurrentWindow = Window;
+
+  if(Window->Flags & WINDOW_Popup)
+  {
+    gui_popup* Popup = &g.OpenPopupStack[g.CurrentPopupStack.Count];
+    Popup->Window    = Window;
+    g.CurrentPopupStack.Push(*Popup);
+    FocusWindow(Window);
+  }
 
   // Find parent and root windows
   Window->ParentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Back() : NULL;
@@ -401,6 +421,8 @@ UI::EndPopupWindow()
 {
   gui_window* Window = GetCurrentWindow();
   assert(Window->Flags & WINDOW_Popup);
+  gui_context& g = *GetContext();
+  g.CurrentPopupStack.Pop();
   UI::EndWindow();
 }
 
@@ -432,40 +454,50 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
   bool Hovered = IsHovered(ButtonBB, ID);
   if(Hovered)
   {
+    SetHot(ID);
     if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
       SetActive(0, NULL);
       if(IsPopupOpen(ID))
       {
-        g.IsPopupOpen = false;
+        ClosePopup(ID);
       }
       else
       {
         FocusWindow(Window);
-        g.IsPopupOpen = true;
+        OpenPopup(ID);
       }
     }
   }
 
   const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem) ? "not selected" : Items[*CurrentItem];
 
-  DrawBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal), _GetGUIColor(Border));
-
-  DrawText(vec3{ ButtonBB.MinP.X, ButtonBB.MinP.Y + ItemHeight } + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, ActiveText);
-
-  PushTexturedQuad(Window, IconBB.MinP, IconBB.GetSize(), g.GameState->ExpandedTextureID);
-  DrawText(ButtonBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
-
   if(IsPopupOpen(ID))
   {
+    bool SelectedSomething = false;
     BeginPopupWindow("Combo", PopupBB.GetSize(), WINDOW_Combo);
     gui_window* PopupWindow = GetCurrentWindow();
     for(int i = 0; i < ItemCount; i++)
     {
-      UI::ReleaseButton(Items[i]);
+      if(UI::ReleaseButton(Items[i]))
+      {
+        *CurrentItem      = i;
+        SelectedSomething = true;
+      }
     }
     EndPopupWindow();
+    if(SelectedSomething)
+    {
+      ClosePopup(ID);
+			//TODO(Lukas) Add automatic focusing when pressing buttons and closing windows
+			FocusWindow(NULL);
+    }
   }
+
+  DrawBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal), _GetGUIColor(Border));
+  DrawText(vec3{ ButtonBB.MinP.X, ButtonBB.MinP.Y + ItemHeight } + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, ActiveText);
+  PushTexturedQuad(Window, IconBB.MinP, IconBB.GetSize(), g.GameState->ExpandedTextureID);
+  DrawText(ButtonBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 }
 
 bool

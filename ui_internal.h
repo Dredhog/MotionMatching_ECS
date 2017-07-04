@@ -31,6 +31,8 @@ bool IsHovered(const rect& BB, ui_id ID);
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
 bool IsPopupOpen();
+void ClosePopup(ui_id ID);
+void CloseInactivePopups();
 
 void         Create(gui_context* Context);
 int          Destroy(gui_context* Context);
@@ -139,6 +141,9 @@ struct gui_window
   fixed_array<gui_window*, 10> ChildWindows;
   int32_t                      IndexWithinParent;
 
+  bool UsedLastFrame;
+  bool UsedThisFrame;
+
   vec3 Position;
   vec3 Size;
   vec3 SizeNoScroll; // Entire window except scrollbars
@@ -164,6 +169,12 @@ struct gui_window
   vec3 GetDefaultItemSize() const;
 };
 
+struct gui_popup
+{
+  gui_window* Window;
+  ui_id       ID;
+};
+
 struct gui_context
 {
   game_state*   GameState;
@@ -174,14 +185,13 @@ struct gui_context
   ui_id         HotID;
   ui_id         MoveWindowMoveID;
 
-  // TODO(Lukas) replace bool with open popup stack
-  bool IsPopupOpen;
-
   int32_t                      LatestClipRectIndex;
   fixed_stack<rect, 20>        ClipRectStack;
   fixed_array<gui_window, 10>  Windows;
   fixed_stack<gui_window*, 10> CurrentWindowStack;
   fixed_stack<gui_window*, 10> OrderedWindows;
+  fixed_stack<gui_popup, 10>   CurrentPopupStack;
+  fixed_stack<gui_popup, 10>   OpenPopupStack;
 
   const game_input* Input;
   gui_window*       CurrentWindow;
@@ -486,20 +496,6 @@ TestIfVisible(const rect& Rect)
   return Rect.Intersects(ClipRect) ? true : false;
 }
 
-bool
-IsPopupOpen(ui_id ID)
-{
-  gui_context& g = *GetContext();
-  return g.IsPopupOpen;
-}
-
-void
-CloseCurrentPopup()
-{
-  gui_context& g = *GetContext();
-  g.IsPopupOpen  = false;
-}
-
 vec3
 GetItemSize(vec3 Size, float DefaultWidth, float DefaultHeight)
 {
@@ -512,6 +508,78 @@ GetItemSize(vec3 Size, float DefaultWidth, float DefaultHeight)
     Size.Y = DefaultHeight;
   }
   return Size;
+}
+
+bool
+IsPopupOpen(ui_id ID)
+{
+  gui_context& g = *GetContext();
+  return (g.CurrentPopupStack.Count < g.OpenPopupStack.Count && g.OpenPopupStack[g.CurrentPopupStack.Count].ID == ID);
+}
+
+void
+ClosePopup(ui_id ID)
+{
+  gui_context& g = *GetContext();
+  assert(IsPopupOpen(ID));
+  g.OpenPopupStack.Pop();
+}
+
+void
+OpenPopup(ui_id ID)
+{
+  gui_context& g = *GetContext();
+
+  gui_popup NewPopup = {};
+  NewPopup.ID        = ID;
+  NewPopup.Window    = NULL;
+
+  if(g.OpenPopupStack.Count <= g.CurrentPopupStack.Count)
+  {
+    g.OpenPopupStack.Push(NewPopup);
+  }
+  else if(g.OpenPopupStack[g.CurrentPopupStack.Count].ID != ID)
+  {
+    int CurrentPopupStackSize = g.CurrentPopupStack.Count;
+    g.OpenPopupStack.Resize(CurrentPopupStackSize + 1);
+    g.OpenPopupStack[CurrentPopupStackSize] = NewPopup;
+  }
+}
+
+void
+CloseInactivePopups()
+{
+  gui_context& g = *GetContext();
+  if(g.OpenPopupStack.Count == 0)
+  {
+    return;
+  }
+
+  int n = 0;
+  if(g.FocusedWindow)
+  {
+    for(n = 0; n < g.OpenPopupStack.Count; n++)
+    {
+      gui_popup& Popup = g.OpenPopupStack[n];
+      assert(Popup.Window);
+      assert(Popup.Window->Flags & UI::WINDOW_Popup);
+      if(Popup.Window->Flags & UI::WINDOW_IsChildWindow)
+      {
+        continue;
+      }
+
+      bool HasFocus = false;
+      for(int m = n; m < g.OpenPopupStack.Count && !HasFocus; m++)
+      {
+        HasFocus = (g.OpenPopupStack[m].Window && g.OpenPopupStack[m].Window->RootWindow == g.FocusedWindow);
+      }
+      if(!HasFocus)
+      {
+        break;
+      }
+    }
+  }
+  g.OpenPopupStack.Resize(n);
 }
 
 void
@@ -543,9 +611,11 @@ Init(gui_context* Context, game_state* GameState)
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
   Context->Windows.HardClear();
+  Context->CurrentWindowStack.Clear();
+  Context->CurrentPopupStack.Clear();
+  Context->OpenPopupStack.Clear();
   Context->CurrentWindow = NULL;
   Context->GameState     = GameState;
-  Context->IsPopupOpen   = false;
 }
 
 int
