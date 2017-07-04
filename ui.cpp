@@ -8,6 +8,13 @@ static bool ButtonBehavior(rect BoundingBox, ui_id ID, bool* OutHeld = NULL, boo
 static rect SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Vertical = false, bool* OutHeld = NULL, bool* OutHovering = NULL);
 static void Scrollbar(gui_window* Window, bool Vertical);
 
+UI::gui_style*
+UI::GetStyle()
+{
+  gui_context& g = *GetContext();
+  return &g.Style;
+}
+
 void
 UI::BeginFrame(game_state* GameState, const game_input* Input)
 {
@@ -178,11 +185,11 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
+  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
   char TempBuffer[20];
   snprintf(TempBuffer, sizeof(TempBuffer), "%.0f", *Value);
-  DrawText(SliderRect.MinP, SliderRect.GetWidth(), SliderRect.GetHeight(), TempBuffer);
-  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText({ SliderRect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], SliderRect.MinP.Y + SliderRect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
 }
 
 static void
@@ -340,7 +347,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
   PushClipQuad(Window, Window->Position, Window->SizeNoScroll);
 
-  Window->DefaultItemWidth = 0.65f * Window->SizeNoScroll.X;
+  Window->DefaultItemWidth = 0.6f * Window->SizeNoScroll.X;
 }
 
 void
@@ -405,14 +412,14 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
 
   const ui_id ID = Window->GetID(Label);
 
-  vec3 ButtonSize = Window->GetDefaultItemSize();
+  const vec3 ButtonSize = Window->GetDefaultItemSize();
 
   const rect ButtonBB     = NewRect(Window->CurrentPos, Window->CurrentPos + ButtonSize);
   const rect ButtonTextBB = NewRect(ButtonBB.MinP, ButtonBB.MaxP - vec3{ ButtonSize.Y, 0 });
   const rect IconBB       = NewRect({ ButtonTextBB.MaxP.X, ButtonTextBB.MinP.Y }, ButtonBB.MaxP);
 
-  const float ItemHeight  = ButtonBB.GetHeight();
-  const float ItemWidth   = ButtonBB.GetWidth();
+  const float ItemWidth   = ButtonSize.X;
+  const float ItemHeight  = ButtonSize.Y;
   const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount, HeightInItems);
   const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y }, { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
 
@@ -422,8 +429,7 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
     return;
   }
 
-  bool Hovered    = IsHovered(ButtonBB, ID);
-  vec4 InnerColor = (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal);
+  bool Hovered = IsHovered(ButtonBB, ID);
   if(Hovered)
   {
     if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
@@ -441,7 +447,12 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
     }
   }
 
-  DrawTextBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), Label, InnerColor, _GetGUIColor(Border));
+  const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem) ? "not selected" : Items[*CurrentItem];
+
+  DrawBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal), _GetGUIColor(Border));
+
+  DrawText(vec3{ ButtonBB.MinP.X, ButtonBB.MinP.Y + ItemHeight } + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, ActiveText);
+
   PushTexturedQuad(Window, IconBB.MinP, IconBB.GetSize(), g.GameState->ExpandedTextureID);
   DrawText(ButtonBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
@@ -458,12 +469,12 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
 }
 
 bool
-UI::ReleaseButton(const char* Text)
+UI::ReleaseButton(const char* Label)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  ui_id ID = Window.GetID(Text);
+  ui_id ID = Window.GetID(Label);
 
   vec3 Size = Window.GetDefaultItemSize();
 
@@ -477,7 +488,8 @@ UI::ReleaseButton(const char* Text)
 
   bool Result     = ButtonBehavior(Rect, ID);
   vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(ButtonPressed) : ((ID == g.HotID) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal));
-  DrawTextBox(Rect.MinP, Size, Text, InnerColor, _GetGUIColor(Border));
+  DrawBox(Rect.MinP, Size, InnerColor, _GetGUIColor(Border));
+  DrawText(Rect.MinP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
   return Result;
 }
@@ -490,37 +502,49 @@ UI::Checkbox(const char* Label, bool* Toggle)
 
   ui_id ID = Window.GetID(Label);
 
-  float Height = Window.GetDefaultItemSize().Y;
+  int32_t LabelWidth, LabelHeight;
+  Text::GetTextSize(g.Font, Label, &LabelWidth, &LabelHeight);
+  vec3 LabelSize = { (float)LabelWidth, (float)LabelHeight };
 
-  const rect& CheckboxBB = NewRect(Window.CurrentPos, Window.CurrentPos + vec3{ Height, Height });
+  float CheckboxHeight = Window.GetDefaultItemSize().Y;
 
-  AddSize(CheckboxBB.GetSize());
-  if(!TestIfVisible(CheckboxBB))
+  const vec3  IconSize    = vec3{ CheckboxHeight, CheckboxHeight };
+  const rect  IconBB      = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize);
+  const rect& HitRegionBB = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize + vec3{ LabelSize.X + 2 * g.Style.Vars[UI::VAR_BoxPaddingX], 0 });
+
+  AddSize(HitRegionBB.GetSize());
+  if(!TestIfVisible(HitRegionBB))
   {
     return;
   }
 
-  bool Released = ButtonBehavior(CheckboxBB, ID);
+  bool Released = ButtonBehavior(HitRegionBB, ID);
   if(Released)
   {
     *Toggle = !(*Toggle);
   }
 
   vec4 InnerColor = ((ID == g.HotID) ? _GetGUIColor(CheckboxHovered) : _GetGUIColor(CheckboxNormal));
-  DrawBox(CheckboxBB.MinP, CheckboxBB.GetSize(), InnerColor, _GetGUIColor(Border));
+  DrawBox(IconBB.MinP, IconSize, InnerColor, _GetGUIColor(Border));
+  if(*Toggle)
+  {
+    PushColoredQuad(&Window, IconBB.MinP + 0.2f * IconSize, 0.6f * IconSize, _GetGUIColor(CheckboxPressed));
+  }
 
-  DrawText(CheckboxBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(IconBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 }
 
 bool
-UI::CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size)
+UI::CollapsingHeader(const char* Label, bool* IsExpanded)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  ui_id ID = Window.GetID(Text);
+  ui_id ID = Window.GetID(Label);
 
-  const rect& Rect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  const float Height = Window.GetDefaultItemSize().Y;
+  const vec3  Size   = { Window.SizeNoScroll.X, Height };
+  const rect& Rect   = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
   AddSize(Size);
 
   if(!TestIfVisible(Rect))
@@ -532,11 +556,12 @@ UI::CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size)
   *IsExpanded = (Result) ? !*IsExpanded : *IsExpanded;
 
   // draw square icon
-  int32_t TextureID = (*IsExpanded) ? g.GameState->ExpandedTextureID : g.GameState->CollapsedTextureID;
-  PushTexturedQuad(&Window, Rect.MinP, { Size.Y, Size.Y }, TextureID);
+  int32_t IconTextureID = (*IsExpanded) ? g.GameState->ExpandedTextureID : g.GameState->CollapsedTextureID;
+  PushTexturedQuad(&Window, Rect.MinP, { Size.Y, Size.Y }, IconTextureID);
 
   vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(HeaderPressed) : ((ID == g.HotID) ? _GetGUIColor(HeaderHovered) : _GetGUIColor(HeaderNormal));
-  DrawTextBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, Text, InnerColor, _GetGUIColor(Border));
+  DrawBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, InnerColor, _GetGUIColor(Border));
+  DrawText(vec3{ Rect.MinP.X, Rect.MinP.Y } + vec3{ Size.Y + g.Style.Vars[UI::VAR_BoxPaddingX], Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
   return *IsExpanded;
 }
@@ -631,7 +656,7 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
 
   bool Held     = false;
   bool Hovering = false;
-  bool Pressed  = ButtonBehavior(BB, ID, &Held, &Hovering);
+  ButtonBehavior(BB, ID, &Held, &Hovering);
   if(Held)
   {
     float ScreenRegionStart = ((Vertical) ? BB.MinP.Y : BB.MinP.X) + DragSize / 2;
@@ -683,4 +708,23 @@ UI::Image(int32_t TextureID, const char* Name, vec3 Size)
     return;
   }
   PushTexturedQuad(&Window, ImageRect.MinP, ImageRect.GetSize(), TextureID);
+}
+
+void
+UI::Text(const char* Text)
+{
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  int32_t TextWidth, TextHeight;
+  Text::GetTextSize(g.Font, Text, &TextWidth, &TextHeight);
+  vec3 Size = { (float)TextWidth, (float)TextHeight };
+
+  rect TextRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  AddSize(Size);
+  if(!TestIfVisible(TextRect))
+  {
+    return;
+  }
+  DrawText({ TextRect.MinP.X, TextRect.MinP.Y + Size.Y }, Text);
 }

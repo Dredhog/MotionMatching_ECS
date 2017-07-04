@@ -9,48 +9,57 @@ namespace UI
 
     UI::BeginWindow("window A", { 300, 500 }, { 450, 400 });
     {
-      static bool        s_HeaderExpanded = false;
+      static bool        s_HeaderExpanded = true;
       static int         s_CurrentItem    = -1;
       static const char* s_Items[]        = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
       static bool        s_Checkbox0      = false;
-      static float       s_SliderValue    = 0.001f;
+      static bool        s_Checkbox1      = false;
 
-      if(UI::CollapsingHeader("Noise", &s_HeaderExpanded, { 350, 30 }))
+      if(UI::CollapsingHeader("Noise", &s_HeaderExpanded))
       {
-        UI::Checkbox("Toggle this", &s_Checkbox0);
-
+        {
+          gui_style& Style = *UI::GetStyle();
+          UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
+          UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
+          UI::SliderFloat("Border Thickness", &Style.Vars[UI::VAR_BorderThickness], 0, 10);
+        }
         UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5);
 
         char TempBuff[20];
         snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
-        UI::ReleaseButton(TempBuff);
+        UI::Text(TempBuff);
 
-        UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false);
+        UI::Checkbox("Show Image", &s_Checkbox0);
+        if(s_Checkbox0)
+        {
+          UI::Checkbox("Put image in frame", &s_Checkbox1);
+          if(s_Checkbox1)
+          {
+            UI::BeginChildWindow("Image frame", { 300, 170 });
+          }
 
-        UI::Image(GameState->IDTexture, "material preview", { 200, 110 });
+          UI::Image(GameState->IDTexture, "material preview", { 400, 220 });
+
+          if(s_Checkbox1)
+          {
+            UI::EndChildWindow();
+          }
+        }
       }
     }
     UI::EndWindow();
 
-    UI::BeginWindow("window C", { 800, 300 }, { 600, 500 });
+    UI::BeginWindow("window B", { 800, 300 }, { 600, 500 });
     {
       UI::BeginChildWindow("Child Window A ", { 500, 400 });
       {
-        static bool s_HeaderExpanded  = false;
-        static bool s_HeaderExpanded1 = false;
-        static bool s_HeaderExpanded2 = false;
-        if(UI::CollapsingHeader("Header 1", &s_HeaderExpanded, { 350, 30 }))
+        UI::ReleaseButton("realease me!");
         {
-          UI::BeginChildWindow("Window 5", { 300, 200 });
-          UI::ReleaseButton("realease me!");
-          {
-            static float s_SliderValue = 0.001f;
-            char         TempBuff[20];
-            snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
-            UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false);
-            UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
-          }
-          UI::EndChildWindow();
+          static float s_SliderValue = 0.001f;
+          char         TempBuff[20];
+          snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+          UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false);
+          UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
         }
       }
       UI::EndChildWindow();

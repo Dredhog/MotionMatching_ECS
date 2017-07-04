@@ -79,12 +79,12 @@ namespace UI
 
   void SameLine();
 
-  bool CollapsingHeader(const char* Text, bool* IsExpanded, vec3 Size);
+  bool CollapsingHeader(const char* Text, bool* IsExpanded);
   bool ReleaseButton(const char* Text);
   bool ClickButton(const char* Text);
   void Checkbox(const char* Label, bool* Toggle);
 
-  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Horizontal);
+  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Vertical = false);
   void SliderFloat3(const char* Text, vec3* VecPtr, float Min = -INFINITY, float Max = INFINITY, float ValueScreenDelta = 10.0f);
   void SliderFloat4(const char* Text, vec3* VecPtr, float Min = 0.0f, float Max = 1.0f, float ValueScreenDelta = 3.0f);
 
@@ -92,5 +92,7 @@ namespace UI
   void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems);
 
   void Image(int32_t TextureID, const char* Name, vec3 Size);
-  void Text(const char* Name);
+  void Text(const char* Text);
+
+  gui_style* GetStyle();
 }

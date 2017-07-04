@@ -21,27 +21,23 @@ struct gui_context;
 uint32_t IDHash(const void* data, int data_size, uint32_t seed);
 void     SetActive(ui_id ID);
 void     SetHot(ui_id ID);
-void     UnsetHot(ui_id ID);
+void     FocusWindow(gui_window* Window);
 
 bool IsMouseInsideRect(const vec3& MinP, const vec3& MaxP);
 bool IsMouseInsideRect(const rect& BB);
 bool IsWindowHoverable(const gui_window* Window);
 bool IsHovered(const rect& BB, ui_id ID);
-void FocusWindow(gui_window* Window);
 
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
-bool IsPopupOpen(ui_id ID);
-void CloseCurrentPopup();
-vec3 GetItemSize(vec3 Size, float DefaultWidth, float DefaultHeight);
+bool IsPopupOpen();
 
 void         Create(gui_context* Context);
 int          Destroy(gui_context* Context);
 gui_context* GetContext();
 gui_window*  GetCurrentWindow();
 
-void DrawText(vec3 TopLeft, float Width, float Height, const char* Text);
-void DrawText(vec3 Position, const char* Text);
+void DrawText(const vec3& BottomLeft, const char* Text);
 void DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor);
 
 // TODO(Lukas) Fix quad submission api, reduce levels of abstraction up to shader minimize getters
@@ -270,6 +266,7 @@ FocusWindow(gui_window* Window)
   }
 }
 
+#if 0
 void
 DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
 {
@@ -313,9 +310,10 @@ DrawText(vec3 TopLeft, float Width, float Height, const char* InputText)
   uint32_t TextureID = Text::GetTextTextureID(g.Font, FontSize, Text, _GetGUIColor(Text), &TextureWidth, &TextureHeight);
   PushTexturedQuad(Window, vec3{ TopLeft.X + ((Width - (float)TextureWidth) / 2), TopLeft.Y - TextPaddingY, TopLeft.Z }, { (float)TextureWidth, Height - 2 * TextPaddingY }, TextureID);
 }
+#endif
 
 void
-DrawText(vec3 BottomLeft, const char* Text)
+DrawText(const vec3& BottomLeft, const char* Text)
 {
   gui_context& g      = *GetContext();
   gui_window*  Window = GetCurrentWindow();
@@ -329,30 +327,17 @@ DrawText(vec3 BottomLeft, const char* Text)
 void
 DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor)
 {
-  gui_context& g            = *GetContext();
-  gui_window*  Window       = GetCurrentWindow();
-  float        ButtonBorder = g.Style.Vars[UI::VAR_BorderThickness];
+  gui_context& g      = *GetContext();
+  gui_window*  Window = GetCurrentWindow();
+  float        Border = g.Style.Vars[UI::VAR_BorderThickness];
   PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
-  PushColoredQuad(Window, vec3{ TopLeft.X + ButtonBorder, TopLeft.Y + ButtonBorder, TopLeft.Z }, { Width - 2 * ButtonBorder, Height - 2 * ButtonBorder }, InnerColor);
+  PushColoredQuad(Window, vec3{ TopLeft.X + Border, TopLeft.Y + Border, TopLeft.Z }, { Width - 2 * Border, Height - 2 * Border }, InnerColor);
 }
 
 void
 DrawBox(vec3 TopLeft, vec3 Size, vec4 InnerColor, vec4 BorderColor)
 {
   DrawBox(TopLeft, Size.X, Size.Y, InnerColor, BorderColor);
-}
-
-void
-DrawTextBox(vec3 TopLeft, float Width, float Height, const char* Text, vec4 InnerColor, vec4 BorderColor)
-{
-  DrawBox(TopLeft, Width, Height, InnerColor, BorderColor);
-  DrawText(TopLeft, Width, Height, Text);
-}
-
-void
-DrawTextBox(vec3 TopLeft, vec3 Size, const char* Text, vec4 InnerColor, vec4 BorderColor)
-{
-  DrawTextBox(TopLeft, Size.X, Size.Y, Text, InnerColor, BorderColor);
 }
 
 uint32_t
@@ -416,24 +401,13 @@ SetHot(ui_id ID)
   }
 }
 
-void
-UnsetHot(ui_id ID)
-{
-  gui_context& g = *GetContext();
-  if(g.ActiveID == 0 || g.ActiveID == ID)
-  {
-    g.HotID = 0;
-  }
-}
-
 bool
 IsWindowHoverable(const gui_window* Window)
 {
-  gui_context& g             = *GetContext();
-  gui_window*  FocusedWindow = g.FocusedWindow;
-  if(FocusedWindow)
+  gui_context& g = *GetContext();
+  if(g.FocusedWindow)
   {
-    gui_window* FocusedRootWindow = FocusedWindow->RootWindow;
+    gui_window* FocusedRootWindow = g.FocusedWindow->RootWindow;
     if(FocusedRootWindow)
     {
       if((FocusedRootWindow->Flags & UI::WINDOW_Popup) && FocusedRootWindow != Window->RootWindow)
@@ -551,8 +525,8 @@ Init(gui_context* Context, game_state* GameState)
   Context->Style.Colors[UI::COLOR_HeaderHovered]    = { 0.3f, 0.5f, 0.5f, 1 };
   Context->Style.Colors[UI::COLOR_HeaderPressed]    = { 0.1f, 0.3f, 0.3f, 1 };
   Context->Style.Colors[UI::COLOR_CheckboxNormal]   = { 0.4f, 0.4f, 0.4f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.5f, 0.5f, 0.5f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxHovered]  = { 0.3f, 0.3f, 0.3f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxHovered]  = { 0.5f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.7f, 0.7f, 0.7f, 1 };
   Context->Style.Colors[UI::COLOR_ScrollbarBox]     = { 0.3f, 0.3f, 0.5f, 0.5f };
   Context->Style.Colors[UI::COLOR_ScrollbarDrag]    = { 0.2f, 0.2f, 0.4f, 0.5f };
   Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.5f, 0.1f, 0.1f, 0.5f };
