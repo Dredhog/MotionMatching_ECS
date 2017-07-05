@@ -14,6 +14,7 @@
 #include "render_data.h"
 #include "material_upload.h"
 #include "material_io.h"
+#include "collision_testing.h"
 
 #include "text.h"
 
@@ -73,6 +74,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     //--------------LOAD FONT--------------
     GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
+
+    CollisionTesting();
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
