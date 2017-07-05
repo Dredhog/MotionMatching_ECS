@@ -84,7 +84,7 @@ namespace UI
   void NewLine();
 
   bool CollapsingHeader(const char* Text, bool* IsExpanded);
-  bool Button(const char* Text);
+  bool Button(const char* Text, float Width = 0);
   bool ClickButton(const char* Text);
   void Checkbox(const char* Label, bool* Toggle);
 

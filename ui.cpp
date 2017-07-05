@@ -545,14 +545,14 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
 
     PushStyleVar(UI::VAR_SpacingY, 0);
     bool SelectedSomething = false;
-    if(UI::Button("    "))
+    if(UI::Button("    ", PopupWindow->SizeNoScroll.X))
     {
       *CurrentItem      = -1;
       SelectedSomething = true;
     }
     for(int i = 0; i < ItemCount; i++)
     {
-      if(UI::Button(DataToText(Data, i)))
+      if(UI::Button(DataToText(Data, i), PopupWindow->SizeNoScroll.X))
       {
         *CurrentItem      = i;
         SelectedSomething = true;
@@ -578,18 +578,27 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
 }
 
 bool
-UI::Button(const char* Label)
+UI::Button(const char* Label, float Width)
 {
+  assert(0 <= Width);
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
   ui_id ID = Window.GetID(Label);
 
-  vec3 Size = Window.GetDefaultItemSize();
+  vec3 Size;
+  int  LabelWidth, LabelHeight;
+  Text::GetTextSize(g.Font, Label, &LabelWidth, &LabelHeight);
+  Size = vec3{ (float)LabelWidth, (float)LabelHeight } + 2 * vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], g.Style.Vars[UI::VAR_BoxPaddingY] };
+
+  if(Width != 0)
+  {
+    Size.X = Width;
+  }
 
   const rect& Rect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
-  AddSize(Size);
 
+  AddSize(Size);
   if(!TestIfVisible(Rect))
   {
     return false;
