@@ -190,6 +190,10 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
   bool Hovered  = false;
   rect DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
   *Value        = NormValue * ValueRange + MinValue;
+  if(Held && g.Input->LeftCtrl.EndedDown)
+  {
+    *Value = floorf(*Value + 0.5f);
+  }
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
@@ -206,8 +210,6 @@ UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxVa
   assert(Label);
   assert(Value);
   assert(MinValue < MaxValue);
-  // assert(0 < Size.X && 0 < Size.Y);
-  // assert(Vertical && DragSize < Size.Y || !Vertical && DragSize < Size.X);
 
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
@@ -236,7 +238,7 @@ UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxVa
   bool Hovered  = false;
   rect DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
   ValueF        = NormValue * ValueRange + MinValueF;
-  *Value        = (int32_t)(ValueF + 0.5f);
+  *Value        = (int32_t)(ValueF /*+ 0.5f*/);
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
@@ -327,25 +329,18 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     NewWindow.UsedLastFrame = false;
     Window                  = g.Windows.Append(NewWindow);
   }
-  g.CurrentWindow       = Window;
+  g.CurrentWindow = Window;
+
   Window->UsedThisFrame = true;
   if(!Window->UsedLastFrame && Window->UsedThisFrame)
   {
     g.OrderedWindows.Push(Window);
   }
 
-  if(Window->Flags & WINDOW_Popup)
-  {
-    gui_popup* Popup = &g.OpenPopupStack[g.CurrentPopupStack.Count];
-    Popup->Window    = Window;
-    g.CurrentPopupStack.Push(*Popup);
-    FocusWindow(Window);
-  }
-
   // Find parent and root windows
   Window->ParentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Back() : NULL;
   assert(!(Window->Flags & WINDOW_IsChildWindow) || Window->ParentWindow != NULL);
-  g.CurrentWindowStack.Push(g.CurrentWindow);
+  g.CurrentWindowStack.Push(Window);
 
   int RootWindowIndex;
   for(RootWindowIndex = g.CurrentWindowStack.Count - 1; RootWindowIndex >= 0; RootWindowIndex--)
@@ -357,6 +352,13 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   }
   Window->RootWindow = g.CurrentWindowStack[RootWindowIndex];
 
+  if(Window->Flags & WINDOW_Popup)
+  {
+    gui_popup* Popup = &g.OpenPopupStack[g.CurrentPopupStack.Count];
+    Popup->Window    = Window;
+    g.CurrentPopupStack.Push(*Popup);
+    FocusWindow(Window);
+  }
   if(Window->Flags & WINDOW_IsChildWindow)
   {
     assert(Window->ParentWindow);
@@ -473,8 +475,21 @@ UI::EndPopupWindow()
   UI::EndWindow();
 }
 
+char*
+StringArrayToString(void* Data, int Index)
+{
+  char** StringArray = (char**)Data;
+  return StringArray[Index];
+}
+
 void
 UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems, float Width)
+{
+  UI::Combo(Label, CurrentItem, Items, ItemCount, StringArrayToString, HeightInItems, Width);
+}
+
+void
+UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* (*DataToText)(void*, int), int HeightInItems, float Width)
 {
   gui_context& g      = *GetContext();
   gui_window*  Window = GetCurrentWindow();
@@ -495,7 +510,7 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
 
   const float ItemWidth   = ButtonSize.X;
   const float ItemHeight  = ButtonSize.Y;
-  const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount, HeightInItems);
+  const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount + 1, HeightInItems);
   const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y }, { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
 
   if(!TestIfVisible(ButtonBB))
@@ -530,14 +545,14 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
 
     PushStyleVar(UI::VAR_SpacingY, 0);
     bool SelectedSomething = false;
-    if(UI::ReleaseButton("    "))
+    if(UI::Button("    "))
     {
       *CurrentItem      = -1;
       SelectedSomething = true;
     }
     for(int i = 0; i < ItemCount; i++)
     {
-      if(UI::ReleaseButton(Items[i]))
+      if(UI::Button(DataToText(Data, i)))
       {
         *CurrentItem      = i;
         SelectedSomething = true;
@@ -554,7 +569,7 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
     }
   }
   // So space appears after combo
-  const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem) ? "not selected" : Items[*CurrentItem];
+  const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem) ? "not selected" : DataToText(Data, *CurrentItem);
 
   DrawBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal), _GetGUIColor(Border));
   DrawText(vec3{ ButtonBB.MinP.X, ButtonBB.MinP.Y + ItemHeight } + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, ActiveText);
@@ -563,7 +578,7 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
 }
 
 bool
-UI::ReleaseButton(const char* Label)
+UI::Button(const char* Label)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
@@ -604,7 +619,7 @@ UI::Checkbox(const char* Label, bool* Toggle)
 
   const vec3  IconSize    = vec3{ CheckboxHeight, CheckboxHeight };
   const rect  IconBB      = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize);
-  const rect& HitRegionBB = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize + vec3{ LabelSize.X + g.Style.Vars[UI::VAR_InternalSpacing], 0 });
+  const rect& HitRegionBB = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize + vec3{ LabelSize.X + 2 * g.Style.Vars[UI::VAR_InternalSpacing], 0 });
 
   AddSize(HitRegionBB.GetSize());
   if(!TestIfVisible(HitRegionBB))
@@ -865,6 +880,35 @@ UI::DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, f
   DrawText({ Rect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], Rect.MinP.Y + Rect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
 }
 
+void
+UI::DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue, float ScreenDelta)
+{
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  vec3  Size              = Window.GetDefaultItemSize();
+  vec3  TextPosition      = Window.CurrentPos + Size + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] };
+  float SingleSliderWidth = Size.X / 3;
+
+  rect DragRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  if(!TestIfVisible(DragRect))
+  {
+    AddSize(Size);
+    return;
+  }
+
+  PushStyleVar(UI::VAR_SpacingX, 0);
+  UI::DragFloat(NULL, &Value[0], MinValue, MaxValue, ScreenDelta, SingleSliderWidth);
+  UI::SameLine();
+  UI::DragFloat(NULL, &Value[1], MinValue, MaxValue, ScreenDelta, SingleSliderWidth);
+  UI::SameLine();
+  UI::DragFloat(NULL, &Value[2], MinValue, MaxValue, ScreenDelta, SingleSliderWidth);
+  UI::SameLine();
+  UI::NewLine();
+  PopStyleVar();
+
+  DrawText(TextPosition, Label);
+}
 void
 UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue, float ScreenDelta)
 {

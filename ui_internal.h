@@ -368,7 +368,7 @@ DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderCol
   float        Border = g.Style.Vars[UI::VAR_BorderThickness];
   PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
   PushColoredQuad(Window, vec3{ TopLeft.X + Border, TopLeft.Y + Border, TopLeft.Z }, { Width - 2 * Border, Height - 2 * Border }, InnerColor);
-  //PushColoredQuad(Window, TopLeft, { Width, Height }, InnerColor);
+  // PushColoredQuad(Window, TopLeft, { Width, Height }, InnerColor);
 }
 
 void
@@ -510,11 +510,11 @@ AddSize(const vec3& Size)
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  Window.MaxPos.X = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X + g.Style.Vars[UI::VAR_SpacingX]);
-  Window.MaxPos.Y = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y + g.Style.Vars[UI::VAR_SpacingY]);
+  Window.MaxPos.X = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X /* + g.Style.Vars[UI::VAR_SpacingX]*/);
+  Window.MaxPos.Y = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y /*+ g.Style.Vars[UI::VAR_SpacingY]*/);
 
-  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X + g.Style.Vars[UI::VAR_SpacingX], 0 };
-  Window.CurrentPos.Y += Size.Y + g.Style.Vars[UI::VAR_SpacingY];
+  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X /*+ g.Style.Vars[UI::VAR_SpacingX]*/, 0 };
+  Window.CurrentPos.Y += Size.Y /* + g.Style.Vars[UI::VAR_SpacingY]*/;
 }
 
 namespace UI

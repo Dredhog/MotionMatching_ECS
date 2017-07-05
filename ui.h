@@ -74,28 +74,29 @@ namespace UI
   void EndFrame();
 
   void BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_t Flags = 0);
-  void EndWindow();
   void BeginChildWindow(const char* Name, vec3 Size, window_flags_t Flags = 0);
-  void EndChildWindow();
   void BeginPopupWindow(const char* Name, vec3 Size, window_flags_t Flags = 0);
+  void EndWindow();
+  void EndChildWindow();
   void EndPopupWindow();
 
   void SameLine();
   void NewLine();
 
   bool CollapsingHeader(const char* Text, bool* IsExpanded);
-  bool ReleaseButton(const char* Text);
+  bool Button(const char* Text);
   bool ClickButton(const char* Text);
   void Checkbox(const char* Label, bool* Toggle);
 
   void DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, float ScreenDelta, float Width = 0);
 
   void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Vertical = false);
+  void DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue, float ScreenDelta);
   void DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue, float ScreenDelta);
 
   void SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical = false);
 
-  void Combo(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, size_t ElementSize, char* (*ElementToCharPtr)(void*));
+  void Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* (*DataToText)(void*, int), int HeightInItems = 5, float Width = 0);
   void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems = 5, float Width = 0);
 
   void Image(int32_t TextureID, const char* Name, vec3 Size);
