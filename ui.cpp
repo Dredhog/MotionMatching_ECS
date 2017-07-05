@@ -145,6 +145,7 @@ UI::EndFrame()
       FocusWindow(NULL);
     }
   }
+
   for(int i = 0; i < g.Windows.Count; i++)
   {
     g.Windows[i].UsedLastFrame = g.Windows[i].UsedThisFrame;
@@ -192,7 +193,7 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
-  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
   char TempBuffer[20];
   snprintf(TempBuffer, sizeof(TempBuffer), "%.2f", *Value);
@@ -239,7 +240,7 @@ UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxVa
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
-  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 
   char TempBuffer[20];
   snprintf(TempBuffer, sizeof(TempBuffer), "%d", *Value);
@@ -373,8 +374,6 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     Window->Size = Size;
   }
 
-  Window->MaxPos = Window->CurrentPos = Window->Position;
-
   PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) && !(Window->Flags & (WINDOW_Popup | WINDOW_Combo)) ? true : false);
   Window->ClippedSizeRect = NewRect(Window->Position, Window->Position + Size); // used for hovering
   Window->ClippedSizeRect.Clip(g.ClipRectStack.Back());                         // used for hovering
@@ -413,7 +412,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     Scrollbar(g.CurrentWindow, false);
 
   //#3
-  Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
+  Window->StartPos = Window->MaxPos = Window->CurrentPos = Window->Position - vec3{ Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
   PushClipQuad(Window, Window->Position, Window->SizeNoScroll);
 
   Window->DefaultItemWidth = (Window->Flags & WINDOW_Popup ? 1 : 0.6f) * Window->SizeNoScroll.X;
@@ -429,8 +428,8 @@ UI::EndWindow()
 
   //----------Window mooving-----------
   // Automatically sets g.ActiveID = Window.MoveID
-  //
-  ButtonBehavior(NewRect(Window.Position, Window.Position + Window.Size), Window.MoveID);
+  bool Held = false;
+  ButtonBehavior(NewRect(Window.Position, Window.Position + Window.Size), Window.MoveID, &Held);
   //----------------------------------
   g.ClipRectStack.Pop();
   g.ClipRectStack.Pop();
@@ -445,7 +444,6 @@ UI::EndWindow()
 
 void
 UI::BeginChildWindow(const char* Name, vec3 Size, window_flags_t Flags)
-
 {
   UI::BeginWindow(Name, {}, Size, Flags | WINDOW_IsChildWindow);
 }
@@ -476,14 +474,20 @@ UI::EndPopupWindow()
 }
 
 void
-UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems)
+UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems, float Width)
 {
   gui_context& g      = *GetContext();
   gui_window*  Window = GetCurrentWindow();
 
   const ui_id ID = Window->GetID(Label);
 
-  const vec3 ButtonSize = Window->GetDefaultItemSize();
+  vec3 ButtonSize = Window->GetDefaultItemSize();
+
+  assert(0 <= Width);
+  if(0 < Width)
+  {
+    ButtonSize.X = Width;
+  }
 
   const rect ButtonBB     = NewRect(Window->CurrentPos, Window->CurrentPos + ButtonSize);
   const rect ButtonTextBB = NewRect(ButtonBB.MinP, ButtonBB.MaxP - vec3{ ButtonSize.Y, 0 });
@@ -494,11 +498,12 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
   const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount, HeightInItems);
   const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y }, { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
 
-  AddSize(ButtonBB.GetSize());
   if(!TestIfVisible(ButtonBB))
   {
+    AddSize(ButtonBB.GetSize());
     return;
   }
+  AddSize(ButtonBB.GetSize());
 
   bool Hovered = IsHovered(ButtonBB, ID);
   if(Hovered)
@@ -507,11 +512,7 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
     if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
     {
       SetActive(0, NULL);
-      if(IsPopupOpen(ID))
-      {
-        ClosePopup(ID);
-      }
-      else
+      if(!IsPopupOpen(ID))
       {
         FocusWindow(Window);
         OpenPopup(ID);
@@ -519,13 +520,21 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
     }
   }
 
-  const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem) ? "not selected" : Items[*CurrentItem];
-
   if(IsPopupOpen(ID))
   {
-    bool SelectedSomething = false;
+    // Remove the spacing between the box and window
+    vec3 SavedCurrentPos = Window->CurrentPos;
+    Window->CurrentPos   = ButtonBB.MinP + vec3{ 0, ButtonBB.GetHeight() };
     BeginPopupWindow("Combo", PopupBB.GetSize(), WINDOW_Combo);
     gui_window* PopupWindow = GetCurrentWindow();
+
+    PushStyleVar(UI::VAR_SpacingY, 0);
+    bool SelectedSomething = false;
+    if(UI::ReleaseButton("    "))
+    {
+      *CurrentItem      = -1;
+      SelectedSomething = true;
+    }
     for(int i = 0; i < ItemCount; i++)
     {
       if(UI::ReleaseButton(Items[i]))
@@ -534,19 +543,23 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
         SelectedSomething = true;
       }
     }
+    PopStyleVar();
     EndPopupWindow();
+    Window->CurrentPos = SavedCurrentPos;
+
     if(SelectedSomething)
     {
       ClosePopup(ID);
-      // TODO(Lukas) Add automatic focusing when pressing buttons and closing windows
       FocusWindow(NULL);
     }
   }
+  // So space appears after combo
+  const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem) ? "not selected" : Items[*CurrentItem];
 
   DrawBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal), _GetGUIColor(Border));
   DrawText(vec3{ ButtonBB.MinP.X, ButtonBB.MinP.Y + ItemHeight } + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, ActiveText);
   PushTexturedQuad(Window, IconBB.MinP, IconBB.GetSize(), g.GameState->ExpandedTextureID);
-  DrawText(ButtonBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(ButtonBB.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 }
 
 bool
@@ -591,7 +604,7 @@ UI::Checkbox(const char* Label, bool* Toggle)
 
   const vec3  IconSize    = vec3{ CheckboxHeight, CheckboxHeight };
   const rect  IconBB      = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize);
-  const rect& HitRegionBB = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize + vec3{ LabelSize.X + 2 * g.Style.Vars[UI::VAR_BoxPaddingX], 0 });
+  const rect& HitRegionBB = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize + vec3{ LabelSize.X + g.Style.Vars[UI::VAR_InternalSpacing], 0 });
 
   AddSize(HitRegionBB.GetSize());
   if(!TestIfVisible(HitRegionBB))
@@ -612,7 +625,7 @@ UI::Checkbox(const char* Label, bool* Toggle)
     PushColoredQuad(&Window, IconBB.MinP + 0.2f * IconSize, 0.6f * IconSize, _GetGUIColor(CheckboxPressed));
   }
 
-  DrawText(IconBB.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(IconBB.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
 }
 
 bool
@@ -858,17 +871,29 @@ UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  vec3 Size         = Window.GetDefaultItemSize();
-  vec3 TextPosition = Window.CurrentPos + Size + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] };
+  vec3  Size              = Window.GetDefaultItemSize();
+  vec3  TextPosition      = Window.CurrentPos + Size + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] };
+  float SingleSliderWidth = Size.X / 4;
 
-  UI::DragFloat(NULL, &Value[0], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  rect DragRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  if(!TestIfVisible(DragRect))
+  {
+    AddSize(Size);
+    return;
+  }
+
+  PushStyleVar(UI::VAR_SpacingX, 0);
+  UI::DragFloat(NULL, &Value[0], MinValue, MaxValue, ScreenDelta, SingleSliderWidth);
   UI::SameLine();
-  UI::DragFloat(NULL, &Value[1], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  UI::DragFloat(NULL, &Value[1], MinValue, MaxValue, ScreenDelta, SingleSliderWidth);
   UI::SameLine();
-  UI::DragFloat(NULL, &Value[2], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  UI::DragFloat(NULL, &Value[2], MinValue, MaxValue, ScreenDelta, SingleSliderWidth);
   UI::SameLine();
-  UI::DragFloat(NULL, &Value[3], MinValue, MaxValue, ScreenDelta, Size.X / 4);
+  UI::DragFloat(NULL, &Value[3], MinValue, MaxValue, ScreenDelta, SingleSliderWidth);
+  UI::SameLine();
   UI::NewLine();
+  PopStyleVar();
+
   DrawText(TextPosition, Label);
 }
 

@@ -35,10 +35,15 @@ bool IsPopupOpen();
 void ClosePopup(ui_id ID);
 void CloseInactivePopups();
 
-void         Create(gui_context* Context);
+void         Init(gui_context* Context, game_state* GameState);
 int          Destroy(gui_context* Context);
 gui_context* GetContext();
 gui_window*  GetCurrentWindow();
+
+void PushStyleVar(int32_t Index, float Value);
+void PopStyleVar();
+void PushStyleColor(int32_t Index, vec4 Color);
+void PopStyleColor();
 
 void DrawText(const vec3& BottomLeft, const char* Text);
 void DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor);
@@ -130,6 +135,18 @@ NewRect(float MinX, float MinY, float MaxX, float MaxY)
   return NewRect;
 }
 
+struct style_var_memo
+{
+  int32_t Index;
+  float   Value;
+};
+
+struct style_color_memo
+{
+  vec4    Color;
+  int32_t Index;
+};
+
 struct gui_window
 {
   path               Name;
@@ -146,6 +163,7 @@ struct gui_window
   bool UsedThisFrame;
 
   vec3 Position;
+  vec3 StartPos;
   vec3 Size;
   vec3 SizeNoScroll; // Entire window except scrollbars
 
@@ -161,7 +179,7 @@ struct gui_window
   vec3 ScrollNorm;
   vec3 ScrollRange;
 
-  fixed_array<quad_instance, 80> DrawArray;
+  fixed_array<quad_instance, 100> DrawArray;
 
   ui_id
   GetID(const char* Label) const
@@ -190,15 +208,16 @@ struct gui_context
   Text::font*   Font;
   ui_id         ActiveID;
   ui_id         HotID;
-  ui_id         MoveWindowMoveID;
 
-  int32_t                      LatestClipRectIndex;
-  fixed_stack<rect, 20>        ClipRectStack;
-  fixed_array<gui_window, 10>  Windows;
-  fixed_stack<gui_window*, 10> CurrentWindowStack;
-  fixed_stack<gui_window*, 10> OrderedWindows;
-  fixed_stack<gui_popup, 10>   CurrentPopupStack;
-  fixed_stack<gui_popup, 10>   OpenPopupStack;
+  int32_t                           LatestClipRectIndex;
+  fixed_stack<rect, 20>             ClipRectStack;
+  fixed_array<gui_window, 10>       Windows;
+  fixed_stack<gui_window*, 10>      CurrentWindowStack;
+  fixed_stack<gui_window*, 10>      OrderedWindows;
+  fixed_stack<gui_popup, 10>        CurrentPopupStack;
+  fixed_stack<gui_popup, 10>        OpenPopupStack;
+  fixed_stack<style_var_memo, 10>   StyleVarStack;
+  fixed_stack<style_color_memo, 10> StyleColorStack;
 
   const game_input* Input;
   gui_window*       CurrentWindow;
@@ -349,6 +368,7 @@ DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderCol
   float        Border = g.Style.Vars[UI::VAR_BorderThickness];
   PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
   PushColoredQuad(Window, vec3{ TopLeft.X + Border, TopLeft.Y + Border, TopLeft.Z }, { Width - 2 * Border, Height - 2 * Border }, InnerColor);
+  //PushColoredQuad(Window, TopLeft, { Width, Height }, InnerColor);
 }
 
 void
@@ -487,12 +507,14 @@ GetCurrentWindow()
 void
 AddSize(const vec3& Size)
 {
-  gui_window& Window = *GetCurrentWindow();
-  Window.MaxPos.X    = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X);
-  Window.MaxPos.Y    = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y);
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
 
-  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X, 0 };
-  Window.CurrentPos.Y += Size.Y;
+  Window.MaxPos.X = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X + g.Style.Vars[UI::VAR_SpacingX]);
+  Window.MaxPos.Y = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y + g.Style.Vars[UI::VAR_SpacingY]);
+
+  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X + g.Style.Vars[UI::VAR_SpacingX], 0 };
+  Window.CurrentPos.Y += Size.Y + g.Style.Vars[UI::VAR_SpacingY];
 }
 
 namespace UI
@@ -508,8 +530,7 @@ namespace UI
   NewLine()
   {
     gui_window& Window  = *GetCurrentWindow();
-    Window.PreviousPos  = Window.CurrentPos;
-    Window.CurrentPos.X = Window.Position.X;
+    Window.CurrentPos.X = Window.StartPos.X;
     Window.CurrentPos.Y = Window.MaxPos.Y;
   }
 }
@@ -550,6 +571,29 @@ ClosePopup(ui_id ID)
   gui_context& g = *GetContext();
   assert(IsPopupOpen(ID));
   g.OpenPopupStack.Pop();
+}
+
+void
+PushStyleVar(int32_t Index, float Value)
+{
+  gui_context& g = *GetContext();
+  assert(0 <= Index && Index < UI::VAR_Count);
+
+  style_var_memo Memo = {};
+  Memo.Value          = g.Style.Vars[Index];
+  Memo.Index          = Index;
+  g.StyleVarStack.Push(Memo);
+  g.Style.Vars[Index] = Value;
+}
+
+void
+PopStyleVar()
+{
+  gui_context& g = *GetContext();
+
+  assert(0 < g.StyleVarStack.Count);
+  style_var_memo Memo      = *g.StyleVarStack.Pop();
+  g.Style.Vars[Memo.Index] = Memo.Value;
 }
 
 void
@@ -624,16 +668,19 @@ Init(gui_context* Context, game_state* GameState)
   Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.7f, 0.7f, 0.7f, 1 };
   Context->Style.Colors[UI::COLOR_ScrollbarBox]     = { 0.3f, 0.3f, 0.5f, 0.5f };
   Context->Style.Colors[UI::COLOR_ScrollbarDrag]    = { 0.2f, 0.2f, 0.4f, 0.5f };
-  Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.5f, 0.1f, 0.1f, 0.5f };
+  Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.1f, 0.4f, 0.4f, 0.15f };
   Context->Style.Colors[UI::COLOR_WindowBorder]     = { 0.4f, 0.4f, 0.4f, 0.5f };
   Context->Style.Colors[UI::COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
 
+  Context->Style.Vars[UI::VAR_FontSize]        = (float)GameState->Font.SizedFonts[0].Size;
   Context->Style.Vars[UI::VAR_BorderThickness] = 1;
   Context->Style.Vars[UI::VAR_ScrollbarSize]   = 20;
   Context->Style.Vars[UI::VAR_DragMinSize]     = 10;
   Context->Style.Vars[UI::VAR_BoxPaddingX]     = 5;
   Context->Style.Vars[UI::VAR_BoxPaddingY]     = 5;
-  Context->Style.Vars[UI::VAR_FontSize]        = (float)GameState->Font.SizedFonts[0].Size;
+  Context->Style.Vars[UI::VAR_SpacingX]        = 5;
+  Context->Style.Vars[UI::VAR_SpacingY]        = 5;
+  Context->Style.Vars[UI::VAR_InternalSpacing] = 5;
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
@@ -641,6 +688,9 @@ Init(gui_context* Context, game_state* GameState)
   Context->CurrentWindowStack.Clear();
   Context->CurrentPopupStack.Clear();
   Context->OpenPopupStack.Clear();
+  Context->StyleVarStack.Clear();
+  Context->StyleColorStack.Clear();
+
   Context->CurrentWindow = NULL;
   Context->GameState     = GameState;
 }

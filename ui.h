@@ -33,6 +33,9 @@ namespace UI
     VAR_FontSize,
     VAR_BoxPaddingX,
     VAR_BoxPaddingY,
+    VAR_SpacingX,
+    VAR_SpacingY,
+    VAR_InternalSpacing,
     VAR_ScrollbarSize,
     VAR_DragMinSize,
     VAR_Count
@@ -78,7 +81,7 @@ namespace UI
   void EndPopupWindow();
 
   void SameLine();
-	void NewLine();
+  void NewLine();
 
   bool CollapsingHeader(const char* Text, bool* IsExpanded);
   bool ReleaseButton(const char* Text);
@@ -93,7 +96,7 @@ namespace UI
   void SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical = false);
 
   void Combo(int32_t* ActiveIndex, void* ItemList, int32_t ListLength, size_t ElementSize, char* (*ElementToCharPtr)(void*));
-  void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems);
+  void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems = 5, float Width = 0);
 
   void Image(int32_t TextureID, const char* Name, vec3 Size);
   void Text(const char* Text);
