@@ -30,7 +30,6 @@ bool IsHovered(const rect& BB, ui_id ID);
 
 void AddSize(const vec3& Size);
 bool TestIfVisible(const rect& Rect);
-void SameLine();
 
 bool IsPopupOpen();
 void ClosePopup(ui_id ID);

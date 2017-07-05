@@ -370,6 +370,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   {
     Window->Position = Window->ParentWindow->CurrentPos;
     FocusWindow(Window);
+    Window->Size = Size;
   }
 
   Window->MaxPos = Window->CurrentPos = Window->Position;
@@ -415,7 +416,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   Window->CurrentPos -= { Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
   PushClipQuad(Window, Window->Position, Window->SizeNoScroll);
 
-  Window->DefaultItemWidth = 0.6f * Window->SizeNoScroll.X;
+  Window->DefaultItemWidth = (Window->Flags & WINDOW_Popup ? 1 : 0.6f) * Window->SizeNoScroll.X;
 }
 
 void

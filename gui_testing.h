@@ -7,7 +7,7 @@ namespace UI
   {
     UI::BeginFrame(GameState, Input);
 
-    UI::BeginWindow("window A", { 300, 500 }, { 450, 400 });
+    UI::BeginWindow("window A", { 800, 300 }, { 450, 400 });
     {
       static bool        s_HeaderExpanded = true;
       static int         s_CurrentItem    = -1;
@@ -37,7 +37,9 @@ namespace UI
         UI::Checkbox("Show Image", &s_Checkbox0);
         if(s_Checkbox0)
         {
+          UI::SameLine();
           UI::Checkbox("Put image in frame", &s_Checkbox1);
+          UI::NewLine();
           if(s_Checkbox1)
           {
             UI::BeginChildWindow("Image frame", { 300, 170 });
@@ -54,22 +56,11 @@ namespace UI
     }
     UI::EndWindow();
 
-    UI::BeginWindow("window B", { 800, 300 }, { 600, 500 });
+    UI::BeginWindow("Window B", { 200, 300 }, { 350, 200 });
     {
-      UI::BeginChildWindow("Child Window A ", { 500, 400 });
-      {
-        UI::ReleaseButton("realease me!");
-        {
-          static float s_SliderValue = 0.001f;
-          char         TempBuff[20];
-          snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
-          UI::SliderFloat("FPS", &s_SliderValue, 20, 50, false);
-          UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
-        }
-      }
-      UI::EndChildWindow();
-      UI::Image(GameState->IDTexture, "material preview", { 700, 400 });
+      UI::Text("This is some text written with a special widget");
     }
+
     UI::EndWindow();
 
     UI::EndFrame();

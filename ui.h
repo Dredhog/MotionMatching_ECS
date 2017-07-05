@@ -78,6 +78,7 @@ namespace UI
   void EndPopupWindow();
 
   void SameLine();
+	void NewLine();
 
   bool CollapsingHeader(const char* Text, bool* IsExpanded);
   bool ReleaseButton(const char* Text);
