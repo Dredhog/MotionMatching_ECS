@@ -366,9 +366,9 @@ DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderCol
   gui_context& g      = *GetContext();
   gui_window*  Window = GetCurrentWindow();
   float        Border = g.Style.Vars[UI::VAR_BorderThickness];
-  PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
-  PushColoredQuad(Window, vec3{ TopLeft.X + Border, TopLeft.Y + Border, TopLeft.Z }, { Width - 2 * Border, Height - 2 * Border }, InnerColor);
-  // PushColoredQuad(Window, TopLeft, { Width, Height }, InnerColor);
+  // PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
+  // PushColoredQuad(Window, vec3{ TopLeft.X + Border, TopLeft.Y + Border, TopLeft.Z }, { Width - 2 * Border, Height - 2 * Border }, InnerColor);
+  PushColoredQuad(Window, TopLeft, { Width, Height }, InnerColor);
 }
 
 void
@@ -513,8 +513,8 @@ AddSize(const vec3& Size)
   Window.MaxPos.X = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X /* + g.Style.Vars[UI::VAR_SpacingX]*/);
   Window.MaxPos.Y = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y /*+ g.Style.Vars[UI::VAR_SpacingY]*/);
 
-  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X /*+ g.Style.Vars[UI::VAR_SpacingX]*/, 0 };
-  Window.CurrentPos.Y += Size.Y /* + g.Style.Vars[UI::VAR_SpacingY]*/;
+  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X + g.Style.Vars[UI::VAR_SpacingX], 0 };
+  Window.CurrentPos.Y += Size.Y + g.Style.Vars[UI::VAR_SpacingY];
 }
 
 namespace UI
@@ -529,9 +529,10 @@ namespace UI
   void
   NewLine()
   {
-    gui_window& Window  = *GetCurrentWindow();
+    gui_context& g      = *GetContext();
+    gui_window&  Window = *GetCurrentWindow();
     Window.CurrentPos.X = Window.StartPos.X;
-    Window.CurrentPos.Y = Window.MaxPos.Y;
+    Window.CurrentPos.Y = Window.MaxPos.Y + g.Style.Vars[UI::VAR_SpacingY];
   }
 }
 
@@ -668,7 +669,7 @@ Init(gui_context* Context, game_state* GameState)
   Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.7f, 0.7f, 0.7f, 1 };
   Context->Style.Colors[UI::COLOR_ScrollbarBox]     = { 0.3f, 0.3f, 0.5f, 0.5f };
   Context->Style.Colors[UI::COLOR_ScrollbarDrag]    = { 0.2f, 0.2f, 0.4f, 0.5f };
-  Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.1f, 0.4f, 0.4f, 0.15f };
+  Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.1f, 0.4f, 0.4f, 0.6f };
   Context->Style.Colors[UI::COLOR_WindowBorder]     = { 0.4f, 0.4f, 0.4f, 0.5f };
   Context->Style.Colors[UI::COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
 

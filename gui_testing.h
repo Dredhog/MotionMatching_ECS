@@ -1,5 +1,6 @@
 #include "ui.h"
 
+void MaterialGUI(game_state* GameState);
 void EntityGUI(game_state* GameState);
 
 namespace UI
@@ -11,7 +12,7 @@ namespace UI
 
     static int         s_CurrentItem = -1;
     static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
-    UI::BeginWindow("window A", { 800, 300 }, { 500, 400 });
+    UI::BeginWindow("window A", { 300, 300 }, { 500, 410 });
     {
       static bool s_HeaderExpanded = true;
       if(UI::CollapsingHeader("Demo", &s_HeaderExpanded))
@@ -25,9 +26,8 @@ namespace UI
           UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
           Style.Vars[UI::VAR_BorderThickness] = Thickness;
 
-          // UI::DragFloat("Window Opacity", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1, 5);
-					UI::Text("Hold ctrl when dragging to snap to whole values");
-          UI::DragFloat4("Window background", (float*)&Style.Colors[UI::COLOR_WindowBackground], 0, 1, 5);
+          UI::Text("Hold ctrl when dragging to snap to whole values");
+          UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1, 5);
           UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
           UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
           UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
@@ -54,7 +54,7 @@ namespace UI
             UI::BeginChildWindow("Image frame", { 300, 170 });
           }
 
-          UI::Image(GameState->IDTexture, "material preview", { 400, 220 });
+          UI::Image("material preview", GameState->IDTexture, { 400, 220 });
 
           if(s_Checkbox1)
           {
@@ -65,12 +65,12 @@ namespace UI
     }
     UI::EndWindow();
 
-    UI::BeginWindow("Window B", { 200, 300 }, { 550, 400 });
+    UI::BeginWindow("Window B", { 1000, 300 }, { 700, 600 });
     {
-      UI::Text("This is some text written with a special widget");
+      UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings, SELECT_EnumCount, UI::StringArrayToString);
       EntityGUI(GameState);
+      MaterialGUI(GameState);
     }
-
     UI::EndWindow();
 
     UI::EndFrame();
@@ -82,6 +82,276 @@ PathArrayToString(void* Data, int Index)
 {
   path* Paths = (path*)Data;
   return Paths[Index].Name;
+}
+
+void
+MaterialGUI(game_state* GameState)
+{
+
+  static bool g_ShowDisplaySet      = false;
+  static bool g_ShowEntityTools     = false;
+  static bool g_ShowAnimationEditor = false;
+  static bool g_ShowMaterialEditor  = false;
+  static bool g_ShowCameraSettings  = false;
+  static bool g_ShowLightSettings   = false;
+  static bool g_ShowGUISettings     = false;
+  static bool g_ShowSceneSettings   = false;
+  static bool g_ShowHeapParameters  = false;
+  static bool g_DrawMemoryMaps      = false;
+
+  if(GameState->SelectionMode == SELECT_Mesh || GameState->SelectionMode == SELECT_Entity)
+  {
+    if(UI::CollapsingHeader("Material Editor", &g_ShowMaterialEditor))
+    {
+      {
+        int32_t ActivePathIndex = 0;
+        if(GameState->CurrentMaterialID.Value > 0)
+        {
+          ActivePathIndex = GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
+        }
+        UI::Combo("Material", &ActivePathIndex, GameState->Resources.MaterialPaths, GameState->Resources.MaterialPathCount, PathArrayToString);
+        if(GameState->Resources.MaterialPathCount > 0)
+        {
+          rid NewRID = { 0 };
+          if(GameState->Resources.GetMaterialPathRID(&NewRID, GameState->Resources.MaterialPaths[ActivePathIndex].Name))
+          {
+            GameState->CurrentMaterialID = NewRID;
+          }
+          else
+          {
+            GameState->CurrentMaterialID = GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[ActivePathIndex].Name);
+          }
+        }
+      }
+      if(GameState->CurrentMaterialID.Value > 0)
+      {
+        // Draw material preview to texture
+        UI::Image("Material preview", GameState->IDTexture, { 360, 200 });
+
+        material* CurrentMaterial = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);
+        if(UI::Button("Previous shader"))
+        {
+          if(CurrentMaterial->Common.ShaderType > 0)
+          {
+            uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
+            *CurrentMaterial                    = {};
+            CurrentMaterial->Common.ShaderType  = ShaderType;
+            CurrentMaterial->Common.UseBlending = true;
+          }
+        }
+        UI::SameLine();
+        if(UI::Button("Next shader"))
+        {
+          if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
+          {
+            uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
+            *CurrentMaterial                    = {};
+            CurrentMaterial->Common.ShaderType  = ShaderType;
+            CurrentMaterial->Common.UseBlending = true;
+          }
+        }
+        UI::SameLine();
+        UI::NewLine();
+        UI::Checkbox("Enable Blending", &CurrentMaterial->Common.UseBlending);
+
+        {
+          bool SkeletalFlagValue = (CurrentMaterial->Phong.Flags & PHONG_UseSkeleton);
+
+          UI::Checkbox("Skeletel", &SkeletalFlagValue);
+          if(SkeletalFlagValue)
+          {
+            CurrentMaterial->Phong.Flags |= PHONG_UseSkeleton;
+            CurrentMaterial->Common.IsSkeletal = true;
+          }
+          else
+          {
+            CurrentMaterial->Phong.Flags &= ~PHONG_UseSkeleton;
+            CurrentMaterial->Common.IsSkeletal = false;
+          }
+        }
+
+        switch(CurrentMaterial->Common.ShaderType)
+        {
+          case SHADER_Phong:
+          {
+            UI::DragFloat3("Ambient Color", &CurrentMaterial->Phong.AmbientColor.X, 0.0f, 1.0f, 5.0f);
+
+            bool UseDIffuse      = (CurrentMaterial->Phong.Flags & PHONG_UseDiffuseMap);
+            bool UseSpecular     = CurrentMaterial->Phong.Flags & PHONG_UseSpecularMap;
+            bool NormalFlagValue = CurrentMaterial->Phong.Flags & PHONG_UseNormalMap;
+            UI::Checkbox("Diffuse Map", &UseDIffuse);
+            UI::SameLine();
+            UI::Checkbox("Specular Map", &UseSpecular);
+            UI::SameLine();
+            UI::Checkbox("Normal Map", &NormalFlagValue);
+            UI::SameLine();
+            UI::NewLine();
+
+            if(UseDIffuse)
+            {
+              {
+
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Phong.DiffuseMapID.Value > 0)
+                {
+                  ActivePathIndex = GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.DiffuseMapID);
+                }
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Phong.Flags |= PHONG_UseDiffuseMap;
+
+                  UI::Combo("Diffuse Map", &ActivePathIndex, GameState->Resources.TexturePaths, GameState->Resources.TexturePathCount, PathArrayToString);
+                  rid NewRID;
+                  if(GameState->Resources.GetTexturePathRID(&NewRID, GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Phong.DiffuseMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Phong.DiffuseMapID = GameState->Resources.RegisterTexture(GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Phong.DiffuseMapID.Value > 0);
+                }
+              }
+            }
+            else
+            {
+              CurrentMaterial->Phong.Flags &= ~PHONG_UseDiffuseMap;
+              UI::DragFloat4("Diffuse Color", &CurrentMaterial->Phong.DiffuseColor.X, 0.0f, 1.0f, 5.0f);
+            }
+
+            if(UseSpecular)
+            {
+              {
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Phong.SpecularMapID.Value > 0)
+                {
+                  ActivePathIndex = GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.SpecularMapID);
+                }
+                UI::Combo("Specular Map", &ActivePathIndex, GameState->Resources.TexturePaths, GameState->Resources.TexturePathCount, PathArrayToString);
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Phong.Flags |= PHONG_UseSpecularMap;
+
+                  rid NewRID;
+                  if(GameState->Resources.GetTexturePathRID(&NewRID, GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Phong.SpecularMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Phong.SpecularMapID = GameState->Resources.RegisterTexture(GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Phong.SpecularMapID.Value > 0);
+                }
+              }
+            }
+            else
+            {
+              CurrentMaterial->Phong.Flags &= ~PHONG_UseSpecularMap;
+              UI::DragFloat3("Specular Color", &CurrentMaterial->Phong.SpecularColor.X, 0.0f, 1.0f, 5.0f);
+            }
+
+            if(NormalFlagValue)
+            {
+              {
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Phong.NormalMapID.Value > 0)
+                {
+                  ActivePathIndex = GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.NormalMapID);
+                }
+                UI::Combo("Normal map", &ActivePathIndex, GameState->Resources.TexturePaths, GameState->Resources.TexturePathCount, PathArrayToString);
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Phong.Flags |= PHONG_UseNormalMap;
+
+                  rid NewRID;
+                  if(GameState->Resources.GetTexturePathRID(&NewRID, GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Phong.NormalMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Phong.NormalMapID = GameState->Resources.RegisterTexture(GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Phong.NormalMapID.Value > 0);
+                }
+              }
+            }
+            else
+            {
+              CurrentMaterial->Phong.Flags &= ~PHONG_UseNormalMap;
+            }
+
+            UI::SliderFloat("Shininess", &CurrentMaterial->Phong.Shininess, 1.0f, 512.0f);
+          }
+          break;
+          case SHADER_Color:
+          {
+            UI::DragFloat4("Color", &CurrentMaterial->Color.Color.X, 0, 1, 5);
+          }
+          break;
+        }
+        if(UI::Button("Clear Material Fields"))
+        {
+          uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
+          *CurrentMaterial                   = {};
+          CurrentMaterial->Common.ShaderType = ShaderType;
+        }
+        if(GameState->Resources.MaterialPathCount > 0 && GameState->CurrentMaterialID.Value > 0)
+        {
+          int CurrentMaterialPathIndex = GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
+          if(CurrentMaterialPathIndex != -1)
+          {
+            char* CurrentMaterialPath = GameState->Resources.MaterialPaths[CurrentMaterialPathIndex].Name;
+            if(UI::Button("Save"))
+            {
+              ExportMaterial(&GameState->Resources, CurrentMaterial, CurrentMaterialPath);
+            }
+          }
+        }
+        if(UI::Button("Create New"))
+        {
+          GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
+          printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
+        }
+        if(UI::Button("Duplicate Current"))
+        {
+          GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
+          printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
+        }
+        entity* SelectedEntity = {};
+        if(GetSelectedEntity(GameState, &SelectedEntity))
+        {
+          if(UI::Button("Apply To Selected"))
+          {
+            if(GameState->CurrentMaterialID.Value > 0)
+            {
+              if(GameState->SelectionMode == SELECT_Mesh)
+              {
+                SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex] = GameState->CurrentMaterialID;
+              }
+              else if(GameState->SelectionMode == SELECT_Entity)
+              {
+                Render::model* Model = GameState->Resources.GetModel(SelectedEntity->ModelID);
+                for(int m = 0; m < Model->MeshCount; m++)
+                {
+                  SelectedEntity->MaterialIDs[m] = GameState->CurrentMaterialID;
+                }
+              }
+            }
+          }
+          if(GameState->SelectionMode == SELECT_Mesh)
+          {
+            if(UI::Button("Edit Selected"))
+            {
+              GameState->CurrentMaterialID = SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex];
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 void
