@@ -3,41 +3,63 @@
 #include "collision.h"
 
 void
-CollisionTesting()
+Reverse3Simplex(vec3* Simplex)
 {
-  vec3 Cube[8];
-  vec3 Pyramid[5];
+  vec3 Temp  = Simplex[3];
+  Simplex[3] = Simplex[0];
+  Simplex[0] = Temp;
+  Temp       = Simplex[2];
+  Simplex[2] = Simplex[1];
+  Simplex[1] = Temp;
+}
 
-  Cube[0] = { 1.0f, 1.0f, 1.0f };
-  Cube[1] = { 1.0f, 1.0f, -1.0f };
-  Cube[2] = { 1.0f, -1.0f, -1.0f };
-  Cube[3] = { 1.0f, -1.0f, 1.0f };
-  Cube[4] = { -1.0f, -1.0f, 1.0f };
-  Cube[5] = { -1.0f, -1.0f, -1.0f };
-  Cube[6] = { -1.0f, 1.0f, -1.0f };
-  Cube[7] = { -1.0f, 1.0f, 1.0f };
+void
+DrawModel(game_state* GameState, Render::model* Model)
+{
+  vec4            Color        = { 1.0f, 0.0f, 0.0f, 1.0f };
+  Anim::transform NewTransform = {};
+  mat4            MVP          = Math::MulMat4(GameState->Camera.VPMatrix, TransformToMat4(&NewTransform));
 
-  Pyramid[0] = { 1.5f, -1.0f, 0.0f };
-  Pyramid[1] = { -1.0f, 1.75f, 0.75f };
-  Pyramid[2] = { 2.5f, 1.0f, 0.0f };
-  Pyramid[3] = { 1.5f, -0.5f, 0.0f };
-  Pyramid[4] = { 4.0f, 1.0f, 3.0f };
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glUseProgram(GameState->R.ShaderColor);
+  glBindVertexArray(Model->Meshes[0]->VAO);
 
-  vec3    Simplex[50];
-  int32_t SimplexOrder;
-
-  bool IsColliding = GJK(Simplex, &SimplexOrder, Cube, 8, Pyramid, 5);
-
-  if(IsColliding)
+  // So as not to corrupt the position by the old bone data
   {
-    printf("Collision detected!\n");
-
-    vec3 SolutionVector = EPA(Simplex, 4, Cube, 8, Pyramid, 5);
-
-    printf("SolutionVector = { %f, %f, %f }\n", SolutionVector.X, SolutionVector.Y, SolutionVector.Z);
+    mat4 Mat4Zeros = {};
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE, Mat4Zeros.e);
   }
-  else
+  glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&Color);
+  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE, MVP.e);
+  glDrawElements(GL_TRIANGLES, Model->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
+
+  glBindVertexArray(0);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+}
+
+void
+CollisionTesting(Render::model* ModelA, Render::model* ModelB)
+{
+  vec3 Simplex[50];
+
+  for(int i = 0; i < ModelA->MeshCount; i++)
   {
-    printf("No collision detected.\n");
+    for(int j = 0; j < ModelB->MeshCount; j++)
+    {
+      bool IsColliding = GJK(Simplex, ModelA->Meshes[i], ModelB->Meshes[j]);
+
+      if(IsColliding)
+      {
+        printf("Collision detected between ModelA.Mesh[%d] and ModelB.Mesh[%d]!\n", i, j);
+
+        vec3 SolutionVector = EPA(Simplex, 4, ModelA->Meshes[i], ModelB->Meshes[j]);
+
+        printf("SolutionVector = { %f, %f, %f }\n", SolutionVector.X, SolutionVector.Y, SolutionVector.Z);
+      }
+      else
+      {
+        // printf("No collision detected.\n");
+      }
+    }
   }
 }
