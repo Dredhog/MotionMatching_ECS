@@ -94,10 +94,10 @@ LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
     glBindTexture(GL_TEXTURE_2D, Texture);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DestSurface->w, DestSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, DestSurface->pixels);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // free(DestSurface->pixels);
     SDL_FreeSurface(DestSurface);
 
     return Texture;

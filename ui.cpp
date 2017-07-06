@@ -238,7 +238,7 @@ UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxVa
   bool Hovered  = false;
   rect DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
   ValueF        = NormValue * ValueRange + MinValueF;
-  *Value        = (int32_t)(ValueF /*+ 0.5f*/);
+  *Value        = (int32_t)(ValueF + 0.5f);
 
   DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
@@ -417,7 +417,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   Window->StartPos = Window->MaxPos = Window->CurrentPos = Window->Position - vec3{ Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
   PushClipQuad(Window, Window->Position, Window->SizeNoScroll);
 
-  Window->DefaultItemWidth = (Window->Flags & WINDOW_Popup ? 1 : 0.6f) * Window->SizeNoScroll.X;
+  Window->DefaultItemWidth = (Window->Flags & WINDOW_Popup ? 1 : 0.65f) * Window->SizeNoScroll.X;
 }
 
 void
@@ -475,13 +475,6 @@ UI::EndPopupWindow()
   UI::EndWindow();
 }
 
-char*
-StringArrayToString(void* Data, int Index)
-{
-  char** StringArray = (char**)Data;
-  return StringArray[Index];
-}
-
 void
 UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems, float Width)
 {
@@ -510,6 +503,7 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
 
   const float ItemWidth   = ButtonSize.X;
   const float ItemHeight  = ButtonSize.Y;
+  const float ItemSpacing = 1;
   const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount + 1, HeightInItems);
   const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y }, { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
 
@@ -543,7 +537,7 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
     BeginPopupWindow("Combo", PopupBB.GetSize(), WINDOW_Combo);
     gui_window* PopupWindow = GetCurrentWindow();
 
-    PushStyleVar(UI::VAR_SpacingY, 0);
+    PushStyleVar(UI::VAR_SpacingY, ItemSpacing);
     bool SelectedSomething = false;
     if(UI::Button("    ", PopupWindow->SizeNoScroll.X))
     {
@@ -951,7 +945,7 @@ UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue
 }
 
 void
-UI::Image(int32_t TextureID, const char* Name, vec3 Size)
+UI::Image(const char* Name, int32_t TextureID, vec3 Size)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();

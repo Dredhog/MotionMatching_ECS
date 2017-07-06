@@ -99,8 +99,15 @@ namespace UI
   void Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* (*DataToText)(void*, int), int HeightInItems = 5, float Width = 0);
   void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems = 5, float Width = 0);
 
-  void Image(int32_t TextureID, const char* Name, vec3 Size);
+  void Image(const char* Name, int32_t TextureID, vec3 Size);
   void Text(const char* Text);
 
   gui_style* GetStyle();
+
+  inline char*
+  StringArrayToString(void* Data, int Index)
+  {
+    char** StringArray = (char**)Data;
+    return StringArray[Index];
+  }
 }

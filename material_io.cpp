@@ -153,11 +153,11 @@ ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* R
         }
         continue;
       }
-      else if(strncmp(&Line[Offset], "map_Ns", strlen("map_Ns")) == 0)
+      else if(strncmp(&Line[Offset], "map_Ns", strlen("map_Ks")) == 0)
       {
         Material.Phong.Flags |= PHONG_UseSpecularMap;
 
-        Offset += strlen("map_Ns");
+        Offset += strlen("map_Ks");
         while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
         {
           ++Offset;
