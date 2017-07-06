@@ -1,7 +1,9 @@
 #include "ui.h"
 
-void MaterialGUI(game_state* GameState);
-void EntityGUI(game_state* GameState);
+void MaterialGUI(game_state* GameState, bool& g_ShowMaterialEditor);
+void EntityGUI(game_state* GameState, bool& g_ShowEntityTools);
+void AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools);
+void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings);
 
 namespace UI
 {
@@ -10,12 +12,32 @@ namespace UI
   {
     UI::BeginFrame(GameState, Input);
 
-    static int         s_CurrentItem = -1;
-    static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
-    UI::BeginWindow("window A", { 300, 300 }, { 500, 410 });
+    UI::BeginWindow("Editor Window", { 600, 300 }, { 700, 600 });
     {
-      static bool s_HeaderExpanded = true;
-      if(UI::CollapsingHeader("Demo", &s_HeaderExpanded))
+      UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings, SELECT_EnumCount, UI::StringArrayToString);
+
+      static bool g_ShowMaterialEditor  = false;
+      static bool g_ShowEntityTools     = false;
+      static bool g_ShowAnimationEditor = false;
+      static bool g_ShowLightSettings   = false;
+      static bool g_ShowDisplaySet      = false;
+      static bool g_DrawMemoryMaps      = false;
+      static bool g_ShowCameraSettings  = false;
+
+      EntityGUI(GameState, g_ShowEntityTools);
+      MaterialGUI(GameState, g_ShowMaterialEditor);
+      AnimationGUI(GameState, g_ShowAnimationEditor, g_ShowEntityTools);
+      MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps, g_ShowCameraSettings);
+    }
+    UI::EndWindow();
+
+    UI::BeginWindow("window A", { 50, 300 }, { 500, 380 });
+    {
+      static int         s_CurrentItem = -1;
+      static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
+
+      static bool s_ShowDemo = false;
+      if(UI::CollapsingHeader("Demo", &s_ShowDemo))
       {
         static bool s_Checkbox0 = false;
         static bool s_Checkbox1 = false;
@@ -39,8 +61,13 @@ namespace UI
         UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex, ARRAY_SIZE(s_Items) - StartIndex);
         UI::NewLine();
 
-        char TempBuff[20];
+        char TempBuff[30];
         snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+        UI::Text(TempBuff);
+
+        snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX, Input->MouseScreenY);
+        UI::Text(TempBuff);
+        snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX, Input->NormMouseY);
         UI::Text(TempBuff);
 
         UI::Checkbox("Show Image", &s_Checkbox0);
@@ -65,14 +92,6 @@ namespace UI
     }
     UI::EndWindow();
 
-    UI::BeginWindow("Window B", { 1000, 300 }, { 700, 600 });
-    {
-      UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings, SELECT_EnumCount, UI::StringArrayToString);
-      EntityGUI(GameState);
-      MaterialGUI(GameState);
-    }
-    UI::EndWindow();
-
     UI::EndFrame();
   }
 }
@@ -85,23 +104,11 @@ PathArrayToString(void* Data, int Index)
 }
 
 void
-MaterialGUI(game_state* GameState)
+MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
 {
-
-  static bool g_ShowDisplaySet      = false;
-  static bool g_ShowEntityTools     = false;
-  static bool g_ShowAnimationEditor = false;
-  static bool g_ShowMaterialEditor  = false;
-  static bool g_ShowCameraSettings  = false;
-  static bool g_ShowLightSettings   = false;
-  static bool g_ShowGUISettings     = false;
-  static bool g_ShowSceneSettings   = false;
-  static bool g_ShowHeapParameters  = false;
-  static bool g_DrawMemoryMaps      = false;
-
   if(GameState->SelectionMode == SELECT_Mesh || GameState->SelectionMode == SELECT_Entity)
   {
-    if(UI::CollapsingHeader("Material Editor", &g_ShowMaterialEditor))
+    if(UI::CollapsingHeader("Material Editor", &ShowMaterialEditor))
     {
       {
         int32_t ActivePathIndex = 0;
@@ -152,8 +159,9 @@ MaterialGUI(game_state* GameState)
         }
         UI::SameLine();
         UI::NewLine();
-        UI::Checkbox("Enable Blending", &CurrentMaterial->Common.UseBlending);
 
+        UI::Checkbox("Blending", &CurrentMaterial->Common.UseBlending);
+        UI::SameLine();
         {
           bool SkeletalFlagValue = (CurrentMaterial->Phong.Flags & PHONG_UseSkeleton);
 
@@ -169,23 +177,21 @@ MaterialGUI(game_state* GameState)
             CurrentMaterial->Common.IsSkeletal = false;
           }
         }
+        UI::SameLine();
+        UI::NewLine();
 
         switch(CurrentMaterial->Common.ShaderType)
         {
           case SHADER_Phong:
           {
-            UI::DragFloat3("Ambient Color", &CurrentMaterial->Phong.AmbientColor.X, 0.0f, 1.0f, 5.0f);
-
             bool UseDIffuse      = (CurrentMaterial->Phong.Flags & PHONG_UseDiffuseMap);
             bool UseSpecular     = CurrentMaterial->Phong.Flags & PHONG_UseSpecularMap;
             bool NormalFlagValue = CurrentMaterial->Phong.Flags & PHONG_UseNormalMap;
             UI::Checkbox("Diffuse Map", &UseDIffuse);
-            UI::SameLine();
             UI::Checkbox("Specular Map", &UseSpecular);
-            UI::SameLine();
             UI::Checkbox("Normal Map", &NormalFlagValue);
-            UI::SameLine();
-            UI::NewLine();
+
+            UI::DragFloat3("Ambient Color", &CurrentMaterial->Phong.AmbientColor.X, 0.0f, 1.0f, 5.0f);
 
             if(UseDIffuse)
             {
@@ -292,12 +298,6 @@ MaterialGUI(game_state* GameState)
           }
           break;
         }
-        if(UI::Button("Clear Material Fields"))
-        {
-          uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
-          *CurrentMaterial                   = {};
-          CurrentMaterial->Common.ShaderType = ShaderType;
-        }
         if(GameState->Resources.MaterialPathCount > 0 && GameState->CurrentMaterialID.Value > 0)
         {
           int CurrentMaterialPathIndex = GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
@@ -310,17 +310,28 @@ MaterialGUI(game_state* GameState)
             }
           }
         }
-        if(UI::Button("Create New"))
-        {
-          GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
-          printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
-        }
+        UI::SameLine();
         if(UI::Button("Duplicate Current"))
         {
           GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
           printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
         }
+        UI::SameLine();
+        if(UI::Button("Clear Material Fields"))
+        {
+          uint32_t ShaderType                = CurrentMaterial->Common.ShaderType;
+          *CurrentMaterial                   = {};
+          CurrentMaterial->Common.ShaderType = ShaderType;
+        }
+        UI::SameLine();
+        UI::NewLine();
         entity* SelectedEntity = {};
+        if(UI::Button("Create New"))
+        {
+          GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
+          printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
+        }
+        UI::SameLine();
         if(GetSelectedEntity(GameState, &SelectedEntity))
         {
           if(UI::Button("Apply To Selected"))
@@ -341,6 +352,7 @@ MaterialGUI(game_state* GameState)
               }
             }
           }
+          UI::SameLine();
           if(GameState->SelectionMode == SELECT_Mesh)
           {
             if(UI::Button("Edit Selected"))
@@ -349,15 +361,16 @@ MaterialGUI(game_state* GameState)
             }
           }
         }
+        UI::SameLine();
+        UI::NewLine();
       }
     }
   }
 }
 
 void
-EntityGUI(game_state* GameState)
+EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 {
-  static bool s_ShowEntityTools = true;
   if(UI::CollapsingHeader("Entity Tools", &s_ShowEntityTools))
   {
     static int32_t ActivePathIndex = 0;
@@ -545,5 +558,128 @@ EntityGUI(game_state* GameState)
         }
       }
     }
+  }
+}
+
+char*
+BoneArrayToString(void* Data, int Index)
+{
+  Anim::bone* Bones = (Anim::bone*)Data;
+  return Bones[Index].Name;
+}
+
+void
+AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools)
+{
+  if(GameState->SelectionMode == SELECT_Bone && GameState->AnimEditor.Skeleton)
+  {
+    entity* AttachedEntity;
+    if(GetEntityAtIndex(GameState, &AttachedEntity, GameState->AnimEditor.EntityIndex))
+    {
+      Render::model* AttachedModel = GameState->Resources.GetModel(AttachedEntity->ModelID);
+      assert(AttachedModel->Skeleton == GameState->AnimEditor.Skeleton);
+    }
+    else
+    {
+      assert(0 && "no entity found in GameState->AnimEditor");
+    }
+
+    if(UI::CollapsingHeader("Animation Editor", &g_ShowAnimationEditor))
+    {
+      if(UI::Button("Stop Editing"))
+      {
+        DettachEntityFromAnimEditor(GameState, &GameState->AnimEditor);
+        GameState->SelectionMode = SELECT_Entity;
+        g_ShowEntityTools        = true;
+        g_ShowAnimationEditor    = false;
+      }
+
+      if(GameState->AnimEditor.Skeleton)
+      {
+        if(0 < AttachedEntity->AnimController->AnimStateCount)
+        {
+          Anim::animation* Animation = AttachedEntity->AnimController->Animations[0];
+          if(UI::Button("Edit Attached Animation"))
+          {
+            int32_t AnimationPathIndex = GameState->Resources.GetAnimationPathIndex(AttachedEntity->AnimController->AnimationIDs[0]);
+            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation, GameState->Resources.AnimationPaths[AnimationPathIndex].Name);
+          }
+        }
+        if(UI::Button("Insert keyframe"))
+        {
+          EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor, GameState->AnimEditor.PlayHeadTime);
+        }
+        if(GameState->AnimEditor.KeyframeCount > 0)
+        {
+          if(UI::Button("Delete keyframe"))
+          {
+            EditAnimation::DeleteCurrentKeyframe(&GameState->AnimEditor);
+          }
+          if(UI::Button("Export Animation"))
+          {
+            time_t     CurrentTime;
+            struct tm* TimeInfo;
+            char       AnimGroupName[30];
+            time(&CurrentTime);
+            TimeInfo = localtime(&CurrentTime);
+            strftime(AnimGroupName, sizeof(AnimGroupName), "data/animations/%H_%M_%S.anim", TimeInfo);
+            Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor, AnimGroupName);
+          }
+          if(GameState->AnimEditor.AnimationPath[0] != '\0')
+          {
+            if(UI::Button("Override Animation"))
+            {
+              Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor, GameState->AnimEditor.AnimationPath);
+            }
+          }
+        }
+
+        UI::DragFloat("Playhead Time", &GameState->AnimEditor.PlayHeadTime, -100, 100, 2.0f);
+        EditAnimation::AdvancePlayHead(&GameState->AnimEditor, 0);
+        if(GameState->AnimEditor.KeyframeCount > 0)
+        {
+          {
+            int32_t ActiveBoneIndex = GameState->AnimEditor.CurrentBone;
+            UI::Combo("Bone", &ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones, GameState->AnimEditor.Skeleton->BoneCount, BoneArrayToString);
+            EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
+          }
+
+          Anim::transform* Transform     = &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe].Transforms[GameState->AnimEditor.CurrentBone];
+          mat4             Mat4Transform = TransformToGizmoMat4(Transform);
+          UI::DragFloat3("Translation", &Transform->Translation.X, -INFINITY, INFINITY, 10.0f);
+          UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
+          UI::DragFloat3("Scale", &Transform->Scale.X, -INFINITY, INFINITY, 10.0f);
+        }
+      }
+    }
+  }
+}
+
+void
+MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings)
+{
+  if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
+  {
+    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 1, 5);
+    UI::DragFloat3("Specular", &GameState->R.LightSpecularColor.X, 0, 1, 5);
+    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 1, 5);
+    UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
+    UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
+  }
+
+  if(UI::CollapsingHeader("Render Switches", &g_ShowDisplaySet))
+  {
+    UI::Checkbox("Memory Visualization", &g_DrawMemoryMaps);
+    UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
+    UI::Checkbox("Timeline", &GameState->DrawTimeline);
+    UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
+    UI::Checkbox("Cubemap", &GameState->DrawCubemap);
+  }
+  if(UI::CollapsingHeader("Camera", &g_ShowCameraSettings))
+  {
+    UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
+    UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
+    UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane, GameState->Camera.NearClipPlane, 500);
+    UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
   }
 }

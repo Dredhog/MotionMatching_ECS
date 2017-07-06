@@ -503,6 +503,7 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
 
   const float ItemWidth   = ButtonSize.X;
   const float ItemHeight  = ButtonSize.Y;
+  const float ItemSpacing = 1;
   const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount + 1, HeightInItems);
   const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y }, { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
 
@@ -536,7 +537,7 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
     BeginPopupWindow("Combo", PopupBB.GetSize(), WINDOW_Combo);
     gui_window* PopupWindow = GetCurrentWindow();
 
-    PushStyleVar(UI::VAR_SpacingY, 1);
+    PushStyleVar(UI::VAR_SpacingY, ItemSpacing);
     bool SelectedSomething = false;
     if(UI::Button("    ", PopupWindow->SizeNoScroll.X))
     {
