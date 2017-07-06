@@ -1,9 +1,10 @@
 #include "ui.h"
+#include "scene.h"
 
 void MaterialGUI(game_state* GameState, bool& g_ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& g_ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools);
-void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings);
+void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings);
 
 namespace UI
 {
@@ -23,11 +24,12 @@ namespace UI
       static bool g_ShowDisplaySet      = false;
       static bool g_DrawMemoryMaps      = false;
       static bool g_ShowCameraSettings  = false;
+      static bool g_ShowSceneSettings   = false;
 
       EntityGUI(GameState, g_ShowEntityTools);
       MaterialGUI(GameState, g_ShowMaterialEditor);
       AnimationGUI(GameState, g_ShowAnimationEditor, g_ShowEntityTools);
-      MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps, g_ShowCameraSettings);
+      MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps, g_ShowCameraSettings, g_ShowSceneSettings);
     }
     UI::EndWindow();
 
@@ -656,7 +658,7 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
 }
 
 void
-MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings)
+MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings)
 {
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
   {
@@ -681,5 +683,43 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
     UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane, GameState->Camera.NearClipPlane, 500);
     UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
+  }
+  if(UI::CollapsingHeader("Scene", &g_ShowSceneSettings))
+  {
+    if(UI::Button("Export As New"))
+    {
+      struct tm* TimeInfo;
+      time_t     CurrentTime;
+      char       PathName[60];
+      time(&CurrentTime);
+      TimeInfo = localtime(&CurrentTime);
+      strftime(PathName, sizeof(PathName), "data/scenes/%H_%M_%S.scene", TimeInfo);
+      ExportScene(GameState, PathName);
+    }
+    if(GameState->Resources.ScenePathCount > 0)
+    {
+      {
+        static int32_t SelectedSceneIndex = 0;
+        if(UI::Button("Export"))
+        {
+          ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
+        }
+        UI::SameLine();
+        UI::Combo("Export Path", &SelectedSceneIndex, GameState->Resources.ScenePaths, GameState->Resources.ScenePathCount, PathArrayToString);
+        UI::SameLine();
+        UI::NewLine();
+      }
+      {
+        static int32_t SelectedSceneIndex = 0;
+        if(UI::Button("Import"))
+        {
+          ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
+        }
+        UI::SameLine();
+        UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths, GameState->Resources.ScenePathCount, PathArrayToString);
+        UI::SameLine();
+        UI::NewLine();
+      }
+    }
   }
 }
