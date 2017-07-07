@@ -141,6 +141,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShowLightPosition  = true;
 
     GameState->DrawCubemap             = true;
+    GameState->DrawDebugSpheres        = true;
     GameState->DrawTimeline            = true;
     GameState->DrawGizmos              = true;
     GameState->IsAnimationPlaying      = false;
@@ -238,8 +239,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     vec4 EdgeColor = { 1.0f, 0.0f, 0.0f, 1.0f };
 
+    Debug::PushWireframeSphere(&GameState->Camera, {}, 0.05f, { 1, 1, 0, 1 });
     for(int i = 0; i < SimplexOrder; i++)
     {
+      Debug::PushWireframeSphere(&GameState->Camera, Simplex[i], 0.05f, { 1, 0, 1, 1 });
       for(int j = 1; j <= SimplexOrder; j++)
       {
         Debug::PushLine(Simplex[i], Simplex[j], EdgeColor);
