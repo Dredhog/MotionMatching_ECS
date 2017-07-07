@@ -36,6 +36,8 @@ namespace Debug
   void DrawQuads(game_state* GameState);
   void DrawTexturedQuads(game_state* GameState);
   void DrawWireframeSpheres(game_state* GameState);
+  void DrawLine(game_state* GameState, vec3 PointA, vec3 PointB);
+  void DrawPolygon(game_state* GameState, vec3* Vertices, int32_t VertexCount);
   void ClearDrawArrays();
 }
 

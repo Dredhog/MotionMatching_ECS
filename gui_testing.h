@@ -33,6 +33,28 @@ namespace UI
     }
     UI::EndWindow();
 
+    UI::BeginWindow("Collision window", { 1500, 800 }, { 400, 200 });
+    {
+      entity* Entity;
+      GetSelectedEntity(GameState, &Entity);
+
+      if(Entity)
+      {
+        if(UI::Button("Assign to A"))
+        {
+          GameState->EntityA   = GameState->SelectedEntityIndex;
+          GameState->AssignedA = true;
+        }
+
+        if(UI::Button("Assign to B"))
+        {
+          GameState->EntityB   = GameState->SelectedEntityIndex;
+          GameState->AssignedB = true;
+        }
+      }
+    }
+    UI::EndWindow();
+
     UI::BeginWindow("window A", { 50, 300 }, { 500, 380 });
     {
       static int         s_CurrentItem = -1;

@@ -3,28 +3,25 @@
 #include "collision.h"
 
 void
-CollisionTesting(Render::model* ModelA, Render::model* ModelB)
+CollisionTesting(game_state* GameState, const game_input* const Input, Render::mesh* MeshA, Render::mesh* MeshB, mat4 ModelAMatrix, mat4 ModelBMatrix)
 {
-  vec3 Simplex[50];
+  contact_point Simplex[4];
 
-  for(int i = 0; i < ModelA->MeshCount; i++)
+  bool IsColliding = GJK(Simplex, MeshA, MeshB, ModelAMatrix, ModelBMatrix);
+
+  if(IsColliding)
   {
-    for(int j = 0; j < ModelB->MeshCount; j++)
-    {
-      bool IsColliding = GJK(Simplex, ModelA->Meshes[i], ModelB->Meshes[j]);
+    printf("Collision detected!\n");
 
-      if(IsColliding)
-      {
-        printf("Collision detected between ModelA.Mesh[%d] and ModelB.Mesh[%d]!\n", i, j);
+    vec3 SolutionVector;
+    vec3 CollisionPoint;
+    EPA(GameState, Input, &SolutionVector, &CollisionPoint, Simplex, MeshA, MeshB, ModelAMatrix, ModelBMatrix);
 
-        vec3 SolutionVector = EPA(Simplex, 4, ModelA->Meshes[i], ModelB->Meshes[j]);
-
-        printf("SolutionVector = { %f, %f, %f }\n", SolutionVector.X, SolutionVector.Y, SolutionVector.Z);
-      }
-      else
-      {
-        // printf("No collision detected.\n");
-      }
-    }
+    printf("SolutionVector = { %f, %f, %f }\n", SolutionVector.X, SolutionVector.Y, SolutionVector.Z);
+    printf("CollisionPoint = { %f, %f, %f }\n", CollisionPoint.X, CollisionPoint.Y, CollisionPoint.Z);
+  }
+  else
+  {
+    printf("No collision detected.\n");
   }
 }

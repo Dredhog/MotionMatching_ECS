@@ -101,6 +101,13 @@ struct game_state
   uint32_t IndexFBO;
   uint32_t DepthRBO;
   uint32_t IDTexture;
+
+  // Collision testing
+  bool AssignedA;
+  bool AssignedB;
+
+  int32_t EntityA;
+  int32_t EntityB;
 };
 
 inline bool
@@ -146,9 +153,7 @@ GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
 inline mat4
 TransformToMat4(const Anim::transform* Transform)
 {
-  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
-                              Math::MulMat4(Math::Mat4Rotate(Transform->Rotation),
-                                            Math::Mat4Scale(Transform->Scale)));
+  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation), Math::MulMat4(Math::Mat4Rotate(Transform->Rotation), Math::Mat4Scale(Transform->Scale)));
   return Result;
 }
 
@@ -170,8 +175,7 @@ DeleteEntity(game_state* GameState, int32_t Index)
 }
 
 inline void
-AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
-                         int32_t EntityIndex)
+AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor, int32_t EntityIndex)
 {
   entity* AddedEntity = {};
   if(GetEntityAtIndex(GameState, &AddedEntity, EntityIndex))
@@ -194,22 +198,15 @@ DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animatio
 }
 
 inline void
-GetCubemapRIDs(rid* RIDs, Resource::resource_manager* Resources,
-               Memory::stack_allocator* const Allocator, char* CubemapPath, char* FileFormat)
+GetCubemapRIDs(rid* RIDs, Resource::resource_manager* Resources, Memory::stack_allocator* const Allocator, char* CubemapPath, char* FileFormat)
 {
   char* CubemapFaces[6];
-  CubemapFaces[0] =
-    (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_right.") + 1));
-  CubemapFaces[1] =
-    (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_left.") + 1));
-  CubemapFaces[2] =
-    (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_top.") + 1));
-  CubemapFaces[3] =
-    (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_bottom.") + 1));
-  CubemapFaces[4] =
-    (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_back.") + 1));
-  CubemapFaces[5] =
-    (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_front.") + 1));
+  CubemapFaces[0] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_right.") + 1));
+  CubemapFaces[1] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_left.") + 1));
+  CubemapFaces[2] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_top.") + 1));
+  CubemapFaces[3] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_bottom.") + 1));
+  CubemapFaces[4] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_back.") + 1));
+  CubemapFaces[5] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(strlen("_front.") + 1));
   strcpy(CubemapFaces[0], "_right.\0");
   strcpy(CubemapFaces[1], "_left.\0");
   strcpy(CubemapFaces[2], "_top.\0");
@@ -218,18 +215,12 @@ GetCubemapRIDs(rid* RIDs, Resource::resource_manager* Resources,
   strcpy(CubemapFaces[5], "_front.\0");
 
   char* FileNames[6];
-  FileNames[0] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(
-    (strlen(CubemapPath) + strlen(CubemapFaces[0]) + strlen(FileFormat) + 1)));
-  FileNames[1] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(
-    (strlen(CubemapPath) + strlen(CubemapFaces[1]) + strlen(FileFormat) + 1)));
-  FileNames[2] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(
-    (strlen(CubemapPath) + strlen(CubemapFaces[2]) + strlen(FileFormat) + 1)));
-  FileNames[3] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(
-    (strlen(CubemapPath) + strlen(CubemapFaces[3]) + strlen(FileFormat) + 1)));
-  FileNames[4] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(
-    (strlen(CubemapPath) + strlen(CubemapFaces[4]) + strlen(FileFormat) + 1)));
-  FileNames[5] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t(
-    (strlen(CubemapPath) + strlen(CubemapFaces[5]) + strlen(FileFormat) + 1)));
+  FileNames[0] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t((strlen(CubemapPath) + strlen(CubemapFaces[0]) + strlen(FileFormat) + 1)));
+  FileNames[1] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t((strlen(CubemapPath) + strlen(CubemapFaces[1]) + strlen(FileFormat) + 1)));
+  FileNames[2] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t((strlen(CubemapPath) + strlen(CubemapFaces[2]) + strlen(FileFormat) + 1)));
+  FileNames[3] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t((strlen(CubemapPath) + strlen(CubemapFaces[3]) + strlen(FileFormat) + 1)));
+  FileNames[4] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t((strlen(CubemapPath) + strlen(CubemapFaces[4]) + strlen(FileFormat) + 1)));
+  FileNames[5] = (char*)Allocator->Alloc(Memory::SafeTruncate_size_t_To_uint32_t((strlen(CubemapPath) + strlen(CubemapFaces[5]) + strlen(FileFormat) + 1)));
 
   for(int i = 0; i < 6; i++)
   {
@@ -260,8 +251,7 @@ RegisterDebugModels(game_state* GameState)
 
   strcpy(GameState->Cubemap.Name, "data/textures/skybox/morning");
   strcpy(GameState->Cubemap.Format, "tga");
-  GetCubemapRIDs(GameState->Cubemap.FaceIDs, &GameState->Resources, GameState->TemporaryMemStack,
-                 GameState->Cubemap.Name, GameState->Cubemap.Format);
+  GetCubemapRIDs(GameState->Cubemap.FaceIDs, &GameState->Resources, GameState->TemporaryMemStack, GameState->Cubemap.Name, GameState->Cubemap.Format);
   GameState->Cubemap.CubemapTexture = -1;
   for(int i = 0; i < 6; i++)
   {
@@ -279,16 +269,13 @@ LoadCubemap(Resource::resource_manager* Resources, rid* RIDs)
 
   for(int i = 0; i < 6; i++)
   {
-    SDL_Surface* ImageSurface =
-      IMG_Load(Resources->TexturePaths[Resources->GetTexturePathIndex(RIDs[i])].Name);
+    SDL_Surface* ImageSurface = IMG_Load(Resources->TexturePaths[Resources->GetTexturePathIndex(RIDs[i])].Name);
     if(ImageSurface)
     {
-      SDL_Surface* DestSurface =
-        SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ABGR8888, 0);
+      SDL_Surface* DestSurface = SDL_ConvertSurfaceFormat(ImageSurface, SDL_PIXELFORMAT_ABGR8888, 0);
       SDL_FreeSurface(ImageSurface);
 
-      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, DestSurface->w, DestSurface->h,
-                   0, GL_RGBA, GL_UNSIGNED_BYTE, DestSurface->pixels);
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, DestSurface->w, DestSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, DestSurface->pixels);
       SDL_FreeSurface(DestSurface);
     }
     else
