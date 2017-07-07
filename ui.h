@@ -96,7 +96,7 @@ namespace UI
 
   void SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical = false);
 
-  void Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* (*DataToText)(void*, int), int HeightInItems = 5, float Width = 0);
+  void Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* (*DataToText)(void*, int), int HeightInItems = 8, float Width = 0);
   void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems = 5, float Width = 0);
 
   void Image(const char* Name, int32_t TextureID, vec3 Size);
