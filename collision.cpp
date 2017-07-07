@@ -353,9 +353,9 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector, 
       {
         for(int i = 0; i < TriangleCount; i++)
         {
-          //Debug::DrawLine(GameState, Polytope[i].A.P, Polytope[i].B.P);
-          //Debug::DrawLine(GameState, Polytope[i].B.P, Polytope[i].C.P);
-          //Debug::DrawLine(GameState, Polytope[i].C.P, Polytope[i].A.P);
+          Debug::PushLine(Polytope[i].A.P, Polytope[i].B.P);
+          Debug::PushLine(Polytope[i].B.P, Polytope[i].C.P);
+          Debug::PushLine(Polytope[i].C.P, Polytope[i].A.P);
         }
       }
       int32_t TriangleIndex = 0;
