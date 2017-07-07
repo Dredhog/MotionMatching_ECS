@@ -25,7 +25,10 @@ namespace Debug
   void PushTopLeftQuad(vec3 Position, float Width, float Height, vec4 Color);
   void PushTopLeftTexturedQuad(int32_t TextureID, vec3 Position, float Width, float Height);
   void PushGizmo(const camera* Camera, const mat4* GizmoBase);
-  void PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, vec4 Color = vec4{ 1, 0, 0, 1 });
+  void PushWireframeSphere(const camera* Camera, vec3 Position, float Radius,
+                           vec4 Color = vec4{ 1, 0, 0, 1 });
+  void PushLine(vec3 PointA, vec3 PointB, vec4 Color = { 1, 0, 0, 1 });
+	void PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color = { 1, 0, 0, 1 });
 
   // These are in y down and pixel space coordinates
   void UIPushQuad(vec3 Position, vec3 Size, vec4 Color = { 0.5f, 0.5f, 0.5f, 1.0f });
@@ -36,14 +39,14 @@ namespace Debug
   void DrawQuads(game_state* GameState);
   void DrawTexturedQuads(game_state* GameState);
   void DrawWireframeSpheres(game_state* GameState);
-  void DrawLine(game_state* GameState, vec3 PointA, vec3 PointB);
-  void DrawPolygon(game_state* GameState, vec3* Vertices, int32_t VertexCount);
+  void DrawLines(game_state* GameState);
   void ClearDrawArrays();
 }
 
 inline mat4
 TransformToGizmoMat4(const Anim::transform* Transform)
 {
-  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation), Math::Mat4Rotate(Transform->Rotation));
+  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
+                              Math::Mat4Rotate(Transform->Rotation));
   return Result;
 }
