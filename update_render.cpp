@@ -684,13 +684,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
+  Debug::PushLine({ 0, 0, 10 }, { 0, 1, 0 });
   Debug::DrawWireframeSpheres(GameState);
+  Debug::DrawLines(GameState);
+
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   if(GameState->DrawGizmos)
   {
     Debug::DrawGizmos(GameState);
   }
-
   Debug::DrawQuads(GameState);
   Debug::ClearDrawArrays();
   Text::ClearTextRequestCounts();
