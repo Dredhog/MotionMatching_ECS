@@ -36,9 +36,7 @@ namespace UI
     UI::BeginWindow("Collision window", { 1500, 800 }, { 400, 200 });
     {
       entity* Entity;
-      GetSelectedEntity(GameState, &Entity);
-
-      if(Entity)
+      if(GetSelectedEntity(GameState, &Entity))
       {
         if(UI::Button("Assign to A"))
         {
