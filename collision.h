@@ -108,8 +108,8 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     if(Math::Dot(Math::Cross(ABC, AC), AO) > 0)
     {
       // AC region
-      Simplex[0]    = Simplex[3]; // A -> 0
-      Simplex[1]    = Simplex[1]; // C -> 1
+      Simplex[0]    = Simplex[1];
+      Simplex[1]    = Simplex[3];
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AC, AO), AC);
       return false;
@@ -117,8 +117,8 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     else if(Math::Dot(Math::Cross(AB, ABC), AO) > 0)
     {
       // AB region
-      Simplex[0]    = Simplex[2]; // B -> 0
-      Simplex[1]    = Simplex[3]; // A -> 1
+      Simplex[0]    = Simplex[2];
+      Simplex[1]    = Simplex[3];
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AB, AO), AB);
       return false;
@@ -136,8 +136,7 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     if(Math::Dot(Math::Cross(ACD, AD), AO) > 0)
     {
       // AD region
-      Simplex[1]    = Simplex[0]; // D -> 1
-      Simplex[0]    = Simplex[3]; // A -> 0
+      Simplex[1]    = Simplex[3];
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AD, AO), AD);
       return false;
@@ -145,8 +144,8 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     else if(Math::Dot(Math::Cross(AC, ACD), AO) > 0)
     {
       // AC region
-      Simplex[0]    = Simplex[1]; // C -> 0
-      Simplex[1]    = Simplex[3]; // A -> 1
+      Simplex[0]    = Simplex[1];
+      Simplex[1]    = Simplex[3];
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AC, AO), AC);
       return false;
@@ -164,8 +163,8 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     if(Math::Dot(Math::Cross(ADB, AB), AO) > 0)
     {
       // AB region
-      Simplex[0]    = Simplex[3]; // A -> 0
-      Simplex[1]    = Simplex[2]; // B -> 1
+      Simplex[0]    = Simplex[2];
+      Simplex[1]    = Simplex[3];
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AB, AO), AB);
       return false;
@@ -173,8 +172,7 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     else if(Math::Dot(Math::Cross(AD, ADB), AO) > 0)
     {
       // AD region
-      Simplex[0]    = Simplex[0]; // D -> 0
-      Simplex[1]    = Simplex[3]; // A -> 1
+      Simplex[1]    = Simplex[3];
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AD, AO), AD);
       return false;
