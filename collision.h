@@ -18,54 +18,31 @@ struct contact_point
   vec3 SupportA;
 };
 
-void
-Support(vec3* PointA, vec3* PointB, Render::mesh* MeshA, Render::mesh* MeshB, vec3 Direction,
-        mat4 ModelAMatrix, mat4 ModelBMatrix)
+vec3
+Support(Render::mesh* Mesh, vec3 Direction, mat4 ModelMatrix)
 {
-  vec3 TransformedA = Math::Vec4ToVec3(
-    Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[0].Position, 1.0f)));
-  vec3 TransformedB = Math::Vec4ToVec3(
-    Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[0].Position, 1.0f)));
+  vec3 Transformed =
+    Math::Vec4ToVec3(Math::MulMat4Vec4(ModelMatrix, Math::Vec4(Mesh->Vertices[0].Position, 1.0f)));
 
-  float   MaxA   = Math::Dot(TransformedA, Direction);
-  float   MinB   = Math::Dot(TransformedB, Direction);
-  int32_t IndexA = 0;
-  int32_t IndexB = 0;
+  float   Max   = Math::Dot(Transformed, Direction);
+  int32_t Index = 0;
 
   float DotProduct;
 
-  for(int i = 1; i < MeshA->VerticeCount; i++)
+  for(int i = 1; i < Mesh->VerticeCount; i++)
   {
-    TransformedA = Math::Vec4ToVec3(
-      Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[i].Position, 1.0f)));
-    DotProduct = Math::Dot(TransformedA, Direction);
-    if(DotProduct > MaxA)
+    Transformed = Math::Vec4ToVec3(
+      Math::MulMat4Vec4(ModelMatrix, Math::Vec4(Mesh->Vertices[i].Position, 1.0f)));
+    DotProduct = Math::Dot(Transformed, Direction);
+    if(DotProduct > Max)
     {
-      MaxA   = DotProduct;
-      IndexA = i;
+      Max   = DotProduct;
+      Index = i;
     }
   }
 
-  for(int i = 1; i < MeshB->VerticeCount; i++)
-  {
-    TransformedB = Math::Vec4ToVec3(
-      Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[i].Position, 1.0f)));
-    DotProduct = Math::Dot(MeshB->Vertices[i].Position, Direction);
-    if(DotProduct < MinB)
-    {
-      MinB   = DotProduct;
-      IndexB = i;
-    }
-  }
-
-  *PointA = Math::Vec4ToVec3(
-    Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[IndexA].Position, 1.0f)));
-  *PointB = Math::Vec4ToVec3(
-    Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[IndexB].Position, 1.0f)));
-#if 0
-  *PointA = MeshA->Vertices[IndexA].Position;
-  *PointB = MeshB->Vertices[IndexB].Position;
-#endif
+  return Math::Vec4ToVec3(
+    Math::MulMat4Vec4(ModelMatrix, Math::Vec4(Mesh->Vertices[Index].Position, 1.0f)));
 }
 
 void
@@ -125,13 +102,14 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
   vec3 ADB = Math::Cross(AD, AB);
   vec3 ACD = Math::Cross(AC, AD);
 
+  // Counter-clockwise
   if(Math::Dot(ABC, AO) > 0)
   {
     if(Math::Dot(Math::Cross(ABC, AC), AO) > 0)
     {
       // AC region
-      Simplex[0]    = Simplex[1];
-      Simplex[1]    = Simplex[3];
+      Simplex[0]    = Simplex[3]; // A -> 0
+      Simplex[1]    = Simplex[1]; // C -> 1
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AC, AO), AC);
       return false;
@@ -139,16 +117,16 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     else if(Math::Dot(Math::Cross(AB, ABC), AO) > 0)
     {
       // AB region
-      Simplex[0]    = Simplex[2];
-      Simplex[1]    = Simplex[3];
+      Simplex[0]    = Simplex[2]; // B -> 0
+      Simplex[1]    = Simplex[3]; // A -> 1
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AB, AO), AB);
       return false;
     }
     // ABC region
-    Simplex[0]    = Simplex[1];
-    Simplex[1]    = Simplex[2];
-    Simplex[2]    = Simplex[3];
+    Simplex[0]    = Simplex[1]; // C -> 0
+    Simplex[1]    = Simplex[2]; // B -> 1
+    Simplex[2]    = Simplex[3]; // A -> 2
     *SimplexOrder = 2;
     *Direction    = ABC;
     return false;
@@ -158,7 +136,8 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     if(Math::Dot(Math::Cross(ACD, AD), AO) > 0)
     {
       // AD region
-      Simplex[1]    = Simplex[3];
+      Simplex[1]    = Simplex[0]; // D -> 1
+      Simplex[0]    = Simplex[3]; // A -> 0
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AD, AO), AD);
       return false;
@@ -166,14 +145,16 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     else if(Math::Dot(Math::Cross(AC, ACD), AO) > 0)
     {
       // AC region
-      Simplex[0]    = Simplex[1];
-      Simplex[1]    = Simplex[3];
+      Simplex[0]    = Simplex[1]; // C -> 0
+      Simplex[1]    = Simplex[3]; // A -> 1
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AC, AO), AC);
       return false;
     }
     // ACD region
-    Simplex[2]    = Simplex[3];
+    Simplex[0]    = Simplex[0]; // D -> 0
+    Simplex[1]    = Simplex[1]; // C -> 1
+    Simplex[2]    = Simplex[3]; // A ->2
     *SimplexOrder = 2;
     *Direction    = ACD;
     return false;
@@ -183,8 +164,8 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     if(Math::Dot(Math::Cross(ADB, AB), AO) > 0)
     {
       // AB region
-      Simplex[0]    = Simplex[2];
-      Simplex[1]    = Simplex[3];
+      Simplex[0]    = Simplex[3]; // A -> 0
+      Simplex[1]    = Simplex[2]; // B -> 1
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AB, AO), AB);
       return false;
@@ -192,14 +173,16 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     else if(Math::Dot(Math::Cross(AD, ADB), AO) > 0)
     {
       // AD region
-      Simplex[1]    = Simplex[3];
+      Simplex[0]    = Simplex[0]; // D -> 0
+      Simplex[1]    = Simplex[3]; // A -> 1
       *SimplexOrder = 1;
       *Direction    = Math::Cross(Math::Cross(AD, AO), AD);
       return false;
     }
     // ADB region
-    Simplex[1]    = Simplex[2];
-    Simplex[2]    = Simplex[3];
+    Simplex[1]    = Simplex[0]; // D -> 1
+    Simplex[0]    = Simplex[2]; // B -> 0
+    Simplex[2]    = Simplex[3]; // A -> 2
     *SimplexOrder = 2;
     *Direction    = ADB;
     return false;
@@ -222,9 +205,9 @@ GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::
 
   for(int i = 0; i < IterationCount; i++)
   {
-    vec3 SupportA, SupportB;
-    Support(&SupportA, &SupportB, MeshA, MeshB, *Direction, ModelAMatrix, ModelBMatrix);
-    vec3 A = SupportA - SupportB;
+    vec3 SupportA = Support(MeshA, *Direction, ModelAMatrix);
+    vec3 SupportB = Support(MeshB, -*Direction, ModelBMatrix);
+    vec3 A        = SupportA - SupportB;
     if(Math::Dot(A, *Direction) < 0)
     {
       return false;
@@ -436,9 +419,8 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
     }
 #endif
 
-    vec3 SupportA, SupportB;
-    Support(&SupportA, &SupportB, MeshA, MeshB, Polytope[TriangleIndex].Normal, ModelAMatrix,
-            ModelBMatrix);
+    vec3 SupportA = Support(MeshA, Polytope[TriangleIndex].Normal, ModelAMatrix);
+    vec3 SupportB = Support(MeshB, -Polytope[TriangleIndex].Normal, ModelBMatrix);
     vec3 NewPoint = SupportA - SupportB;
 
     Result = Math::Normalized(Polytope[TriangleIndex].Normal) *
