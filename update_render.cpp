@@ -75,6 +75,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     //--------------LOAD FONT--------------
     GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
 
+    CollisionTesting();
+
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
