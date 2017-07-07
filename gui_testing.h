@@ -4,7 +4,8 @@
 void MaterialGUI(game_state* GameState, bool& g_ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& g_ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools);
-void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings);
+void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
+             bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings);
 
 namespace UI
 {
@@ -15,7 +16,8 @@ namespace UI
 
     UI::BeginWindow("Editor Window", { 600, 300 }, { 700, 600 });
     {
-      UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings, SELECT_EnumCount, UI::StringArrayToString);
+      UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings,
+                SELECT_EnumCount, UI::StringArrayToString);
 
       static bool g_ShowMaterialEditor  = false;
       static bool g_ShowEntityTools     = false;
@@ -29,7 +31,8 @@ namespace UI
       EntityGUI(GameState, g_ShowEntityTools);
       MaterialGUI(GameState, g_ShowMaterialEditor);
       AnimationGUI(GameState, g_ShowAnimationEditor, g_ShowEntityTools);
-      MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps, g_ShowCameraSettings, g_ShowSceneSettings);
+      MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps,
+              g_ShowCameraSettings, g_ShowSceneSettings);
     }
     UI::EndWindow();
 
@@ -50,6 +53,18 @@ namespace UI
         {
           GameState->EntityB   = GameState->SelectedEntityIndex;
           GameState->AssignedB = true;
+        }
+      }
+
+      if(GameState->AssignedA && GameState->AssignedB)
+      {
+        if(GameState->ABCollide)
+        {
+          UI::Text("Collision detected.");
+        }
+        else
+        {
+          UI::Text("No collision detected.");
         }
       }
     }
@@ -82,16 +97,19 @@ namespace UI
         }
         UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
         int StartIndex = 3;
-        UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex, ARRAY_SIZE(s_Items) - StartIndex);
+        UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
+                  ARRAY_SIZE(s_Items) - StartIndex);
         UI::NewLine();
 
         char TempBuff[30];
         snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
         UI::Text(TempBuff);
 
-        snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX, Input->MouseScreenY);
+        snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX,
+                 Input->MouseScreenY);
         UI::Text(TempBuff);
-        snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX, Input->NormMouseY);
+        snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
+                 Input->NormMouseY);
         UI::Text(TempBuff);
 
         UI::Checkbox("Show Image", &s_Checkbox0);
@@ -140,17 +158,21 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         {
           ActivePathIndex = GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
         }
-        UI::Combo("Material", &ActivePathIndex, GameState->Resources.MaterialPaths, GameState->Resources.MaterialPathCount, PathArrayToString);
+        UI::Combo("Material", &ActivePathIndex, GameState->Resources.MaterialPaths,
+                  GameState->Resources.MaterialPathCount, PathArrayToString);
         if(GameState->Resources.MaterialPathCount > 0)
         {
           rid NewRID = { 0 };
-          if(GameState->Resources.GetMaterialPathRID(&NewRID, GameState->Resources.MaterialPaths[ActivePathIndex].Name))
+          if(GameState->Resources
+               .GetMaterialPathRID(&NewRID,
+                                   GameState->Resources.MaterialPaths[ActivePathIndex].Name))
           {
             GameState->CurrentMaterialID = NewRID;
           }
           else
           {
-            GameState->CurrentMaterialID = GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[ActivePathIndex].Name);
+            GameState->CurrentMaterialID = GameState->Resources.RegisterMaterial(
+              GameState->Resources.MaterialPaths[ActivePathIndex].Name);
           }
         }
       }
@@ -215,7 +237,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             UI::Checkbox("Specular Map", &UseSpecular);
             UI::Checkbox("Normal Map", &NormalFlagValue);
 
-            UI::DragFloat3("Ambient Color", &CurrentMaterial->Phong.AmbientColor.X, 0.0f, 1.0f, 5.0f);
+            UI::DragFloat3("Ambient Color", &CurrentMaterial->Phong.AmbientColor.X, 0.0f, 1.0f,
+                           5.0f);
 
             if(UseDIffuse)
             {
@@ -224,21 +247,26 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
                 int32_t ActivePathIndex = 0;
                 if(CurrentMaterial->Phong.DiffuseMapID.Value > 0)
                 {
-                  ActivePathIndex = GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.DiffuseMapID);
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.DiffuseMapID);
                 }
                 if(GameState->Resources.TexturePathCount > 0)
                 {
                   CurrentMaterial->Phong.Flags |= PHONG_UseDiffuseMap;
 
-                  UI::Combo("Diffuse Map", &ActivePathIndex, GameState->Resources.TexturePaths, GameState->Resources.TexturePathCount, PathArrayToString);
+                  UI::Combo("Diffuse Map", &ActivePathIndex, GameState->Resources.TexturePaths,
+                            GameState->Resources.TexturePathCount, PathArrayToString);
                   rid NewRID;
-                  if(GameState->Resources.GetTexturePathRID(&NewRID, GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
                   {
                     CurrentMaterial->Phong.DiffuseMapID = NewRID;
                   }
                   else
                   {
-                    CurrentMaterial->Phong.DiffuseMapID = GameState->Resources.RegisterTexture(GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                    CurrentMaterial->Phong.DiffuseMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
                   }
                   assert(CurrentMaterial->Phong.DiffuseMapID.Value > 0);
                 }
@@ -247,7 +275,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             else
             {
               CurrentMaterial->Phong.Flags &= ~PHONG_UseDiffuseMap;
-              UI::DragFloat4("Diffuse Color", &CurrentMaterial->Phong.DiffuseColor.X, 0.0f, 1.0f, 5.0f);
+              UI::DragFloat4("Diffuse Color", &CurrentMaterial->Phong.DiffuseColor.X, 0.0f, 1.0f,
+                             5.0f);
             }
 
             if(UseSpecular)
@@ -256,21 +285,26 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
                 int32_t ActivePathIndex = 0;
                 if(CurrentMaterial->Phong.SpecularMapID.Value > 0)
                 {
-                  ActivePathIndex = GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.SpecularMapID);
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.SpecularMapID);
                 }
-                UI::Combo("Specular Map", &ActivePathIndex, GameState->Resources.TexturePaths, GameState->Resources.TexturePathCount, PathArrayToString);
+                UI::Combo("Specular Map", &ActivePathIndex, GameState->Resources.TexturePaths,
+                          GameState->Resources.TexturePathCount, PathArrayToString);
                 if(GameState->Resources.TexturePathCount > 0)
                 {
                   CurrentMaterial->Phong.Flags |= PHONG_UseSpecularMap;
 
                   rid NewRID;
-                  if(GameState->Resources.GetTexturePathRID(&NewRID, GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
                   {
                     CurrentMaterial->Phong.SpecularMapID = NewRID;
                   }
                   else
                   {
-                    CurrentMaterial->Phong.SpecularMapID = GameState->Resources.RegisterTexture(GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                    CurrentMaterial->Phong.SpecularMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
                   }
                   assert(CurrentMaterial->Phong.SpecularMapID.Value > 0);
                 }
@@ -279,7 +313,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             else
             {
               CurrentMaterial->Phong.Flags &= ~PHONG_UseSpecularMap;
-              UI::DragFloat3("Specular Color", &CurrentMaterial->Phong.SpecularColor.X, 0.0f, 1.0f, 5.0f);
+              UI::DragFloat3("Specular Color", &CurrentMaterial->Phong.SpecularColor.X, 0.0f, 1.0f,
+                             5.0f);
             }
 
             if(NormalFlagValue)
@@ -288,21 +323,26 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
                 int32_t ActivePathIndex = 0;
                 if(CurrentMaterial->Phong.NormalMapID.Value > 0)
                 {
-                  ActivePathIndex = GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.NormalMapID);
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Phong.NormalMapID);
                 }
-                UI::Combo("Normal map", &ActivePathIndex, GameState->Resources.TexturePaths, GameState->Resources.TexturePathCount, PathArrayToString);
+                UI::Combo("Normal map", &ActivePathIndex, GameState->Resources.TexturePaths,
+                          GameState->Resources.TexturePathCount, PathArrayToString);
                 if(GameState->Resources.TexturePathCount > 0)
                 {
                   CurrentMaterial->Phong.Flags |= PHONG_UseNormalMap;
 
                   rid NewRID;
-                  if(GameState->Resources.GetTexturePathRID(&NewRID, GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
                   {
                     CurrentMaterial->Phong.NormalMapID = NewRID;
                   }
                   else
                   {
-                    CurrentMaterial->Phong.NormalMapID = GameState->Resources.RegisterTexture(GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                    CurrentMaterial->Phong.NormalMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
                   }
                   assert(CurrentMaterial->Phong.NormalMapID.Value > 0);
                 }
@@ -324,10 +364,12 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         }
         if(GameState->Resources.MaterialPathCount > 0 && GameState->CurrentMaterialID.Value > 0)
         {
-          int CurrentMaterialPathIndex = GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
+          int CurrentMaterialPathIndex =
+            GameState->Resources.GetMaterialPathIndex(GameState->CurrentMaterialID);
           if(CurrentMaterialPathIndex != -1)
           {
-            char* CurrentMaterialPath = GameState->Resources.MaterialPaths[CurrentMaterialPathIndex].Name;
+            char* CurrentMaterialPath =
+              GameState->Resources.MaterialPaths[CurrentMaterialPathIndex].Name;
             if(UI::Button("Save"))
             {
               ExportMaterial(&GameState->Resources, CurrentMaterial, CurrentMaterialPath);
@@ -337,7 +379,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         UI::SameLine();
         if(UI::Button("Duplicate Current"))
         {
-          GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
+          GameState->CurrentMaterialID =
+            GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
           printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
         }
         UI::SameLine();
@@ -352,7 +395,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         entity* SelectedEntity = {};
         if(UI::Button("Create New"))
         {
-          GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
+          GameState->CurrentMaterialID =
+            GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
           printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
         }
         UI::SameLine();
@@ -364,7 +408,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             {
               if(GameState->SelectionMode == SELECT_Mesh)
               {
-                SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex] = GameState->CurrentMaterialID;
+                SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex] =
+                  GameState->CurrentMaterialID;
               }
               else if(GameState->SelectionMode == SELECT_Entity)
               {
@@ -381,7 +426,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
           {
             if(UI::Button("Edit Selected"))
             {
-              GameState->CurrentMaterialID = SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex];
+              GameState->CurrentMaterialID =
+                SelectedEntity->MaterialIDs[GameState->SelectedMeshIndex];
             }
           }
         }
@@ -398,12 +444,15 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
   if(UI::CollapsingHeader("Entity Tools", &s_ShowEntityTools))
   {
     static int32_t ActivePathIndex = 0;
-    UI::Combo("Model", &ActivePathIndex, GameState->Resources.ModelPaths, GameState->Resources.ModelPathCount, PathArrayToString);
+    UI::Combo("Model", &ActivePathIndex, GameState->Resources.ModelPaths,
+              GameState->Resources.ModelPathCount, PathArrayToString);
     {
       rid NewRID = { 0 };
-      if(!GameState->Resources.GetModelPathRID(&NewRID, GameState->Resources.ModelPaths[ActivePathIndex].Name))
+      if(!GameState->Resources
+            .GetModelPathRID(&NewRID, GameState->Resources.ModelPaths[ActivePathIndex].Name))
       {
-        NewRID                    = GameState->Resources.RegisterModel(GameState->Resources.ModelPaths[ActivePathIndex].Name);
+        NewRID =
+          GameState->Resources.RegisterModel(GameState->Resources.ModelPaths[ActivePathIndex].Name);
         GameState->CurrentModelID = NewRID;
       }
       else
@@ -436,14 +485,21 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       {
         if(!SelectedEntity->AnimController && UI::Button("Add Anim. Controller"))
         {
-          SelectedEntity->AnimController  = PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
+          SelectedEntity->AnimController =
+            PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
           *SelectedEntity->AnimController = {};
 
-          SelectedEntity->AnimController->Skeleton           = SelectedModel->Skeleton;
-          SelectedEntity->AnimController->OutputTransforms   = PushArray(GameState->PersistentMemStack, ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * SelectedModel->Skeleton->BoneCount, Anim::transform);
-          SelectedEntity->AnimController->BoneSpaceMatrices  = PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
-          SelectedEntity->AnimController->ModelSpaceMatrices = PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
-          SelectedEntity->AnimController->HierarchicalModelSpaceMatrices = PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
+          SelectedEntity->AnimController->Skeleton = SelectedModel->Skeleton;
+          SelectedEntity->AnimController->OutputTransforms =
+            PushArray(GameState->PersistentMemStack,
+                      ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * SelectedModel->Skeleton->BoneCount,
+                      Anim::transform);
+          SelectedEntity->AnimController->BoneSpaceMatrices =
+            PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
+          SelectedEntity->AnimController->ModelSpaceMatrices =
+            PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
+          SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
+            PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
         }
         else if(SelectedEntity->AnimController && UI::Button("Delete Anim. Controller"))
         {
@@ -454,14 +510,16 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           if(UI::Button("Animate Selected Entity"))
           {
             GameState->SelectionMode = SELECT_Bone;
-            AttachEntityToAnimEditor(GameState, &GameState->AnimEditor, GameState->SelectedEntityIndex);
+            AttachEntityToAnimEditor(GameState, &GameState->AnimEditor,
+                                     GameState->SelectedEntityIndex);
             // g_ShowAnimationEditor = true;
           }
           if(UI::Button("Play Animation"))
           {
             if(GameState->CurrentAnimationID.Value > 0)
             {
-              if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount == SelectedModel->Skeleton->BoneCount)
+              if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount ==
+                 SelectedModel->Skeleton->BoneCount)
               {
                 if(SelectedEntity->AnimController->AnimStateCount == 0)
                 {
@@ -482,11 +540,16 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           }
           {
             static int32_t ActivePathIndex = 0;
-            UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths, GameState->Resources.AnimationPathCount, PathArrayToString);
+            UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
+                      GameState->Resources.AnimationPathCount, PathArrayToString);
             rid NewRID = { 0 };
-            if(GameState->Resources.AnimationPathCount > 0 && !GameState->Resources.GetAnimationPathRID(&NewRID, GameState->Resources.AnimationPaths[ActivePathIndex].Name))
+            if(GameState->Resources.AnimationPathCount > 0 &&
+               !GameState->Resources
+                  .GetAnimationPathRID(&NewRID,
+                                       GameState->Resources.AnimationPaths[ActivePathIndex].Name))
             {
-              NewRID = GameState->Resources.RegisterAnimation(GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+              NewRID = GameState->Resources.RegisterAnimation(
+                GameState->Resources.AnimationPaths[ActivePathIndex].Name);
             }
             GameState->CurrentAnimationID = NewRID;
           }
@@ -521,13 +584,19 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                     SelectedEntity->AnimController->AnimationIDs[0]);
                 }
 #endif
-              UI::Combo("Walk", &ActivePathIndex, GameState->Resources.AnimationPaths, GameState->Resources.AnimationPathCount, PathArrayToString);
+              UI::Combo("Walk", &ActivePathIndex, GameState->Resources.AnimationPaths,
+                        GameState->Resources.AnimationPathCount, PathArrayToString);
               rid NewRID = { 0 };
-              if(GameState->Resources.AnimationPathCount > 0 && !GameState->Resources.GetAnimationPathRID(&NewRID, GameState->Resources.AnimationPaths[ActivePathIndex].Name))
+              if(GameState->Resources.AnimationPathCount > 0 &&
+                 !GameState->Resources
+                    .GetAnimationPathRID(&NewRID,
+                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
               {
-                NewRID = GameState->Resources.RegisterAnimation(GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+                NewRID = GameState->Resources.RegisterAnimation(
+                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
               }
-              if(GameState->Resources.AnimationPathCount && SelectedEntity->AnimController->AnimationIDs[0].Value != NewRID.Value)
+              if(GameState->Resources.AnimationPathCount &&
+                 SelectedEntity->AnimController->AnimationIDs[0].Value != NewRID.Value)
               {
                 Anim::SetAnimation(SelectedEntity->AnimController, NewRID, 0);
                 printf("Setting walk\n");
@@ -543,11 +612,16 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                     SelectedEntity->AnimController->AnimationIDs[1]);
                 }
 #endif
-              UI::Combo("Run", &ActivePathIndex, GameState->Resources.AnimationPaths, GameState->Resources.AnimationPathCount, PathArrayToString);
+              UI::Combo("Run", &ActivePathIndex, GameState->Resources.AnimationPaths,
+                        GameState->Resources.AnimationPathCount, PathArrayToString);
               rid NewRID = { 0 };
-              if(GameState->Resources.AnimationPathCount > 0 && !GameState->Resources.GetAnimationPathRID(&NewRID, GameState->Resources.AnimationPaths[ActivePathIndex].Name))
+              if(GameState->Resources.AnimationPathCount > 0 &&
+                 !GameState->Resources
+                    .GetAnimationPathRID(&NewRID,
+                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
               {
-                NewRID = GameState->Resources.RegisterAnimation(GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+                NewRID = GameState->Resources.RegisterAnimation(
+                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
               }
               if(SelectedEntity->AnimController->AnimationIDs[1].Value != NewRID.Value)
               {
@@ -565,11 +639,16 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                     SelectedEntity->AnimController->AnimationIDs[2]);
                 }
 #endif
-              UI::Combo("Idle", &ActivePathIndex, GameState->Resources.AnimationPaths, GameState->Resources.AnimationPathCount, PathArrayToString);
+              UI::Combo("Idle", &ActivePathIndex, GameState->Resources.AnimationPaths,
+                        GameState->Resources.AnimationPathCount, PathArrayToString);
               rid NewRID = { 0 };
-              if(GameState->Resources.AnimationPathCount > 0 && !GameState->Resources.GetAnimationPathRID(&NewRID, GameState->Resources.AnimationPaths[ActivePathIndex].Name))
+              if(GameState->Resources.AnimationPathCount > 0 &&
+                 !GameState->Resources
+                    .GetAnimationPathRID(&NewRID,
+                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
               {
-                NewRID = GameState->Resources.RegisterAnimation(GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+                NewRID = GameState->Resources.RegisterAnimation(
+                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
               }
               if(SelectedEntity->AnimController->AnimationIDs[2].Value != NewRID.Value)
               {
@@ -625,13 +704,17 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
           Anim::animation* Animation = AttachedEntity->AnimController->Animations[0];
           if(UI::Button("Edit Attached Animation"))
           {
-            int32_t AnimationPathIndex = GameState->Resources.GetAnimationPathIndex(AttachedEntity->AnimController->AnimationIDs[0]);
-            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation, GameState->Resources.AnimationPaths[AnimationPathIndex].Name);
+            int32_t AnimationPathIndex = GameState->Resources.GetAnimationPathIndex(
+              AttachedEntity->AnimController->AnimationIDs[0]);
+            EditAnimation::EditAnimation(&GameState->AnimEditor, Animation,
+                                         GameState->Resources.AnimationPaths[AnimationPathIndex]
+                                           .Name);
           }
         }
         if(UI::Button("Insert keyframe"))
         {
-          EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor, GameState->AnimEditor.PlayHeadTime);
+          EditAnimation::InsertBlendedKeyframeAtTime(&GameState->AnimEditor,
+                                                     GameState->AnimEditor.PlayHeadTime);
         }
         if(GameState->AnimEditor.KeyframeCount > 0)
         {
@@ -646,14 +729,17 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
             char       AnimGroupName[30];
             time(&CurrentTime);
             TimeInfo = localtime(&CurrentTime);
-            strftime(AnimGroupName, sizeof(AnimGroupName), "data/animations/%H_%M_%S.anim", TimeInfo);
-            Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor, AnimGroupName);
+            strftime(AnimGroupName, sizeof(AnimGroupName), "data/animations/%H_%M_%S.anim",
+                     TimeInfo);
+            Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
+                                        AnimGroupName);
           }
           if(GameState->AnimEditor.AnimationPath[0] != '\0')
           {
             if(UI::Button("Override Animation"))
             {
-              Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor, GameState->AnimEditor.AnimationPath);
+              Asset::ExportAnimationGroup(GameState->TemporaryMemStack, &GameState->AnimEditor,
+                                          GameState->AnimEditor.AnimationPath);
             }
           }
         }
@@ -664,12 +750,15 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
         {
           {
             int32_t ActiveBoneIndex = GameState->AnimEditor.CurrentBone;
-            UI::Combo("Bone", &ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones, GameState->AnimEditor.Skeleton->BoneCount, BoneArrayToString);
+            UI::Combo("Bone", &ActiveBoneIndex, GameState->AnimEditor.Skeleton->Bones,
+                      GameState->AnimEditor.Skeleton->BoneCount, BoneArrayToString);
             EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
           }
 
-          Anim::transform* Transform     = &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe].Transforms[GameState->AnimEditor.CurrentBone];
-          mat4             Mat4Transform = TransformToGizmoMat4(Transform);
+          Anim::transform* Transform =
+            &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
+               .Transforms[GameState->AnimEditor.CurrentBone];
+          mat4 Mat4Transform = TransformToGizmoMat4(Transform);
           UI::DragFloat3("Translation", &Transform->Translation.X, -INFINITY, INFINITY, 10.0f);
           UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
           UI::DragFloat3("Scale", &Transform->Scale.X, -INFINITY, INFINITY, 10.0f);
@@ -680,7 +769,8 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
 }
 
 void
-MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet, bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings)
+MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
+        bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings)
 {
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
   {
@@ -703,7 +793,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
   {
     UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
     UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
-    UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane, GameState->Camera.NearClipPlane, 500);
+    UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane,
+                    GameState->Camera.NearClipPlane, 500);
     UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
   }
   if(UI::CollapsingHeader("Scene", &g_ShowSceneSettings))
@@ -727,7 +818,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
           ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
         }
         UI::SameLine();
-        UI::Combo("Export Path", &SelectedSceneIndex, GameState->Resources.ScenePaths, GameState->Resources.ScenePathCount, PathArrayToString);
+        UI::Combo("Export Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
+                  GameState->Resources.ScenePathCount, PathArrayToString);
         UI::SameLine();
         UI::NewLine();
       }
@@ -738,7 +830,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
           ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
         }
         UI::SameLine();
-        UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths, GameState->Resources.ScenePathCount, PathArrayToString);
+        UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
+                  GameState->Resources.ScenePathCount, PathArrayToString);
         UI::SameLine();
         UI::NewLine();
       }
