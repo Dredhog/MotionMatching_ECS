@@ -236,14 +236,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->ABCollide                = false;
     }
 
-    for(int i = 0; i <= SimplexOrder; i++)
+    vec4 EdgeColor = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+    for(int i = 0; i < SimplexOrder; i++)
     {
-      for(int j = 0; j <= SimplexOrder; j++)
+      for(int j = 1; j <= SimplexOrder; j++)
       {
-        Debug::PushLine(Simplex[i], Simplex[j], { 1.0f, 0.0f, 0.0f, 1.0f });
+        Debug::PushLine(Simplex[i], Simplex[j], EdgeColor);
       }
     }
-    Debug::PushLine({ 0.0f, 0.0f, 0.0f }, Direction, { 1.0f, 0.0f, 0.0f, 1.0f });
+    Debug::PushLine({ 0.0f, 0.0f, 0.0f }, Math::Normalized(Direction), { 0.0f, 0.0f, 1.0f, 1.0f });
 #endif
   }
 

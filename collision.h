@@ -234,6 +234,12 @@ GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::
     Simplex[*SimplexOrder].P        = A;
     Simplex[*SimplexOrder].SupportA = SupportA;
 
+    i++;
+    if(IterationCount <= i)
+    {
+      break;
+    }
+
     switch(*SimplexOrder)
     {
       case 1:
