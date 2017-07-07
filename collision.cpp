@@ -1,10 +1,14 @@
+#if 0
 #include "collision.h"
 
 void
-Support(vec3* PointA, vec3* PointB, Render::mesh* MeshA, Render::mesh* MeshB, vec3 Direction, mat4 ModelAMatrix, mat4 ModelBMatrix)
+Support(vec3* PointA, vec3* PointB, Render::mesh* MeshA, Render::mesh* MeshB, vec3 Direction,
+        mat4 ModelAMatrix, mat4 ModelBMatrix)
 {
-  vec3 TransformedA = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[0].Position, 1.0f)));
-  vec3 TransformedB = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[0].Position, 1.0f)));
+  vec3 TransformedA = Math::Vec4ToVec3(
+    Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[0].Position, 1.0f)));
+  vec3 TransformedB = Math::Vec4ToVec3(
+    Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[0].Position, 1.0f)));
 
   float   MaxA   = Math::Dot(TransformedA, Direction);
   float   MinB   = Math::Dot(TransformedB, Direction);
@@ -15,8 +19,9 @@ Support(vec3* PointA, vec3* PointB, Render::mesh* MeshA, Render::mesh* MeshB, ve
 
   for(int i = 1; i < MeshA->VerticeCount; i++)
   {
-    TransformedA = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[i].Position, 1.0f)));
-    DotProduct   = Math::Dot(TransformedA, Direction);
+    TransformedA = Math::Vec4ToVec3(
+      Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[i].Position, 1.0f)));
+    DotProduct = Math::Dot(TransformedA, Direction);
     if(DotProduct > MaxA)
     {
       MaxA   = DotProduct;
@@ -26,8 +31,9 @@ Support(vec3* PointA, vec3* PointB, Render::mesh* MeshA, Render::mesh* MeshB, ve
 
   for(int i = 1; i < MeshB->VerticeCount; i++)
   {
-    TransformedB = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[i].Position, 1.0f)));
-    DotProduct   = Math::Dot(MeshB->Vertices[i].Position, Direction);
+    TransformedB = Math::Vec4ToVec3(
+      Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[i].Position, 1.0f)));
+    DotProduct = Math::Dot(MeshB->Vertices[i].Position, Direction);
     if(DotProduct < MinB)
     {
       MinB   = DotProduct;
@@ -35,8 +41,10 @@ Support(vec3* PointA, vec3* PointB, Render::mesh* MeshA, Render::mesh* MeshB, ve
     }
   }
 
-  *PointA = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[IndexA].Position, 1.0f)));
-  *PointB = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[IndexB].Position, 1.0f)));
+  *PointA = Math::Vec4ToVec3(
+    Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[IndexA].Position, 1.0f)));
+  *PointB = Math::Vec4ToVec3(
+    Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[IndexB].Position, 1.0f)));
 #if 0
   *PointA = MeshA->Vertices[IndexA].Position;
   *PointB = MeshB->Vertices[IndexB].Position;
@@ -183,44 +191,47 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
 }
 
 bool
-GJK(contact_point* Simplex, Render::mesh* MeshA, Render::mesh* MeshB, mat4 ModelAMatrix, mat4 ModelBMatrix)
+GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::mesh* MeshB,
+    mat4 ModelAMatrix, mat4 ModelBMatrix, int32_t IterationCount, vec3* Direction)
 {
-  vec3 TransformedA    = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[0].Position, 1.0f)));
-  vec3 TransformedB    = Math::Vec4ToVec3(Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[0].Position, 1.0f)));
-  Simplex[0].P         = TransformedA - TransformedB;
-  Simplex[0].SupportA  = TransformedA;
-  vec3    Direction    = -Simplex[0].P;
-  int32_t SimplexOrder = 0;
+  vec3 TransformedA = Math::Vec4ToVec3(
+    Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[0].Position, 1.0f)));
+  vec3 TransformedB = Math::Vec4ToVec3(
+    Math::MulMat4Vec4(ModelBMatrix, Math::Vec4(MeshB->Vertices[0].Position, 1.0f)));
+  Simplex[0].P        = TransformedA - TransformedB;
+  Simplex[0].SupportA = TransformedA;
+  *Direction          = -Simplex[0].P;
+  *SimplexOrder       = 0;
 
-  for(;;)
+  for(int i = 0; i < IterationCount; i++)
   {
     vec3 SupportA, SupportB;
-    Support(&SupportA, &SupportB, MeshA, MeshB, Direction, ModelAMatrix, ModelBMatrix);
+    Support(&SupportA, &SupportB, MeshA, MeshB, *Direction, ModelAMatrix, ModelBMatrix);
     vec3 A = SupportA - SupportB;
-    if(Math::Dot(A, Direction) < 0)
+    if(Math::Dot(A, *Direction) < 0)
     {
       return false;
     }
 
-    ++SimplexOrder;
-    Simplex[SimplexOrder].P        = A;
-    Simplex[SimplexOrder].SupportA = SupportA;
+    ++(*SimplexOrder);
+    Simplex[*SimplexOrder].P        = A;
+    Simplex[*SimplexOrder].SupportA = SupportA;
 
-    switch(SimplexOrder)
+    switch(*SimplexOrder)
     {
       case 1:
       {
-        DoSimplex1(Simplex, &Direction);
+        DoSimplex1(Simplex, Direction);
       }
       break;
       case 2:
       {
-        DoSimplex2(Simplex, &SimplexOrder, &Direction);
+        DoSimplex2(Simplex, SimplexOrder, Direction);
       }
       break;
       case 3:
       {
-        if(DoSimplex3(Simplex, &SimplexOrder, &Direction))
+        if(DoSimplex3(Simplex, SimplexOrder, Direction))
         {
           return true;
         }
@@ -228,7 +239,6 @@ GJK(contact_point* Simplex, Render::mesh* MeshA, Render::mesh* MeshB, mat4 Model
       break;
     }
   }
-
   return false;
 }
 
@@ -255,7 +265,9 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].B = Simplex[2];
   Polytope[*TriangleCount].C = Simplex[1];
 
-  Polytope[*TriangleCount].Normal = Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P, Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
+  Polytope[*TriangleCount].Normal =
+    Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
+                Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
 
   ++(*TriangleCount);
 
@@ -264,7 +276,9 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].B = Simplex[1];
   Polytope[*TriangleCount].C = Simplex[0];
 
-  Polytope[*TriangleCount].Normal = Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P, Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
+  Polytope[*TriangleCount].Normal =
+    Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
+                Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
   ++(*TriangleCount);
 
   // ADB
@@ -272,7 +286,9 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].B = Simplex[0];
   Polytope[*TriangleCount].C = Simplex[2];
 
-  Polytope[*TriangleCount].Normal = Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P, Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
+  Polytope[*TriangleCount].Normal =
+    Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
+                Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
 
   ++(*TriangleCount);
 
@@ -281,7 +297,9 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].B = Simplex[0];
   Polytope[*TriangleCount].C = Simplex[1];
 
-  Polytope[*TriangleCount].Normal = Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P, Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
+  Polytope[*TriangleCount].Normal =
+    Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
+                Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P);
 
   ++(*TriangleCount);
 }
@@ -322,8 +340,9 @@ BarycentricCoordinates(float* U, float* V, float* W, vec3 P, vec3 A, vec3 B, vec
 #define DEBUG_COLLISION 1
 
 void
-EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector, vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::mesh* MeshB, mat4 ModelAMatrix,
-    mat4 ModelBMatrix)
+EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
+    vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::mesh* MeshB,
+    mat4 ModelAMatrix, mat4 ModelBMatrix)
 {
   bool DrawToggle = false;
   vec3 Result;
@@ -380,41 +399,53 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector, 
 #if DEBUG_COLLISION
       printf("======================\n");
       printf("MinDistance TriangleIndex = %d\n", TriangleIndex);
-      printf("Polytope[TriangleIndex].A = { %f, %f, %f }\n", Polytope[TriangleIndex].A.P.X, Polytope[TriangleIndex].A.P.Y, Polytope[TriangleIndex].A.P.Z);
-      printf("Polytope[TriangleIndex].B = { %f, %f, %f }\n", Polytope[TriangleIndex].B.P.X, Polytope[TriangleIndex].B.P.Y, Polytope[TriangleIndex].B.P.Z);
-      printf("Polytope[TriangleIndex].C = { %f, %f, %f }\n", Polytope[TriangleIndex].C.P.X, Polytope[TriangleIndex].C.P.Y, Polytope[TriangleIndex].C.P.Z);
-      printf("Polytope[TriangleIndex].Normal = { %f, %f, %f }\n", Polytope[TriangleIndex].Normal.X, Polytope[TriangleIndex].Normal.Y, Polytope[TriangleIndex].Normal.Z);
+      printf("Polytope[TriangleIndex].A = { %f, %f, %f }\n", Polytope[TriangleIndex].A.P.X,
+             Polytope[TriangleIndex].A.P.Y, Polytope[TriangleIndex].A.P.Z);
+      printf("Polytope[TriangleIndex].B = { %f, %f, %f }\n", Polytope[TriangleIndex].B.P.X,
+             Polytope[TriangleIndex].B.P.Y, Polytope[TriangleIndex].B.P.Z);
+      printf("Polytope[TriangleIndex].C = { %f, %f, %f }\n", Polytope[TriangleIndex].C.P.X,
+             Polytope[TriangleIndex].C.P.Y, Polytope[TriangleIndex].C.P.Z);
+      printf("Polytope[TriangleIndex].Normal = { %f, %f, %f }\n", Polytope[TriangleIndex].Normal.X,
+             Polytope[TriangleIndex].Normal.Y, Polytope[TriangleIndex].Normal.Z);
       printf("MinDistance = %f\n", MinDistance);
       printf("======================\n");
 #endif
 #if DEBUG_COLLISION
       for(int i = 0; i < TriangleCount; i++)
       {
-        printf("Polytope[%d].A = { %f, %f, %f }\n", i, Polytope[i].A.P.X, Polytope[i].A.P.Y, Polytope[i].A.P.Z);
-        printf("Polytope[%d].B = { %f, %f, %f }\n", i, Polytope[i].B.P.X, Polytope[i].B.P.Y, Polytope[i].B.P.Z);
-        printf("Polytope[%d].C = { %f, %f, %f }\n", i, Polytope[i].C.P.X, Polytope[i].C.P.Y, Polytope[i].C.P.Z);
-        printf("Polytope[%d].Normal = { %f, %f, %f }\n", i, Polytope[i].Normal.X, Polytope[i].Normal.Y, Polytope[i].Normal.Z);
+        printf("Polytope[%d].A = { %f, %f, %f }\n", i, Polytope[i].A.P.X, Polytope[i].A.P.Y,
+               Polytope[i].A.P.Z);
+        printf("Polytope[%d].B = { %f, %f, %f }\n", i, Polytope[i].B.P.X, Polytope[i].B.P.Y,
+               Polytope[i].B.P.Z);
+        printf("Polytope[%d].C = { %f, %f, %f }\n", i, Polytope[i].C.P.X, Polytope[i].C.P.Y,
+               Polytope[i].C.P.Z);
+        printf("Polytope[%d].Normal = { %f, %f, %f }\n", i, Polytope[i].Normal.X,
+               Polytope[i].Normal.Y, Polytope[i].Normal.Z);
         printf("-----------------------\n");
       }
 #endif
 
       vec3 SupportA, SupportB;
-      Support(&SupportA, &SupportB, MeshA, MeshB, Polytope[TriangleIndex].Normal, ModelAMatrix, ModelBMatrix);
+      Support(&SupportA, &SupportB, MeshA, MeshB, Polytope[TriangleIndex].Normal, ModelAMatrix,
+              ModelBMatrix);
       vec3 NewPoint = SupportA - SupportB;
 
-      Result = Math::Normalized(Polytope[TriangleIndex].Normal) * Math::Dot(NewPoint, Math::Normalized(Polytope[TriangleIndex].Normal));
+      Result = Math::Normalized(Polytope[TriangleIndex].Normal) *
+               Math::Dot(NewPoint, Math::Normalized(Polytope[TriangleIndex].Normal));
 #if DEBUG_COLLISION
       printf("NewPoint = { %f, %f, %f }\n", NewPoint.X, NewPoint.Y, NewPoint.Z);
       for(int i = 0; i < TriangleCount; i++)
       {
-        if((Polytope[i].A.P == NewPoint) || (Polytope[i].B.P == NewPoint) || (Polytope[i].C.P == NewPoint))
+        if((Polytope[i].A.P == NewPoint) || (Polytope[i].B.P == NewPoint) ||
+           (Polytope[i].C.P == NewPoint))
         {
           printf("NewPoint in triangle %d!\n", i);
           break;
         }
       }
       printf("NewPointLength = %f\n", Math::Length(NewPoint));
-      printf("NewPointLength = %f\n", -Math::Dot(-NewPoint, Math::Normalized(Polytope[TriangleIndex].Normal)));
+      printf("NewPointLength = %f\n",
+             -Math::Dot(-NewPoint, Math::Normalized(Polytope[TriangleIndex].Normal)));
       printf("ResultLength = %f\n", Math::Length(Result));
       printf("DIFF = %f\n", Math::Length(Result) - MinDistance);
       printf("======================\n");
@@ -425,9 +456,12 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector, 
 
         float U, V, W;
 
-        BarycentricCoordinates(&U, &V, &W, NewPoint, Polytope[TriangleIndex].A.P, Polytope[TriangleIndex].B.P, Polytope[TriangleIndex].C.P);
+        BarycentricCoordinates(&U, &V, &W, NewPoint, Polytope[TriangleIndex].A.P,
+                               Polytope[TriangleIndex].B.P, Polytope[TriangleIndex].C.P);
 
-        *CollisionPoint = U * Polytope[TriangleIndex].A.SupportA + V * Polytope[TriangleIndex].B.SupportA + W * Polytope[TriangleIndex].C.SupportA;
+        *CollisionPoint = U * Polytope[TriangleIndex].A.SupportA +
+                          V * Polytope[TriangleIndex].B.SupportA +
+                          W * Polytope[TriangleIndex].C.SupportA;
         break;
       }
 
@@ -510,17 +544,23 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector, 
 #if DEBUG_COLLISION
 #if 1
         printf("%d/%d\n", i, EdgeCount);
-        printf("Edges[%d].A.P = { %f, %f, %f }\n", i, Edges[i].A.P.X, Edges[i].A.P.Y, Edges[i].A.P.Z);
-        printf("Edges[%d].B.P = { %f, %f, %f }\n", i, Edges[i].B.P.X, Edges[i].B.P.Y, Edges[i].B.P.Z);
-        printf("Edges[%d].A.SupportA = { %f, %f, %f }\n", i, Edges[i].A.SupportA.X, Edges[i].A.SupportA.Y, Edges[i].A.SupportA.Z);
-        printf("Edges[%d].B.SupportA = { %f, %f, %f }\n", i, Edges[i].B.SupportA.X, Edges[i].B.SupportA.Y, Edges[i].B.SupportA.Z);
+        printf("Edges[%d].A.P = { %f, %f, %f }\n", i, Edges[i].A.P.X, Edges[i].A.P.Y,
+               Edges[i].A.P.Z);
+        printf("Edges[%d].B.P = { %f, %f, %f }\n", i, Edges[i].B.P.X, Edges[i].B.P.Y,
+               Edges[i].B.P.Z);
+        printf("Edges[%d].A.SupportA = { %f, %f, %f }\n", i, Edges[i].A.SupportA.X,
+               Edges[i].A.SupportA.Y, Edges[i].A.SupportA.Z);
+        printf("Edges[%d].B.SupportA = { %f, %f, %f }\n", i, Edges[i].B.SupportA.X,
+               Edges[i].B.SupportA.Y, Edges[i].B.SupportA.Z);
 #endif
 #endif
         Polytope[TriangleCount].A          = Edges[i].A;
         Polytope[TriangleCount].B          = Edges[i].B;
         Polytope[TriangleCount].C.P        = NewPoint;
         Polytope[TriangleCount].C.SupportA = SupportA;
-        Polytope[TriangleCount].Normal     = Math::Cross(Polytope[TriangleCount].B.P - Polytope[TriangleCount].A.P, Polytope[TriangleCount].C.P - Polytope[TriangleCount].A.P);
+        Polytope[TriangleCount].Normal =
+          Math::Cross(Polytope[TriangleCount].B.P - Polytope[TriangleCount].A.P,
+                      Polytope[TriangleCount].C.P - Polytope[TriangleCount].A.P);
 
         ++TriangleCount;
       }
@@ -531,3 +571,4 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector, 
     }
   }
 }
+#endif

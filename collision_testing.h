@@ -2,6 +2,7 @@
 
 #include "collision.h"
 
+#if 0
 void
 CollisionTesting(game_state* GameState, const game_input* const Input, Render::mesh* MeshA,
                  Render::mesh* MeshB, mat4 ModelAMatrix, mat4 ModelBMatrix)
@@ -29,11 +30,19 @@ CollisionTesting(game_state* GameState, const game_input* const Input, Render::m
     printf("No collision detected.\n");
   }
 }
+#endif
 
 bool
-AreColliding(game_state* GameState, const game_input* const Input, Render::mesh* MeshA,
-             Render::mesh* MeshB, mat4 ModelAMatrix, mat4 ModelBMatrix)
+AreColliding(vec3* SimplexVertices, int32_t* SimplexOrder, vec3* Direction, game_state* GameState,
+             const game_input* const Input, Render::mesh* MeshA, Render::mesh* MeshB,
+             mat4 ModelAMatrix, mat4 ModelBMatrix, int32_t IterationCount)
 {
   contact_point Simplex[4];
-  return GJK(Simplex, MeshA, MeshB, ModelAMatrix, ModelBMatrix);
+  bool          CollisionFound =
+    GJK(Simplex, SimplexOrder, MeshA, MeshB, ModelAMatrix, ModelBMatrix, IterationCount, Direction);
+  for(int i = 0; i <= *SimplexOrder; i++)
+  {
+    SimplexVertices[i] = Simplex[i].P;
+  }
+  return CollisionFound;
 }

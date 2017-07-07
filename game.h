@@ -108,6 +108,7 @@ struct game_state
   int32_t EntityA;
   int32_t EntityB;
   bool    ABCollide;
+  int32_t IterationCount;
 };
 
 inline bool

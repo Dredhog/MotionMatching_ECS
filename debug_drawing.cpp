@@ -19,7 +19,8 @@ int32_t       g_DrawQuadCount;
 void
 Debug::PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, vec4 Color)
 {
-  mat4 MVPMatrix = Math::MulMat4(Camera->VPMatrix, Math::MulMat4(Math::Mat4Translate(Position), Math::Mat4Scale(Radius)));
+  mat4 MVPMatrix = Math::MulMat4(Camera->VPMatrix, Math::MulMat4(Math::Mat4Translate(Position),
+                                                                 Math::Mat4Scale(Radius)));
   assert(0 <= g_SphereCount && g_SphereCount < SPHERE_MAX_COUNT);
   g_SphereColors[g_SphereCount]     = Color;
   g_SphereMatrices[g_SphereCount++] = MVPMatrix;
@@ -92,13 +93,16 @@ void
 Debug::UIPushQuad(vec3 Position, vec3 Size, vec4 Color)
 {
   vec3 ScreenSize = { SCREEN_WIDTH, SCREEN_HEIGHT };
-  Debug::PushTopLeftQuad({ Position.X / ScreenSize.X, 1.0f - Position.Y / ScreenSize.Y }, Size.X / ScreenSize.X, Size.Y / ScreenSize.Y, Color);
+  Debug::PushTopLeftQuad({ Position.X / ScreenSize.X, 1.0f - Position.Y / ScreenSize.Y },
+                         Size.X / ScreenSize.X, Size.Y / ScreenSize.Y, Color);
 }
 void
 Debug::UIPushTexturedQuad(int32_t TextureID, vec3 Position, vec3 Size)
 {
   vec3 ScreenSize = { SCREEN_WIDTH, SCREEN_HEIGHT };
-  Debug::PushTopLeftTexturedQuad(TextureID, { Position.X / ScreenSize.X, 1.0f - Position.Y / ScreenSize.Y }, Size.X / ScreenSize.X, Size.Y / ScreenSize.Y);
+  Debug::PushTopLeftTexturedQuad(TextureID,
+                                 { Position.X / ScreenSize.X, 1.0f - Position.Y / ScreenSize.Y },
+                                 Size.X / ScreenSize.X, Size.Y / ScreenSize.Y);
 }
 
 void
@@ -116,7 +120,8 @@ Debug::DrawGizmos(game_state* GameState)
   glUseProgram(GameState->R.ShaderGizmo);
   for(int g = 0; g < g_GizmoCount; g++)
   {
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderGizmo, "mat_mvp"), 1, GL_FALSE, g_GizmoMatrices[g].e);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderGizmo, "mat_mvp"), 1, GL_FALSE,
+                       g_GizmoMatrices[g].e);
     glUniform1f(glGetUniformLocation(GameState->R.ShaderGizmo, "depth"), g_GizmoDepths[g]);
     for(int i = 0; i < GizmoModel->MeshCount; i++)
     {
@@ -141,12 +146,15 @@ Debug::DrawWireframeSpheres(game_state* GameState)
     // So as not to corrupt the position by the old bone data
     {
       mat4 Mat4Zeros = {};
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE, Mat4Zeros.e);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                         Mat4Zeros.e);
     }
     for(int i = 0; i < g_SphereCount; i++)
     {
-      glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&g_SphereColors[i]);
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE, g_SphereMatrices[i].e);
+      glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
+                   (float*)&g_SphereColors[i]);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
+                         g_SphereMatrices[i].e);
       glDrawElements(GL_TRIANGLES, SphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
     }
     glBindVertexArray(0);
@@ -161,9 +169,6 @@ Debug::DrawLine(game_state* GameState, vec3 PointA, vec3 PointB)
   vec3 Points[] = { PointA, PointB };
 
   vec4 Color = { 1.0f, 0.0f, 0.0f, 1.0f };
-
-  mat4 ModelMatrix = {};
-  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
 
   uint32_t VAO;
   uint32_t VBO;
@@ -185,10 +190,12 @@ Debug::DrawLine(game_state* GameState, vec3 PointA, vec3 PointB)
   // So as not to corrupt the position by the old bone data
   {
     mat4 Mat4Zeros = {};
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE, Mat4Zeros.e);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                       Mat4Zeros.e);
   }
   glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&Color);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE, MVPMatrix.e);
+  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
+                     GameState->Camera.VPMatrix.e);
   glDrawArrays(GL_LINES, 0, 2);
 
   glBindVertexArray(0);
@@ -199,8 +206,7 @@ Debug::DrawPolygon(game_state* GameState, vec3* Vertices, int32_t VertexCount)
 {
   vec4 Color = { 1.0f, 0.0f, 0.0f, 1.0f };
 
-  mat4 ModelMatrix = {};
-  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
+  mat4 MVPMatrix = GameState->Camera.VPMatrix;
 
   uint32_t VAO;
   uint32_t VBO;
@@ -222,10 +228,12 @@ Debug::DrawPolygon(game_state* GameState, vec3* Vertices, int32_t VertexCount)
   // So as not to corrupt the position by the old bone data
   {
     mat4 Mat4Zeros = {};
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE, Mat4Zeros.e);
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                       Mat4Zeros.e);
   }
   glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&Color);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE, MVPMatrix.e);
+  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
+                     GameState->Camera.VPMatrix.e);
   glDrawArrays(GL_POLYGON, 0, VertexCount);
 
   glBindVertexArray(0);
@@ -246,8 +254,9 @@ Debug::DrawQuads(game_state* GameState)
 
   for(int i = 0; i < g_DrawQuadCount; i++)
   {
-    const quad_instance& Quad         = g_DrawQuads[i];
-    const int32_t        ShaderHandle = (Quad.Type == QuadType_Textured) ? GameState->R.ShaderTexturedQuad : GameState->R.ShaderQuad;
+    const quad_instance& Quad = g_DrawQuads[i];
+    const int32_t        ShaderHandle =
+      (Quad.Type == QuadType_Textured) ? GameState->R.ShaderTexturedQuad : GameState->R.ShaderQuad;
 
     if(Quad.Type == QuadType_Textured)
     {

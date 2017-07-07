@@ -97,9 +97,10 @@ namespace UI
           }
         }
       }
-      static bool s_ShowCollirionTools = true;
-      UI::CollapsingHeader("Collision tools", &s_ShowCollirionTools);
+      static bool s_ShowCollisionTools = true;
+      UI::CollapsingHeader("Collision tools", &s_ShowCollisionTools);
       {
+        UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 100, false);
         entity* Entity;
         if(GetSelectedEntity(GameState, &Entity))
         {

@@ -149,6 +149,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->PlayerEntityIndex       = -1;
     GameState->AssignedA               = false;
     GameState->AssignedB               = false;
+    GameState->IterationCount          = 0;
   }
   //---------------------END INIT -------------------------
 
@@ -174,6 +175,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+  if(Input->i.EndedDown && Input->i.Changed)
+  {
+    ++GameState->IterationCount;
+  }
+  else if(Input->o.EndedDown && Input->o.Changed)
+  {
+    --GameState->IterationCount;
+  }
+
   // Collision testing
   if(GameState->AssignedA && GameState->AssignedB)
   {
@@ -192,10 +202,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
     material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
 
+    vec3    Simplex[4];
+    int32_t SimplexOrder;
+
+    vec3 Direction;
+
 #if 0
     CollisionTesting(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix);
 #else
-    if(AreColliding(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix))
+    if(AreColliding(Simplex, &SimplexOrder, &Direction, GameState, Input, MeshA, MeshB,
+                    ModelAMatrix, ModelBMatrix, GameState->IterationCount))
     {
       EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
       EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
@@ -206,6 +222,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EntityAMaterial->Phong.DiffuseColor = Color;
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = true;
+
+      for(int i = 0; i < SimplexOrder; i++)
+      {
+        Debug::DrawLine(GameState, Simplex[i], Simplex[i + 1]);
+      }
+      Debug::DrawLine(GameState, Simplex[SimplexOrder], Simplex[0]);
+      Debug::DrawLine(GameState, { 0.0f, 0.0f, 0.0f }, Direction);
     }
     else
     {
