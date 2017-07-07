@@ -685,7 +685,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   Debug::PushLine({ 0, 0, 10 }, { 0, 1, 0 });
-  Debug::DrawWireframeSpheres(GameState);
+	Debug::PushLine({ 0, 1, 0 }, { 0, 1, 10 }, { 1,1,0,1 });
+	Debug::PushLine({ 0, 1, 10 }, { 0, 0, 10 }, { 1,0,0,1 });
+	vec3 Triangle[3] = { vec3{ 1, 0, 0 }, vec3{ -1, 0, 0 }, vec3{ 0, 0, -1 } };
+	Debug::PushLineStrip(Triangle, ARRAY_SIZE(Triangle));
+	Debug::DrawWireframeSpheres(GameState);
   Debug::DrawLines(GameState);
 
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

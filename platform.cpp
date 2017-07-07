@@ -466,7 +466,7 @@ main(int argc, char* argv[])
   ProcessInput(&OldInput, &NewInput, &Event, Window);
   OldInput = NewInput;
 
-  float LastFrameStart;
+	float LastFrameStart = Platform::GetTimeInSeconds();
   while(true)
   {
     float CurrentFrameStart = Platform::GetTimeInSeconds();

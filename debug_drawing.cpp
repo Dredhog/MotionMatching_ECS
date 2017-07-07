@@ -23,7 +23,7 @@ struct line_instruction
 {
   vec4    Color;
   int32_t StartIndex;
-  int32_t EndIndex;
+  int32_t PointCount;
 };
 
 fixed_array<line_instruction, LINE_INSTRUCTION_COUNT> g_LineInstructions;
@@ -159,8 +159,23 @@ Debug::PushLine(vec3 PointA, vec3 PointB, vec4 Color)
   line_instruction Instruction = {};
   Instruction.Color            = Color;
   Instruction.StartIndex       = g_LinePoints.Count - 2;
-  Instruction.EndIndex         = g_LinePoints.Count - 1;
+  Instruction.PointCount       = 2;
   g_LineInstructions.Append(Instruction);
+}
+
+void
+Debug::PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color)
+{
+		line_instruction Instruction = {};
+		Instruction.Color = Color;
+		Instruction.StartIndex = g_LinePoints.Count;
+		Instruction.PointCount = PointCount;
+		g_LineInstructions.Append(Instruction);
+
+		for (int i = 0; i < PointCount; i++)
+		{
+		  g_LinePoints.Append(Points[i]);
+		}
 }
 
 void
@@ -185,6 +200,7 @@ Debug::DrawLines(game_state* GameState)
   assert(0 < s_VAO);
   assert(0 < s_VBO);
 
+	glLineWidth(3);
   // Update line buffers
   glBindBuffer(GL_ARRAY_BUFFER, s_VBO);
   glBufferSubData(GL_ARRAY_BUFFER, 0, g_LinePoints.Count * sizeof(vec3), g_LinePoints.Elements);
@@ -204,47 +220,8 @@ Debug::DrawLines(game_state* GameState)
     line_instruction Instruction = g_LineInstructions[i];
     glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
                  &Instruction.Color.X);
-    glDrawArrays(GL_LINE, Instruction.StartIndex, Instruction.EndIndex);
+    glDrawArrays(GL_LINE_STRIP, Instruction.StartIndex, Instruction.PointCount);
   }
-  glBindVertexArray(0);
-}
-
-void
-Debug::DrawPolygon(game_state* GameState, vec3* Vertices, int32_t VertexCount)
-{
-  vec4 Color = { 1.0f, 0.0f, 0.0f, 1.0f };
-
-  mat4 ModelMatrix = {};
-  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
-
-  uint32_t VAO;
-  uint32_t VBO;
-
-  glGenVertexArrays(1, &VAO);
-  glBindVertexArray(VAO);
-
-  glGenBuffers(1, &VBO);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, VertexCount * sizeof(vec3), Vertices, GL_STATIC_DRAW);
-
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  glUseProgram(GameState->R.ShaderColor);
-
-  // So as not to corrupt the position by the old bone data
-  {
-    mat4 Mat4Zeros = {};
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE,
-                       Mat4Zeros.e);
-  }
-  glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&Color);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
-                     MVPMatrix.e);
-  glDrawArrays(GL_POLYGON, 0, VertexCount);
-
   glBindVertexArray(0);
 }
 
