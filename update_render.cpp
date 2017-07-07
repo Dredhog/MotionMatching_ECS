@@ -222,13 +222,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EntityAMaterial->Phong.DiffuseColor = Color;
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = true;
-
-      for(int i = 0; i < SimplexOrder; i++)
-      {
-        Debug::DrawLine(GameState, Simplex[i], Simplex[i + 1]);
-      }
-      Debug::DrawLine(GameState, Simplex[SimplexOrder], Simplex[0]);
-      Debug::DrawLine(GameState, { 0.0f, 0.0f, 0.0f }, Direction);
     }
     else
     {
@@ -242,6 +235,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = false;
     }
+
+    for(int i = 0; i <= SimplexOrder; i++)
+    {
+      for(int j = 0; j <= SimplexOrder; j++)
+      {
+        Debug::PushLine(Simplex[i], Simplex[j], { 1.0f, 0.0f, 0.0f, 1.0f });
+      }
+    }
+    Debug::PushLine({ 0.0f, 0.0f, 0.0f }, Direction, { 1.0f, 0.0f, 0.0f, 1.0f });
 #endif
   }
 
@@ -707,11 +709,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
+  /*
   Debug::PushLine({ 0, 0, 10 }, { 0, 1, 0 });
   Debug::PushLine({ 0, 1, 0 }, { 0, 1, 10 }, { 1, 1, 0, 1 });
   Debug::PushLine({ 0, 1, 10 }, { 0, 0, 10 }, { 1, 0, 1, 1 });
   vec3 Triangle[3] = { vec3{ 1, 0, 0 }, vec3{ -1, 0, 0 }, vec3{ 0, 0, -1 } };
   Debug::PushLineStrip(Triangle, ARRAY_SIZE(Triangle));
+  */
   Debug::DrawWireframeSpheres(GameState);
 
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
