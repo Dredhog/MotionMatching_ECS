@@ -14,13 +14,13 @@ namespace UI
   {
     UI::BeginFrame(GameState, Input);
 
-    UI::BeginWindow("Editor Window", { 600, 300 }, { 700, 600 });
+    UI::BeginWindow("Editor Window", { 1300, 50 }, { 700, 600 });
     {
       UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings,
                 SELECT_EnumCount, UI::StringArrayToString);
 
       static bool g_ShowMaterialEditor  = false;
-      static bool g_ShowEntityTools     = false;
+      static bool g_ShowEntityTools     = true;
       static bool g_ShowAnimationEditor = false;
       static bool g_ShowLightSettings   = false;
       static bool g_ShowDisplaySet      = false;
@@ -36,39 +36,7 @@ namespace UI
     }
     UI::EndWindow();
 
-    UI::BeginWindow("Collision window", { 1500, 800 }, { 400, 200 });
-    {
-      entity* Entity;
-      if(GetSelectedEntity(GameState, &Entity))
-      {
-        if(UI::Button("Assign to A"))
-        {
-          GameState->EntityA   = GameState->SelectedEntityIndex;
-          GameState->AssignedA = true;
-        }
-
-        if(UI::Button("Assign to B"))
-        {
-          GameState->EntityB   = GameState->SelectedEntityIndex;
-          GameState->AssignedB = true;
-        }
-      }
-
-      if(GameState->AssignedA && GameState->AssignedB)
-      {
-        if(GameState->ABCollide)
-        {
-          UI::Text("Collision detected.");
-        }
-        else
-        {
-          UI::Text("No collision detected.");
-        }
-      }
-    }
-    UI::EndWindow();
-
-    UI::BeginWindow("window A", { 50, 300 }, { 500, 380 });
+    UI::BeginWindow("window A", { 20, 50 }, { 500, 380 });
     {
       static int         s_CurrentItem = -1;
       static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
@@ -126,6 +94,37 @@ namespace UI
           if(s_Checkbox1)
           {
             UI::EndChildWindow();
+          }
+        }
+      }
+      static bool s_ShowCollirionTools = true;
+      UI::CollapsingHeader("Collision tools", &s_ShowCollirionTools);
+      {
+        entity* Entity;
+        if(GetSelectedEntity(GameState, &Entity))
+        {
+          if(UI::Button("Assign to A"))
+          {
+            GameState->EntityA   = GameState->SelectedEntityIndex;
+            GameState->AssignedA = true;
+          }
+
+          if(UI::Button("Assign to B"))
+          {
+            GameState->EntityB   = GameState->SelectedEntityIndex;
+            GameState->AssignedB = true;
+          }
+        }
+
+        if(GameState->AssignedA && GameState->AssignedB)
+        {
+          if(GameState->ABCollide)
+          {
+            UI::Text("Collision detected.");
+          }
+          else
+          {
+            UI::Text("No collision detected.");
           }
         }
       }

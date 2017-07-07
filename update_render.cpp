@@ -197,16 +197,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #else
     if(AreColliding(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix))
     {
-      vec4 Color = { 1.0f, 0.0f, 0.0f };
+      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityAMaterial->Common.UseBlending = true;
+      EntityBMaterial->Common.UseBlending = true;
 
+      vec4 Color                          = { 1.0f, 0.0f, 0.0f, 0.5f };
       EntityAMaterial->Phong.DiffuseColor = Color;
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = true;
     }
     else
     {
-      vec4 Color = { 0.5f, 0.5f, 0.5f };
+      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityAMaterial->Common.UseBlending = true;
+      EntityBMaterial->Common.UseBlending = true;
 
+      vec4 Color                          = { 0.5f, 0.5f, 0.5f, 0.5f };
       EntityAMaterial->Phong.DiffuseColor = Color;
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = false;
@@ -508,10 +516,37 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   {
-    // Draw scene to backbuffer
-    // SORT(MeshInstances, ByMaterial, MyMesh);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Draw Cubemap
+    // TODO (rytis): Finish cubemap loading
+    if(GameState->DrawCubemap)
+    {
+      if(GameState->Cubemap.CubemapTexture == -1)
+      {
+        GameState->Cubemap.CubemapTexture =
+          LoadCubemap(&GameState->Resources, GameState->Cubemap.FaceIDs);
+      }
+      glDepthFunc(GL_LEQUAL);
+      glUseProgram(GameState->R.ShaderCubemap);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_projection"), 1,
+                         GL_FALSE, GameState->Camera.ProjectionMatrix.e);
+      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_view"), 1, GL_FALSE,
+                         Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
+      glBindVertexArray(GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0]->VAO);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
+      glDrawElements(GL_TRIANGLES,
+                     GameState->Resources.GetModel(GameState->CubemapModelID)
+                       ->Meshes[0]
+                       ->IndiceCount,
+                     GL_UNSIGNED_INT, 0);
+
+      glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+      glBindVertexArray(0);
+    }
+
+    // Draw scene to backbuffer
+    // SORT(MeshInstances, ByMaterial, MyMesh);
 
     material*     PreviousMaterial = nullptr;
     Render::mesh* PreviousMesh     = nullptr;
@@ -647,30 +682,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  }
-
-  // TODO (rytis): Finish cubemap loading
-  if(GameState->DrawCubemap)
-  {
-    if(GameState->Cubemap.CubemapTexture == -1)
-    {
-      GameState->Cubemap.CubemapTexture =
-        LoadCubemap(&GameState->Resources, GameState->Cubemap.FaceIDs);
-    }
-    glDepthFunc(GL_LEQUAL);
-    glUseProgram(GameState->R.ShaderCubemap);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_projection"), 1,
-                       GL_FALSE, GameState->Camera.ProjectionMatrix.e);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_view"), 1, GL_FALSE,
-                       Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
-    glBindVertexArray(GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0]->VAO);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
-    glDrawElements(GL_TRIANGLES,
-                   GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0]->IndiceCount,
-                   GL_UNSIGNED_INT, 0);
-
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    glBindVertexArray(0);
   }
 
   Debug::DrawWireframeSpheres(GameState);
