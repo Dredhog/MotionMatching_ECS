@@ -210,9 +210,14 @@ Math::Dot(vec4 A, vec4 B)
   return A.X * B.X + A.Y * B.Y + A.Z * B.Z + A.W * B.W;
 }
 
-inline vec4
+vec4
 Math::Vec4(vec3 V3, float W)
 {
   return { V3.X, V3.Y, V3.Z, W };
 }
 
+vec3
+Math::Vec4ToVec3(vec4 V4)
+{
+  return { V4.X, V4.Y, V4.Z };
+}

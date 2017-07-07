@@ -75,8 +75,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     //--------------LOAD FONT--------------
     GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
 
-    CollisionTesting();
-
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
@@ -136,6 +134,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->EditorBoneRotationSpeed = 45.0f;
     GameState->CurrentMaterialID       = { 0 };
     GameState->PlayerEntityIndex       = -1;
+    GameState->AssignedA               = false;
+    GameState->AssignedB               = false;
   }
   //---------------------END INIT -------------------------
 
@@ -157,6 +157,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       GameState->CurrentMaterialID = GameState->Resources.CreateMaterial(NewPhongMaterial(), "data/materials/default.mat");
     }
+  }
+
+  // Collision testing
+  if(GameState->AssignedA && GameState->AssignedB)
+  {
+    entity* EntityA;
+    GetEntityAtIndex(GameState, &EntityA, GameState->EntityA);
+
+    entity* EntityB;
+    GetEntityAtIndex(GameState, &EntityB, GameState->EntityB);
+
+    Render::mesh* MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
+    Render::mesh* MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
+
+    mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
+    mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
+
+    CollisionTesting(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix);
   }
 
   if(Input->IsMouseInEditorMode)
@@ -409,7 +427,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //---------------------RENDERING----------------------------
 
   GameState->R.MeshInstanceCount = 0;
-  // Put entiry data to darw drawing queue every frame to avoid erroneous indirection due to
+  // Put entiry data to draw drawing queue every frame to avoid erroneous indirection due to
   // sorting
   for(int e = 0; e < GameState->EntityCount; e++)
   {

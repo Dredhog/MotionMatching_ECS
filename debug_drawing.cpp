@@ -156,6 +156,82 @@ Debug::DrawWireframeSpheres(game_state* GameState)
 }
 
 void
+Debug::DrawLine(game_state* GameState, vec3 PointA, vec3 PointB)
+{
+  vec3 Points[] = { PointA, PointB };
+
+  vec4 Color = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+  mat4 ModelMatrix = {};
+  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
+
+  uint32_t VAO;
+  uint32_t VBO;
+
+  glGenVertexArrays(1, &VAO);
+  glBindVertexArray(VAO);
+
+  glGenBuffers(1, &VBO);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(vec3), Points, GL_STATIC_DRAW);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glUseProgram(GameState->R.ShaderColor);
+
+  // So as not to corrupt the position by the old bone data
+  {
+    mat4 Mat4Zeros = {};
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE, Mat4Zeros.e);
+  }
+  glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&Color);
+  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE, MVPMatrix.e);
+  glDrawArrays(GL_LINES, 0, 2);
+
+  glBindVertexArray(0);
+}
+
+void
+Debug::DrawPolygon(game_state* GameState, vec3* Vertices, int32_t VertexCount)
+{
+  vec4 Color = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+  mat4 ModelMatrix = {};
+  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
+
+  uint32_t VAO;
+  uint32_t VBO;
+
+  glGenVertexArrays(1, &VAO);
+  glBindVertexArray(VAO);
+
+  glGenBuffers(1, &VBO);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBufferData(GL_ARRAY_BUFFER, VertexCount * sizeof(vec3), Vertices, GL_STATIC_DRAW);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glUseProgram(GameState->R.ShaderColor);
+
+  // So as not to corrupt the position by the old bone data
+  {
+    mat4 Mat4Zeros = {};
+    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1, GL_FALSE, Mat4Zeros.e);
+  }
+  glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&Color);
+  glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE, MVPMatrix.e);
+  glDrawArrays(GL_POLYGON, 0, VertexCount);
+
+  glBindVertexArray(0);
+}
+
+void
 Debug::DrawQuads(game_state* GameState)
 {
   glEnable(GL_BLEND);
