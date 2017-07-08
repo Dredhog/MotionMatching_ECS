@@ -5,8 +5,8 @@
 #define GIZMO_MAX_COUNT 100
 #define TEXTURED_QUAD_MAX_COUNT 300
 #define COLORED_QUAD_MAX_COUNT 500
-#define LINE_INSTRUCTION_COUNT 100
-#define LINE_POINT_COUNT 100
+#define LINE_INSTRUCTION_COUNT 150
+#define LINE_POINT_COUNT 300
 
 mat4    g_SphereMatrices[SPHERE_MAX_COUNT];
 vec4    g_SphereColors[SPHERE_MAX_COUNT];
@@ -30,13 +30,12 @@ fixed_array<line_instruction, LINE_INSTRUCTION_COUNT> g_LineInstructions;
 fixed_array<vec3, LINE_POINT_COUNT>                   g_LinePoints;
 
 void
-Debug::PushWireframeSphere(const camera* Camera, vec3 Position, float Radius, vec4 Color)
+Debug::PushWireframeSphere(vec3 Position, float Radius, vec4 Color)
 {
-  mat4 MVPMatrix = Math::MulMat4(Camera->VPMatrix, Math::MulMat4(Math::Mat4Translate(Position),
-                                                                 Math::Mat4Scale(Radius)));
+  mat4 ModelMatrix = Math::MulMat4(Math::Mat4Translate(Position), Math::Mat4Scale(Radius));
   assert(0 <= g_SphereCount && g_SphereCount < SPHERE_MAX_COUNT);
   g_SphereColors[g_SphereCount]     = Color;
-  g_SphereMatrices[g_SphereCount++] = MVPMatrix;
+  g_SphereMatrices[g_SphereCount++] = ModelMatrix;
 }
 
 void
@@ -140,6 +139,7 @@ Debug::DrawWireframeSpheres(game_state* GameState)
     {
       glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
                    (float*)&g_SphereColors[i]);
+      g_SphereMatrices[i] = Math::MulMat4(GameState->Camera.VPMatrix, g_SphereMatrices[i]);
       glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
                          g_SphereMatrices[i].e);
       glDrawElements(GL_TRIANGLES, SphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
@@ -166,16 +166,16 @@ Debug::PushLine(vec3 PointA, vec3 PointB, vec4 Color)
 void
 Debug::PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color)
 {
-		line_instruction Instruction = {};
-		Instruction.Color = Color;
-		Instruction.StartIndex = g_LinePoints.Count;
-		Instruction.PointCount = PointCount;
-		g_LineInstructions.Append(Instruction);
+  line_instruction Instruction = {};
+  Instruction.Color            = Color;
+  Instruction.StartIndex       = g_LinePoints.Count;
+  Instruction.PointCount       = PointCount;
+  g_LineInstructions.Append(Instruction);
 
-		for (int i = 0; i < PointCount; i++)
-		{
-		  g_LinePoints.Append(Points[i]);
-		}
+  for(int i = 0; i < PointCount; i++)
+  {
+    g_LinePoints.Append(Points[i]);
+  }
 }
 
 void
@@ -200,7 +200,7 @@ Debug::DrawLines(game_state* GameState)
   assert(0 < s_VAO);
   assert(0 < s_VBO);
 
-	glLineWidth(3);
+  glLineWidth(3);
   // Update line buffers
   glBindBuffer(GL_ARRAY_BUFFER, s_VBO);
   glBufferSubData(GL_ARRAY_BUFFER, 0, g_LinePoints.Count * sizeof(vec3), g_LinePoints.Elements);

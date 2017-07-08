@@ -190,7 +190,8 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
 
 bool
 GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::mesh* MeshB,
-    mat4 ModelAMatrix, mat4 ModelBMatrix, int32_t IterationCount, vec3* Direction)
+    mat4 ModelAMatrix, mat4 ModelBMatrix, int32_t IterationCount, int32_t* FoundInIterations,
+    vec3* Direction)
 {
   vec3 TransformedA = Math::Vec4ToVec3(
     Math::MulMat4Vec4(ModelAMatrix, Math::Vec4(MeshA->Vertices[0].Position, 1.0f)));
@@ -237,6 +238,7 @@ GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::
       {
         if(DoSimplex3(Simplex, SimplexOrder, Direction))
         {
+          *FoundInIterations = i;
           return true;
         }
       }
@@ -341,14 +343,10 @@ BarycentricCoordinates(float* U, float* V, float* W, vec3 P, vec3 A, vec3 B, vec
   *U = 1.0f - *V - *W;
 }
 
-#define DEBUG_COLLISION 1
-
-void
-EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
-    vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::mesh* MeshB,
+vec3
+EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::mesh* MeshB,
     mat4 ModelAMatrix, mat4 ModelBMatrix, int32_t IterationCount)
 {
-  bool DrawToggle = false;
   vec3 Result;
 
   float MinThreshold = 0.0001f;
@@ -358,23 +356,24 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
 
   GeneratePolytopeFrom3Simplex(Polytope, &TriangleCount, Simplex);
 
-  for(int i = 0; i < IterationCount; i++)
+  for(int Iteration = 0; Iteration < IterationCount; Iteration++)
   {
-    if(DrawToggle)
+    if(Iteration == IterationCount - 1)
     {
       for(int i = 0; i < TriangleCount; i++)
       {
-        Debug::PushLine(Polytope[i].A.P, Polytope[i].B.P, { 1.0f, 0.0f, 0.0f, 1.0f });
-        Debug::PushLine(Polytope[i].B.P, Polytope[i].C.P, { 1.0f, 0.0f, 0.0f, 1.0f });
-        Debug::PushLine(Polytope[i].C.P, Polytope[i].A.P, { 1.0f, 0.0f, 0.0f, 1.0f });
+        Debug::PushLine(Polytope[i].A.P, Polytope[i].B.P, { 0, 0, 1, 1 });
+        Debug::PushLine(Polytope[i].B.P, Polytope[i].C.P, { 0, 0, 1, 1 });
+        Debug::PushLine(Polytope[i].C.P, Polytope[i].A.P, { 0, 0, 1, 1 });
+        vec3 NormalStart =
+          0.33f * Polytope[i].A.P + 0.33f * Polytope[i].B.P + 0.33f * Polytope[i].C.P;
+        vec3 NormalEnd = NormalStart + Math::Normalized(Polytope[i].Normal);
+        Debug::PushLine(NormalStart, NormalEnd, { 1, 0, 1, 1 });
+        Debug::PushWireframeSphere(NormalEnd, 0.05f);
       }
     }
     int32_t TriangleIndex = 0;
     float   MinDistance   = -Math::Dot(-Polytope[0].A.P, Math::Normalized(Polytope[0].Normal));
-#if DEBUG_COLLISION
-    printf("Initial MinDistance = %f\n", MinDistance);
-    printf("======================\n");
-#endif
 
     for(int i = 1; i < TriangleCount; i++)
     {
@@ -384,38 +383,7 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
         MinDistance   = CurrentDistance;
         TriangleIndex = i;
       }
-#if DEBUG_COLLISION
-      printf("Iteration %d CurrentDistance = %f\n", i, CurrentDistance);
-#endif
     }
-#if DEBUG_COLLISION
-    printf("======================\n");
-    printf("MinDistance TriangleIndex = %d\n", TriangleIndex);
-    printf("Polytope[TriangleIndex].A = { %f, %f, %f }\n", Polytope[TriangleIndex].A.P.X,
-           Polytope[TriangleIndex].A.P.Y, Polytope[TriangleIndex].A.P.Z);
-    printf("Polytope[TriangleIndex].B = { %f, %f, %f }\n", Polytope[TriangleIndex].B.P.X,
-           Polytope[TriangleIndex].B.P.Y, Polytope[TriangleIndex].B.P.Z);
-    printf("Polytope[TriangleIndex].C = { %f, %f, %f }\n", Polytope[TriangleIndex].C.P.X,
-           Polytope[TriangleIndex].C.P.Y, Polytope[TriangleIndex].C.P.Z);
-    printf("Polytope[TriangleIndex].Normal = { %f, %f, %f }\n", Polytope[TriangleIndex].Normal.X,
-           Polytope[TriangleIndex].Normal.Y, Polytope[TriangleIndex].Normal.Z);
-    printf("MinDistance = %f\n", MinDistance);
-    printf("======================\n");
-#endif
-#if DEBUG_COLLISION
-    for(int i = 0; i < TriangleCount; i++)
-    {
-      printf("Polytope[%d].A = { %f, %f, %f }\n", i, Polytope[i].A.P.X, Polytope[i].A.P.Y,
-             Polytope[i].A.P.Z);
-      printf("Polytope[%d].B = { %f, %f, %f }\n", i, Polytope[i].B.P.X, Polytope[i].B.P.Y,
-             Polytope[i].B.P.Z);
-      printf("Polytope[%d].C = { %f, %f, %f }\n", i, Polytope[i].C.P.X, Polytope[i].C.P.Y,
-             Polytope[i].C.P.Z);
-      printf("Polytope[%d].Normal = { %f, %f, %f }\n", i, Polytope[i].Normal.X,
-             Polytope[i].Normal.Y, Polytope[i].Normal.Z);
-      printf("-----------------------\n");
-    }
-#endif
 
     vec3 SupportA = Support(MeshA, Polytope[TriangleIndex].Normal, ModelAMatrix);
     vec3 SupportB = Support(MeshB, -Polytope[TriangleIndex].Normal, ModelBMatrix);
@@ -423,28 +391,14 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
 
     Result = Math::Normalized(Polytope[TriangleIndex].Normal) *
              Math::Dot(NewPoint, Math::Normalized(Polytope[TriangleIndex].Normal));
-#if DEBUG_COLLISION
-    printf("NewPoint = { %f, %f, %f }\n", NewPoint.X, NewPoint.Y, NewPoint.Z);
-    for(int i = 0; i < TriangleCount; i++)
+    if(Iteration == IterationCount - 1)
     {
-      if((Polytope[i].A.P == NewPoint) || (Polytope[i].B.P == NewPoint) ||
-         (Polytope[i].C.P == NewPoint))
-      {
-        printf("NewPoint in triangle %d!\n", i);
-        break;
-      }
+      Debug::PushLine({}, MinDistance * Math::Normalized(Polytope[TriangleIndex].Normal),
+                      { 1, 1, 0, 1 });
+      Debug::PushWireframeSphere(NewPoint, 0.05f, { 0, 1, 0, 1 });
     }
-    printf("NewPointLength = %f\n", Math::Length(NewPoint));
-    printf("NewPointLength = %f\n",
-           -Math::Dot(-NewPoint, Math::Normalized(Polytope[TriangleIndex].Normal)));
-    printf("ResultLength = %f\n", Math::Length(Result));
-    printf("DIFF = %f\n", Math::Length(Result) - MinDistance);
-    printf("======================\n");
-#endif
     if(Math::Length(Result) <= MinDistance + MinThreshold)
     {
-      *SolutionVector = -Result;
-
       float U, V, W;
 
       BarycentricCoordinates(&U, &V, &W, NewPoint, Polytope[TriangleIndex].A.P,
@@ -453,96 +407,93 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
       *CollisionPoint = U * Polytope[TriangleIndex].A.SupportA +
                         V * Polytope[TriangleIndex].B.SupportA +
                         W * Polytope[TriangleIndex].C.SupportA;
-      break;
+      return -Result;
     }
 
     edge    Edges[100];
     int32_t EdgeCount = 0;
 
-    for(int i = 0; i < TriangleCount; i++)
+    Iteration++;
+
+    if(Iteration < IterationCount)
     {
-#if DEBUG_COLLISION
-      if(Math::Dot(Polytope[i].Normal, -Polytope[i].A.P) > 0.0f)
+      for(int i = 0; i < TriangleCount; i++)
       {
-        printf("Triangle %d/%d points in wrong direction!\n", i, TriangleCount);
-      }
-#endif
-      if(Math::Dot(Polytope[i].Normal, NewPoint) > 0.0f)
-      {
-#if DEBUG_COLLISION
-        printf("Removed %d/%d triangle.\n", i, TriangleCount);
-#endif
-        int32_t EdgeIndex = FindEdge(Edges, EdgeCount, Polytope[i].A, Polytope[i].B);
-        if(EdgeIndex != -1)
+        float CurrentDistance = Math::Dot(Polytope[i].A.P, Math::Normalized(Polytope[i].Normal));
+        if(CurrentDistance <= Math::Dot(Math::Normalized(Polytope[i].Normal), NewPoint))
         {
-          for(int k = EdgeIndex; k < EdgeCount - 1; k++)
+          if(Iteration == IterationCount - 1)
           {
-            Edges[k] = Edges[k + 1];
+            // Debug::PushLine(Polytope[i].A.P, Polytope[i].B.P, { 0, 1, 0, 1 });
+            // Debug::PushLine(Polytope[i].B.P, Polytope[i].C.P, { 0, 1, 0, 1 });
+            // Debug::PushLine(Polytope[i].C.P, Polytope[i].A.P, { 0, 1, 0, 1 });
+            vec3 NormalStart =
+              0.33f * Polytope[i].A.P + 0.33f * Polytope[i].B.P + 0.33f * Polytope[i].C.P;
+            vec3 NormalEnd = NormalStart + Math::Normalized(Polytope[i].Normal);
+            Debug::PushLine(NormalStart, NormalEnd, { 0, 1, 0, 1 });
+            Debug::PushWireframeSphere(NormalEnd, 0.05f);
           }
-          --EdgeCount;
-        }
-        else
-        {
-          Edges[EdgeCount].A = Polytope[i].A;
-          Edges[EdgeCount].B = Polytope[i].B;
-          ++EdgeCount;
-        }
-
-        EdgeIndex = FindEdge(Edges, EdgeCount, Polytope[i].B, Polytope[i].C);
-        if(EdgeIndex != -1)
-        {
-          for(int k = EdgeIndex; k < EdgeCount - 1; k++)
+          int32_t EdgeIndex = FindEdge(Edges, EdgeCount, Polytope[i].A, Polytope[i].B);
+          if(EdgeIndex != -1)
           {
-            Edges[k] = Edges[k + 1];
+            for(int k = EdgeIndex; k < EdgeCount - 1; k++)
+            {
+              Edges[k] = Edges[k + 1];
+            }
+            --EdgeCount;
           }
-          --EdgeCount;
-        }
-        else
-        {
-          Edges[EdgeCount].A = Polytope[i].B;
-          Edges[EdgeCount].B = Polytope[i].C;
-          ++EdgeCount;
-        }
-
-        EdgeIndex = FindEdge(Edges, EdgeCount, Polytope[i].C, Polytope[i].A);
-        if(EdgeIndex != -1)
-        {
-          for(int k = EdgeIndex; k < EdgeCount - 1; k++)
+          else
           {
-            Edges[k] = Edges[k + 1];
+            Edges[EdgeCount].A = Polytope[i].A;
+            Edges[EdgeCount].B = Polytope[i].B;
+            ++EdgeCount;
           }
-          --EdgeCount;
-        }
-        else
-        {
-          Edges[EdgeCount].A = Polytope[i].C;
-          Edges[EdgeCount].B = Polytope[i].A;
-          ++EdgeCount;
-        }
 
-        // Remove face at i
-        for(int j = i; j < TriangleCount - 1; j++)
-        {
-          Polytope[j] = Polytope[j + 1];
+          EdgeIndex = FindEdge(Edges, EdgeCount, Polytope[i].B, Polytope[i].C);
+          if(EdgeIndex != -1)
+          {
+            for(int k = EdgeIndex; k < EdgeCount - 1; k++)
+            {
+              Edges[k] = Edges[k + 1];
+            }
+            --EdgeCount;
+          }
+          else
+          {
+            Edges[EdgeCount].A = Polytope[i].B;
+            Edges[EdgeCount].B = Polytope[i].C;
+            ++EdgeCount;
+          }
+
+          EdgeIndex = FindEdge(Edges, EdgeCount, Polytope[i].C, Polytope[i].A);
+          if(EdgeIndex != -1)
+          {
+            for(int k = EdgeIndex; k < EdgeCount - 1; k++)
+            {
+              Edges[k] = Edges[k + 1];
+            }
+            --EdgeCount;
+          }
+          else
+          {
+            Edges[EdgeCount].A = Polytope[i].C;
+            Edges[EdgeCount].B = Polytope[i].A;
+            ++EdgeCount;
+          }
+
+          // Remove face at i
+          for(int j = i; j < TriangleCount - 1; j++)
+          {
+            Polytope[j] = Polytope[j + 1];
+          }
+          --i;
+          --TriangleCount;
         }
-        --i;
-        --TriangleCount;
       }
     }
 
     for(int i = 0; i < EdgeCount; i++)
     {
-#if DEBUG_COLLISION
-#if 1
-      printf("%d/%d\n", i, EdgeCount);
-      printf("Edges[%d].A.P = { %f, %f, %f }\n", i, Edges[i].A.P.X, Edges[i].A.P.Y, Edges[i].A.P.Z);
-      printf("Edges[%d].B.P = { %f, %f, %f }\n", i, Edges[i].B.P.X, Edges[i].B.P.Y, Edges[i].B.P.Z);
-      printf("Edges[%d].A.SupportA = { %f, %f, %f }\n", i, Edges[i].A.SupportA.X,
-             Edges[i].A.SupportA.Y, Edges[i].A.SupportA.Z);
-      printf("Edges[%d].B.SupportA = { %f, %f, %f }\n", i, Edges[i].B.SupportA.X,
-             Edges[i].B.SupportA.Y, Edges[i].B.SupportA.Z);
-#endif
-#endif
       Polytope[TriangleCount].A          = Edges[i].A;
       Polytope[TriangleCount].B          = Edges[i].B;
       Polytope[TriangleCount].C.P        = NewPoint;
@@ -553,9 +504,6 @@ EPA(game_state* GameState, const game_input* const Input, vec3* SolutionVector,
 
       ++TriangleCount;
     }
-#if DEBUG_COLLISION
-    printf("======================\n");
-    printf("TriangleCount = %d\n", TriangleCount);
-#endif
   }
+  return {};
 }

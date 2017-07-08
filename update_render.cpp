@@ -203,16 +203,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
     material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
 
-    vec3    Simplex[4];
-    int32_t SimplexOrder;
+    Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
 
-    vec3 Direction;
-
-#if 0
-    CollisionTesting(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix);
-#else
-    if(AreColliding(Simplex, &SimplexOrder, &Direction, GameState, Input, MeshA, MeshB,
-                    ModelAMatrix, ModelBMatrix, GameState->IterationCount))
+    if(AreColliding(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
+                    GameState->IterationCount))
     {
       EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
       EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
@@ -236,20 +230,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = false;
     }
-
-    vec4 EdgeColor = { 1.0f, 0.0f, 0.0f, 1.0f };
-
-    Debug::PushWireframeSphere(&GameState->Camera, {}, 0.05f, { 1, 1, 0, 1 });
-    for(int i = 0; i < SimplexOrder; i++)
-    {
-      Debug::PushWireframeSphere(&GameState->Camera, Simplex[i], 0.05f, { 1, 0, 1, 1 });
-      for(int j = 1; j <= SimplexOrder; j++)
-      {
-        Debug::PushLine(Simplex[i], Simplex[j], EdgeColor);
-      }
-    }
-    Debug::PushLine({ 0.0f, 0.0f, 0.0f }, Math::Normalized(Direction), { 0.0f, 0.0f, 1.0f, 1.0f });
-#endif
   }
 
   if(Input->IsMouseInEditorMode)
@@ -489,7 +469,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         RayIntersectSphere(GameState->Camera.Position, RayDir, Position, BoneSphereRadius);
       if(RaycastResult.Success)
       {
-        Debug::PushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius, { 1, 1, 0, 1 });
+        Debug::PushWireframeSphere(Position, BoneSphereRadius, { 1, 1, 0, 1 });
         float DistanceToIntersection =
           Math::Length(RaycastResult.IntersectP - GameState->Camera.Position);
 
@@ -502,7 +482,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
       else
       {
-        Debug::PushWireframeSphere(&GameState->Camera, Position, BoneSphereRadius);
+        Debug::PushWireframeSphere(Position, BoneSphereRadius);
       }
     }
     if(GameState->AnimEditor.Skeleton)
@@ -714,13 +694,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
-  /*
-  Debug::PushLine({ 0, 0, 10 }, { 0, 1, 0 });
-  Debug::PushLine({ 0, 1, 0 }, { 0, 1, 10 }, { 1, 1, 0, 1 });
-  Debug::PushLine({ 0, 1, 10 }, { 0, 0, 10 }, { 1, 0, 1, 1 });
-  vec3 Triangle[3] = { vec3{ 1, 0, 0 }, vec3{ -1, 0, 0 }, vec3{ 0, 0, -1 } };
-  Debug::PushLineStrip(Triangle, ARRAY_SIZE(Triangle));
-  */
   Debug::DrawWireframeSpheres(GameState);
 
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
