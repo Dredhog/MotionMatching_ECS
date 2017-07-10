@@ -97,6 +97,7 @@ struct game_memory
 namespace Platform
 {
   float GetTimeInSeconds();
+  void  SetHighDPIAwareness();
 }
 
 #define GAME_UPDATE_AND_RENDER(name) void name(game_memory GameMemory, const game_input* const Input)

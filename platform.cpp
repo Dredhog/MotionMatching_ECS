@@ -375,7 +375,7 @@ Init(SDL_Window** Window)
 
     // Create an SDL window
     SDL_SetRelativeMouseMode(SDL_TRUE);
-    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN);
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_ALLOW_HIGHDPI);
 
     if(!Window)
     {
@@ -415,6 +415,8 @@ Init(SDL_Window** Window)
 int
 main(int argc, char* argv[])
 {
+  Platform::SetHighDPIAwareness();
+
   SDL_Window* Window = nullptr;
   if(!Init(&Window))
   {
