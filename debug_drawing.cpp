@@ -125,6 +125,7 @@ Debug::DrawWireframeSpheres(game_state* GameState)
   if(GameState->DrawDebugSpheres)
   {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDisable(GL_DEPTH_TEST);
     glUseProgram(GameState->R.ShaderColor);
     Render::model* SphereModel = GameState->Resources.GetModel(GameState->SphereModelID);
     glBindVertexArray(SphereModel->Meshes[0]->VAO);
@@ -146,6 +147,7 @@ Debug::DrawWireframeSpheres(game_state* GameState)
     }
     glBindVertexArray(0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glEnable(GL_DEPTH_TEST);
   }
   g_SphereCount = 0;
 }

@@ -200,9 +200,9 @@ namespace Math
   Mat4RotateAxisAngle(vec3 RotationAxis, float Angle)
   {
 
-    float x   = RotationAxis.X;
-    float y   = RotationAxis.Y;
-    float z   = RotationAxis.Z;
+    float x = RotationAxis.X;
+    float y = RotationAxis.Y;
+    float z = RotationAxis.Z;
 
     float DTR = 3.1415926f / 180;
     float s   = sinf(Angle * DTR);
@@ -389,7 +389,7 @@ namespace Math
   }
 
   mat4
-  InvMat4(const mat4& M)
+  InvMat4(mat4 M)
   {
     float Det = Determinant(M);
     /* there is no inverse if determinant is zero (not likely unless scale is

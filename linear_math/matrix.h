@@ -52,6 +52,6 @@ namespace Math
   void Transpose3(mat3* Mat);
   void Transpose4(mat4* Mat);
   vec3 GetMat4Translation(mat4 Mat4);
-  mat4 InvMat4(const mat4& Mat4);
+  mat4 InvMat4(mat4 Mat4);
 }
 

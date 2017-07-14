@@ -98,9 +98,8 @@ namespace UI
         }
       }
       static bool s_ShowCollisionTools = true;
-      UI::CollapsingHeader("Collision tools", &s_ShowCollisionTools);
+      if(UI::CollapsingHeader("Collision tools", &s_ShowCollisionTools))
       {
-        UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 30, false);
         entity* Entity;
         if(GetSelectedEntity(GameState, &Entity))
         {
@@ -115,6 +114,10 @@ namespace UI
             GameState->EntityB   = GameState->SelectedEntityIndex;
             GameState->AssignedB = true;
           }
+        }
+        if(GameState->AssignedA && GameState->AssignedB)
+        {
+          UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 30, false);
         }
 
         if(GameState->AssignedA && GameState->AssignedB)

@@ -24,6 +24,7 @@
 
 #include "gui_testing.h"
 #include <limits.h>
+#include "dynamics.h"
 
 void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform);
 mat4 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex);
@@ -176,62 +177,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  if(Input->i.EndedDown && Input->i.Changed)
-  {
-    ++GameState->IterationCount;
-  }
-  else if(Input->o.EndedDown && Input->o.Changed)
-  {
-    --GameState->IterationCount;
-  }
-
-  // Collision testing
-  if(GameState->AssignedA && GameState->AssignedB)
-  {
-    entity* EntityA;
-    GetEntityAtIndex(GameState, &EntityA, GameState->EntityA);
-
-    entity* EntityB;
-    GetEntityAtIndex(GameState, &EntityB, GameState->EntityB);
-
-    Render::mesh* MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
-    Render::mesh* MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
-
-    mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
-    mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
-
-    material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
-    material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
-
-    Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
-
-    if(AreColliding(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
-                    GameState->IterationCount))
-    {
-      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityAMaterial->Common.UseBlending = true;
-      EntityBMaterial->Common.UseBlending = true;
-
-      vec4 Color                          = { 1.0f, 0.0f, 0.0f, 0.5f };
-      EntityAMaterial->Phong.DiffuseColor = Color;
-      EntityBMaterial->Phong.DiffuseColor = Color;
-      GameState->ABCollide                = true;
-    }
-    else
-    {
-      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityAMaterial->Common.UseBlending = true;
-      EntityBMaterial->Common.UseBlending = true;
-
-      vec4 Color                          = { 0.5f, 0.5f, 0.5f, 0.5f };
-      EntityAMaterial->Phong.DiffuseColor = Color;
-      EntityBMaterial->Phong.DiffuseColor = Color;
-      GameState->ABCollide                = false;
-    }
-  }
-
   if(Input->IsMouseInEditorMode)
   {
     UI::TestGui(GameState, Input);
@@ -346,6 +291,64 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
+
+  if(Input->i.EndedDown && Input->i.Changed)
+  {
+    ++GameState->IterationCount;
+  }
+  else if(Input->o.EndedDown && Input->o.Changed)
+  {
+    --GameState->IterationCount;
+  }
+
+  SimulateDynamics(GameState);
+
+  // Collision testing
+  if(GameState->AssignedA && GameState->AssignedB)
+  {
+    entity* EntityA;
+    GetEntityAtIndex(GameState, &EntityA, GameState->EntityA);
+
+    entity* EntityB;
+    GetEntityAtIndex(GameState, &EntityB, GameState->EntityB);
+
+    Render::mesh* MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
+    Render::mesh* MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
+
+    mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
+    mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
+
+     material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
+     material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
+
+    Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
+
+    if(AreColliding(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
+                    GameState->IterationCount))
+    {
+      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityAMaterial->Common.UseBlending = true;
+      EntityBMaterial->Common.UseBlending = true;
+
+      vec4 Color                          = { 1.0f, 0.0f, 0.0f, 0.8f };
+      EntityAMaterial->Phong.DiffuseColor = Color;
+      EntityBMaterial->Phong.DiffuseColor = Color;
+      GameState->ABCollide                = true;
+    }
+    else
+    {
+      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
+      EntityAMaterial->Common.UseBlending = true;
+      EntityBMaterial->Common.UseBlending = true;
+
+      vec4 Color                          = { 0.5f, 0.5f, 0.5f, 0.8f };
+      EntityAMaterial->Phong.DiffuseColor = Color;
+      EntityBMaterial->Phong.DiffuseColor = Color;
+      GameState->ABCollide                = false;
+    }
+  }
 
   if(GameState->PlayerEntityIndex != -1)
   {
