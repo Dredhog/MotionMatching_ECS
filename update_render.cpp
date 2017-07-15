@@ -139,7 +139,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.LightSpecularColor = { 1, 1, 1 };
     GameState->R.LightDiffuseColor  = { 1, 1, 1 };
     GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
-    GameState->R.ShowLightPosition  = true;
+    GameState->R.ShowLightPosition  = false;
 
     GameState->DrawCubemap             = true;
     GameState->DrawDebugSpheres        = true;
@@ -301,6 +301,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     --GameState->IterationCount;
   }
 
+  g_Force          = GameState->Force;
+  g_ForceStart     = GameState->ForceStart;
+  g_ApplyingForce  = GameState->ApplyingForce;
+  g_ApplyingTorque = GameState->ApplyingTorque;
   SimulateDynamics(GameState);
 
   // Collision testing
@@ -318,8 +322,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
     mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
 
-     material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
-     material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
+    material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
+    material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
 
     Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
 

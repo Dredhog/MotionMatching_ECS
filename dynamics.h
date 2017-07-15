@@ -1,12 +1,12 @@
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
-#include "misc.h"
+#include "linear_math/quaternion.h"
 
 struct state
 {
   // Yi(t)
   vec3 X;
-  mat3 R;
+  quat q;
   vec3 P;
   vec3 L;
 };
@@ -15,7 +15,7 @@ struct state_derivative
 {
   // dYi(t)
   vec3 v;
-  mat3 RDot;
+  quat qDot;
   vec3 Force;
   vec3 Torque;
 };
@@ -31,35 +31,75 @@ struct rigid_body
   mat3  InertiaBodyInv;
 
   bool IsDynamic;
+
+  // Compute on iteration
+  mat3 InertiaInv;
+  mat3 R;
+  vec3 Omega;
 };
 
 const int  RIGID_BODY_COUNT = 2;
 rigid_body g_RigidBodies[RIGID_BODY_COUNT]; // Indices correspond to entities
 
-#define DYDT_FUNC(name) void name(state_derivative* dY, const state* Y, int Count, float t)
+vec3 g_Force;
+vec3 g_ForceStart;
+bool g_ApplyingForce;
+bool g_ApplyingTorque;
 
+#define DYDT_FUNC(name) void name(state_derivative* dY, state* Y, int Count, float t)
 typedef DYDT_FUNC(dydt_func);
 
 void
 ComputeExternalForcesAndTorques(state_derivative* dYi, const rigid_body* RigidBody, float t)
 {
+  dYi->Force  = {};
+  dYi->Torque = {};
   if(RigidBody->IsDynamic)
   {
-    dYi->Force = (9.81f * RigidBody->Mass) * vec3{ 0, -1, 0 };
+#if 0
+     dYi->Force = (9.81f * RigidBody->Mass) * vec3{ 0, -1, 0 };
+#else
+    // TempTesting code
+    if(g_ApplyingForce)
+    {
+      dYi->Force = g_Force;
+    }
+    if(g_ApplyingTorque)
+    {
+      vec3 Radius = (g_ForceStart + g_Force) - RigidBody->State.X;
+      dYi->Torque = Math::Cross(Radius, g_Force);
+    }
+#endif
   }
-  else
-  {
-    dYi->Force = {};
-  }
-  dYi->Torque = {};
 }
 
 DYDT_FUNC(DYDT)
 {
   for(int i = 0; i < Count; i++)
   {
-    dY[i].v = Y[i].P / g_RigidBodies[i].Mass;
     ComputeExternalForcesAndTorques(&dY[i], &g_RigidBodies[i], t);
+
+    dY[i].v = Y[i].P / g_RigidBodies[i].Mass;
+
+    Math::Normalize(&Y[i].q);
+    if(!FloatsEqualByThreshold(Math::Length(Y[i].q), 1.0f, 0.001f))
+    {
+      // May be invalid rotation
+      quat DefaultQuaternion = {};
+      DefaultQuaternion.i    = 1;
+      Y[i].q                 = DefaultQuaternion;
+    }
+    // assert(Math::Length(Y[i].q) == 1);
+    g_RigidBodies[i].R = Math::QuatToMat3(Y[i].q);
+    g_RigidBodies[i].InertiaInv =
+      Math::MulMat3(g_RigidBodies[i].R, Math::MulMat3(g_RigidBodies[i].InertiaBodyInv,
+                                                      Math::Transposed3(g_RigidBodies[i].R)));
+    g_RigidBodies[i].Omega = Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, Y[i].L);
+
+    quat qOmega;
+    qOmega.S   = 0;
+    qOmega.V   = g_RigidBodies[i].Omega;
+    dY[i].qDot = 0.5f * (qOmega * Y[i].q);
   }
 }
 
@@ -76,20 +116,11 @@ ODE(state* Y, int Count, float t1, float t2, dydt_func dydt)
     float* DerivativeFloat = (float*)&dY[i];
 
     const float dt = t2 - t1;
-    /*for(int j = 0; j < sizeof(state) / sizeof(float); j++)
+    for(int j = 0; j < sizeof(state) / sizeof(float); j++)
     {
       *StateFloat += *DerivativeFloat * dt;
       ++StateFloat;
       ++DerivativeFloat;
-    }*/
-    {
-      Y[i].X += dt * dY[i].v;
-      for(int j = 0; j < ARRAY_SIZE(Y[i].R.e); j++)
-      {
-        Y[i].R.e[j] += dt * dY[i].RDot.e[j];
-      }
-      Y[i].P += dt * dY[i].Force;
-      Y[i].L += dt * dY[i].Torque;
     }
   }
 }
@@ -104,17 +135,20 @@ SimulateDynamics(game_state* GameState)
   if(2 <= GameState->EntityCount)
   {
     // Coppying here only for testing
-    g_RigidBodies[0].State.X   = GameState->Entities[0].Transform.Translation;
-    g_RigidBodies[0].Mass      = 1;
-    g_RigidBodies[0].IsDynamic = true;
-    g_RigidBodies[1].State.X   = GameState->Entities[1].Transform.Translation;
-    g_RigidBodies[1].Mass      = 1;
-    g_RigidBodies[1].IsDynamic = true;
+    g_RigidBodies[0].State.X = GameState->Entities[0].Transform.Translation;
+    g_RigidBodies[1].State.X = GameState->Entities[1].Transform.Translation;
     //--------------------------------
 
     for(int i = 0; i < RIGID_BODY_COUNT; i++)
     {
       Y[i] = g_RigidBodies[i].State;
+      if(g_RigidBodies[i].Mass != 1)
+      {
+      }
+      g_RigidBodies[i].Mass           = 1;
+      g_RigidBodies[i].InertiaBody    = Math::Mat3Scale(1, 3, 5);
+      g_RigidBodies[i].InertiaBodyInv = Math::Mat3Scale(1, 1.0f / 3.0f, 1.0f / 5.0f);
+      g_RigidBodies[i].IsDynamic      = true;
     }
 
     ODE(Y, 2, 0.0f, 0.0f + (FRAME_TIME_MS / 1000.0f), DYDT);
@@ -122,6 +156,15 @@ SimulateDynamics(game_state* GameState)
     for(int i = 0; i < RIGID_BODY_COUNT; i++)
     {
       g_RigidBodies[i].State = Y[i];
+      // if(0.5f < Math::Length(Y[i].q))
+      {
+        float RadToDeg = 180.0f / 3.14159f;
+
+        GameState->Entities[i].Transform.Rotation = RadToDeg * Math::QuatToEularAngles(Y[i].q);
+        Debug::PushLine(Y[i].X, Y[i].X + g_RigidBodies[i].Omega, { 0, 1, 0, 1 });
+        Debug::PushWireframeSphere(Y[i].X + g_RigidBodies[i].Omega, 0.05f, { 0, 1, 0, 1 });
+      }
+      Debug::PushLine(Y[i].X, Y[i].X + Y[i].L);
     }
 
     // Coppying here only for testing

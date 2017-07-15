@@ -8,6 +8,7 @@
 #include "skeleton.h"
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
+#include "linear_math/quaternion.h"
 #include "stack_alloc.h"
 #include "heap_alloc.h"
 #include "edit_animation.h"
@@ -109,6 +110,12 @@ struct game_state
   int32_t EntityB;
   bool    ABCollide;
   int32_t IterationCount;
+
+  vec3 ForceStart;
+  vec3 Force;
+  bool ApplyingForce;
+  bool ApplyingTorque;
+  quat TestQuaternion;
 };
 
 inline bool
