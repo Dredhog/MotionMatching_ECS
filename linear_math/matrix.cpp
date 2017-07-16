@@ -7,7 +7,7 @@
 
 namespace Math
 {
-  inline mat3
+  mat3
   MulMat3(mat3 A, mat3 B)
   {
     mat3 Result;
@@ -200,9 +200,9 @@ namespace Math
   Mat4RotateAxisAngle(vec3 RotationAxis, float Angle)
   {
 
-    float x   = RotationAxis.X;
-    float y   = RotationAxis.Y;
-    float z   = RotationAxis.Z;
+    float x = RotationAxis.X;
+    float y = RotationAxis.Y;
+    float z = RotationAxis.Z;
 
     float DTR = 3.1415926f / 180;
     float s   = sinf(Angle * DTR);
@@ -225,6 +225,23 @@ namespace Math
                  0,
                  0,
                  1 };
+  }
+  mat3
+  Mat3Scale(float Sx, float Sy, float Sz)
+  {
+    return mat3{ Sx, 0, 0, 0, Sy, 0, 0, 0, Sz };
+  }
+
+  mat3
+  Mat3Scale(vec3 S)
+  {
+    return mat3{ S.X, 0, 0, 0, S.Y, 0, 0, 0, S.Z };
+  }
+
+  mat3
+  Mat3Scale(float S)
+  {
+    return mat3{ S, 0, 0, 0, S, 0, 0, 0, S };
   }
 
   mat4
@@ -276,28 +293,28 @@ namespace Math
   }
 
   mat3
-  Transposed3(const mat3* Mat)
+  Transposed3(const mat3& Mat)
   {
     mat3 Transpose;
     for(int i = 0; i < 3; i++)
     {
       for(int j = 0; j < 3; j++)
       {
-        Transpose.e[3 * i + j] = Mat->e[3 * j + i];
+        Transpose.e[3 * i + j] = Mat.e[3 * j + i];
       }
     }
     return Transpose;
   }
 
   mat4
-  Transposed4(const mat4* Mat)
+  Transposed4(const mat4& Mat)
   {
     mat4 Transpose;
     for(int i = 0; i < 4; i++)
     {
       for(int j = 0; j < 4; j++)
       {
-        Transpose.e[4 * i + j] = Mat->e[4 * j + i];
+        Transpose.e[4 * i + j] = Mat.e[4 * j + i];
       }
     }
     return Transpose;
@@ -389,7 +406,7 @@ namespace Math
   }
 
   mat4
-  InvMat4(const mat4& M)
+  InvMat4(mat4 M)
   {
     float Det = Determinant(M);
     /* there is no inverse if determinant is zero (not likely unless scale is

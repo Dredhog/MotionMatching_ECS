@@ -97,8 +97,25 @@ namespace UI
           }
         }
       }
+      static bool s_ShowDynamicsTools = true;
+      if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
+      {
+        UI::DragFloat4("Quaternion {S, i, j, k}", &GameState->TestQuaternion.S, -INFINITY, INFINITY,
+                       5);
+        if(Math::Length(GameState->TestQuaternion) != 0)
+        {
+          Math::Normalize(&GameState->TestQuaternion);
+        }
+        UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
+        UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
+        UI::Checkbox("Apply Force", &GameState->ApplyingForce);
+        UI::Checkbox("Apply Torque", &GameState->ApplyingTorque);
+        Debug::PushLine(GameState->ForceStart, GameState->ForceStart + GameState->Force,
+                        { 1, 1, 0, 1 });
+        Debug::PushWireframeSphere(GameState->ForceStart + GameState->Force, 0.05f, { 1, 1, 0, 1 });
+      }
       static bool s_ShowCollisionTools = true;
-      UI::CollapsingHeader("Collision tools", &s_ShowCollisionTools);
+      if(UI::CollapsingHeader("Collision tools", &s_ShowCollisionTools))
       {
         UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 50, false);
         entity* Entity;
@@ -115,6 +132,10 @@ namespace UI
             GameState->EntityB   = GameState->SelectedEntityIndex;
             GameState->AssignedB = true;
           }
+        }
+        if(GameState->AssignedA && GameState->AssignedB)
+        {
+          UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 30, false);
         }
 
         if(GameState->AssignedA && GameState->AssignedB)

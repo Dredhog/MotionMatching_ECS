@@ -31,6 +31,7 @@ namespace Math
   vec3  Normalized(vec3 V);
   vec3  Cross(vec3 A, vec3 B);
 }
+
 vec3 operator-(const vec3& V);
 vec3 operator+(const vec3& A, const vec3& B);
 vec3 operator-(const vec3& A, const vec3& B);
@@ -52,6 +53,7 @@ namespace Math
   vec4  Vec4(vec3 V3, float W);
   vec3  Vec4ToVec3(vec4 V4);
 }
+
 vec4  operator-(const vec4& V);
 vec4  operator+(const vec4& A, const vec4& B);
 vec4  operator-(const vec4& A, const vec4& B);
@@ -65,4 +67,3 @@ vec4  operator/(const vec4& A, float s);
 vec4  operator/(float s, const vec4& A);
 vec4& operator*=(vec4& A, float s);
 vec4& operator/=(vec4& A, float s);
-

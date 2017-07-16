@@ -41,17 +41,19 @@ namespace Math
   mat4 Mat4RotateX(float Angle);
   mat4 Mat4Rotate(vec3 EulerAngles);
   mat4 Mat4RotateAxisAngle(vec3 RotationAxis, float Angle);
+  mat3 Mat3Scale(float Sx, float Sy, float Sz);
+  mat3 Mat3Scale(vec3 S);
+  mat3 Mat3Scale(float S);
   mat4 Mat4Scale(float Sx, float Sy, float Sz);
   mat4 Mat4Scale(vec3 S);
   mat4 Mat4Scale(float S);
   mat4 Mat4Camera(vec3 P, vec3 Dir, vec3 Up);
   mat4 Mat4Perspective(float ViewAngle, float AspectRatio, float FrontPlaneDist,
                        float BackPlaneDist);
-  mat3 Transposed3(const mat3* Mat);
-  mat4 Transposed4(const mat4* Mat);
+  mat3 Transposed3(const mat3& Mat);
+  mat4 Transposed4(const mat4& Mat);
   void Transpose3(mat3* Mat);
   void Transpose4(mat4* Mat);
   vec3 GetMat4Translation(mat4 Mat4);
-  mat4 InvMat4(const mat4& Mat4);
+  mat4 InvMat4(mat4 Mat4);
 }
-

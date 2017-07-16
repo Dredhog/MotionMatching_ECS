@@ -1,6 +1,7 @@
 #include "vector.h"
 #include "math.h"
 
+// Vector
 vec3
 operator-(const vec3& V)
 {
