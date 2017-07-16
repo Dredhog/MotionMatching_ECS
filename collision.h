@@ -542,7 +542,10 @@ EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::m
   return {};
 }
 
+// ==================
 // SAT Implementation
+// ==================
+// TODO(rytis): Manifold point reduction (face case); Primitive test; Visualisations for debugging;
 
 struct sat_contact_point
 {
@@ -640,22 +643,22 @@ struct edge_query
   float   Separation;
 };
 
-void
-QueryFaceDirections(face_query* Result, const mat4 TransformA, hull* HullA, const mat4 TransformB,
-                    hull* HullB)
+face_query
+QueryFaceDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, hull* HullB)
 {
-  mat4 HullBLocalT = Math::MulMat4(TransformB, TransformA);
+  face_query Result;
 
-  int32_t MaxIndex = 0;
-  float   MaxSeparation =
-    PointToPlaneDistance(HullSupport(HullB, -HullA->Faces[0].Normal, HullBLocalT),
-                         HullA->Faces[0].Normal);
+  // Local space of HullB
+  mat4 Transform = Math::MulMat4(TransformB, TransformA);
+
+  int32_t MaxIndex    = 0;
+  float MaxSeparation = PointToPlaneDistance(HullSupport(HullB, -HullA->Faces[0].Normal, Transform),
+                                             TransformVector(HullA->Faces[0].Normal, Transform));
 
   for(int i = 1; i < HullA->FaceCount; ++i)
   {
-    float Separation =
-      PointToPlaneDistance(HullSupport(HullB, -HullA->Faces[i].Normal, HullBLocalT),
-                           HullA->Faces[i].Normal);
+    float Separation = PointToPlaneDistance(HullSupport(HullB, -HullA->Faces[i].Normal, Transform),
+                                            TransformVector(HullA->Faces[i].Normal, Transform));
     if(Separation > MaxSeparation)
     {
       MaxIndex      = i;
@@ -663,27 +666,29 @@ QueryFaceDirections(face_query* Result, const mat4 TransformA, hull* HullA, cons
     }
   }
 
-  Result->Index      = MaxIndex;
-  Result->Separation = MaxSeparation;
+  Result.Index      = MaxIndex;
+  Result.Separation = MaxSeparation;
+  return Result;
 }
 
-void
-QueryEdgeDirections(edge_query* Result, const mat4 TransformA, hull* HullA, const mat4 TransformB,
-                    hull* HullB)
+edge_query
+QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, hull* HullB)
 {
-  int32_t MaxIndexA     = -1;
-  int32_t MaxIndexB     = -1;
-  float   MaxSeparation = -FLT_MAX;
+  edge_query Result;
+  int32_t    MaxIndexA     = -1;
+  int32_t    MaxIndexB     = -1;
+  float      MaxSeparation = -FLT_MAX;
 
-  mat4 HullBLocalT = Math::MulMat4(TransformB, TransformA);
+  // Local space of HullB
+  mat4 Transform = Math::MulMat4(TransformB, TransformA);
 
-  vec3 TransformedCenterA = TransformVector(HullA->Centroid, HullBLocalT);
+  vec3 TransformedCenterA = TransformVector(HullA->Centroid, Transform);
 
   for(int i = 0; i < HullA->EdgeCount; ++i)
   {
     half_edge* EdgeA     = &HullA->Edges[i];
-    vec3       EdgeATail = TransformVector(*EdgeA->Tail, HullBLocalT);
-    vec3       EdgeAHead = TransformVector(*EdgeA->Next->Tail, HullBLocalT);
+    vec3       EdgeATail = TransformVector(*EdgeA->Tail, Transform);
+    vec3       EdgeAHead = TransformVector(*EdgeA->Next->Tail, Transform);
     for(int j = 0; j < HullB->EdgeCount; ++j)
     {
       half_edge* EdgeB = &HullB->Edges[i];
@@ -700,9 +705,10 @@ QueryEdgeDirections(edge_query* Result, const mat4 TransformA, hull* HullA, cons
     }
   }
 
-  Result->IndexA     = MaxIndexA;
-  Result->IndexB     = MaxIndexB;
-  Result->Separation = MaxSeparation;
+  Result.IndexA     = MaxIndexA;
+  Result.IndexB     = MaxIndexB;
+  Result.Separation = MaxSeparation;
+  return Result;
 }
 
 bool
@@ -722,19 +728,33 @@ IntersectEdgeFace(vec3* IntersectionPoint, vec3 PointA, vec3 PointB, vec3 FacePo
 }
 
 void
+ReduceContactPoints(sat_contact_manifold* Manifold, sat_contact_point* ContactPoints,
+                    int32_t ContactPointCount)
+{
+}
+
+void
 CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 TransformA,
                   hull* HullA, face_query QueryB, const mat4 TransformB, hull* HullB)
 {
+  bool ReferenceSwitch = false;
+  bool IncidentSwitch  = false;
+
   int32_t           ContactPointCount = 0;
   sat_contact_point ContactPoints[20];
+
+  // Local space of HullB
+  mat4 Transform = Math::MulMat4(TransformB, TransformA);
 
   half_edge* ReferenceFaceEdge = HullA->Faces[QueryA.Index].Edge;
 
   int32_t Index         = 0;
-  float   MinDotProduct = Math::Dot(HullA->Faces[QueryA.Index].Normal, HullB->Faces[0].Normal);
+  float   MinDotProduct = Math::Dot(TransformVector(HullA->Faces[QueryA.Index].Normal, Transform),
+                                  HullB->Faces[0].Normal);
   for(int i = 1; i < HullB->FaceCount; ++i)
   {
-    float DotProduct = Math::Dot(HullA->Faces[QueryA.Index].Normal, HullB->Faces[0].Normal);
+    float DotProduct = Math::Dot(TransformVector(HullA->Faces[QueryA.Index].Normal, Transform),
+                                 HullB->Faces[i].Normal);
     if(DotProduct < MinDotProduct)
     {
       Index         = i;
@@ -744,59 +764,205 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
 
   half_edge* IncidentFaceEdge = HullB->Faces[Index].Edge;
 
-  for(half_edge* r = ReferenceFaceEdge; r->Next != ReferenceFaceEdge; r = r->Next)
+  // Try to find different way to iterate (?)
+  for(half_edge* r = ReferenceFaceEdge;; r = r->Next)
   {
-    for(half_edge* i = IncidentFaceEdge; i->Next != IncidentFaceEdge; i = i->Next)
+    if(r == ReferenceFaceEdge)
     {
-      vec3 NewPoint;
-      if(IntersectEdgeFace(&NewPoint, *r->Tail, *r->Next->Tail, *i->Tail, i->Face->Normal))
+      if(ReferenceSwitch)
       {
-        ContactPoints[ContactPointCount].Position    = NewPoint;
-        ContactPoints[ContactPointCount].Penetration = QueryA.Separation;
+        break;
+      }
+      else
+      {
+        ReferenceSwitch = !ReferenceSwitch;
+      }
+    }
+
+    for(half_edge* i = IncidentFaceEdge;; i = i->Next)
+    {
+      if(i == IncidentFaceEdge)
+      {
+        if(IncidentSwitch)
+        {
+          break;
+        }
+        else
+        {
+          IncidentSwitch = !IncidentSwitch;
+        }
+      }
+
+      vec3 NewPoint;
+      if(IntersectEdgeFace(&NewPoint, *i->Tail, *i->Next->Tail,
+                           TransformVector(*r->Tail, Transform),
+                           TransformVector(r->Twin->Face->Normal, Transform)))
+      {
+        ContactPoints[ContactPointCount].Position = NewPoint;
+        ContactPoints[ContactPointCount].Penetration =
+          PointToPlaneDistance(NewPoint,
+                               TransformVector(ReferenceFaceEdge->Face->Normal, Transform));
+        ++ContactPointCount;
+      }
+
+      float IncidentDistance =
+        PointToPlaneDistance(*i->Tail, TransformVector(ReferenceFaceEdge->Face->Normal, Transform));
+      if(IncidentDistance > 0.0f)
+      {
+        ContactPoints[ContactPointCount].Position    = *i->Tail;
+        ContactPoints[ContactPointCount].Penetration = IncidentDistance;
+        ++ContactPointCount;
       }
     }
   }
+
+  ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
+}
+
+float
+Clamp(float N, float Min, float Max)
+{
+  if(N < Min)
+  {
+    return Min;
+  }
+  if(N > Max)
+  {
+    return Max;
+  }
+  return N;
+}
+
+void
+ClosestPointsEdgeEdge(vec3* ClosestA, vec3* ClosestB, vec3 EdgeAStart, vec3 EdgeAEnd,
+                      vec3 EdgeBStart, vec3 EdgeBEnd)
+{
+  float S;
+  float T;
+
+  vec3 EdgeA = EdgeAEnd - EdgeAStart;
+  vec3 EdgeB = EdgeBEnd - EdgeBStart;
+  vec3 R     = EdgeAStart - EdgeBStart;
+
+  float A = Math::Dot(EdgeA, EdgeA); // Squared length of EdgeA
+  float E = Math::Dot(EdgeB, EdgeB); // Squared length of EdgeB
+  float F = Math::Dot(EdgeB, R);
+
+  if(A <= FLT_EPSILON && E <= FLT_EPSILON)
+  {
+    S = T     = 0.0f;
+    *ClosestA = EdgeAStart;
+    *ClosestB = EdgeBStart;
+    return;
+  }
+  if(A <= FLT_EPSILON)
+  {
+    S = 0.0f;
+    T = F / E;
+    T = Clamp(T, 0.0f, 1.0f);
+  }
+  else
+  {
+    float C = Math::Dot(EdgeA, R);
+    if(E <= FLT_EPSILON)
+    {
+      T = 0.0f;
+      S = Clamp(-C / A, 0.0f, 1.0f);
+    }
+    else
+    {
+      float B           = Math::Dot(EdgeA, EdgeB);
+      float Denominator = A * E - B * B;
+
+      if(Denominator != 0.0f)
+      {
+        S = Clamp((B * F - C * E) / Denominator, 0.0f, 1.0f);
+      }
+      else
+      {
+        S = 0.0f;
+      }
+
+      T = (B * S + F) / E;
+
+      if(T < 0.0f)
+      {
+        T = 0.0f;
+        S = Clamp(-C / A, 0.0f, 1.0f);
+      }
+      else if(T > 1.0f)
+      {
+        T = 1.0f;
+        S = Clamp((B - C) / A, 0.0f, 1.0f);
+      }
+    }
+  }
+
+  *ClosestA = EdgeAStart + EdgeA * S;
+  *ClosestB = EdgeBStart + EdgeB * T;
+}
+
+void
+CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, const mat4 TransformA,
+                  hull* HullA, const mat4 TransformB, hull* HullB)
+{
+  // Local space of HullB
+  mat4 Transform = Math::MulMat4(TransformB, TransformA);
+
+  vec3 ClosestA;
+  vec3 ClosestB;
+
+  half_edge* EdgeA = &HullA->Edges[EdgeQuery.IndexA];
+  half_edge* EdgeB = &HullB->Edges[EdgeQuery.IndexB];
+
+  vec3 EdgeATail = TransformVector(*EdgeA->Tail, Transform);
+  vec3 EdgeAHead = TransformVector(*EdgeA->Next->Tail, Transform);
+
+  ClosestPointsEdgeEdge(&ClosestA, &ClosestB, EdgeATail, EdgeAHead, *EdgeB->Tail,
+                        *EdgeB->Next->Tail);
+
+  Manifold->PointCount            = 1;
+  Manifold->Points[0].Position    = (ClosestA + ClosestB) / 2;
+  Manifold->Points[0].Penetration = EdgeQuery.Separation;
+  Manifold->Normal =
+    Math::Normalized(Math::Cross(EdgeAHead - EdgeATail, *EdgeB->Next->Tail - *EdgeB->Tail));
 }
 
 bool
 SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const mat4 TransformB,
     hull* HullB)
 {
-  face_query QueryA;
-
-  QueryFaceDirections(&QueryA, TransformA, HullA, TransformB, HullB);
-  if(QueryA.Separation > 0.0f)
+  face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
+  if(FaceQueryA.Separation > 0.0f)
   {
     return false;
   }
 
-  face_query QueryB;
-
-  QueryFaceDirections(&QueryB, TransformB, HullB, TransformA, HullA);
-  if(QueryB.Separation > 0.0f)
+  face_query FaceQueryB = QueryFaceDirections(TransformB, HullB, TransformA, HullA);
+  if(FaceQueryB.Separation > 0.0f)
   {
     return false;
   }
 
-  edge_query EdgeQuery;
-
-  QueryEdgeDirections(&EdgeQuery, TransformA, HullA, TransformB, HullB);
+  edge_query EdgeQuery = QueryEdgeDirections(TransformA, HullA, TransformB, HullB);
   if(EdgeQuery.Separation > 0.0f)
   {
     return false;
   }
 
-  if(QueryA.Separation > EdgeQuery.Separation && QueryB.Separation > EdgeQuery.Separation)
+  if(FaceQueryA.Separation > EdgeQuery.Separation && FaceQueryB.Separation > EdgeQuery.Separation)
   {
-    CreateFaceContact(Manifold, QueryA, TransformA, HullA, QueryB, TransformB, HullB);
+    CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
   }
   else
   {
-    // CreateEdgeContact(Manifold, EdgeQuery, TransformA, HullA, TransformB, HullB);
+    CreateEdgeContact(Manifold, EdgeQuery, TransformA, HullA, TransformB, HullB);
   }
 
   return true;
 }
+
+// Attempt to write QuickHull function
 
 #if 0
 bool
