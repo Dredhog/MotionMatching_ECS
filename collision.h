@@ -560,13 +560,22 @@ struct sat_contact_manifold
   vec3              Normal;
 };
 
+struct vertex
+{
+  vertex* Next;
+  vertex* Previous;
+
+  vec3 Position;
+};
+
 struct face;
 
 struct half_edge
 {
-  vec3* Tail;
+  vertex* Tail;
 
   half_edge* Next;
+  half_edge* Previous;
   half_edge* Twin;
 
   face* Face;
@@ -576,8 +585,7 @@ struct face
 {
   half_edge* Edge;
 
-  int32_t ConflictingVertexCount;
-  vec3    ConflictList[10];
+  vertex ConflictListHead;
 
   vec3 Normal;
 };
@@ -587,7 +595,7 @@ struct hull
   vec3 Centroid;
 
   int32_t VertexCount;
-  vec3    Vertices[30];
+  vertex  Vertices[30];
 
   int32_t   EdgeCount;
   half_edge Edges[60];
@@ -599,7 +607,7 @@ struct hull
 vec3
 HullSupport(hull* Hull, vec3 Direction, mat4 ModelMatrix)
 {
-  vec3 Transformed = TransformVector(Hull->Vertices[0], ModelMatrix);
+  vec3 Transformed = TransformVector(Hull->Vertices[0].Position, ModelMatrix);
 
   float   Max   = Math::Dot(Transformed, Direction);
   int32_t Index = 0;
@@ -608,7 +616,7 @@ HullSupport(hull* Hull, vec3 Direction, mat4 ModelMatrix)
 
   for(int i = 1; i < Hull->VertexCount; i++)
   {
-    Transformed = TransformVector(Hull->Vertices[i], ModelMatrix);
+    Transformed = TransformVector(Hull->Vertices[i].Position, ModelMatrix);
     DotProduct  = Math::Dot(Transformed, Direction);
     if(DotProduct > Max)
     {
@@ -617,15 +625,15 @@ HullSupport(hull* Hull, vec3 Direction, mat4 ModelMatrix)
     }
   }
 
-  return TransformVector(Hull->Vertices[Index], ModelMatrix);
+  return TransformVector(Hull->Vertices[Index].Position, ModelMatrix);
 }
 
 void
 CalculateFaceNormal(face* Face)
 {
-  vec3 A = *Face->Edge->Tail;
-  vec3 B = *Face->Edge->Next->Tail;
-  vec3 C = *Face->Edge->Next->Next->Tail;
+  vec3 A = Face->Edge->Tail->Position;
+  vec3 B = Face->Edge->Next->Tail->Position;
+  vec3 C = Face->Edge->Next->Next->Tail->Position;
 
   Face->Normal = Math::Normalized(Math::Cross(B - A, C - A));
 }
@@ -687,15 +695,15 @@ QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
   for(int i = 0; i < HullA->EdgeCount; ++i)
   {
     half_edge* EdgeA     = &HullA->Edges[i];
-    vec3       EdgeATail = TransformVector(*EdgeA->Tail, Transform);
-    vec3       EdgeAHead = TransformVector(*EdgeA->Next->Tail, Transform);
+    vec3       EdgeATail = TransformVector(EdgeA->Tail->Position, Transform);
+    vec3       EdgeAHead = TransformVector(EdgeA->Next->Tail->Position, Transform);
     for(int j = 0; j < HullB->EdgeCount; ++j)
     {
       half_edge* EdgeB = &HullB->Edges[i];
       vec3       Axis =
-        Math::Normalized(Math::Cross(EdgeAHead - EdgeATail, *EdgeB->Next->Tail - *EdgeB->Tail));
+        Math::Normalized(Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
 
-      float Separation = PointToPlaneDistance(*EdgeB->Tail - EdgeATail, Axis);
+      float Separation = PointToPlaneDistance(EdgeB->Tail->Position - EdgeATail, Axis);
       if(Separation > MaxSeparation)
       {
         MaxIndexA     = i;
@@ -765,37 +773,15 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
   half_edge* IncidentFaceEdge = HullB->Faces[Index].Edge;
 
   // Try to find different way to iterate (?)
-  for(half_edge* r = ReferenceFaceEdge;; r = r->Next)
+  int a = 0;
+  for(half_edge* r = ReferenceFaceEdge; r != ReferenceFaceEdge || a == 0; r = r->Next, ++a)
   {
-    if(r == ReferenceFaceEdge)
+    int b = 0;
+    for(half_edge* i = IncidentFaceEdge; i != IncidentFaceEdge || b == 0; i = i->Next, ++b)
     {
-      if(ReferenceSwitch)
-      {
-        break;
-      }
-      else
-      {
-        ReferenceSwitch = !ReferenceSwitch;
-      }
-    }
-
-    for(half_edge* i = IncidentFaceEdge;; i = i->Next)
-    {
-      if(i == IncidentFaceEdge)
-      {
-        if(IncidentSwitch)
-        {
-          break;
-        }
-        else
-        {
-          IncidentSwitch = !IncidentSwitch;
-        }
-      }
-
       vec3 NewPoint;
-      if(IntersectEdgeFace(&NewPoint, *i->Tail, *i->Next->Tail,
-                           TransformVector(*r->Tail, Transform),
+      if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
+                           TransformVector(r->Tail->Position, Transform),
                            TransformVector(r->Twin->Face->Normal, Transform)))
       {
         ContactPoints[ContactPointCount].Position = NewPoint;
@@ -806,10 +792,10 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
       }
 
       float IncidentDistance =
-        PointToPlaneDistance(*i->Tail, TransformVector(ReferenceFaceEdge->Face->Normal, Transform));
+        PointToPlaneDistance(i->Tail->Position, TransformVector(ReferenceFaceEdge->Face->Normal, Transform));
       if(IncidentDistance > 0.0f)
       {
-        ContactPoints[ContactPointCount].Position    = *i->Tail;
+        ContactPoints[ContactPointCount].Position    = i->Tail->Position;
         ContactPoints[ContactPointCount].Penetration = IncidentDistance;
         ++ContactPointCount;
       }
@@ -915,17 +901,17 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, const ma
   half_edge* EdgeA = &HullA->Edges[EdgeQuery.IndexA];
   half_edge* EdgeB = &HullB->Edges[EdgeQuery.IndexB];
 
-  vec3 EdgeATail = TransformVector(*EdgeA->Tail, Transform);
-  vec3 EdgeAHead = TransformVector(*EdgeA->Next->Tail, Transform);
+  vec3 EdgeATail = TransformVector(EdgeA->Tail->Position, Transform);
+  vec3 EdgeAHead = TransformVector(EdgeA->Next->Tail->Position, Transform);
 
-  ClosestPointsEdgeEdge(&ClosestA, &ClosestB, EdgeATail, EdgeAHead, *EdgeB->Tail,
-                        *EdgeB->Next->Tail);
+  ClosestPointsEdgeEdge(&ClosestA, &ClosestB, EdgeATail, EdgeAHead, EdgeB->Tail->Position,
+                        EdgeB->Next->Tail->Position);
 
   Manifold->PointCount            = 1;
   Manifold->Points[0].Position    = (ClosestA + ClosestB) / 2;
   Manifold->Points[0].Penetration = EdgeQuery.Separation;
   Manifold->Normal =
-    Math::Normalized(Math::Cross(EdgeAHead - EdgeATail, *EdgeB->Next->Tail - *EdgeB->Tail));
+    Math::Normalized(Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
 }
 
 bool
@@ -978,122 +964,38 @@ BuildInitialHull(hull* Hull, vec3* Vertices, int32_t VertexCount)
   Hull->EdgeCount   = 0;
   Hull->FaceCount   = 0;
 
-  vec3 MinX = Vertices[0];
-  vec3 MaxX = Vertices[0];
-  vec3 MinY = Vertices[0];
-  vec3 MaxY = Vertices[0];
-  vec3 MinZ = Vertices[0];
-  vec3 MaxZ = Vertices[0];
+  vec3 MinPoint;
+  vec3 MaxPoint;
 
-  for(int i = 1; i < VertexCount; ++i)
-  {
-    if(Vertices[i].X < MinX.X)
-    {
-      MinX = Vertices[i];
-    }
-    else if(Vertices[i].X > MaxX.X)
-    {
-      MaxX = Vertices[i];
-    }
+  FindExtremePoints(&MinPoint, &MaxPoint, Vertices, VertexCount);
+}
 
-    if(Vertices[i].Y < MinY.Y)
-    {
-      MinY = Vertices[i];
-    }
-    else if(Vertices[i].Y > MaxY.Y)
-    {
-      MaxY = Vertices[i];
-    }
+void
+AddVertexToHull(hull* Hull, vec3* Vertex)
+{
+  half_edge* Horizon[50];
 
-    if(Vertices[i].Z < MinZ.Z)
-    {
-      MinZ = Vertices[i];
-    }
-    else if(Vertices[i].Z > MaxZ.Z)
-    {
-      MaxZ = Vertices[i];
-    }
-  }
+  BuildHorizon(Hull, Horizon, Vertex);
 
-  float LengthX = Math::Length(MaxX - MinX);
-  float LengthY = Math::Length(MaxY - MinY);
-  float LengthZ = Math::Length(MaxZ - MinZ);
-
-  if(LengthX > LengthY && LengthX > LengthZ)
-  {
-    Hull->Vertices[VertexCount++] = MinX;
-    Hull->Vertices[VertexCount++] = MaxX;
-  }
-  else if(LengthY > LengthX && LengthY > LengthZ)
-  {
-    Hull->Vertices[VertexCount++] = MinY;
-    Hull->Vertices[VertexCount++] = MaxY;
-  }
-  else
-  {
-    Hull->Vertices[VertexCount++] = MinZ;
-    Hull->Vertices[VertexCount++] = MaxZ;
-  }
-
-  Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[0];
-  Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[1];
-  Hull->Edges[0].Twin           = &Hull->Edges[1];
-  Hull->Edges[1].Twin           = &Hull->Edges[0];
-
-  vec3 Edge = Hull->Edges[1]->Tail - Hull->Edges[0]->Tail;
-
-  vec3 Normal = Math::Normalized(Math::Cross(Math::Cross(Edge, Hull->Vertices[0]), Edge));
-
-  int32_t Index = 0;
-
-  float MaxDistance = PointToPlaneDistance(Vertices[0], Normal);
-
-  for(int i = 1; i < VertexCount; ++i)
-  {
-    Distance = PointToPlaneDistance(Vertices[i], Normal);
-    if(fabs(Distance) > fabs(MaxDistance))
-    {
-      MaxDistance = Distance;
-      Index       = i;
-    }
-  }
-
-  Hull->Vertices[VertexCount++] = Vertices[Index];
-
-  if(MaxDistance > 0.0f)
-  {
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[1];
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[2];
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[2];
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[0];
-  }
-  else if(MaxDistance < 0.0f)
-  {
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[2];
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[1];
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[1];
-    Hull->Edges[EdgeCount++].Tail = &Hull->Vertices[0];
-  }
-  else
-  {
-    return false;
-  }
-
-  Hull->Edges[0].Next     = &Hull->Edges[2];
-  Hull->Edges[0].Previous = &Hull->Edges[4];
-  Hull->Edges[2].Next     = &Hull->Edges[4];
-  Hull->Edges[2].Previous = &Hull->Edges[0];
-  Hull->Edges[4].Next     = &Hull->Edges[0];
-  Hull->Edges[4].Previous = &Hull->Edges[2];
-
-  Hull->Edges[2].Twin = Hull->Edges[3].Twin;
-  Hull->Edges[3].Twin = Hull->Edges[2].Twin;
-  Hull->Edges[4].Twin = Hull->Edges[5].Twin;
-  Hull->Edges[5].Twin = Hull->Edges[4].Twin;
+  face* Faces[50];
+  BuildNewFaces(Hull, Faces, Horizon, Vertex);
+  MergeFaces(Hull, Faces);
+  ResolveOrphans(Hull, Faces);
 }
 
 void
 QuickHull(hull* Hull, vec3* Vertices, int32_t VertexCount)
 {
+  if(!BuildInitialHull(Hull, Vertices, VertexCount))
+  {
+    return;
+  }
+
+  vec3* Vertex = NextConflictVertex(Hull);
+  while(Vertex != vec3{})
+  {
+    AddVertexToHull(Hull, Vertex);
+    Vertex = NextConflictVertex(Hull);
+  }
 }
 #endif
