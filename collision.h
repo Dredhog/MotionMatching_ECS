@@ -13,12 +13,6 @@ struct collider
   int32_t VertexCount;
 };
 
-struct contact_point
-{
-  vec3 P;
-  vec3 SupportA;
-};
-
 vec3
 TransformVector(vec3 Vector, mat4 Matrix)
 {
@@ -50,20 +44,20 @@ Support(Render::mesh* Mesh, vec3 Direction, mat4 ModelMatrix)
 }
 
 void
-DoSimplex1(contact_point* Simplex, vec3* Direction)
+DoSimplex1(vec3* Simplex, vec3* Direction)
 {
-  vec3 AO = -Simplex[1].P;
-  vec3 AB = Simplex[0].P - Simplex[1].P;
+  vec3 AO = -Simplex[1];
+  vec3 AB = Simplex[0] - Simplex[1];
 
   *Direction = Math::Cross(Math::Cross(AB, AO), AB);
 }
 
 void
-DoSimplex2(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
+DoSimplex2(vec3* Simplex, int32_t* SimplexOrder, vec3* Direction)
 {
-  vec3 AO  = -Simplex[2].P;
-  vec3 AB  = Simplex[1].P - Simplex[2].P;
-  vec3 AC  = Simplex[0].P - Simplex[2].P;
+  vec3 AO  = -Simplex[2];
+  vec3 AB  = Simplex[1] - Simplex[2];
+  vec3 AC  = Simplex[0] - Simplex[2];
   vec3 ABC = Math::Cross(AB, AC);
 
   if(Math::Dot(Math::Cross(ABC, AC), AO) > 0)
@@ -87,7 +81,7 @@ DoSimplex2(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
     }
     else
     {
-      contact_point Temp = Simplex[0];
+      vec3 Temp = Simplex[0];
       Simplex[0]         = Simplex[1];
       Simplex[1]         = Temp;
       *Direction         = -ABC;
@@ -96,12 +90,12 @@ DoSimplex2(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
 }
 
 bool
-DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
+DoSimplex3(vec3* Simplex, int32_t* SimplexOrder, vec3* Direction)
 {
-  vec3 AO  = -Simplex[3].P;
-  vec3 AB  = Simplex[2].P - Simplex[3].P;
-  vec3 AC  = Simplex[1].P - Simplex[3].P;
-  vec3 AD  = Simplex[0].P - Simplex[3].P;
+  vec3 AO  = -Simplex[3];
+  vec3 AB  = Simplex[2] - Simplex[3];
+  vec3 AC  = Simplex[1] - Simplex[3];
+  vec3 AD  = Simplex[0] - Simplex[3];
   vec3 ABC = Math::Cross(AB, AC);
   vec3 ADB = Math::Cross(AD, AB);
   vec3 ACD = Math::Cross(AC, AD);
@@ -193,16 +187,15 @@ DoSimplex3(contact_point* Simplex, int32_t* SimplexOrder, vec3* Direction)
 }
 
 bool
-GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::mesh* MeshB,
+GJK(vec3* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::mesh* MeshB,
     mat4 ModelAMatrix, mat4 ModelBMatrix, int32_t IterationCount, int32_t* FoundInIterations,
     vec3* Direction)
 {
   vec3 TransformedA = TransformVector(MeshA->Vertices[0].Position, ModelAMatrix);
   vec3 TransformedB = TransformVector(MeshB->Vertices[0].Position, ModelBMatrix);
 
-  Simplex[0].P        = TransformedA - TransformedB;
-  Simplex[0].SupportA = TransformedA;
-  *Direction          = -Simplex[0].P;
+  Simplex[0]        = TransformedA - TransformedB;
+  *Direction          = -Simplex[0];
   *SimplexOrder       = 0;
 
   for(int i = 0; i < IterationCount; i++)
@@ -217,8 +210,7 @@ GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::
     }
 
     ++(*SimplexOrder);
-    Simplex[*SimplexOrder].P        = A;
-    Simplex[*SimplexOrder].SupportA = SupportA;
+    Simplex[*SimplexOrder] = A;
 
     ++i;
     if(IterationCount <= i)
@@ -254,21 +246,21 @@ GJK(contact_point* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::
 
 struct edge
 {
-  contact_point A;
-  contact_point B;
+  vec3 A;
+  vec3 B;
 };
 
 struct triangle
 {
-  contact_point A;
-  contact_point B;
-  contact_point C;
+  vec3 A;
+  vec3 B;
+  vec3 C;
 
   vec3 Normal;
 };
 
 void
-GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact_point* Simplex)
+GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, vec3* Simplex)
 {
   // ABC
   Polytope[*TriangleCount].A = Simplex[3];
@@ -276,8 +268,8 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].C = Simplex[1];
 
   Polytope[*TriangleCount].Normal =
-    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
-                                 Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P));
+    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B - Polytope[*TriangleCount].A,
+                                 Polytope[*TriangleCount].C - Polytope[*TriangleCount].A));
 
   ++(*TriangleCount);
 
@@ -287,8 +279,8 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].C = Simplex[0];
 
   Polytope[*TriangleCount].Normal =
-    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
-                                 Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P));
+    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B - Polytope[*TriangleCount].A,
+                                 Polytope[*TriangleCount].C - Polytope[*TriangleCount].A));
   ++(*TriangleCount);
 
   // ADB
@@ -297,8 +289,8 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].C = Simplex[2];
 
   Polytope[*TriangleCount].Normal =
-    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
-                                 Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P));
+    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B - Polytope[*TriangleCount].A,
+                                 Polytope[*TriangleCount].C - Polytope[*TriangleCount].A));
 
   ++(*TriangleCount);
 
@@ -308,8 +300,8 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, contact
   Polytope[*TriangleCount].C = Simplex[1];
 
   Polytope[*TriangleCount].Normal =
-    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B.P - Polytope[*TriangleCount].A.P,
-                                 Polytope[*TriangleCount].C.P - Polytope[*TriangleCount].A.P));
+    Math::Normalized(Math::Cross(Polytope[*TriangleCount].B - Polytope[*TriangleCount].A,
+                                 Polytope[*TriangleCount].C - Polytope[*TriangleCount].A));
 
   ++(*TriangleCount);
 }
@@ -321,11 +313,11 @@ PointToPlaneDistance(vec3 Point, vec3 PlaneNormal)
 }
 
 int32_t
-FindEdge(edge* Edges, int32_t EdgeCount, contact_point A, contact_point B)
+FindEdge(edge* Edges, int32_t EdgeCount, vec3 A, vec3 B)
 {
   for(int i = 0; i < EdgeCount; i++)
   {
-    if((A.P == Edges[i].B.P) && (B.P == Edges[i].A.P))
+    if((A == Edges[i].B) && (B == Edges[i].A))
     {
       return i;
     }
@@ -357,7 +349,7 @@ BarycentricCoordinates(float* U, float* V, float* W, vec3 P, vec3 A, vec3 B, vec
 #define DEBUG_SHOW_RESULT (1 || DEBUG_COLLISION)
 
 vec3
-EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::mesh* MeshB,
+EPA(vec3* CollisionPoint, vec3* Simplex, Render::mesh* MeshA, Render::mesh* MeshB,
     mat4 ModelAMatrix, mat4 ModelBMatrix, int32_t IterationCount)
 {
   vec3 Result;
@@ -378,11 +370,11 @@ EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::m
 #if DEBUG_COLLISION
       for(int i = 0; i < TriangleCount; i++)
       {
-        Debug::PushLine(Polytope[i].A.P, Polytope[i].B.P, { 0, 0, 1, 1 });
-        Debug::PushLine(Polytope[i].B.P, Polytope[i].C.P, { 0, 0, 1, 1 });
-        Debug::PushLine(Polytope[i].C.P, Polytope[i].A.P, { 0, 0, 1, 1 });
+        Debug::PushLine(Polytope[i].A, Polytope[i].B, { 0, 0, 1, 1 });
+        Debug::PushLine(Polytope[i].B, Polytope[i].C, { 0, 0, 1, 1 });
+        Debug::PushLine(Polytope[i].C, Polytope[i].A, { 0, 0, 1, 1 });
         vec3 NormalStart =
-          0.33f * Polytope[i].A.P + 0.33f * Polytope[i].B.P + 0.33f * Polytope[i].C.P;
+          0.33f * Polytope[i].A + 0.33f * Polytope[i].B + 0.33f * Polytope[i].C;
         vec3 NormalEnd = NormalStart + Polytope[i].Normal;
         Debug::PushLine(NormalStart, NormalEnd, { 1, 0, 1, 1 });
         Debug::PushWireframeSphere(NormalEnd, 0.05f);
@@ -390,11 +382,11 @@ EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::m
 #endif
     }
     int32_t TriangleIndex = 0;
-    float   MinDistance   = PointToPlaneDistance(Polytope[0].A.P, Polytope[0].Normal);
+    float   MinDistance   = PointToPlaneDistance(Polytope[0].A, Polytope[0].Normal);
 
     for(int i = 1; i < TriangleCount; i++)
     {
-      float CurrentDistance = PointToPlaneDistance(Polytope[i].A.P, Polytope[i].Normal);
+      float CurrentDistance = PointToPlaneDistance(Polytope[i].A, Polytope[i].Normal);
       if(CurrentDistance < MinDistance)
       {
         MinDistance   = CurrentDistance;
@@ -425,8 +417,8 @@ EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::m
     {
       float U, V, W;
 
-      BarycentricCoordinates(&U, &V, &W, NewPoint, Polytope[TriangleIndex].A.P,
-                             Polytope[TriangleIndex].B.P, Polytope[TriangleIndex].C.P);
+      BarycentricCoordinates(&U, &V, &W, NewPoint, Polytope[TriangleIndex].A,
+                             Polytope[TriangleIndex].B, Polytope[TriangleIndex].C);
 
       *CollisionPoint  = U * SupportA + V * SupportA + W * SupportA;
       vec3 SecondPoint = U * SupportB + V * SupportB + W * SupportB;
@@ -450,18 +442,13 @@ EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::m
     {
       for(int i = 0; i < TriangleCount; i++)
       {
-#if 0
-        float CurrentDistance = PointToPlaneDistance(Polytope[i].A.P, Polytope[i].Normal);
-        if(CurrentDistance < PointToPlaneDistance(NewPoint, Polytope[i].Normal))
-#else
-        if(Math::Dot(Polytope[i].Normal, NewPoint - Polytope[i].A.P) > MinThreshold)
-#endif
+        if(Math::Dot(Polytope[i].Normal, NewPoint - Polytope[i].A) > MinThreshold)
         {
 #if DEBUG_COLLISION
           if(Iteration == IterationCount - 1)
           {
             vec3 NormalStart =
-              0.33f * Polytope[i].A.P + 0.33f * Polytope[i].B.P + 0.33f * Polytope[i].C.P;
+              0.33f * Polytope[i].A + 0.33f * Polytope[i].B + 0.33f * Polytope[i].C;
             vec3 NormalEnd = NormalStart + Polytope[i].Normal;
             Debug::PushLine(NormalStart, NormalEnd, { 0, 1, 0, 1 });
             Debug::PushWireframeSphere(NormalEnd, 0.05f);
@@ -529,11 +516,10 @@ EPA(vec3* CollisionPoint, contact_point* Simplex, Render::mesh* MeshA, Render::m
     {
       Polytope[TriangleCount].A          = Edges[i].A;
       Polytope[TriangleCount].B          = Edges[i].B;
-      Polytope[TriangleCount].C.P        = NewPoint;
-      Polytope[TriangleCount].C.SupportA = SupportA;
+      Polytope[TriangleCount].C        = NewPoint;
       Polytope[TriangleCount].Normal =
-        Math::Normalized(Math::Cross(Polytope[TriangleCount].B.P - Polytope[TriangleCount].A.P,
-                                     Polytope[TriangleCount].C.P - Polytope[TriangleCount].A.P));
+        Math::Normalized(Math::Cross(Polytope[TriangleCount].B - Polytope[TriangleCount].A,
+                                     Polytope[TriangleCount].C - Polytope[TriangleCount].A));
 
       ++TriangleCount;
     }
@@ -772,12 +758,12 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
 
   half_edge* IncidentFaceEdge = HullB->Faces[Index].Edge;
 
-  // Try to find different way to iterate (?)
-  int a = 0;
-  for(half_edge* r = ReferenceFaceEdge; r != ReferenceFaceEdge || a == 0; r = r->Next, ++a)
+  half_edge* r = ReferenceFaceEdge;
+  half_edge* i = IncidentFaceEdge;
+
+  do
   {
-    int b = 0;
-    for(half_edge* i = IncidentFaceEdge; i != IncidentFaceEdge || b == 0; i = i->Next, ++b)
+    do
     {
       vec3 NewPoint;
       if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
@@ -799,8 +785,10 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
         ContactPoints[ContactPointCount].Penetration = IncidentDistance;
         ++ContactPointCount;
       }
-    }
-  }
+      i = i->Next;
+    } while(i != IncidentFaceEdge);
+    r = r->Next;
+  } while(r != ReferenceFaceEdge);
 
   ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
 }
@@ -947,55 +935,3 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
 
   return true;
 }
-
-// Attempt to write QuickHull function
-
-#if 0
-bool
-BuildInitialHull(hull* Hull, vec3* Vertices, int32_t VertexCount)
-{
-  if(VertexCount < 4)
-  {
-    printf("Not enough vertices to build initial hull!\n");
-    return false;
-  }
-
-  Hull->VertexCount = 0;
-  Hull->EdgeCount   = 0;
-  Hull->FaceCount   = 0;
-
-  vec3 MinPoint;
-  vec3 MaxPoint;
-
-  FindExtremePoints(&MinPoint, &MaxPoint, Vertices, VertexCount);
-}
-
-void
-AddVertexToHull(hull* Hull, vec3* Vertex)
-{
-  half_edge* Horizon[50];
-
-  BuildHorizon(Hull, Horizon, Vertex);
-
-  face* Faces[50];
-  BuildNewFaces(Hull, Faces, Horizon, Vertex);
-  MergeFaces(Hull, Faces);
-  ResolveOrphans(Hull, Faces);
-}
-
-void
-QuickHull(hull* Hull, vec3* Vertices, int32_t VertexCount)
-{
-  if(!BuildInitialHull(Hull, Vertices, VertexCount))
-  {
-    return;
-  }
-
-  vec3* Vertex = NextConflictVertex(Hull);
-  while(Vertex != vec3{})
-  {
-    AddVertexToHull(Hull, Vertex);
-    Vertex = NextConflictVertex(Hull);
-  }
-}
-#endif

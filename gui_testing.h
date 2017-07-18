@@ -118,7 +118,6 @@ namespace UI
       static bool s_ShowCollisionTools = true;
       if(UI::CollapsingHeader("Collision tools", &s_ShowCollisionTools))
       {
-        UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 50, false);
         entity* Entity;
         if(GetSelectedEntity(GameState, &Entity))
         {
@@ -136,7 +135,7 @@ namespace UI
         }
         if(GameState->AssignedA && GameState->AssignedB)
         {
-          UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 30, false);
+          UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 50, false);
         }
 
         if(GameState->AssignedA && GameState->AssignedB)
