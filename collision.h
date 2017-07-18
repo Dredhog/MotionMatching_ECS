@@ -758,12 +758,12 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
 
   half_edge* IncidentFaceEdge = HullB->Faces[Index].Edge;
 
-  // Try to find different way to iterate (?)
-  int a = 0;
-  for(half_edge* r = ReferenceFaceEdge; r != ReferenceFaceEdge || a == 0; r = r->Next, ++a)
+  half_edge* r = ReferenceFaceEdge;
+  half_edge* i = IncidentFaceEdge;
+
+  do
   {
-    int b = 0;
-    for(half_edge* i = IncidentFaceEdge; i != IncidentFaceEdge || b == 0; i = i->Next, ++b)
+    do
     {
       vec3 NewPoint;
       if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
@@ -785,8 +785,10 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
         ContactPoints[ContactPointCount].Penetration = IncidentDistance;
         ++ContactPointCount;
       }
-    }
-  }
+      i = i->Next;
+    } while(i != IncidentFaceEdge);
+    r = r->Next;
+  } while(r != ReferenceFaceEdge);
 
   ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
 }
@@ -933,55 +935,3 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
 
   return true;
 }
-
-// Attempt to write QuickHull function
-
-#if 0
-bool
-BuildInitialHull(hull* Hull, vec3* Vertices, int32_t VertexCount)
-{
-  if(VertexCount < 4)
-  {
-    printf("Not enough vertices to build initial hull!\n");
-    return false;
-  }
-
-  Hull->VertexCount = 0;
-  Hull->EdgeCount   = 0;
-  Hull->FaceCount   = 0;
-
-  vec3 MinPoint;
-  vec3 MaxPoint;
-
-  FindExtremePoints(&MinPoint, &MaxPoint, Vertices, VertexCount);
-}
-
-void
-AddVertexToHull(hull* Hull, vec3* Vertex)
-{
-  half_edge* Horizon[50];
-
-  BuildHorizon(Hull, Horizon, Vertex);
-
-  face* Faces[50];
-  BuildNewFaces(Hull, Faces, Horizon, Vertex);
-  MergeFaces(Hull, Faces);
-  ResolveOrphans(Hull, Faces);
-}
-
-void
-QuickHull(hull* Hull, vec3* Vertices, int32_t VertexCount)
-{
-  if(!BuildInitialHull(Hull, Vertices, VertexCount))
-  {
-    return;
-  }
-
-  vec3* Vertex = NextConflictVertex(Hull);
-  while(Vertex != vec3{})
-  {
-    AddVertexToHull(Hull, Vertex);
-    Vertex = NextConflictVertex(Hull);
-  }
-}
-#endif
