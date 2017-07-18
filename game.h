@@ -111,6 +111,7 @@ struct game_state
   bool    ABCollide;
   int32_t IterationCount;
 
+  bool SimulateDynamics;
   vec3 ForceStart;
   vec3 Force;
   bool ApplyingForce;

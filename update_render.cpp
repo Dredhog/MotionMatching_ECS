@@ -141,6 +141,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
     GameState->R.ShowLightPosition  = false;
 
+    GameState->SimulateDynamics        = true;
     GameState->DrawCubemap             = true;
     GameState->DrawDebugSpheres        = true;
     GameState->DrawTimeline            = true;
@@ -305,7 +306,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   g_ForceStart     = GameState->ForceStart;
   g_ApplyingForce  = GameState->ApplyingForce;
   g_ApplyingTorque = GameState->ApplyingTorque;
-  SimulateDynamics(GameState);
+
+  if(GameState->SimulateDynamics)
+  {
+    SimulateDynamics(GameState);
+  }
 
   // Collision testing
   if(GameState->AssignedA && GameState->AssignedB)

@@ -100,6 +100,7 @@ namespace UI
       static bool s_ShowDynamicsTools = true;
       if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
       {
+        UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
         UI::DragFloat4("Quaternion {S, i, j, k}", &GameState->TestQuaternion.S, -INFINITY, INFINITY,
                        5);
         if(Math::Length(GameState->TestQuaternion) != 0)
