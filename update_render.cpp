@@ -332,8 +332,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
 
-    if(AreColliding(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
-                    GameState->IterationCount))
+#if 0
+    if(AreColliding(MeshA, MeshB, ModelAMatrix, ModelBMatrix, GameState->IterationCount))
     {
       EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
       EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
@@ -357,6 +357,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = false;
     }
+#else
+    if(TestSAT(ModelAMatrix, ModelBMatrix, GameState->IterationCount))
+    {
+      GameState->ABCollide = true;
+    }
+    else
+    {
+      GameState->ABCollide = false;
+    }
+#endif
   }
 
   if(GameState->PlayerEntityIndex != -1)
