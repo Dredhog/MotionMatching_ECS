@@ -116,7 +116,7 @@ struct game_state
   vec3 Force;
   bool ApplyingForce;
   bool ApplyingTorque;
-  quat TestQuaternion;
+  vec3 TestRotation;
 };
 
 inline bool

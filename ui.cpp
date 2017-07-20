@@ -879,7 +879,7 @@ UI::DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, f
   }
 
   char TempBuffer[20];
-  snprintf(TempBuffer, sizeof(TempBuffer), "%.2f", *Value);
+  snprintf(TempBuffer, sizeof(TempBuffer), "%.4f", *Value);
   DrawText({ Rect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], Rect.MinP.Y + Rect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
 }
 

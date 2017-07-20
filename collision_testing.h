@@ -19,16 +19,6 @@ AreColliding(game_state* GameState, const game_input* const Input, Render::mesh*
     vec3 CollisionPoint;
     vec3 SolutionVector = EPA(&CollisionPoint, Simplex, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
                               IterationCount - IterationsToFindSimplex);
-
-    if(SolutionVector != vec3{})
-    {
-#if 0
-      printf("SolutionVector = { %f, %f, %f }\n", SolutionVector.X, SolutionVector.Y,
-             SolutionVector.Z);
-      printf("CollisionPoint = { %f, %f, %f }\n", CollisionPoint.X, CollisionPoint.Y,
-             CollisionPoint.Z);
-#endif
-    }
   }
   else
   {
