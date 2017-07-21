@@ -103,6 +103,8 @@ namespace UI
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
         UI::Checkbox("Gravity", &GameState->UseGravity);
         UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
+        UI::SliderFloat("Bias", &GameState->Bias, 0.0f, 1.0f);
+        UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
 
         UI::Checkbox("Draw Omega (green)", &GameState->VisualizeOmega);
         UI::Checkbox("Draw L     (red)", &GameState->VisualizeL);

@@ -113,6 +113,8 @@ struct game_state
   vec3  ForceStart;
   vec3  Force;
   float Restitution;
+  float Bias;
+  float Slop;
 
   bool ApplyingForce;
   bool ApplyingTorque;

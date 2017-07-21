@@ -3,6 +3,7 @@
 #include "linear_math/quaternion.h"
 #include "collision_testing.h"
 #include "mesh.h"
+#include "misc.h"
 #include <string.h>
 
 struct velocity
@@ -15,7 +16,7 @@ vec3  g_Force;
 vec3  g_ForceStart;
 float g_Restitution;
 float g_Bias;
-float g_Epsilon;
+float g_Slop;
 bool  g_ApplyingForce;
 bool  g_UseGravity;
 bool  g_ApplyingTorque;
@@ -63,6 +64,8 @@ DYDT_FUNC(DYDT)
 
     // Apply external forces
     ComputeExternalForcesAndTorques(&dY[i], &g_RigidBodies[i]);
+    assert(g_RigidBodies[i].Mass == 0 ||
+           FloatsEqualByThreshold((g_RigidBodies[i].MassInv * g_RigidBodies[i].Mass), 1.0f, 0.01f));
     Y[i].P += dt * (g_RigidBodies[i].MassInv * dY[i].Force);
     Y[i].L += dt * Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, dY[i].Torque);
 
@@ -83,7 +86,7 @@ DYDT_FUNC(DYDT)
   if(TestHullvsHull(&Manifold, g_RigidBodies[0].Collider, g_RigidBodies[1].Collider, TransformA,
                     TransformB))
   {
-    assert(Manifold.PointCount == 1);
+    assert(Manifold.PointCount == 1 && 0 < Manifold.Points[0].Penetration);
     vec3 n     = Manifold.Normal;
     vec3 P     = Manifold.Points[0].Position;
     vec3 rA    = P - Y[0].X;
@@ -93,15 +96,17 @@ DYDT_FUNC(DYDT)
     mat3 InvIA = g_RigidBodies[0].InertiaInv;
     mat3 InvIB = g_RigidBodies[1].InertiaInv;
 
-    vec3  vRel  = -(1.0f + g_Restitution) * (pBdot - pAdot);
+    vec3  vRel  = pBdot - pAdot;
     float term1 = g_RigidBodies[0].MassInv + g_RigidBodies[1].MassInv;
     float term2 = Math::Dot(n, Math::MulMat3Vec3(InvIA, Math::Cross(Math::Cross(rA, n), rA)));
     float term3 = Math::Dot(n, Math::MulMat3Vec3(InvIB, Math::Cross(Math::Cross(rB, n), rB)));
 
-    float Nominator   = Math::Dot(vRel, n);
-    float Denominator = (term1 + term2 + term3);
+    // float vBias     = (g_Bias / dt) * MaxFloat(0, Manifold.Points[0].Penetration - g_Slop);
+    // float Numerator = Math::Dot(vRel, n) + vBias;
+    float Numerator = Math::Dot(-vRel, n);
 
-    vec3 Impulse = (Nominator / Denominator) * n;
+    vec3 Impulse = MinFloat((Numerator / (term1 + term2 + term3)), 0) * n;
+
     V[0].v -= Impulse * g_RigidBodies[0].MassInv;
     V[0].w -= Math::MulMat3Vec3(InvIA, Math::Cross(rA, Impulse));
 

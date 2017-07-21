@@ -153,6 +153,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->CollisionIterationCount = 0;
 
     GameState->Restitution      = 0.5f;
+    GameState->Bias             = 0.1f;
+    GameState->Slop             = 0.1f;
     GameState->UseGravity       = true;
     GameState->VisualizeOmega   = true;
     GameState->VisualizeP       = true;
@@ -304,6 +306,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   g_ApplyingTorque = GameState->ApplyingTorque;
   g_UseGravity     = GameState->UseGravity;
   g_Restitution    = GameState->Restitution;
+  g_Bias           = GameState->Bias;
+  g_Slop           = GameState->Slop;
 
   for(int i = 0; i < GameState->EntityCount; i++)
   {
