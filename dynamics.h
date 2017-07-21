@@ -86,7 +86,7 @@ DYDT_FUNC(DYDT)
   if(TestHullvsHull(&Manifold, g_RigidBodies[0].Collider, g_RigidBodies[1].Collider, TransformA,
                     TransformB))
   {
-    assert(Manifold.PointCount == 1 && 0 < Manifold.Points[0].Penetration);
+    assert(Manifold.PointCount == 1);
     vec3 n     = Manifold.Normal;
     vec3 P     = Manifold.Points[0].Position;
     vec3 rA    = P - Y[0].X;
@@ -96,33 +96,38 @@ DYDT_FUNC(DYDT)
     mat3 InvIA = g_RigidBodies[0].InertiaInv;
     mat3 InvIB = g_RigidBodies[1].InertiaInv;
 
-    vec3  vRel  = pBdot - pAdot;
-    float term1 = g_RigidBodies[0].MassInv + g_RigidBodies[1].MassInv;
-    float term2 = Math::Dot(n, Math::MulMat3Vec3(InvIA, Math::Cross(Math::Cross(rA, n), rA)));
-    float term3 = Math::Dot(n, Math::MulMat3Vec3(InvIB, Math::Cross(Math::Cross(rB, n), rB)));
-
-    // float vBias     = (g_Bias / dt) * MaxFloat(0, Manifold.Points[0].Penetration - g_Slop);
-    // float Numerator = Math::Dot(vRel, n) + vBias;
-    float Numerator = Math::Dot(-vRel, n);
-
-    vec3 Impulse = MinFloat((Numerator / (term1 + term2 + term3)), 0) * n;
-
-    V[0].v -= Impulse * g_RigidBodies[0].MassInv;
-    V[0].w -= Math::MulMat3Vec3(InvIA, Math::Cross(rA, Impulse));
-
-    V[1].v += Impulse * g_RigidBodies[1].MassInv;
-    V[1].w += Math::MulMat3Vec3(InvIB, Math::Cross(rB, Impulse));
-
-    if(0 < g_RigidBodies[0].Mass)
+    vec3  vRel     = (pAdot - pBdot);
+    float vRelNorm = Math::Dot(vRel, n);
+    if(vRelNorm <= 0)
     {
-      Y[0].P -= Impulse;
-      Y[0].L -= Math::Cross(rA, Impulse);
+      float term1 = g_RigidBodies[0].MassInv + g_RigidBodies[1].MassInv;
+      float term2 = Math::Dot(n, Math::MulMat3Vec3(InvIA, Math::Cross(Math::Cross(rA, n), rA)));
+      float term3 = Math::Dot(n, Math::MulMat3Vec3(InvIB, Math::Cross(Math::Cross(rB, n), rB)));
+
+      float vBias     = (g_Bias / dt) * MaxFloat(0, Manifold.Points[0].Penetration - g_Slop);
+      float Numerator = -vRelNorm * (1.0f + g_Restitution) + vBias;
+      // float Numerator = -vRelNorm;
+      vec3 Impulse = MaxFloat((Numerator / (term1 + term2 + term3)), 0) * n;
+      V[0].v += Impulse * g_RigidBodies[0].MassInv;
+      V[0].w += Math::MulMat3Vec3(InvIA, Math::Cross(rA, Impulse));
+
+      V[1].v -= Impulse * g_RigidBodies[1].MassInv;
+      V[1].w -= Math::MulMat3Vec3(InvIB, Math::Cross(rB, Impulse));
+
+      if(0 < g_RigidBodies[0].Mass)
+      {
+        Y[0].P += Impulse;
+        Y[0].L += Math::Cross(rA, Impulse);
+      }
+      if(0 < g_RigidBodies[1].Mass)
+      {
+        Y[1].P -= Impulse;
+        Y[1].L -= Math::Cross(rB, Impulse);
+      }
+      //Debug::PushWireframeSphere(P, 1.0f);
     }
-    if(0 < g_RigidBodies[1].Mass)
-    {
-      Y[1].P += Impulse;
-      Y[1].L += Math::Cross(rB, Impulse);
-    }
+    Debug::PushLine(P, P + n * Manifold.Points[0].Penetration, { 0, 1, 0, 1 });
+    Debug::PushWireframeSphere(P, 0.05f, { 0, 1, 0, 1 });
   }
 
   if(isnan(Y[0].L.X) || isnan(Y[1].L.X))

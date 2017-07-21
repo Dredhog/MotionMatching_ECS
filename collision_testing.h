@@ -40,8 +40,8 @@ TestHullvsHull(sat_contact_manifold* Manifold, Render::mesh* MeshA, Render::mesh
         Debug::PushLine(Simplex[i], Simplex[j]);
       }
     }
-    */
     Debug::PushLine({ 0.0f, 0.0f, 0.0f }, Math::Normalized(Direction), { 0.0f, 0.0f, 1.0f, 1.0f });
+    */
   }
   return CollisionFound;
 }

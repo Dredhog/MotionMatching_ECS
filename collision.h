@@ -81,10 +81,10 @@ DoSimplex2(vec3* Simplex, int32_t* SimplexOrder, vec3* Direction)
     }
     else
     {
-      vec3 Temp = Simplex[0];
-      Simplex[0]         = Simplex[1];
-      Simplex[1]         = Temp;
-      *Direction         = -ABC;
+      vec3 Temp  = Simplex[0];
+      Simplex[0] = Simplex[1];
+      Simplex[1] = Temp;
+      *Direction = -ABC;
     }
   }
 }
@@ -194,9 +194,9 @@ GJK(vec3* Simplex, int32_t* SimplexOrder, Render::mesh* MeshA, Render::mesh* Mes
   vec3 TransformedA = TransformVector(MeshA->Vertices[0].Position, ModelAMatrix);
   vec3 TransformedB = TransformVector(MeshB->Vertices[0].Position, ModelBMatrix);
 
-  Simplex[0]        = TransformedA - TransformedB;
-  *Direction          = -Simplex[0];
-  *SimplexOrder       = 0;
+  Simplex[0]    = TransformedA - TransformedB;
+  *Direction    = -Simplex[0];
+  *SimplexOrder = 0;
 
   for(int i = 0; i < IterationCount; i++)
   {
@@ -373,9 +373,8 @@ EPA(vec3* CollisionPoint, vec3* Simplex, Render::mesh* MeshA, Render::mesh* Mesh
         Debug::PushLine(Polytope[i].A, Polytope[i].B, { 0, 0, 1, 1 });
         Debug::PushLine(Polytope[i].B, Polytope[i].C, { 0, 0, 1, 1 });
         Debug::PushLine(Polytope[i].C, Polytope[i].A, { 0, 0, 1, 1 });
-        vec3 NormalStart =
-          0.33f * Polytope[i].A + 0.33f * Polytope[i].B + 0.33f * Polytope[i].C;
-        vec3 NormalEnd = NormalStart + Polytope[i].Normal;
+        vec3 NormalStart = 0.33f * Polytope[i].A + 0.33f * Polytope[i].B + 0.33f * Polytope[i].C;
+        vec3 NormalEnd   = NormalStart + Polytope[i].Normal;
         Debug::PushLine(NormalStart, NormalEnd, { 1, 0, 1, 1 });
         Debug::PushWireframeSphere(NormalEnd, 0.05f);
       }
@@ -424,10 +423,10 @@ EPA(vec3* CollisionPoint, vec3* Simplex, Render::mesh* MeshA, Render::mesh* Mesh
       vec3 SecondPoint = U * SupportB + V * SupportB + W * SupportB;
 
 #if DEBUG_SHOW_RESULT
-      Debug::PushLine(SecondPoint, SecondPoint + Result, { 1, 1, 0, 1 });
-      Debug::PushWireframeSphere(SecondPoint + Result, 0.05f, { 1, 1, 0, 1 });
-      Debug::PushLine(*CollisionPoint, *CollisionPoint - Result, { 0, 1, 0, 1 });
-      Debug::PushWireframeSphere(*CollisionPoint - Result, 0.05f, { 0, 1, 0, 1 });
+// Debug::PushLine(SecondPoint, SecondPoint + Result, { 1, 1, 0, 1 });
+// Debug::PushWireframeSphere(SecondPoint + Result, 0.05f, { 1, 1, 0, 1 });
+// Debug::PushLine(*CollisionPoint, *CollisionPoint - Result, { 0, 1, 0, 1 });
+// Debug::PushWireframeSphere(*CollisionPoint - Result, 0.05f, { 0, 1, 0, 1 });
 #endif
 
       return -Result;
@@ -514,9 +513,9 @@ EPA(vec3* CollisionPoint, vec3* Simplex, Render::mesh* MeshA, Render::mesh* Mesh
 
     for(int i = 0; i < EdgeCount; i++)
     {
-      Polytope[TriangleCount].A          = Edges[i].A;
-      Polytope[TriangleCount].B          = Edges[i].B;
-      Polytope[TriangleCount].C        = NewPoint;
+      Polytope[TriangleCount].A = Edges[i].A;
+      Polytope[TriangleCount].B = Edges[i].B;
+      Polytope[TriangleCount].C = NewPoint;
       Polytope[TriangleCount].Normal =
         Math::Normalized(Math::Cross(Polytope[TriangleCount].B - Polytope[TriangleCount].A,
                                      Polytope[TriangleCount].C - Polytope[TriangleCount].A));
@@ -686,8 +685,8 @@ QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
     for(int j = 0; j < HullB->EdgeCount; ++j)
     {
       half_edge* EdgeB = &HullB->Edges[i];
-      vec3       Axis =
-        Math::Normalized(Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
+      vec3       Axis  = Math::Normalized(
+        Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
 
       float Separation = PointToPlaneDistance(EdgeB->Tail->Position - EdgeATail, Axis);
       if(Separation > MaxSeparation)
@@ -778,7 +777,8 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
       }
 
       float IncidentDistance =
-        PointToPlaneDistance(i->Tail->Position, TransformVector(ReferenceFaceEdge->Face->Normal, Transform));
+        PointToPlaneDistance(i->Tail->Position,
+                             TransformVector(ReferenceFaceEdge->Face->Normal, Transform));
       if(IncidentDistance > 0.0f)
       {
         ContactPoints[ContactPointCount].Position    = i->Tail->Position;
@@ -898,8 +898,8 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, const ma
   Manifold->PointCount            = 1;
   Manifold->Points[0].Position    = (ClosestA + ClosestB) / 2;
   Manifold->Points[0].Penetration = EdgeQuery.Separation;
-  Manifold->Normal =
-    Math::Normalized(Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
+  Manifold->Normal                = Math::Normalized(
+    Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
 }
 
 bool
