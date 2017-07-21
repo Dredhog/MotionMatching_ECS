@@ -108,6 +108,8 @@ struct game_state
   bool    AssignedB;
   int32_t EntityA;
   int32_t EntityB;
+	Render::mesh* MeshA;
+	Render::mesh* MeshB;
   bool    ABCollide;
   int32_t IterationCount;
 
@@ -116,6 +118,7 @@ struct game_state
   vec3 Force;
   bool ApplyingForce;
   bool ApplyingTorque;
+  bool UseGravity;
   vec3 TestRotation;
 };
 

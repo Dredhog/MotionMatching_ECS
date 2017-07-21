@@ -42,7 +42,7 @@ namespace Math
   }
 
   inline quat
-  EulerToQuat(float Pitch, float Roll, float Yaw)
+  EulerToQuat(float Roll, float Pitch, float Yaw)
   {
     Pitch *= DEG_TO_RAD;
     Roll *= DEG_TO_RAD;
@@ -78,13 +78,13 @@ namespace Math
     // roll(x - axis rotation)
     float t0 = 2.0f * (Q.S * Q.i + Q.j * Q.k);
     float t1 = 1.0f - 2.0f * (Q.i * Q.i + ysQr);
-    Result.Y = atan2f(t0, t1);
+    Result.X = atan2f(t0, t1);
 
     // pitch (y-axis rotation)
     float t2 = 2.0f * (Q.S * Q.j - Q.k * Q.i);
     t2       = ((t2 > 1.0f) ? 1.0f : t2);
     t2       = ((t2 < -1.0f) ? -1.0f : t2);
-    Result.X = asinf(t2);
+    Result.Y = asinf(t2);
 
     // yaw (z-axis rotation)
     float t3 = 2.0f * (Q.S * Q.k + Q.i * Q.j);
@@ -110,6 +110,19 @@ namespace Math
     Q->k /= Length;
     return *Q;
   }
+}
+
+inline quat
+operator+(const quat& A, const quat& B)
+{
+  quat Result;
+
+  Result.S = A.S + B.S;
+  Result.i = A.i + B.i;
+  Result.j = A.j + B.j;
+  Result.k = A.k + B.k;
+
+  return Result;
 }
 
 inline quat operator*(float S, const quat& Q)

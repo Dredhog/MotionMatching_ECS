@@ -101,6 +101,7 @@ namespace UI
       if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
       {
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
+        UI::Checkbox("Gravity", &GameState->UseGravity);
 
         // Quaternion testing
 
@@ -110,8 +111,9 @@ namespace UI
         UI::DragFloat4("Quaternion {S, i, j, k}", &TempQuaternion.S, -INFINITY, INFINITY, 5);
         Math::Normalize(&TempQuaternion);
 
-        vec3 TempEuler = Math::QuatToEuler(TempQuaternion);
-        UI::DragFloat3("Reconverted Euler", &TempEuler.X, -INFINITY, INFINITY, 360);
+        GameState->TestRotation = Math::QuatToEuler(TempQuaternion);
+        // vec3 TempEuler = Math::QuatToEuler(TempQuaternion);
+        // UI::DragFloat3("Reconverted Euler", &TempEuler.X, -INFINITY, INFINITY, 360);
 
         // ------------------
 

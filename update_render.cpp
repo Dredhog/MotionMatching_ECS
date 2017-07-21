@@ -141,6 +141,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
     GameState->R.ShowLightPosition  = false;
 
+    GameState->UseGravity              = true;
     GameState->SimulateDynamics        = true;
     GameState->DrawCubemap             = true;
     GameState->DrawDebugSpheres        = true;
@@ -295,6 +296,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
 
+  g_Force          = GameState->Force;
+  g_ForceStart     = GameState->ForceStart;
+  g_ApplyingForce  = GameState->ApplyingForce;
+  g_ApplyingTorque = GameState->ApplyingTorque;
+  g_UseGravity     = GameState->UseGravity;
+
+	/*
   if(Input->i.EndedDown && Input->i.Changed)
   {
     ++GameState->IterationCount;
@@ -302,17 +310,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   else if(Input->o.EndedDown && Input->o.Changed)
   {
     --GameState->IterationCount;
-  }
-
-  g_Force          = GameState->Force;
-  g_ForceStart     = GameState->ForceStart;
-  g_ApplyingForce  = GameState->ApplyingForce;
-  g_ApplyingTorque = GameState->ApplyingTorque;
-
-  if(GameState->SimulateDynamics)
-  {
-    SimulateDynamics(GameState);
-  }
+  }*/
 
   // Collision testing
   if(GameState->AssignedA && GameState->AssignedB)
@@ -323,19 +321,26 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     entity* EntityB;
     GetEntityAtIndex(GameState, &EntityB, GameState->EntityB);
 
-    Render::mesh* MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
-    Render::mesh* MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
+    GameState->MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
+    GameState->MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
 
     mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
     mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
 
+    if(GameState->SimulateDynamics)
+    {
+      SimulateDynamics(GameState);
+    }
+    /*
     material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
     material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
 
+
     Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
 
-    if(AreColliding(GameState, Input, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
-                    GameState->IterationCount))
+    sat_contact_manifold Manifold;
+    if(TestHullvsHull(&Manifold, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
+                      GameState->IterationCount))
     {
       EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
       EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
@@ -359,6 +364,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = false;
     }
+    */
   }
 
   if(GameState->PlayerEntityIndex != -1)

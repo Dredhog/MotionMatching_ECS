@@ -24,6 +24,16 @@ namespace Math
     }
     return Result;
   }
+  mat3
+  MulMat3(mat3 A, float S)
+  {
+    mat3 Result = A;
+    for(int i = 0; i < 9; i++)
+    {
+      A.e[i] *= S;
+    }
+    return Result;	
+  }
 
   mat3
   Mat4ToMat3(mat4 Mat4)
