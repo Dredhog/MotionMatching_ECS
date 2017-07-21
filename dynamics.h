@@ -1,7 +1,7 @@
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
 #include "linear_math/quaternion.h"
-#include "collision_testing.h"
+#include "collision.h"
 #include "mesh.h"
 #include "misc.h"
 #include <string.h>
@@ -23,6 +23,8 @@ bool  g_ApplyingTorque;
 
 const int  RIGID_BODY_COUNT = 2;
 rigid_body g_RigidBodies[RIGID_BODY_COUNT]; // Indices correspond to entities
+
+hull g_CubeHull;
 
 #define DYDT_FUNC(name) void name(state_derivative* dY, state* Y, int Count, float t0, float t1)
 typedef DYDT_FUNC(dydt_func);
@@ -83,8 +85,7 @@ DYDT_FUNC(DYDT)
                   Math::MulMat4(g_RigidBodies[1].Mat4Scale, Math::Mat3ToMat4(g_RigidBodies[1].R)));
 
   sat_contact_manifold Manifold;
-  if(TestHullvsHull(&Manifold, g_RigidBodies[0].Collider, g_RigidBodies[1].Collider, TransformA,
-                    TransformB))
+  if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
   {
     assert(Manifold.PointCount == 1);
     vec3 n     = Manifold.Normal;
@@ -124,7 +125,7 @@ DYDT_FUNC(DYDT)
         Y[1].P -= Impulse;
         Y[1].L -= Math::Cross(rB, Impulse);
       }
-      //Debug::PushWireframeSphere(P, 1.0f);
+      // Debug::PushWireframeSphere(P, 1.0f);
     }
     Debug::PushLine(P, P + n * Manifold.Points[0].Penetration, { 0, 1, 0, 1 });
     Debug::PushWireframeSphere(P, 0.05f, { 0, 1, 0, 1 });
