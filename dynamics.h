@@ -81,15 +81,13 @@ DYDT_FUNC(DYDT)
 
     dY[i].v = Y[i].P / g_RigidBodies[i].Mass;
 
-    Math::Normalize(&Y[i].q);
     if(!FloatsEqualByThreshold(Math::Length(Y[i].q), 1.0f, 0.001f))
     {
-      // May be invalid rotation
-      quat DefaultQuaternion = {};
-      DefaultQuaternion.i    = 1;
-      Y[i].q                 = DefaultQuaternion;
+      Y[i].q = { 0, 1, 0, 0 };
     }
-    // assert(Math::Length(Y[i].q) == 1);
+    Math::Normalize(&Y[i].q);
+    assert(FloatsEqualByThreshold(Math::Length(Y[i].q), 1.0f, 0.001f));
+
     g_RigidBodies[i].R = Math::QuatToMat3(Y[i].q);
     g_RigidBodies[i].InertiaInv =
       Math::MulMat3(g_RigidBodies[i].R, Math::MulMat3(g_RigidBodies[i].InertiaBodyInv,
@@ -137,6 +135,8 @@ SimulateDynamics(game_state* GameState)
     // Coppying here only for testing
     g_RigidBodies[0].State.X = GameState->Entities[0].Transform.Translation;
     g_RigidBodies[1].State.X = GameState->Entities[1].Transform.Translation;
+    g_RigidBodies[0].State.q = Math::EulerToQuat(GameState->Entities[0].Transform.Rotation);
+    g_RigidBodies[1].State.q = Math::EulerToQuat(GameState->Entities[1].Transform.Rotation);
     //--------------------------------
 
     for(int i = 0; i < RIGID_BODY_COUNT; i++)
@@ -144,32 +144,26 @@ SimulateDynamics(game_state* GameState)
       Y[i] = g_RigidBodies[i].State;
       if(g_RigidBodies[i].Mass != 1)
       {
+        g_RigidBodies[i].Mass           = 1;
+        g_RigidBodies[i].InertiaBody    = Math::Mat3Scale(1, 3, 5);
+        g_RigidBodies[i].InertiaBodyInv = Math::Mat3Scale(1, 1.0f / 3.0f, 1.0f / 5.0f);
+        g_RigidBodies[i].IsDynamic      = true;
       }
-      g_RigidBodies[i].Mass           = 1;
-      g_RigidBodies[i].InertiaBody    = Math::Mat3Scale(1, 3, 5);
-      g_RigidBodies[i].InertiaBodyInv = Math::Mat3Scale(1, 1.0f / 3.0f, 1.0f / 5.0f);
-      g_RigidBodies[i].IsDynamic      = true;
     }
 
-    ODE(Y, 2, 0.0f, 0.0f + (FRAME_TIME_MS / 1000.0f), DYDT);
+    ODE(Y, RIGID_BODY_COUNT, 0.0f, 0.0f + (FRAME_TIME_MS / 1000.0f), DYDT);
 
     for(int i = 0; i < RIGID_BODY_COUNT; i++)
     {
-      g_RigidBodies[i].State = Y[i];
-      // if(0.5f < Math::Length(Y[i].q))
+      g_RigidBodies[i].State                       = Y[i];
+      GameState->Entities[i].Transform.Rotation    = Math::QuatToEuler(Y[i].q);
+      GameState->Entities[i].Transform.Translation = g_RigidBodies[i].State.X;
       {
-        float RadToDeg = 180.0f / 3.14159f;
-
-        GameState->Entities[i].Transform.Rotation = RadToDeg * Math::QuatToEularAngles(Y[i].q);
         Debug::PushLine(Y[i].X, Y[i].X + g_RigidBodies[i].Omega, { 0, 1, 0, 1 });
         Debug::PushWireframeSphere(Y[i].X + g_RigidBodies[i].Omega, 0.05f, { 0, 1, 0, 1 });
+        Debug::PushLine(Y[i].X, Y[i].X + Y[i].L);
+        Debug::PushWireframeSphere(Y[i].X + Y[i].L, 0.05f);
       }
-      Debug::PushLine(Y[i].X, Y[i].X + Y[i].L);
     }
-
-    // Coppying here only for testing
-    GameState->Entities[0].Transform.Translation = g_RigidBodies[0].State.X;
-    GameState->Entities[1].Transform.Translation = g_RigidBodies[1].State.X;
-    //--------------------------------
   }
 }

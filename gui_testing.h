@@ -101,12 +101,20 @@ namespace UI
       if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
       {
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
-        UI::DragFloat4("Quaternion {S, i, j, k}", &GameState->TestQuaternion.S, -INFINITY, INFINITY,
-                       5);
-        if(Math::Length(GameState->TestQuaternion) != 0)
-        {
-          Math::Normalize(&GameState->TestQuaternion);
-        }
+
+        // Quaternion testing
+
+        UI::DragFloat3("Euler Angles", &GameState->TestRotation.X, -INFINITY, INFINITY, 360);
+
+        quat TempQuaternion = Math::EulerToQuat(GameState->TestRotation);
+        UI::DragFloat4("Quaternion {S, i, j, k}", &TempQuaternion.S, -INFINITY, INFINITY, 5);
+        Math::Normalize(&TempQuaternion);
+
+        vec3 TempEuler = Math::QuatToEuler(TempQuaternion);
+        UI::DragFloat3("Reconverted Euler", &TempEuler.X, -INFINITY, INFINITY, 360);
+
+        // ------------------
+
         UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
         UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
         UI::Checkbox("Apply Force", &GameState->ApplyingForce);

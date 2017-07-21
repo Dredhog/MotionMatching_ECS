@@ -153,6 +153,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->AssignedA               = false;
     GameState->AssignedB               = false;
     GameState->IterationCount          = 0;
+
+    GameState->TestRotation = { 90, 0, 0 };
   }
   //---------------------END INIT -------------------------
 
