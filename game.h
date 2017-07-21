@@ -104,22 +104,23 @@ struct game_state
   uint32_t IDTexture;
 
   // Collision testing
-  bool    AssignedA;
-  bool    AssignedB;
-  int32_t EntityA;
-  int32_t EntityB;
-	Render::mesh* MeshA;
-	Render::mesh* MeshB;
-  bool    ABCollide;
-  int32_t IterationCount;
+  entity* EntityA;
+  entity* EntityB;
+  bool    ABPenetrating;
+  int32_t CollisionIterationCount;
 
-  bool SimulateDynamics;
-  vec3 ForceStart;
-  vec3 Force;
+  bool  SimulateDynamics;
+  vec3  ForceStart;
+  vec3  Force;
+  float Restitution;
+
   bool ApplyingForce;
   bool ApplyingTorque;
   bool UseGravity;
-  vec3 TestRotation;
+
+  bool VisualizeOmega;
+  bool VisualizeL;
+  bool VisualizeP;
 };
 
 inline bool

@@ -3,12 +3,15 @@
 #include "anim.h"
 #include "model.h"
 #include "rid.h"
+#include "rigid_body.h"
 
 struct entity
 {
   Anim::transform Transform;
-  rid             ModelID;
-  rid*            MaterialIDs;
+  rigid_body      RigidBody;
+
+  rid  ModelID;
+  rid* MaterialIDs;
 
   Anim::animation_controller* AnimController;
 };

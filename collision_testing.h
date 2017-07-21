@@ -23,6 +23,10 @@ TestHullvsHull(sat_contact_manifold* Manifold, Render::mesh* MeshA, Render::mesh
     Manifold->Points[0].Penetration = Math::Length(PenetrationVector);
     Manifold->PointCount            = 1;
     Manifold->Normal                = Math::Normalized(PenetrationVector);
+    if(Manifold->Points[0].Penetration == 0)
+    {
+      CollisionFound = false;
+    }
   }
   else
   {

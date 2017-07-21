@@ -102,21 +102,11 @@ namespace UI
       {
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
         UI::Checkbox("Gravity", &GameState->UseGravity);
+        UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
 
-        // Quaternion testing
-
-        UI::DragFloat3("Euler Angles", &GameState->TestRotation.X, -INFINITY, INFINITY, 360);
-
-        quat TempQuaternion = Math::EulerToQuat(GameState->TestRotation);
-        UI::DragFloat4("Quaternion {S, i, j, k}", &TempQuaternion.S, -INFINITY, INFINITY, 5);
-        Math::Normalize(&TempQuaternion);
-
-        GameState->TestRotation = Math::QuatToEuler(TempQuaternion);
-        // vec3 TempEuler = Math::QuatToEuler(TempQuaternion);
-        // UI::DragFloat3("Reconverted Euler", &TempEuler.X, -INFINITY, INFINITY, 360);
-
-        // ------------------
-
+        UI::Checkbox("Draw Omega (green)", &GameState->VisualizeOmega);
+        UI::Checkbox("Draw L     (red)", &GameState->VisualizeL);
+        UI::Checkbox("Draw P     (yellow)", &GameState->VisualizeP);
         UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
         UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
         UI::Checkbox("Apply Force", &GameState->ApplyingForce);
@@ -133,24 +123,19 @@ namespace UI
         {
           if(UI::Button("Assign to A"))
           {
-            GameState->EntityA   = GameState->SelectedEntityIndex;
-            GameState->AssignedA = true;
+            GameState->EntityA = Entity;
           }
 
           if(UI::Button("Assign to B"))
           {
-            GameState->EntityB   = GameState->SelectedEntityIndex;
-            GameState->AssignedB = true;
+            GameState->EntityB = Entity;
           }
         }
-        if(GameState->AssignedA && GameState->AssignedB)
+        if(GameState->EntityA && GameState->EntityB)
         {
-          UI::SliderInt("IterationCount", &GameState->IterationCount, 0, 50, false);
-        }
+          UI::SliderInt("IterationCount", &GameState->CollisionIterationCount, 0, 50, false);
 
-        if(GameState->AssignedA && GameState->AssignedB)
-        {
-          if(GameState->ABCollide)
+          if(GameState->ABPenetrating)
           {
             UI::Text("Collision detected.");
           }
@@ -508,6 +493,63 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10.0f);
       UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
       UI::DragFloat3("Scale", (float*)&Transform->Scale, -INFINITY, INFINITY, 10.0f);
+
+      // Rigid Body
+      {
+        rigid_body* RB = &SelectedEntity->RigidBody;
+        UI::DragFloat3("X", &RB->State.X.X, -INFINITY, INFINITY, 10);
+
+        if(FloatsEqualByThreshold(Math::Length(RB->State.q), 0.0f, 0.00001f))
+        {
+          RB->State.q.S = 1;
+          RB->State.q.V = {};
+        }
+        UI::DragFloat4("q", &RB->State.q.S, -INFINITY, INFINITY, 10);
+        Math::Normalize(&RB->State.q);
+
+        if(UI::Button("Clear P"))
+        {
+          RB->State.P = {};
+        }
+        UI::DragFloat3("P", &RB->State.P.X, -INFINITY, INFINITY, 10);
+        if(UI::Button("Clear L"))
+        {
+          RB->State.L = {};
+        }
+        UI::DragFloat3("L", &RB->State.L.X, -INFINITY, INFINITY, 10);
+
+        UI::Checkbox("Regard Gravity", &RB->RegardGravity);
+
+        UI::DragFloat("Mass", &RB->Mass, 0, INFINITY, 10);
+        if(0 < RB->Mass)
+        {
+          RB->MassInv = 1.0f / RB->Mass;
+        }
+        else
+        {
+          RB->MassInv = 0;
+        }
+        char TempBuffer[40];
+        snprintf(TempBuffer, sizeof(TempBuffer), "Mass Inv.: %f", (double)RB->MassInv);
+        UI::Text(TempBuffer);
+
+        { // Inertia
+          vec3 InertiaDiagonal = { RB->InertiaBody._11, RB->InertiaBody._22, RB->InertiaBody._33 };
+          UI::DragFloat3("Body Space Inertia diagonal", &InertiaDiagonal.X, 0, INFINITY, 10);
+          RB->InertiaBody     = {};
+          RB->InertiaBody._11 = InertiaDiagonal.X;
+          RB->InertiaBody._22 = InertiaDiagonal.Y;
+          RB->InertiaBody._33 = InertiaDiagonal.Z;
+
+          RB->InertiaBodyInv = {};
+          if(InertiaDiagonal != vec3{})
+          {
+            RB->InertiaBodyInv._11 = 1.0f / InertiaDiagonal.X;
+            RB->InertiaBodyInv._22 = 1.0f / InertiaDiagonal.Y;
+            RB->InertiaBodyInv._33 = 1.0f / InertiaDiagonal.Z;
+          }
+        }
+      }
 
       Render::model* SelectedModel = GameState->Resources.GetModel(SelectedEntity->ModelID);
       if(SelectedModel->Skeleton)

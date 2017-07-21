@@ -3,25 +3,7 @@
 #include "linear_math/quaternion.h"
 #include "collision_testing.h"
 #include "mesh.h"
-
-struct state
-{
-  // Yi(t)
-  vec3 X;
-  quat q;
-
-  vec3 P;
-  vec3 L;
-};
-
-struct state_derivative
-{
-  // dYi(t)
-  vec3 v;
-  quat qDot;
-  vec3 Force;
-  vec3 Torque;
-};
+#include <string.h>
 
 struct velocity
 {
@@ -29,28 +11,11 @@ struct velocity
   vec3 w;
 };
 
-struct rigid_body
-{
-  state         State;
-  Render::mesh* Mesh;
-
-  // Constant state
-  float Mass;
-  float MassInv;
-  mat3  InertiaBody;
-  mat3  InertiaBodyInv;
-
-  // Compute on iteration
-  mat3 InertiaInv;
-  mat3 R;
-  bool RegardGravity;
-};
-
 vec3  g_Force;
 vec3  g_ForceStart;
-float g_Slop        = 0.01f;
-float g_Bias        = 0;
-float g_Restitution = 0.5;
+float g_Restitution;
+float g_Bias;
+float g_Epsilon;
 bool  g_ApplyingForce;
 bool  g_UseGravity;
 bool  g_ApplyingTorque;
@@ -69,7 +34,7 @@ ComputeExternalForcesAndTorques(state_derivative* dYi, const rigid_body* RigidBo
 
   if(g_UseGravity && RigidBody->RegardGravity)
   {
-    dYi->Force += (9.81f * RigidBody->Mass) * vec3{ 0, -1, 0 };
+    dYi->Force += vec3{ 0, -9.81f * RigidBody->Mass, 0 };
   }
 
   // TempTesting code
@@ -102,18 +67,20 @@ DYDT_FUNC(DYDT)
     Y[i].L += dt * Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, dY[i].Torque);
 
     // Extract tentative velocity
-    V[i].v = Y[i].P * g_RigidBodies[i].MassInv;
+    V[i].v = g_RigidBodies[i].MassInv * Y[i].P;
     V[i].w = Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, Y[i].L);
   }
 
   // Collision impulses
   mat4 TransformA =
-    Math::MulMat4(Math::Mat4Translate(Y[0].X), Math::Mat3ToMat4(g_RigidBodies[0].R));
+    Math::MulMat4(Math::Mat4Translate(Y[0].X),
+                  Math::MulMat4(g_RigidBodies[0].Mat4Scale, Math::Mat3ToMat4(g_RigidBodies[0].R)));
   mat4 TransformB =
-    Math::MulMat4(Math::Mat4Translate(Y[1].X), Math::Mat3ToMat4(g_RigidBodies[1].R));
+    Math::MulMat4(Math::Mat4Translate(Y[1].X),
+                  Math::MulMat4(g_RigidBodies[1].Mat4Scale, Math::Mat3ToMat4(g_RigidBodies[1].R)));
 
   sat_contact_manifold Manifold;
-  if(TestHullvsHull(&Manifold, g_RigidBodies[0].Mesh, g_RigidBodies[1].Mesh, TransformA,
+  if(TestHullvsHull(&Manifold, g_RigidBodies[0].Collider, g_RigidBodies[1].Collider, TransformA,
                     TransformB))
   {
     assert(Manifold.PointCount == 1);
@@ -126,22 +93,37 @@ DYDT_FUNC(DYDT)
     mat3 InvIA = g_RigidBodies[0].InertiaInv;
     mat3 InvIB = g_RigidBodies[1].InertiaInv;
 
-    vec3  vRel      = -(1.0f + g_Restitution) * (pBdot - pAdot);
-    float Nominator = Math::Dot(vRel, n);
-    float term1     = g_RigidBodies[0].MassInv + g_RigidBodies[1].MassInv;
-    float term2     = Math::Dot(n, Math::MulMat3Vec3(InvIA, Math::Cross(Math::Cross(rA, n), rA)));
-    float term3     = Math::Dot(n, Math::MulMat3Vec3(InvIB, Math::Cross(Math::Cross(rB, n), rB)));
+    vec3  vRel  = -(1.0f + g_Restitution) * (pBdot - pAdot);
+    float term1 = g_RigidBodies[0].MassInv + g_RigidBodies[1].MassInv;
+    float term2 = Math::Dot(n, Math::MulMat3Vec3(InvIA, Math::Cross(Math::Cross(rA, n), rA)));
+    float term3 = Math::Dot(n, Math::MulMat3Vec3(InvIB, Math::Cross(Math::Cross(rB, n), rB)));
 
-    vec3 Impulse = (Nominator / (term1 + term2 + term3)) * n;
+    float Nominator   = Math::Dot(vRel, n);
+    float Denominator = (term1 + term2 + term3);
+
+    vec3 Impulse = (Nominator / Denominator) * n;
     V[0].v -= Impulse * g_RigidBodies[0].MassInv;
-    Y[0].P -= Impulse;
-    V[1].v += Impulse * g_RigidBodies[1].MassInv;
-    Y[1].P += Impulse;
-
     V[0].w -= Math::MulMat3Vec3(InvIA, Math::Cross(rA, Impulse));
-    Y[0].L -= Math::Cross(rA, Impulse);
+
+    V[1].v += Impulse * g_RigidBodies[1].MassInv;
     V[1].w += Math::MulMat3Vec3(InvIB, Math::Cross(rB, Impulse));
-    Y[1].L += Math::Cross(rB, Impulse);
+
+    if(0 < g_RigidBodies[0].Mass)
+    {
+      Y[0].P -= Impulse;
+      Y[0].L -= Math::Cross(rA, Impulse);
+    }
+    if(0 < g_RigidBodies[1].Mass)
+    {
+      Y[1].P += Impulse;
+      Y[1].L += Math::Cross(rB, Impulse);
+    }
+  }
+
+  if(isnan(Y[0].L.X) || isnan(Y[1].L.X))
+  {
+    char a = 9;
+    assert(0 && "Error with NaN");
   }
 
   for(int i = 0; i < Count; i++)
@@ -167,59 +149,46 @@ ODE(state* Y, int Count, float t1, float t2, dydt_func dydt)
   {
     Y[i].X += dY[i].v * dt;
     Y[i].q = Y[i].q + (dY[i].qDot * dt);
+
+    if(0.0001f < Math::Length(Y[i].q))
+    {
+      Math::Normalize(&Y[i].q);
+    }
+    else
+    {
+      Y[i].q = { 1, 0, 0, 0 };
+    }
   }
 }
 
 void
 SimulateDynamics(game_state* GameState)
 {
-  assert(sizeof(state) == sizeof(state_derivative));
-
-  state Y[RIGID_BODY_COUNT]; // Should not assume persistent state
+  state Y[RIGID_BODY_COUNT];
 
   if(2 <= GameState->EntityCount)
   {
-    // Coppying here only for testing
-    g_RigidBodies[0].State.X = GameState->Entities[0].Transform.Translation;
-    g_RigidBodies[1].State.X = GameState->Entities[1].Transform.Translation;
-    g_RigidBodies[0].State.q = Math::EulerToQuat(GameState->Entities[0].Transform.Rotation);
-    g_RigidBodies[1].State.q = Math::EulerToQuat(GameState->Entities[1].Transform.Rotation);
-    //--------------------------------
-
     for(int i = 0; i < RIGID_BODY_COUNT; i++)
     {
-      Y[i] = g_RigidBodies[i].State;
-      if(g_RigidBodies[i].Mass != 1)
-      {
-        g_RigidBodies[i].Mass           = 1.0f;
-        g_RigidBodies[i].MassInv        = 1.0f / g_RigidBodies[i].Mass;
-        g_RigidBodies[i].InertiaBody    = Math::Mat3Scale(1, 3, 5);
-        g_RigidBodies[i].InertiaBodyInv = Math::Mat3Scale(1, 1.0f / 3.0f, 1.0f / 5.0f);
-      }
-    }
-    g_RigidBodies[0].Mesh          = GameState->MeshA;
-    g_RigidBodies[0].RegardGravity = true;
-    g_RigidBodies[1].Mesh          = GameState->MeshB;
-    g_RigidBodies[1].RegardGravity = false;
+      GameState->Entities[i].RigidBody.Mat4Scale =
+        Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
+      GameState->Entities[i].RigidBody.Collider =
+        GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
 
-    g_RigidBodies[1].Mass           = 0;
-    g_RigidBodies[1].MassInv        = 0;
-    g_RigidBodies[1].InertiaBodyInv = {};
+      g_RigidBodies[i] = GameState->Entities[i].RigidBody;
+
+      Y[i] = g_RigidBodies[i].State;
+    }
 
     ODE(Y, RIGID_BODY_COUNT, 0.0f, 0.0f + (FRAME_TIME_MS / 1000.0f), DYDT);
 
     for(int i = 0; i < RIGID_BODY_COUNT; i++)
     {
-      g_RigidBodies[i].State                       = Y[i];
-      GameState->Entities[i].Transform.Rotation    = Math::QuatToEuler(Y[i].q);
+      g_RigidBodies[i].State = Y[i];
+
+      GameState->Entities[i].RigidBody             = g_RigidBodies[i];
+      GameState->Entities[i].Transform.Rotation    = Math::QuatToEuler(g_RigidBodies[i].State.q);
       GameState->Entities[i].Transform.Translation = g_RigidBodies[i].State.X;
-      {
-        vec3 Omega = Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, Y[i].L);
-        Debug::PushLine(Y[i].X, Y[i].X + Omega, { 0, 1, 0, 1 });
-        Debug::PushWireframeSphere(Y[i].X + Omega, 0.05f, { 0, 1, 0, 1 });
-        Debug::PushLine(Y[i].X, Y[i].X + Y[i].L);
-        Debug::PushWireframeSphere(Y[i].X + Y[i].L, 0.05f);
-      }
     }
   }
 }

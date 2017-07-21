@@ -1,4 +1,6 @@
 #pragma once
+#include <math.h>
+
 #include "matrix.h"
 
 const float LINEAR_MATH_PI = 3.1415926535f;

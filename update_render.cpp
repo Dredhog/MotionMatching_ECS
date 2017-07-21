@@ -141,21 +141,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
     GameState->R.ShowLightPosition  = false;
 
-    GameState->UseGravity              = true;
-    GameState->SimulateDynamics        = true;
-    GameState->DrawCubemap             = true;
-    GameState->DrawDebugSpheres        = true;
-    GameState->DrawTimeline            = true;
-    GameState->DrawGizmos              = true;
+    GameState->DrawCubemap      = true;
+    GameState->DrawDebugSpheres = true;
+    GameState->DrawTimeline     = true;
+    GameState->DrawGizmos       = true;
+
     GameState->IsAnimationPlaying      = false;
     GameState->EditorBoneRotationSpeed = 45.0f;
     GameState->CurrentMaterialID       = { 0 };
     GameState->PlayerEntityIndex       = -1;
-    GameState->AssignedA               = false;
-    GameState->AssignedB               = false;
-    GameState->IterationCount          = 0;
+    GameState->CollisionIterationCount = 0;
 
-    GameState->TestRotation = { 90, 0, 0 };
+    GameState->Restitution      = 0.5f;
+    GameState->UseGravity       = true;
+    GameState->VisualizeOmega   = true;
+    GameState->VisualizeP       = true;
+    GameState->VisualizeL       = true;
+    GameState->SimulateDynamics = false;
   }
   //---------------------END INIT -------------------------
 
@@ -301,8 +303,38 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   g_ApplyingForce  = GameState->ApplyingForce;
   g_ApplyingTorque = GameState->ApplyingTorque;
   g_UseGravity     = GameState->UseGravity;
+  g_Restitution    = GameState->Restitution;
 
-	/*
+  for(int i = 0; i < GameState->EntityCount; i++)
+  {
+    GameState->Entities[i].RigidBody.State.q =
+      Math::EulerToQuat(GameState->Entities[i].Transform.Rotation);
+    GameState->Entities[i].RigidBody.State.X = GameState->Entities[i].Transform.Translation;
+
+    state Yi = GameState->Entities[i].RigidBody.State;
+    if(GameState->VisualizeOmega)
+    {
+      vec3 Omega = Math::MulMat3Vec3(GameState->Entities[i].RigidBody.InertiaInv, Yi.L);
+      Debug::PushLine(Yi.X, Yi.X + Omega, { 0, 1, 0, 1 });
+      Debug::PushWireframeSphere(Yi.X + Omega, 0.05f, { 0, 1, 0, 1 });
+    }
+    if(GameState->VisualizeL)
+    {
+      Debug::PushLine(Yi.X, Yi.X + Yi.L);
+      Debug::PushWireframeSphere(Yi.X + Yi.L, 0.05f);
+    }
+    if(GameState->VisualizeP)
+    {
+      Debug::PushLine(Yi.X, Yi.X + Yi.P, { 1, 1, 0, 1 });
+      Debug::PushWireframeSphere(Yi.X + Yi.P, 0.05f, { 1, 1, 0, 1 });
+    }
+  }
+  if(GameState->SimulateDynamics)
+  {
+    SimulateDynamics(GameState);
+  }
+
+  /*
   if(Input->i.EndedDown && Input->i.Changed)
   {
     ++GameState->IterationCount;
@@ -310,31 +342,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   else if(Input->o.EndedDown && Input->o.Changed)
   {
     --GameState->IterationCount;
-  }*/
-
+  }
   // Collision testing
-  if(GameState->AssignedA && GameState->AssignedB)
+  if(GameState->EntityA && GameState->EntityB)
   {
-    entity* EntityA;
-    GetEntityAtIndex(GameState, &EntityA, GameState->EntityA);
+    // entity* EntityA;
+    // GetEntityAtIndex(GameState, &EntityA, GameState->EntityA);
 
-    entity* EntityB;
-    GetEntityAtIndex(GameState, &EntityB, GameState->EntityB);
+    // entity* EntityB;
+    // GetEntityAtIndex(GameState, &EntityB, GameState->EntityB);
 
-    GameState->MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
-    GameState->MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
+    // GameState->MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
+    // GameState->MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
 
-    mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
-    mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
+    // mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
+    // mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
 
-    if(GameState->SimulateDynamics)
-    {
-      SimulateDynamics(GameState);
-    }
-    /*
     material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
     material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
-
 
     Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
 
@@ -364,8 +389,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       EntityBMaterial->Phong.DiffuseColor = Color;
       GameState->ABCollide                = false;
     }
-    */
   }
+  */
 
   if(GameState->PlayerEntityIndex != -1)
   {
