@@ -158,6 +158,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->UseGravity       = true;
     GameState->VisualizeOmega   = true;
     GameState->VisualizeV       = true;
+    GameState->VisualizeFc      = true;
     GameState->SimulateDynamics = false;
 
     SetUpCubeHull(&g_CubeHull);
@@ -306,6 +307,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   g_ApplyingForce  = GameState->ApplyingForce;
   g_ApplyingTorque = GameState->ApplyingTorque;
   g_UseGravity     = GameState->UseGravity;
+  g_Bias           = GameState->Bias;
+  g_VisualizeFc    = GameState->VisualizeFc;
 
   for(int i = 0; i < GameState->EntityCount; i++)
   {

@@ -122,6 +122,7 @@ struct game_state
 
   bool VisualizeOmega;
   bool VisualizeV;
+	bool VisualizeFc;
 };
 
 inline bool

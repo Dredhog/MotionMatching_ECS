@@ -7,6 +7,7 @@
 enum constraint_type
 {
   CONSTRAINT_Distance,
+  CONSTRAINT_CenterDistance,
   CONSTRAINT_COUNT,
 };
 
@@ -16,6 +17,8 @@ struct constraint
   int      IndB;
   uint32_t Type;
   float    L;
+  vec3     BodyRa;
+  vec3     BodyRb;
 };
 
 struct rigid_body

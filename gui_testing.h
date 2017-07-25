@@ -108,6 +108,7 @@ namespace UI
 
         UI::Checkbox("Draw Omega (green)", &GameState->VisualizeOmega);
         UI::Checkbox("Draw V     (yellow)", &GameState->VisualizeV);
+        UI::Checkbox("Draw Fc    (red)", &GameState->VisualizeFc);
         UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
         UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
         UI::Checkbox("Apply Force", &GameState->ApplyingForce);
