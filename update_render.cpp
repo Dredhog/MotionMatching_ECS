@@ -157,8 +157,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Slop             = 0.1f;
     GameState->UseGravity       = true;
     GameState->VisualizeOmega   = true;
-    GameState->VisualizeP       = true;
-    GameState->VisualizeL       = true;
+    GameState->VisualizeV       = true;
     GameState->SimulateDynamics = false;
 
     SetUpCubeHull(&g_CubeHull);
@@ -307,32 +306,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   g_ApplyingForce  = GameState->ApplyingForce;
   g_ApplyingTorque = GameState->ApplyingTorque;
   g_UseGravity     = GameState->UseGravity;
-  g_Restitution    = GameState->Restitution;
-  g_Bias           = GameState->Bias;
-  g_Slop           = GameState->Slop;
 
   for(int i = 0; i < GameState->EntityCount; i++)
   {
-    GameState->Entities[i].RigidBody.State.q =
+    GameState->Entities[i].RigidBody.q =
       Math::EulerToQuat(GameState->Entities[i].Transform.Rotation);
-    GameState->Entities[i].RigidBody.State.X = GameState->Entities[i].Transform.Translation;
+    GameState->Entities[i].RigidBody.X = GameState->Entities[i].Transform.Translation;
 
-    state Yi = GameState->Entities[i].RigidBody.State;
+    const rigid_body& RB = GameState->Entities[i].RigidBody;
     if(GameState->VisualizeOmega)
     {
-      vec3 Omega = Math::MulMat3Vec3(GameState->Entities[i].RigidBody.InertiaInv, Yi.L);
-      Debug::PushLine(Yi.X, Yi.X + Omega, { 0, 1, 0, 1 });
-      Debug::PushWireframeSphere(Yi.X + Omega, 0.05f, { 0, 1, 0, 1 });
+      Debug::PushLine(RB.X, RB.X + RB.w, { 0, 1, 0, 1 });
+      Debug::PushWireframeSphere(RB.X + RB.w, 0.05f, { 0, 1, 0, 1 });
     }
-    if(GameState->VisualizeL)
+    if(GameState->VisualizeV)
     {
-      Debug::PushLine(Yi.X, Yi.X + Yi.L);
-      Debug::PushWireframeSphere(Yi.X + Yi.L, 0.05f);
-    }
-    if(GameState->VisualizeP)
-    {
-      Debug::PushLine(Yi.X, Yi.X + Yi.P, { 1, 1, 0, 1 });
-      Debug::PushWireframeSphere(Yi.X + Yi.P, 0.05f, { 1, 1, 0, 1 });
+      Debug::PushLine(RB.X, RB.X + RB.v, { 1, 1, 0, 1 });
+      Debug::PushWireframeSphere(RB.X + RB.v, 0.05f, { 1, 1, 0, 1 });
     }
   }
   if(GameState->SimulateDynamics)

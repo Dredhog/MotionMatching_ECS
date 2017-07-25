@@ -4,29 +4,30 @@
 #include "linear_math/matrix.h"
 #include "linear_math/quaternion.h"
 
-struct state
+enum constraint_type
 {
-  // Yi(t)
-  vec3 X;
-  quat q;
-
-  vec3 P;
-  vec3 L;
+  CONSTRAINT_Distance,
+  CONSTRAINT_COUNT,
 };
 
-struct state_derivative
+struct constraint
 {
-  // dYi(t)
-  vec3 v;
-  quat qDot;
-  vec3 Force;
-  vec3 Torque;
+  int      IndA;
+  int      IndB;
+  uint32_t Type;
+  float    L;
 };
 
 struct rigid_body
 {
-  state         State;
   Render::mesh* Collider;
+
+  // Yi(t)
+  vec3 X;
+  quat q;
+
+  vec3 v;
+  vec3 w;
 
   // Constant state
   float Mass;

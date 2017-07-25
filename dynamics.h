@@ -1,60 +1,220 @@
-#include "linear_math/vector.h"
-#include "linear_math/matrix.h"
-#include "linear_math/quaternion.h"
+#include "rigid_body.h"
 #include "collision.h"
-#include "mesh.h"
-#include "misc.h"
-#include <string.h>
+#include "basic_data_structures.h"
 
-struct velocity
-{
-  vec3 v;
-  vec3 w;
-};
+const int RIGID_BODY_MAX_COUNT = 2;
+const int CONSTRAINT_MAX_COUNT = 1;
 
-vec3  g_Force;
-vec3  g_ForceStart;
-float g_Restitution;
-float g_Bias;
-float g_Slop;
-bool  g_ApplyingForce;
-bool  g_UseGravity;
-bool  g_ApplyingTorque;
-
-const int  RIGID_BODY_COUNT = 2;
-rigid_body g_RigidBodies[RIGID_BODY_COUNT]; // Indices correspond to entities
-
+vec3 g_Force;
+vec3 g_ForceStart;
+bool g_ApplyingForce;
+bool g_UseGravity;
+bool g_ApplyingTorque;
 hull g_CubeHull;
 
-#define DYDT_FUNC(name) void name(state_derivative* dY, state* Y, int Count, float t0, float t1)
+rigid_body g_RigidBodies[RIGID_BODY_MAX_COUNT]; // Indices correspond to entities
+fixed_stack<constraint, CONSTRAINT_COUNT> g_Constraints;
+
+#define DYDT_FUNC(name)                                                                            \
+  void name(rigid_body RigidBodies[], int RBCount, const constraint Constraints[],                 \
+            int ConstraintCount, float t0, float t1)
 typedef DYDT_FUNC(dydt_func);
 
 void
-ComputeExternalForcesAndTorques(state_derivative* dYi, const rigid_body* RigidBody)
+ComputeExternalForcesAndTorques(vec3 F[][2], const rigid_body RigidBody[], int Count)
 {
-  dYi->Force  = {};
-  dYi->Torque = {};
+  for(int i = 0; i < Count; i++)
+  {
+    F[i][0] = {};
+    F[i][1] = {};
 
-  if(g_UseGravity && RigidBody->RegardGravity)
-  {
-    dYi->Force += vec3{ 0, -9.81f * RigidBody->Mass, 0 };
-  }
+    if(g_UseGravity && RigidBody->RegardGravity)
+    {
+      F[i][0] += vec3{ 0, -9.81f * RigidBody->Mass, 0 };
+    }
 
-  // TempTesting code
-  if(g_ApplyingForce)
-  {
-    dYi->Force += g_Force;
+    // TempTesting code
+    if(g_ApplyingForce)
+    {
+      F[i][0] += g_Force;
+    }
+    if(g_ApplyingTorque)
+    {
+      vec3 Radius = (g_ForceStart + g_Force) - RigidBody->X;
+      F[i][1] += Math::Cross(Radius, g_Force);
+    }
   }
-  if(g_ApplyingTorque)
+}
+void
+FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_body RigidBodies[],
+                   int RBCount, const constraint Constraints[], int ConstraintCount)
+{
+  for(int i = 0; i < ConstraintCount; i++)
   {
-    vec3 Radius = (g_ForceStart + g_Force) - RigidBody->State.X;
-    dYi->Torque += Math::Cross(Radius, g_Force);
+    int IndA = Constraints[i].IndA;
+    int IndB = Constraints[i].IndB;
+    assert(0 <= IndA && IndA < RBCount);
+    assert(0 <= IndB && IndB < RBCount);
+
+    // Currently only distance constraints are allowed
+    assert(Constraints[i].Type == CONSTRAINT_Distance);
+    if(Constraints[i].Type == CONSTRAINT_Distance)
+    {
+      vec3 d = RigidBodies[IndA].X - RigidBodies[IndB].X;
+
+      float C    = 0.5f * (Math::Dot(d, d) - Constraints[i].L * Constraints[i].L);
+      Epsilon[i] = -C;
+
+      Jmap[i][0] = IndA;
+      Jmap[i][1] = IndB;
+
+      Jsp[i][0] = -d;
+      Jsp[i][1] = {};
+      Jsp[i][2] = d;
+      Jsp[i][3] = {};
+    }
   }
 }
 
-DYDT_FUNC(DYDT)
+void
+FillMDiagInvMatrix(mat3 MDiagInv[][2], rigid_body RB[], int RBCount)
 {
-  velocity    V[RIGID_BODY_COUNT];
+  for(int i = 0; i < RBCount; i++)
+  {
+    assert(FloatsEqualByThreshold(Math::Length(RB[i].q), 1.0f, 0.001f));
+    RB[i].R = Math::QuatToMat3(RB[i].q);
+    RB[i].InertiaInv =
+      Math::MulMat3(RB[i].R, Math::MulMat3(RB[i].InertiaBodyInv, Math::Transposed3(RB[i].R)));
+
+    MDiagInv[i][0] = Math::Mat3Scale(1.0f / RB[i].Mass, 1.0f / RB[i].Mass, 1.0f / RB[i].Mass);
+    MDiagInv[i][1] = RB[i].InertiaInv;
+  }
+}
+
+void
+FillV1(vec3 V[][2], const rigid_body RigidBodies[], int RBCount)
+{
+  for(int i = 0; i < RBCount; i++)
+  {
+    V[i][0] = RigidBodies[i].v;
+    V[i][1] = RigidBodies[i].w;
+  }
+}
+
+DYDT_FUNC(DYDT_PGS)
+{
+  vec3 Jsp[CONSTRAINT_MAX_COUNT][4];
+  int  Jmap[CONSTRAINT_MAX_COUNT][2];
+
+  vec3  V1[RIGID_BODY_MAX_COUNT][2];
+  float Epsilon[CONSTRAINT_MAX_COUNT];
+
+  float Lambda[CONSTRAINT_MAX_COUNT];
+  mat3  MDiagInv[RIGID_BODY_MAX_COUNT][2];
+  vec3  Fext[RIGID_BODY_MAX_COUNT][2];
+
+  float a[CONSTRAINT_MAX_COUNT][CONSTRAINT_MAX_COUNT]; // J*(M^-1)*Jt
+  float b[CONSTRAINT_MAX_COUNT]; // epsilon/dt - J*V1/dt - J*(M^-1) - J*(M^-1)*Fext
+
+  FillV1(V1, RigidBodies, RBCount);
+  FillEpsilonJmapJsp(Epsilon, Jmap, Jsp, RigidBodies, RBCount, Constraints, ConstraintCount);
+  FillMDiagInvMatrix(MDiagInv, RigidBodies, RBCount);
+  ComputeExternalForcesAndTorques(Fext, RigidBodies, RBCount);
+
+  const float dt = t1 - t0;
+  for(int i = 0; i < ConstraintCount; i++)
+  {
+    // b
+    b[i] = 0;
+
+    b[i] += Epsilon[i] / dt;
+
+    int IndA = Jmap[i][0];
+    int IndB = Jmap[i][1];
+
+    b[i] -= (Math::Dot(Jsp[i][0], V1[IndA][0]) + Math::Dot(Jsp[i][1], V1[IndA][1]) +
+             Math::Dot(Jsp[i][2], V1[IndB][0]) + Math::Dot(Jsp[i][3], V1[IndB][1])) /
+            dt;
+
+    vec3 MInvFext_a_f = Math::MulMat3Vec3(MDiagInv[IndA][0], Fext[IndA][0]);
+    vec3 MInvFext_a_t = Math::MulMat3Vec3(MDiagInv[IndA][1], Fext[IndA][1]);
+    vec3 MInvFext_b_f = Math::MulMat3Vec3(MDiagInv[IndB][0], Fext[IndB][0]);
+    vec3 MInvFext_b_t = Math::MulMat3Vec3(MDiagInv[IndB][1], Fext[IndB][1]);
+
+    b[i] -= Math::Dot(Jsp[i][0], MInvFext_a_f) + Math::Dot(Jsp[i][1], MInvFext_a_t) +
+            Math::Dot(Jsp[i][2], MInvFext_b_f) + Math::Dot(Jsp[i][3], MInvFext_b_t);
+
+    // a
+    a[0][0] = 0;
+    a[0][0] += Math::Dot(Jsp[i][0], Math::MulMat3Vec3(MDiagInv[IndA][0], Jsp[i][0]));
+    a[0][0] += Math::Dot(Jsp[i][1], Math::MulMat3Vec3(MDiagInv[IndA][1], Jsp[i][1]));
+    a[0][0] += Math::Dot(Jsp[i][2], Math::MulMat3Vec3(MDiagInv[IndB][0], Jsp[i][2]));
+    a[0][0] += Math::Dot(Jsp[i][3], Math::MulMat3Vec3(MDiagInv[IndB][1], Jsp[i][3]));
+  }
+}
+
+void
+ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int ConstraintCount,
+    float t1, float t2, dydt_func dydt)
+{
+  dydt(RigidBodies, RBCount, Constraints, ConstraintCount, t1, t2);
+
+  const float dt = t2 - t1;
+  // Y(t1) = Y(t0) + dY(t0)
+  for(int i = 0; i < RBCount; i++)
+  {
+    if(0.0001f < Math::Length(RigidBodies[i].q))
+    {
+      Math::Normalize(&RigidBodies[i].q);
+    }
+    else
+    {
+      RigidBodies[i].q = { 1, 0, 0, 0 };
+    }
+  }
+}
+
+void
+SimulateDynamics(game_state* GameState)
+{
+  if(2 <= GameState->EntityCount)
+  {
+    for(int i = 0; i < RIGID_BODY_MAX_COUNT; i++)
+    {
+      GameState->Entities[i].RigidBody.Mat4Scale =
+        Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
+
+      GameState->Entities[i].RigidBody.Collider =
+        GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
+
+      g_RigidBodies[i] = GameState->Entities[i].RigidBody;
+    }
+
+    { // Constrainttest
+      g_Constraints.Clear();
+      constraint TestConstraint = {};
+      TestConstraint.Type       = CONSTRAINT_Distance;
+      TestConstraint.IndA       = 0;
+      TestConstraint.IndB       = 1;
+      TestConstraint.L          = 1;
+      g_Constraints.Push(TestConstraint);
+    }
+
+    ODE(g_RigidBodies, RIGID_BODY_MAX_COUNT, &g_Constraints[0], g_Constraints.Count, 0.0f,
+        (FRAME_TIME_MS / 1000.0f), DYDT_PGS);
+
+    for(int i = 0; i < RIGID_BODY_MAX_COUNT; i++)
+    {
+      GameState->Entities[i].RigidBody             = g_RigidBodies[i];
+      GameState->Entities[i].Transform.Rotation    = Math::QuatToEuler(g_RigidBodies[i].q);
+      GameState->Entities[i].Transform.Translation = g_RigidBodies[i].X;
+    }
+  }
+}
+
+/*DYDT_FUNC(DYDT_IMPULSE)
+{
+  velocity    V[RIGID_BODY_MAX_COUNT];
   const float dt = t1 - t0;
   for(int i = 0; i < Count; i++)
   {
@@ -146,60 +306,4 @@ DYDT_FUNC(DYDT)
     qOmega.V   = V[i].w;
     dY[i].qDot = 0.5f * (qOmega * Y[i].q);
   }
-}
-
-void
-ODE(state* Y, int Count, float t1, float t2, dydt_func dydt)
-{
-  state_derivative dY[RIGID_BODY_COUNT];
-  dydt(dY, Y, Count, t1, t2);
-
-  const float dt = t2 - t1;
-  // Y(t1) = Y(t0) + dY(t0)
-  for(int i = 0; i < Count; i++)
-  {
-    Y[i].X += dY[i].v * dt;
-    Y[i].q = Y[i].q + (dY[i].qDot * dt);
-
-    if(0.0001f < Math::Length(Y[i].q))
-    {
-      Math::Normalize(&Y[i].q);
-    }
-    else
-    {
-      Y[i].q = { 1, 0, 0, 0 };
-    }
-  }
-}
-
-void
-SimulateDynamics(game_state* GameState)
-{
-  state Y[RIGID_BODY_COUNT];
-
-  if(2 <= GameState->EntityCount)
-  {
-    for(int i = 0; i < RIGID_BODY_COUNT; i++)
-    {
-      GameState->Entities[i].RigidBody.Mat4Scale =
-        Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
-      GameState->Entities[i].RigidBody.Collider =
-        GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
-
-      g_RigidBodies[i] = GameState->Entities[i].RigidBody;
-
-      Y[i] = g_RigidBodies[i].State;
-    }
-
-    ODE(Y, RIGID_BODY_COUNT, 0.0f, 0.0f + (FRAME_TIME_MS / 1000.0f), DYDT);
-
-    for(int i = 0; i < RIGID_BODY_COUNT; i++)
-    {
-      g_RigidBodies[i].State = Y[i];
-
-      GameState->Entities[i].RigidBody             = g_RigidBodies[i];
-      GameState->Entities[i].Transform.Rotation    = Math::QuatToEuler(g_RigidBodies[i].State.q);
-      GameState->Entities[i].Transform.Translation = g_RigidBodies[i].State.X;
-    }
-  }
-}
+}*/

@@ -121,8 +121,7 @@ struct game_state
   bool UseGravity;
 
   bool VisualizeOmega;
-  bool VisualizeL;
-  bool VisualizeP;
+  bool VisualizeV;
 };
 
 inline bool
