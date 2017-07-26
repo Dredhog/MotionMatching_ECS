@@ -109,20 +109,21 @@ struct game_state
   bool    ABPenetrating;
   int32_t CollisionIterationCount;
 
-  bool  SimulateDynamics;
-  vec3  ForceStart;
-  vec3  Force;
-  float Restitution;
-  float Bias;
-  float Slop;
+  bool    SimulateDynamics;
+  int32_t PGSIterationCount;
+  vec3    ForceStart;
+  vec3    Force;
+  float   Restitution;
+  float   Bias;
+  float   Slop;
 
   bool ApplyingForce;
   bool ApplyingTorque;
   bool UseGravity;
 
   bool VisualizeOmega;
-  bool VisualizeL;
-  bool VisualizeP;
+  bool VisualizeV;
+  bool VisualizeFc;
 };
 
 inline bool

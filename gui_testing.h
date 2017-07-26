@@ -103,12 +103,13 @@ namespace UI
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
         UI::Checkbox("Gravity", &GameState->UseGravity);
         UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
-        UI::SliderFloat("Bias", &GameState->Bias, 0.0f, 1.0f);
         UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
+        UI::SliderFloat("Bias", &GameState->Bias, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+        UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 100);
 
         UI::Checkbox("Draw Omega (green)", &GameState->VisualizeOmega);
-        UI::Checkbox("Draw L     (red)", &GameState->VisualizeL);
-        UI::Checkbox("Draw P     (yellow)", &GameState->VisualizeP);
+        UI::Checkbox("Draw V     (yellow)", &GameState->VisualizeV);
+        UI::Checkbox("Draw Fc    (red)", &GameState->VisualizeFc);
         UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
         UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
         UI::Checkbox("Apply Force", &GameState->ApplyingForce);
@@ -492,33 +493,33 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       }
 
       Anim::transform* Transform = &SelectedEntity->Transform;
-      UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10.0f);
+      UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10);
       UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
       UI::DragFloat3("Scale", (float*)&Transform->Scale, -INFINITY, INFINITY, 10.0f);
 
       // Rigid Body
       {
         rigid_body* RB = &SelectedEntity->RigidBody;
-        UI::DragFloat3("X", &RB->State.X.X, -INFINITY, INFINITY, 10);
+        UI::DragFloat3("X", &RB->X.X, -INFINITY, INFINITY, 10);
 
-        if(FloatsEqualByThreshold(Math::Length(RB->State.q), 0.0f, 0.00001f))
+        if(FloatsEqualByThreshold(Math::Length(RB->q), 0.0f, 0.00001f))
         {
-          RB->State.q.S = 1;
-          RB->State.q.V = {};
+          RB->q.S = 1;
+          RB->q.V = {};
         }
-        UI::DragFloat4("q", &RB->State.q.S, -INFINITY, INFINITY, 10);
-        Math::Normalize(&RB->State.q);
+        UI::DragFloat4("q", &RB->q.S, -INFINITY, INFINITY, 10);
+        Math::Normalize(&RB->q);
 
-        if(UI::Button("Clear P"))
+        if(UI::Button("Clear v"))
         {
-          RB->State.P = {};
+          RB->v = {};
         }
-        UI::DragFloat3("P", &RB->State.P.X, -INFINITY, INFINITY, 10);
-        if(UI::Button("Clear L"))
+        UI::DragFloat3("v", &RB->v.X, -INFINITY, INFINITY, 10);
+        if(UI::Button("Clear w"))
         {
-          RB->State.L = {};
+          RB->w = {};
         }
-        UI::DragFloat3("L", &RB->State.L.X, -INFINITY, INFINITY, 10);
+        UI::DragFloat3("w", &RB->w.X, -INFINITY, INFINITY, 10);
 
         UI::Checkbox("Regard Gravity", &RB->RegardGravity);
 
