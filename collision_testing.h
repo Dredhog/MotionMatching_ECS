@@ -49,6 +49,8 @@ TestHullvsHull(sat_contact_manifold* Manifold, Render::mesh* MeshA, Render::mesh
 void
 SetUpCubeHull(hull* Cube)
 {
+  Cube->Centroid = { 0.0f, 0.0f, 0.0f };
+
   Cube->VertexCount          = 8;
   Cube->Vertices[0].Position = { 1.0f, 1.0f, 1.0f };
   Cube->Vertices[1].Position = { 1.0f, -1.0f, 1.0f };

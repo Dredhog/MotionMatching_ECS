@@ -303,7 +303,7 @@ GeneratePolytopeFrom3Simplex(triangle* Polytope, int32_t* TriangleCount, vec3* S
 float
 PointToPlaneDistance(vec3 Point, vec3 PlanePoint, vec3 PlaneNormal)
 {
-  return Math::Dot(Point, PlaneNormal) - Math::Dot(PlanePoint, PlaneNormal);
+  return Math::Dot(Point - PlanePoint, PlaneNormal);
 }
 
 int32_t
@@ -572,6 +572,8 @@ struct face
 
 struct hull
 {
+  vec3 Centroid;
+
   int32_t VertexCount;
   vertex  Vertices[30];
 
@@ -716,6 +718,40 @@ TransformedHullSupport(hull* Hull, vec3 Direction, const mat4 Transform)
 
 // TODO(rytis): EdgeQuery implementation using Gauss Maps (to eliminate Support function usage).
 
+bool
+IsMinkowskiFace(vec3 A, vec3 B, vec3 BA, vec3 C, vec3 D, vec3 DC)
+{
+  float CBA = Math::Dot(C, BA);
+  float DBA = Math::Dot(D, BA);
+  float ADC = Math::Dot(A, DC);
+  float BDC = Math::Dot(B, DC);
+
+  return (CBA * DBA < 0.0f) && (ADC * BDC < 0.0f) && (CBA * BDC > 0.0f);
+}
+
+float
+Project(vec3 PointA, vec3 EdgeA, vec3 PointB, vec3 EdgeB, vec3 CentroidA)
+{
+  vec3 Axis = Math::Cross(EdgeA, EdgeB);
+
+  const float kTolerance = 0.005f;
+
+  float L = Math::Length(Axis);
+  if(L < kTolerance * sqrt(Math::Length(EdgeA) * Math::Length(EdgeA) * Math::Length(EdgeB) *
+                           Math::Length(EdgeB)))
+  {
+    return -FLT_MAX;
+  }
+
+  vec3 Normal = Math::Normalized(Axis);
+  if(Math::Dot(Normal, PointA - CentroidA) < 0.0f)
+  {
+    Normal = -Normal;
+  }
+
+  return Math::Dot(Normal, PointB - PointA);
+}
+
 edge_query
 QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, hull* HullB)
 {
@@ -727,6 +763,8 @@ QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
   // Local space of HullB
   mat4 Transform = Math::MulMat4(Math::InvMat4(TransformB), TransformA);
 
+  vec3 CentroidA = TransformVector(HullA->Centroid, Transform);
+
   for(int i = 0; i < HullA->EdgeCount; ++i)
   {
     half_edge* HalfEdgeA = &HullA->Edges[i];
@@ -734,16 +772,40 @@ QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
     vec3       EdgeAHead = TransformVector(HalfEdgeA->Next->Tail->Position, Transform);
     vec3       EdgeA     = EdgeAHead - EdgeATail;
 
+    vec3 FaceACenter;
+    vec3 FaceNormalA;
+    vec3 TwinFaceNormalA;
+    TransformedFaceParameters(&FaceACenter, &FaceNormalA, HalfEdgeA->Face, Transform);
+    TransformedFaceParameters(&FaceACenter, &TwinFaceNormalA, HalfEdgeA->Twin->Face, Transform);
+
     for(int j = 0; j < HullB->EdgeCount; ++j)
     {
       half_edge* HalfEdgeB = &HullB->Edges[j];
       vec3       EdgeBTail = HalfEdgeB->Tail->Position;
       vec3       EdgeBHead = HalfEdgeB->Next->Tail->Position;
       vec3       EdgeB     = EdgeBHead - EdgeBTail;
-      vec3       Axis      = Math::Normalized(Math::Cross(EdgeA, EdgeB));
 
-      // Needs consistent vector for dotproduct check (Valve uses EdgeATail - HullCenter center)
-      if(Math::Dot(Axis, EdgeATail) < 0.0f)
+      vec3 FaceNormalB     = HalfEdgeB->Face->Normal;
+      vec3 TwinFaceNormalB = HalfEdgeB->Twin->Face->Normal;
+
+#if 1
+      if(IsMinkowskiFace(FaceNormalA, TwinFaceNormalA, -EdgeA, -FaceNormalB, -TwinFaceNormalB,
+                         -EdgeB))
+      {
+        float Separation = Project(EdgeATail, EdgeA, EdgeBTail, EdgeB, CentroidA);
+
+        if(Separation > MaxSeparation)
+        {
+          MaxIndexA     = i;
+          MaxIndexB     = j;
+          MaxSeparation = Separation;
+        }
+      }
+#else
+      vec3 Axis = Math::Normalized(Math::Cross(EdgeA, EdgeB));
+
+      // Needs consistent vector for dotproduct check (Valve uses EdgeATail - HullCenter)
+      if(Math::Dot(Axis, EdgeATail - CentroidA) < 0.0f)
       {
         Axis = -Axis;
       }
@@ -758,6 +820,7 @@ QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
         MaxIndexB     = j;
         MaxSeparation = Separation;
       }
+#endif
     }
   }
 
