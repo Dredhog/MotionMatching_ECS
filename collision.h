@@ -892,6 +892,26 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
 
   half_edge* IncidentFaceEdge = HullB->Faces[Index].Edge;
 
+#if DEBUG_QUERIES
+  half_edge* a = ReferenceFaceEdge;
+
+  do
+  {
+    Debug::PushLine(TransformVector(a->Tail->Position, TransformA),
+                    TransformVector(a->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
+    a = a->Next;
+  } while(a != ReferenceFaceEdge);
+
+  half_edge* b = IncidentFaceEdge;
+
+  do
+  {
+    Debug::PushLine(TransformVector(b->Tail->Position, TransformB),
+                    TransformVector(b->Next->Tail->Position, TransformB), { 1, 0, 0, 1 });
+    b = b->Next;
+  } while(b != IncidentFaceEdge);
+#endif
+
   half_edge* r = ReferenceFaceEdge;
   half_edge* i = IncidentFaceEdge;
 
@@ -1044,6 +1064,12 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, const ma
   Manifold->Points[0].Penetration = EdgeQuery.Separation;
   Manifold->Normal                = Math::Normalized(
     Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
+#if DEBUG_QUERIES
+  Debug::PushLine(TransformVector(EdgeA->Tail->Position, TransformA),
+                  TransformVector(EdgeA->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
+  Debug::PushLine(TransformVector(EdgeB->Tail->Position, TransformB),
+                  TransformVector(EdgeB->Next->Tail->Position, TransformB), { 0, 0, 1, 1 });
+#endif
 }
 
 bool
@@ -1077,28 +1103,6 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
   printf("=================\n");
   if(FaceQueryA.Separation > EdgeQuery.Separation && FaceQueryB.Separation > EdgeQuery.Separation)
   {
-#if DEBUG_QUERIES
-    half_edge* EdgeA = HullA->Faces[FaceQueryA.Index].Edge;
-    half_edge* a     = EdgeA;
-
-    do
-    {
-      Debug::PushLine(TransformVector(a->Tail->Position, TransformA),
-                      TransformVector(a->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
-      a = a->Next;
-    } while(a != EdgeA);
-
-    half_edge* EdgeB = HullB->Faces[FaceQueryB.Index].Edge;
-    half_edge* b     = EdgeB;
-
-    do
-    {
-      Debug::PushLine(TransformVector(b->Tail->Position, TransformB),
-                      TransformVector(b->Next->Tail->Position, TransformB), { 0, 0, 1, 1 });
-      b = b->Next;
-    } while(b != EdgeB);
-#endif
-
     printf("Face Manifold\n");
     CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
   }
