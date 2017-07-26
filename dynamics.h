@@ -316,13 +316,16 @@ ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int C
 void
 SimulateDynamics(game_state* GameState)
 {
-  if(3 <= GameState->EntityCount)
+  if(2 <= GameState->EntityCount)
   {
     assert(GameState->EntityCount <= RIGID_BODY_MAX_COUNT);
     const int BodyCount = GameState->EntityCount;
 
     for(int i = 0; i < BodyCount; i++)
     {
+      GameState->Entities[i].RigidBody.R =
+        Math::Mat4ToMat3(Math::Mat4Rotate(GameState->Entities[i].Transform.Rotation));
+
       GameState->Entities[i].RigidBody.Mat4Scale =
         Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
 
@@ -334,6 +337,7 @@ SimulateDynamics(game_state* GameState)
 
     { // Constrainttest
       g_Constraints.Clear();
+      /*
       constraint TestConstraint = {};
       TestConstraint.Type       = CONSTRAINT_Distance;
       TestConstraint.IndA       = 0;
@@ -341,6 +345,7 @@ SimulateDynamics(game_state* GameState)
       TestConstraint.L          = 0;
       TestConstraint.BodyRa     = { 1, -1, 1 };
       TestConstraint.BodyRb     = { -1, -1, 1 };
+      g_Constraints.Push(TestConstraint);
       g_Constraints.Push(TestConstraint);
       TestConstraint.BodyRa = { 1, -1, -1 };
       TestConstraint.BodyRb = { -1, -1, -1 };
@@ -361,14 +366,32 @@ SimulateDynamics(game_state* GameState)
       TestConstraint.IndA   = 0;
       TestConstraint.BodyRa = { 0, 1, 0 };
       g_Constraints.Push(TestConstraint);
+      */
+      mat4 TransformA = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[0].X),
+                                      Math::MulMat4(g_RigidBodies[0].Mat4Scale,
+                                                    Math::Mat3ToMat4(g_RigidBodies[0].R)));
+
+      mat4 TransformB = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
+                                      Math::MulMat4(g_RigidBodies[1].Mat4Scale,
+                                                    Math::Mat3ToMat4(g_RigidBodies[1].R)));
+
+      sat_contact_manifold Manifold;
+      if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
+      {
+        for(int i = 0; i < Manifold.PointCount; ++i)
+        {
+          vec3 n  = Manifold.Normal;
+          vec4 P4 = vec4{ Manifold.Points[i].Position.X, Manifold.Points[i].Position.Y,
+                          Manifold.Points[i].Position.Z, 1 };
+          P4      = Math::MulMat4Vec4(TransformB, P4);
+
+          Debug::PushWireframeSphere({ P4.X, P4.Y, P4.Z }, 0.05f, { 0, 1, 0, 1 });
+        }
+      }
     }
 
-    int StepsPerFrame = 1;
-    for(int i = 0; i < StepsPerFrame; i++)
-    {
-      ODE(g_RigidBodies, BodyCount, &g_Constraints[0], g_Constraints.Count, 0.0f,
-          (FRAME_TIME_MS / 1000.0f) / StepsPerFrame, DYDT_PGS, GameState->PGSIterationCount);
-    }
+    ODE(g_RigidBodies, BodyCount, g_Constraints.Elements, g_Constraints.Count, 0.0f,
+        (FRAME_TIME_MS / 1000.0f), DYDT_PGS, GameState->PGSIterationCount);
 
     for(int i = 0; i < BodyCount; i++)
     {
@@ -394,9 +417,9 @@ SimulateDynamics(game_state* GameState)
     // Apply external forces
     ComputeExternalForcesAndTorques(&dY[i], &g_RigidBodies[i]);
     assert(g_RigidBodies[i].Mass == 0 ||
-           FloatsEqualByThreshold((g_RigidBodies[i].MassInv * g_RigidBodies[i].Mass), 1.0f, 0.01f));
-    Y[i].P += dt * (g_RigidBodies[i].MassInv * dY[i].Force);
-    Y[i].L += dt * Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, dY[i].Torque);
+           FloatsEqualByThreshold((g_RigidBodies[i].MassInv * g_RigidBodies[i].Mass), 1.0f,
+0.01f)); Y[i].P += dt * (g_RigidBodies[i].MassInv * dY[i].Force); Y[i].L += dt *
+Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, dY[i].Torque);
 
     // Extract tentative velocity
     V[i].v = g_RigidBodies[i].MassInv * Y[i].P;
@@ -406,10 +429,11 @@ SimulateDynamics(game_state* GameState)
   // Collision impulses
   mat4 TransformA =
     Math::MulMat4(Math::Mat4Translate(Y[0].X),
-                  Math::MulMat4(g_RigidBodies[0].Mat4Scale, Math::Mat3ToMat4(g_RigidBodies[0].R)));
-  mat4 TransformB =
+                  Math::MulMat4(g_RigidBodies[0].Mat4Scale,
+Math::Mat3ToMat4(g_RigidBodies[0].R))); mat4 TransformB =
     Math::MulMat4(Math::Mat4Translate(Y[1].X),
-                  Math::MulMat4(g_RigidBodies[1].Mat4Scale, Math::Mat3ToMat4(g_RigidBodies[1].R)));
+                  Math::MulMat4(g_RigidBodies[1].Mat4Scale,
+Math::Mat3ToMat4(g_RigidBodies[1].R)));
 
   sat_contact_manifold Manifold;
   if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
