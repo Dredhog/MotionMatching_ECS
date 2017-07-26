@@ -787,30 +787,28 @@ QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
 
   for(int i = 0; i < HullA->EdgeCount; ++i)
   {
-    half_edge* EdgeA     = &HullA->Edges[i];
-    vec3       EdgeATail = TransformVector(EdgeA->Tail->Position, Transform);
-    vec3       EdgeAHead = TransformVector(EdgeA->Next->Tail->Position, Transform);
+    half_edge* HalfEdgeA = &HullA->Edges[i];
+    vec3       EdgeATail = TransformVector(HalfEdgeA->Tail->Position, Transform);
+    vec3       EdgeAHead = TransformVector(HalfEdgeA->Next->Tail->Position, Transform);
+    vec3       EdgeA     = EdgeAHead - EdgeATail;
+
     for(int j = 0; j < HullB->EdgeCount; ++j)
     {
-      half_edge* EdgeB = &HullB->Edges[j];
-      vec3       Axis  = Math::Normalized(
-        Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
+      half_edge* HalfEdgeB = &HullB->Edges[j];
+      vec3       EdgeBTail = HalfEdgeB->Tail->Position;
+      vec3       EdgeBHead = HalfEdgeB->Next->Tail->Position;
+      vec3       EdgeB     = EdgeBHead - EdgeBTail;
+      vec3       Axis      = Math::Normalized(Math::Cross(EdgeA, EdgeB));
 
-      float MinA = Math::Dot(Axis, TransformedHullSupport(HullA, -Axis, Transform));
-      float MaxA = Math::Dot(Axis, TransformedHullSupport(HullA, Axis, Transform));
-      float MinB = Math::Dot(Axis, HullSupport(HullB, -Axis));
-      float MaxB = Math::Dot(Axis, HullSupport(HullB, Axis));
-
-      float Separation;
-
-      if(MinB > MinA)
+      // Needs consistent vector for dotproduct check (Valve uses EdgeATail - HullCenter center)
+      if(Math::Dot(Axis, EdgeATail) < 0.0f)
       {
-        Separation = MinB - MaxA;
+        Axis = -Axis;
       }
-      else
-      {
-        Separation = MinA - MaxB;
-      }
+
+      vec3 VertexB = HullSupport(HullB, -Axis);
+
+      float Separation = PointToPlaneDistance(VertexB, EdgeATail, Axis);
 
       if(Separation > MaxSeparation)
       {
@@ -846,6 +844,7 @@ IntersectEdgeFace(vec3* IntersectionPoint, vec3 PointA, vec3 PointB, vec3 FacePo
   if(t >= 0.0f && t <= 1.0f)
   {
     *IntersectionPoint = PointA + t * Edge;
+    return true;
   }
 
   return false;
@@ -855,6 +854,12 @@ void
 ReduceContactPoints(sat_contact_manifold* Manifold, sat_contact_point* ContactPoints,
                     int32_t ContactPointCount)
 {
+  assert(ContactPointCount <= 50);
+  Manifold->PointCount = ContactPointCount;
+  for(int i = 0; i < ContactPointCount; ++i)
+  {
+    Manifold->Points[i] = ContactPoints[i];
+  }
 }
 
 void
@@ -862,7 +867,7 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
                   hull* HullA, face_query QueryB, const mat4 TransformB, hull* HullB)
 {
   int32_t           ContactPointCount = 0;
-  sat_contact_point ContactPoints[20];
+  sat_contact_point ContactPoints[50];
 
   // Local space of HullB
   mat4 Transform = Math::MulMat4(Math::InvMat4(TransformB), TransformA);
@@ -904,24 +909,31 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
       if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
                            AdjacentFaceCentroid, AdjacentFaceNormal))
       {
-        ContactPoints[ContactPointCount].Position = NewPoint;
-        ContactPoints[ContactPointCount].Penetration =
-          PointToPlaneDistance(NewPoint, Centroid, Normal);
-        ++ContactPointCount;
+        if(PointToPlaneDistance(NewPoint, Centroid, Normal) < 0.0f)
+        {
+          ContactPoints[ContactPointCount].Position = NewPoint;
+          ContactPoints[ContactPointCount].Penetration =
+            PointToPlaneDistance(NewPoint, Centroid, Normal);
+          ++ContactPointCount;
+        }
       }
 
+      /*
       float IncidentDistance = PointToPlaneDistance(i->Tail->Position, Centroid, Normal);
-      if(IncidentDistance > 0.0f)
+      if(IncidentDistance < 0.0f)
       {
         ContactPoints[ContactPointCount].Position    = i->Tail->Position;
         ContactPoints[ContactPointCount].Penetration = IncidentDistance;
         ++ContactPointCount;
       }
+      */
       i = i->Next;
     } while(i != IncidentFaceEdge);
     r = r->Next;
   } while(r != ReferenceFaceEdge);
 
+  Manifold->Normal = Normal;
+  printf("ContactPointCount = %d\n", ContactPointCount);
   ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
 }
 
@@ -1058,33 +1070,44 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
     return false;
   }
 
-  mat4 LocalB = Math::MulMat4(Math::InvMat4(TransformB), TransformA);
-
-  half_edge* EdgeA = HullA->Faces[FaceQueryA.Index].Edge;
-  half_edge* a     = EdgeA;
-
-  do
-  {
-    Debug::PushLine(TransformVector(a->Tail->Position, LocalB),
-                    TransformVector(a->Next->Tail->Position, LocalB), { 0, 0, 1, 1 });
-    a = a->Next;
-  } while(a != EdgeA);
-
-  half_edge* EdgeB = HullB->Faces[FaceQueryB.Index].Edge;
-  half_edge* b     = EdgeB;
-
-  do
-  {
-    Debug::PushLine(b->Tail->Position, b->Next->Tail->Position, { 0, 0, 1, 1 });
-    b = b->Next;
-  } while(b != EdgeB);
-
+  /*
+  printf("=================\n");
+  printf("FaceQueryA.Separation = %f\n", FaceQueryA.Separation);
+  printf("FaceQueryB.Separation = %f\n", FaceQueryB.Separation);
+  printf("EdgeQuery.Separation = %f\n", EdgeQuery.Separation);
+  printf("=================\n");
+  */
   if(FaceQueryA.Separation > EdgeQuery.Separation && FaceQueryB.Separation > EdgeQuery.Separation)
   {
+#if DEBUG_QUERIES
+    mat4 LocalB = Math::MulMat4(Math::InvMat4(TransformB), TransformA);
+
+    half_edge* EdgeA = HullA->Faces[FaceQueryA.Index].Edge;
+    half_edge* a     = EdgeA;
+
+    do
+    {
+      Debug::PushLine(TransformVector(a->Tail->Position, LocalB),
+                      TransformVector(a->Next->Tail->Position, LocalB), { 0, 0, 1, 1 });
+      a = a->Next;
+    } while(a != EdgeA);
+
+    half_edge* EdgeB = HullB->Faces[FaceQueryB.Index].Edge;
+    half_edge* b     = EdgeB;
+
+    do
+    {
+      Debug::PushLine(b->Tail->Position, b->Next->Tail->Position, { 0, 0, 1, 1 });
+      b = b->Next;
+    } while(b != EdgeB);
+#endif
+
+    // printf("Face Manifold\n");
     CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
   }
   else
   {
+    // printf("Edge Manifold\n");
     CreateEdgeContact(Manifold, EdgeQuery, TransformA, HullA, TransformB, HullB);
   }
 
