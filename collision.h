@@ -7,12 +7,6 @@
 #include "debug_drawing.h"
 #include "mesh.h"
 
-struct collider
-{
-  vec3    Vertices;
-  int32_t VertexCount;
-};
-
 vec3
 TransformVector(vec3 Vector, mat4 Matrix)
 {
@@ -591,17 +585,17 @@ struct hull
 vec3
 HullSupport(hull* Hull, vec3 Direction)
 {
-  vec3 Transformed = Hull->Vertices[0].Position;
+  vec3 Vertex = Hull->Vertices[0].Position;
 
-  float   Max   = Math::Dot(Transformed, Direction);
+  float   Max   = Math::Dot(Vertex, Direction);
   int32_t Index = 0;
 
   float DotProduct;
 
   for(int i = 1; i < Hull->VertexCount; i++)
   {
-    Transformed = Hull->Vertices[i].Position;
-    DotProduct  = Math::Dot(Transformed, Direction);
+    Vertex     = Hull->Vertices[i].Position;
+    DotProduct = Math::Dot(Vertex, Direction);
     if(DotProduct > Max)
     {
       Max   = DotProduct;
@@ -663,41 +657,12 @@ TransformedFaceParameters(vec3* Centroid, vec3* Normal, face* Face, const mat4 T
 }
 
 face_query
-QueryFaceDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, hull* HullB,
-                    int32_t* IterationCount)
+QueryFaceDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, hull* HullB)
 {
   face_query Result;
 
   // Local space of HullB
   mat4 Transform = Math::MulMat4(Math::InvMat4(TransformB), TransformA);
-
-#if DEBUG_QUERIES
-  for(int i = 0; i < HullA->FaceCount; i++)
-  {
-    half_edge* Edge   = HullA->Faces[i].Edge;
-    vec3       Offset = 0.1f * HullA->Faces[i].Normal;
-
-    do
-    {
-      Debug::PushLine(TransformVector(Edge->Tail->Position, Transform) + Offset,
-                      TransformVector(Edge->Next->Tail->Position, Transform) + Offset,
-                      { i * 0.16f, 0, 0, 1 });
-      Edge = Edge->Next;
-    } while(Edge != HullA->Faces[i].Edge);
-  }
-
-  for(int i = 0; i < HullB->FaceCount; i++)
-  {
-    half_edge* Edge   = HullB->Faces[i].Edge;
-    vec3       Offset = 0.1f * HullB->Faces[i].Normal;
-    do
-    {
-      Debug::PushLine(Edge->Tail->Position + Offset, Edge->Next->Tail->Position + Offset,
-                      { 0, i * 0.16f, 0, 1 });
-      Edge = Edge->Next;
-    } while(Edge != HullB->Faces[i].Edge);
-  }
-#endif
 
   vec3 Centroid;
   vec3 Normal;
@@ -706,36 +671,13 @@ QueryFaceDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
 
   int32_t MaxIndex      = 0;
   float   MaxSeparation = PointToPlaneDistance(SupportPoint, Centroid, Normal);
-#if DEBUG_QUERIES
-  if(*IterationCount == 1)
-  {
-    Debug::PushLine(Centroid, Centroid + Normal, { 0, 1, 0, 1 });
-    Debug::PushWireframeSphere(Centroid + Normal, 0.05f, { 0, 1, 0, 1 });
-    Debug::PushWireframeSphere(SupportPoint, 0.05f, { 0, 1, 0, 1 });
-  }
-  --(*IterationCount);
-#endif
 
-  for(int i = 1; i < HullA->FaceCount && (*IterationCount) > 0; ++i, --(*IterationCount))
+  for(int i = 1; i < HullA->FaceCount; ++i)
   {
     TransformedFaceParameters(&Centroid, &Normal, &HullA->Faces[i], Transform);
-    SupportPoint     = HullSupport(HullB, -Normal);
+    SupportPoint = HullSupport(HullB, -Normal);
+
     float Separation = PointToPlaneDistance(SupportPoint, Centroid, Normal);
-#if DEBUG_QUERIES
-    if(*IterationCount == 1)
-    {
-      Debug::PushLine(Centroid, Centroid + Normal, { 0, 1, 0, 1 });
-      Debug::PushWireframeSphere(Centroid + Normal, 0.05f, { 0, 1, 0, 1 });
-      if(Separation > MaxSeparation)
-      {
-        Debug::PushWireframeSphere(SupportPoint, 0.05f, { 1, 1, 1, 1 });
-      }
-      else
-      {
-        Debug::PushWireframeSphere(SupportPoint, 0.05f, { 0, 1, 0, 1 });
-      }
-    }
-#endif
     if(Separation > MaxSeparation)
     {
       MaxIndex      = i;
@@ -818,14 +760,6 @@ QueryEdgeDirections(const mat4 TransformA, hull* HullA, const mat4 TransformB, h
       }
     }
   }
-
-#if DEBUG_QUERIES
-  Debug::PushLine(TransformVector(HullA->Edges[MaxIndexA].Tail->Position, Transform),
-                  TransformVector(HullA->Edges[MaxIndexA].Next->Tail->Position, Transform),
-                  { 1, 1, 0, 1 });
-  Debug::PushLine(HullB->Edges[MaxIndexB].Tail->Position,
-                  HullB->Edges[MaxIndexB].Next->Tail->Position, { 0, 1, 1, 1 });
-#endif
 
   Result.IndexA     = MaxIndexA;
   Result.IndexB     = MaxIndexB;
@@ -938,7 +872,6 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
         }
       }
 
-      /*
       float IncidentDistance = PointToPlaneDistance(i->Tail->Position, Centroid, Normal);
       if(IncidentDistance < 0.0f)
       {
@@ -946,7 +879,6 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
         ContactPoints[ContactPointCount].Penetration = IncidentDistance;
         ++ContactPointCount;
       }
-      */
       i = i->Next;
     } while(i != IncidentFaceEdge);
     r = r->Next;
@@ -1074,17 +1006,15 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, const ma
 
 bool
 SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const mat4 TransformB,
-    hull* HullB, int32_t IterationCount = 100)
+    hull* HullB)
 {
-  face_query FaceQueryA =
-    QueryFaceDirections(TransformA, HullA, TransformB, HullB, &IterationCount);
+  face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)
   {
     return false;
   }
 
-  face_query FaceQueryB =
-    QueryFaceDirections(TransformB, HullB, TransformA, HullA, &IterationCount);
+  face_query FaceQueryB = QueryFaceDirections(TransformB, HullB, TransformA, HullA);
   if(FaceQueryB.Separation > 0.0f)
   {
     return false;
@@ -1103,18 +1033,33 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
   printf("=================\n");
   if(FaceQueryA.Separation > EdgeQuery.Separation && FaceQueryB.Separation > EdgeQuery.Separation)
   {
-    printf("Face Manifold\n");
-    CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
+    if(FaceQueryA.Separation > FaceQueryB.Separation)
+    {
+      printf("FaceA Manifold\n");
+      CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
+
+      for(int i = 0; i < Manifold->PointCount; ++i)
+      {
+        Debug::PushWireframeSphere(TransformVector(Manifold->Points[i].Position, TransformB), 0.05f,
+                                   { 1, 1, 1, 1 });
+      }
+    }
+    else
+    {
+      printf("FaceB Manifold\n");
+      CreateFaceContact(Manifold, FaceQueryB, TransformB, HullB, FaceQueryA, TransformA, HullA);
+
+      for(int i = 0; i < Manifold->PointCount; ++i)
+      {
+        Debug::PushWireframeSphere(TransformVector(Manifold->Points[i].Position, TransformA), 0.05f,
+                                   { 1, 1, 1, 1 });
+      }
+    }
   }
   else
   {
     printf("Edge Manifold\n");
     CreateEdgeContact(Manifold, EdgeQuery, TransformA, HullA, TransformB, HullB);
-  }
-
-  for(int i = 0; i < Manifold->PointCount; ++i)
-  {
-    Debug::PushWireframeSphere(Manifold->Points[i].Position, 0.05f, { 1, 1, 1, 1 });
   }
 
   return true;

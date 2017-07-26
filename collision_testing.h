@@ -207,7 +207,7 @@ SetUpCubeHull(hull* Cube)
 }
 
 bool
-TestSAT(const mat4 TransformA, const mat4 TransformB, int32_t IterationCount)
+TestSAT(const mat4 TransformA, const mat4 TransformB)
 {
   hull Cube = {};
 
@@ -215,7 +215,7 @@ TestSAT(const mat4 TransformA, const mat4 TransformB, int32_t IterationCount)
 
   sat_contact_manifold Manifold = {};
 
-  if(SAT(&Manifold, TransformA, &Cube, TransformB, &Cube, IterationCount))
+  if(SAT(&Manifold, TransformA, &Cube, TransformB, &Cube))
   {
     return true;
   }
