@@ -1070,25 +1070,21 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
     return false;
   }
 
-  /*
   printf("=================\n");
   printf("FaceQueryA.Separation = %f\n", FaceQueryA.Separation);
   printf("FaceQueryB.Separation = %f\n", FaceQueryB.Separation);
   printf("EdgeQuery.Separation = %f\n", EdgeQuery.Separation);
   printf("=================\n");
-  */
   if(FaceQueryA.Separation > EdgeQuery.Separation && FaceQueryB.Separation > EdgeQuery.Separation)
   {
 #if DEBUG_QUERIES
-    mat4 LocalB = Math::MulMat4(Math::InvMat4(TransformB), TransformA);
-
     half_edge* EdgeA = HullA->Faces[FaceQueryA.Index].Edge;
     half_edge* a     = EdgeA;
 
     do
     {
-      Debug::PushLine(TransformVector(a->Tail->Position, LocalB),
-                      TransformVector(a->Next->Tail->Position, LocalB), { 0, 0, 1, 1 });
+      Debug::PushLine(TransformVector(a->Tail->Position, TransformA),
+                      TransformVector(a->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
       a = a->Next;
     } while(a != EdgeA);
 
@@ -1097,17 +1093,18 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
 
     do
     {
-      Debug::PushLine(b->Tail->Position, b->Next->Tail->Position, { 0, 0, 1, 1 });
+      Debug::PushLine(TransformVector(b->Tail->Position, TransformB),
+                      TransformVector(b->Next->Tail->Position, TransformB), { 0, 0, 1, 1 });
       b = b->Next;
     } while(b != EdgeB);
 #endif
 
-    // printf("Face Manifold\n");
+    printf("Face Manifold\n");
     CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
   }
   else
   {
-    // printf("Edge Manifold\n");
+    printf("Edge Manifold\n");
     CreateEdgeContact(Manifold, EdgeQuery, TransformA, HullA, TransformB, HullB);
   }
 
