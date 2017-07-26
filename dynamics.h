@@ -56,10 +56,9 @@ FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_bo
     int IndA = Constraints[i].IndA;
     int IndB = Constraints[i].IndB;
     assert(0 <= IndA && IndA < RBCount);
-    assert(0 <= IndB && IndB < RBCount);
+    assert(IndA < IndB || IndB < 0);
 
-    // Currently only distance constraints are allowed
-    assert(Constraints[i].Type == CONSTRAINT_Distance);
+    assert(0 <= Constraints[i].Type && Constraints[i].Type < CONSTRAINT_Count);
     if(Constraints[i].Type == CONSTRAINT_Distance)
     {
       vec3 rA = Math::MulMat3Vec3(RigidBodies[IndA].R, Constraints[i].BodyRa);
@@ -77,19 +76,20 @@ FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_bo
       Jsp[i][2] = d;
       Jsp[i][3] = Math::Cross(rB, d);
     }
-    else if(Constraints[i].Type == CONSTRAINT_CenterDistance)
+    else if(Constraints[i].Type == CONSTRAINT_Point)
     {
-      vec3 d = RigidBodies[IndB].X - RigidBodies[IndA].X;
+      vec3 rA = Math::MulMat3Vec3(RigidBodies[IndA].R, Constraints[i].BodyRa);
+      vec3 d  = Constraints[i].P - (RigidBodies[IndA].X + rA);
 
       float C    = 0.5f * (Math::Dot(d, d) - Constraints[i].L * Constraints[i].L);
       Epsilon[i] = -(g_Bias * C);
 
       Jmap[i][0] = IndA;
-      Jmap[i][1] = IndB;
+      Jmap[i][1] = -1;
 
       Jsp[i][0] = -d;
-      Jsp[i][1] = {};
-      Jsp[i][2] = d;
+      Jsp[i][1] = -Math::Cross(rA, d);
+      Jsp[i][2] = {};
       Jsp[i][3] = {};
     }
   }
@@ -152,17 +152,20 @@ DYDT_FUNC(DYDT_PGS)
     int IndA = Jmap[i][0];
     int IndB = Jmap[i][1];
 
-    b[i] -= (Math::Dot(Jsp[i][0], V1[IndA][0]) + Math::Dot(Jsp[i][1], V1[IndA][1]) +
-             Math::Dot(Jsp[i][2], V1[IndB][0]) + Math::Dot(Jsp[i][3], V1[IndB][1])) /
-            dt;
+    b[i] -= (Math::Dot(Jsp[i][0], V1[IndA][0]) + Math::Dot(Jsp[i][1], V1[IndA][1])) / dt;
 
     vec3 MInvFext_a_f = Math::MulMat3Vec3(MDiagInv[IndA][0], Fext[IndA][0]);
     vec3 MInvFext_a_t = Math::MulMat3Vec3(MDiagInv[IndA][1], Fext[IndA][1]);
-    vec3 MInvFext_b_f = Math::MulMat3Vec3(MDiagInv[IndB][0], Fext[IndB][0]);
-    vec3 MInvFext_b_t = Math::MulMat3Vec3(MDiagInv[IndB][1], Fext[IndB][1]);
 
-    b[i] -= Math::Dot(Jsp[i][0], MInvFext_a_f) + Math::Dot(Jsp[i][1], MInvFext_a_t) +
-            Math::Dot(Jsp[i][2], MInvFext_b_f) + Math::Dot(Jsp[i][3], MInvFext_b_t);
+    b[i] -= Math::Dot(Jsp[i][0], MInvFext_a_f) + Math::Dot(Jsp[i][1], MInvFext_a_t);
+
+    if(0 < IndB)
+    {
+      b[i] -= (Math::Dot(Jsp[i][2], V1[IndB][0]) + Math::Dot(Jsp[i][3], V1[IndB][1])) / dt;
+      vec3 MInvFext_b_f = Math::MulMat3Vec3(MDiagInv[IndB][0], Fext[IndB][0]);
+      vec3 MInvFext_b_t = Math::MulMat3Vec3(MDiagInv[IndB][1], Fext[IndB][1]);
+      b[i] -= Math::Dot(Jsp[i][2], MInvFext_b_f) + Math::Dot(Jsp[i][3], MInvFext_b_t);
+    }
 
     // a
     for(int j = 0; j < ConstraintCount; j++)
@@ -170,7 +173,7 @@ DYDT_FUNC(DYDT_PGS)
       int  IndAj    = Jmap[j][0];
       int  IndBj    = Jmap[j][1];
       bool MatchAtA = (IndA == IndAj);
-      bool MatchAtB = (IndB == IndBj);
+      bool MatchAtB = (IndB == IndBj && 0 < IndB && 0 < IndBj);
       a[i][j]       = 0;
       a[i][j] +=
         MatchAtA ? Math::Dot(Jsp[i][0], Math::MulMat3Vec3(MDiagInv[IndA][0], Jsp[j][0])) : 0;
@@ -312,6 +315,12 @@ SimulateDynamics(game_state* GameState)
       TestConstraint.IndB   = 2;
       TestConstraint.BodyRa = { 1, 1, 1 };
       TestConstraint.BodyRb = { -1, 1, -1 };
+      g_Constraints.Push(TestConstraint);
+      TestConstraint.Type   = CONSTRAINT_Point;
+      TestConstraint.P      = {};
+      TestConstraint.L      = 0;
+      TestConstraint.IndA   = 0;
+      TestConstraint.BodyRa = { 0, 1, 0 };
       g_Constraints.Push(TestConstraint);
     }
 
