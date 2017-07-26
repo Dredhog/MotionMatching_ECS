@@ -8,7 +8,7 @@ enum constraint_type
 {
   CONSTRAINT_Distance,
   CONSTRAINT_CenterDistance,
-  CONSTRAINT_COUNT,
+  CONSTRAINT_Count,
 };
 
 struct constraint

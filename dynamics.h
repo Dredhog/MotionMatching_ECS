@@ -2,8 +2,8 @@
 #include "collision.h"
 #include "basic_data_structures.h"
 
-const int RIGID_BODY_MAX_COUNT = 2;
-const int CONSTRAINT_MAX_COUNT = 1;
+const int RIGID_BODY_MAX_COUNT = 10;
+const int CONSTRAINT_MAX_COUNT = 10;
 
 vec3  g_Force;
 vec3  g_ForceStart;
@@ -15,11 +15,11 @@ float g_Bias;
 hull  g_CubeHull;
 
 rigid_body g_RigidBodies[RIGID_BODY_MAX_COUNT]; // Indices correspond to entities
-fixed_stack<constraint, CONSTRAINT_COUNT> g_Constraints;
+fixed_stack<constraint, CONSTRAINT_MAX_COUNT> g_Constraints;
 
 #define DYDT_FUNC(name)                                                                            \
   void name(rigid_body RigidBodies[], int RBCount, const constraint Constraints[],                 \
-            int ConstraintCount, float t0, float t1)
+            int ConstraintCount, float t0, float t1, int IterationCount)
 typedef DYDT_FUNC(dydt_func);
 
 void
@@ -60,22 +60,7 @@ FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_bo
 
     // Currently only distance constraints are allowed
     assert(Constraints[i].Type == CONSTRAINT_Distance);
-    if(Constraints[i].Type == CONSTRAINT_CenterDistance)
-    {
-      vec3 d = RigidBodies[IndB].X - RigidBodies[IndA].X;
-
-      float C    = 0.5f * (Math::Dot(d, d) - Constraints[i].L * Constraints[i].L);
-      Epsilon[i] = -(g_Bias * C);
-
-      Jmap[i][0] = IndA;
-      Jmap[i][1] = IndB;
-
-      Jsp[i][0] = -d;
-      Jsp[i][1] = {};
-      Jsp[i][2] = d;
-      Jsp[i][3] = {};
-    }
-    else if(Constraints[i].Type == CONSTRAINT_Distance)
+    if(Constraints[i].Type == CONSTRAINT_Distance)
     {
       vec3 rA = Math::MulMat3Vec3(RigidBodies[IndA].R, Constraints[i].BodyRa);
       vec3 rB = Math::MulMat3Vec3(RigidBodies[IndB].R, Constraints[i].BodyRb);
@@ -91,6 +76,21 @@ FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_bo
       Jsp[i][1] = -Math::Cross(rA, d);
       Jsp[i][2] = d;
       Jsp[i][3] = Math::Cross(rB, d);
+    }
+    else if(Constraints[i].Type == CONSTRAINT_CenterDistance)
+    {
+      vec3 d = RigidBodies[IndB].X - RigidBodies[IndA].X;
+
+      float C    = 0.5f * (Math::Dot(d, d) - Constraints[i].L * Constraints[i].L);
+      Epsilon[i] = -(g_Bias * C);
+
+      Jmap[i][0] = IndA;
+      Jmap[i][1] = IndB;
+
+      Jsp[i][0] = -d;
+      Jsp[i][1] = {};
+      Jsp[i][2] = d;
+      Jsp[i][3] = {};
     }
   }
 }
@@ -165,18 +165,54 @@ DYDT_FUNC(DYDT_PGS)
             Math::Dot(Jsp[i][2], MInvFext_b_f) + Math::Dot(Jsp[i][3], MInvFext_b_t);
 
     // a
-    a[0][0] = 0;
-    a[0][0] += Math::Dot(Jsp[i][0], Math::MulMat3Vec3(MDiagInv[IndA][0], Jsp[i][0]));
-    a[0][0] += Math::Dot(Jsp[i][1], Math::MulMat3Vec3(MDiagInv[IndA][1], Jsp[i][1]));
-    a[0][0] += Math::Dot(Jsp[i][2], Math::MulMat3Vec3(MDiagInv[IndB][0], Jsp[i][2]));
-    a[0][0] += Math::Dot(Jsp[i][3], Math::MulMat3Vec3(MDiagInv[IndB][1], Jsp[i][3]));
+    for(int j = 0; j < ConstraintCount; j++)
+    {
+      int  IndAj    = Jmap[j][0];
+      int  IndBj    = Jmap[j][1];
+      bool MatchAtA = (IndA == IndAj);
+      bool MatchAtB = (IndB == IndBj);
+      a[i][j]       = 0;
+      a[i][j] +=
+        MatchAtA ? Math::Dot(Jsp[i][0], Math::MulMat3Vec3(MDiagInv[IndA][0], Jsp[j][0])) : 0;
+      a[i][j] +=
+        MatchAtA ? Math::Dot(Jsp[i][1], Math::MulMat3Vec3(MDiagInv[IndA][1], Jsp[j][1])) : 0;
+      a[i][j] +=
+        MatchAtB ? Math::Dot(Jsp[i][2], Math::MulMat3Vec3(MDiagInv[IndB][0], Jsp[j][2])) : 0;
+      a[i][j] +=
+        MatchAtB ? Math::Dot(Jsp[i][3], Math::MulMat3Vec3(MDiagInv[IndB][1], Jsp[j][3])) : 0;
+    }
   }
 
+// Solve for lambda (GS)
+#if 1
+  for(int k = 0; k < IterationCount; k++)
+  {
+    for(int i = 0; i < ConstraintCount; i++)
+    {
+      float Delta = 0.0f;
+      {
+        for(int j = 0; j < i; j++)
+        {
+          Delta += a[i][j] * Lambda[j];
+        }
+        for(int j = i + 1; j < ConstraintCount; j++)
+        {
+          Delta += a[i][j] * Lambda[j];
+        }
+      }
+      if(0.00001f < a[i][i])
+      {
+        Lambda[i] = (b[i] - Delta) / a[i][i];
+      }
+    }
+  }
+#else
   assert(ConstraintCount == 1);
   if(ConstraintCount == 1)
   {
     Lambda[0] = b[0] / a[0][0];
   }
+#endif
 
   for(int i = 0; i < RBCount; i++)
   {
@@ -209,9 +245,9 @@ DYDT_FUNC(DYDT_PGS)
 
 void
 ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int ConstraintCount,
-    float t0, float t1, dydt_func dydt)
+    float t0, float t1, dydt_func dydt, int32_t IterationCount)
 {
-  dydt(RigidBodies, RBCount, Constraints, ConstraintCount, t0, t1);
+  dydt(RigidBodies, RBCount, Constraints, ConstraintCount, t0, t1, IterationCount);
 
   const float dt = t1 - t0;
   // Y(t1) = Y(t0) + dY(t0)
@@ -238,9 +274,12 @@ ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int C
 void
 SimulateDynamics(game_state* GameState)
 {
-  if(2 <= GameState->EntityCount)
+  if(3 <= GameState->EntityCount)
   {
-    for(int i = 0; i < RIGID_BODY_MAX_COUNT; i++)
+    assert(GameState->EntityCount <= RIGID_BODY_MAX_COUNT);
+    const int BodyCount = GameState->EntityCount;
+
+    for(int i = 0; i < BodyCount; i++)
     {
       GameState->Entities[i].RigidBody.Mat4Scale =
         Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
@@ -261,16 +300,29 @@ SimulateDynamics(game_state* GameState)
       TestConstraint.BodyRa     = { 1, -1, 1 };
       TestConstraint.BodyRb     = { -1, -1, 1 };
       g_Constraints.Push(TestConstraint);
+      TestConstraint.BodyRa = { 1, -1, -1 };
+      TestConstraint.BodyRb = { -1, -1, -1 };
+      g_Constraints.Push(TestConstraint);
+      TestConstraint.IndA   = 1;
+      TestConstraint.IndB   = 2;
+      TestConstraint.BodyRa = { -1, 1, 1 };
+      TestConstraint.BodyRb = { -1, -1, -1 };
+      g_Constraints.Push(TestConstraint);
+      TestConstraint.IndA   = 1;
+      TestConstraint.IndB   = 2;
+      TestConstraint.BodyRa = { 1, 1, 1 };
+      TestConstraint.BodyRb = { -1, 1, -1 };
+      g_Constraints.Push(TestConstraint);
     }
 
     int StepsPerFrame = 1;
     for(int i = 0; i < StepsPerFrame; i++)
     {
-      ODE(g_RigidBodies, RIGID_BODY_MAX_COUNT, &g_Constraints[0], g_Constraints.Count, 0.0f,
-          (FRAME_TIME_MS / 1000.0f) / StepsPerFrame, DYDT_PGS);
+      ODE(g_RigidBodies, BodyCount, &g_Constraints[0], g_Constraints.Count, 0.0f,
+          (FRAME_TIME_MS / 1000.0f) / StepsPerFrame, DYDT_PGS, GameState->PGSIterationCount);
     }
 
-    for(int i = 0; i < RIGID_BODY_MAX_COUNT; i++)
+    for(int i = 0; i < BodyCount; i++)
     {
       GameState->Entities[i].RigidBody             = g_RigidBodies[i];
       GameState->Entities[i].Transform.Rotation    = Math::QuatToEuler(g_RigidBodies[i].q);

@@ -152,14 +152,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->PlayerEntityIndex       = -1;
     GameState->CollisionIterationCount = 0;
 
-    GameState->Restitution      = 0.5f;
-    GameState->Bias             = 0.1f;
-    GameState->Slop             = 0.1f;
-    GameState->UseGravity       = true;
-    GameState->VisualizeOmega   = true;
-    GameState->VisualizeV       = true;
-    GameState->VisualizeFc      = true;
-    GameState->SimulateDynamics = false;
+    GameState->Restitution       = 0.5f;
+    GameState->Bias              = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
+    GameState->Slop              = 0.1f;
+    GameState->PGSIterationCount = 10;
+    GameState->UseGravity        = true;
+    GameState->VisualizeOmega    = true;
+    GameState->VisualizeV        = true;
+    GameState->VisualizeFc       = false;
+    GameState->SimulateDynamics  = false;
 
     SetUpCubeHull(&g_CubeHull);
   }
