@@ -8,17 +8,24 @@ enum constraint_type
 {
   CONSTRAINT_Distance,
   CONSTRAINT_Point,
+  CONSTRAINT_Contact,
   CONSTRAINT_Count,
 };
 
 struct constraint
 {
-  int      IndA;
-  int      IndB;
   uint32_t Type;
+  int32_t  IndA;
+  int32_t  IndB;
+
+  float LambdaMin;
+  float LambdaMax;
+
   float L;
   vec3  BodyRa;
   vec3  BodyRb;
+  float Penetration;
+  vec3  n;
   vec3  P;
 };
 

@@ -48,8 +48,9 @@ ComputeExternalForcesAndTorques(vec3 F[][2], const rigid_body RigidBodies[], int
   }
 }
 void
-FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_body RigidBodies[],
-                   int RBCount, const constraint Constraints[], int ConstraintCount)
+FillEpsilonJmapJspLambdaMinMax(float Epsilon[], int Jmap[][2], vec3 Jsp[][4],
+                               float LambdaMinMax[][2], const rigid_body RigidBodies[], int RBCount,
+                               const constraint Constraints[], int ConstraintCount)
 {
   for(int i = 0; i < ConstraintCount; i++)
   {
@@ -61,6 +62,9 @@ FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_bo
     assert(0 <= Constraints[i].Type && Constraints[i].Type < CONSTRAINT_Count);
     if(Constraints[i].Type == CONSTRAINT_Distance)
     {
+      LambdaMinMax[i][0] = -INFINITY;
+      LambdaMinMax[i][1] = INFINITY;
+
       vec3 rA = Math::MulMat3Vec3(RigidBodies[IndA].R, Constraints[i].BodyRa);
       vec3 rB = Math::MulMat3Vec3(RigidBodies[IndB].R, Constraints[i].BodyRb);
       vec3 d  = RigidBodies[IndB].X + rB - RigidBodies[IndA].X - rA;
@@ -78,6 +82,9 @@ FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_bo
     }
     else if(Constraints[i].Type == CONSTRAINT_Point)
     {
+      LambdaMinMax[i][0] = -INFINITY;
+      LambdaMinMax[i][1] = INFINITY;
+
       vec3 rA = Math::MulMat3Vec3(RigidBodies[IndA].R, Constraints[i].BodyRa);
       vec3 d  = Constraints[i].P - (RigidBodies[IndA].X + rA);
 
@@ -91,6 +98,26 @@ FillEpsilonJmapJsp(float Epsilon[], int Jmap[][2], vec3 Jsp[][4], const rigid_bo
       Jsp[i][1] = -Math::Cross(rA, d);
       Jsp[i][2] = {};
       Jsp[i][3] = {};
+    }
+    else if(Constraints[i].Type == CONSTRAINT_Contact)
+    {
+      LambdaMinMax[i][0] = 0;
+      LambdaMinMax[i][1] = INFINITY;
+
+      vec3  rA = Constraints[i].BodyRa;
+      vec3  rB = Constraints[i].BodyRb;
+      vec3  n  = Constraints[i].n;
+      float C  = -Constraints[i].Penetration;
+
+      Epsilon[i] = -(g_Bias * C);
+
+      Jmap[i][0] = IndA;
+      Jmap[i][1] = IndB;
+
+      Jsp[i][0] = -n;
+      Jsp[i][1] = -Math::Cross(rA, n);
+      Jsp[i][2] = n;
+      Jsp[i][3] = Math::Cross(rB, n);
     }
   }
 }
@@ -129,6 +156,7 @@ DYDT_FUNC(DYDT_PGS)
   float Epsilon[CONSTRAINT_MAX_COUNT];
 
   float Lambda[CONSTRAINT_MAX_COUNT];
+  float LambdaMinMax[CONSTRAINT_MAX_COUNT][2];
   mat3  MDiagInv[RIGID_BODY_MAX_COUNT][2];
   vec3  Fext[RIGID_BODY_MAX_COUNT][2];
   vec3  dtFc[RIGID_BODY_MAX_COUNT][2];
@@ -138,7 +166,8 @@ DYDT_FUNC(DYDT_PGS)
 
   FillV1(V1, RigidBodies, RBCount);
   FillMDiagInvMatrix(MDiagInv, RigidBodies, RBCount);
-  FillEpsilonJmapJsp(Epsilon, Jmap, Jsp, RigidBodies, RBCount, Constraints, ConstraintCount);
+  FillEpsilonJmapJspLambdaMinMax(Epsilon, Jmap, Jsp, LambdaMinMax, RigidBodies, RBCount,
+                                 Constraints, ConstraintCount);
   ComputeExternalForcesAndTorques(Fext, RigidBodies, RBCount);
 
   const float dt = t1 - t0;
@@ -203,9 +232,19 @@ DYDT_FUNC(DYDT_PGS)
           Delta += a[i][j] * Lambda[j];
         }
       }
-      if(0.00001f < a[i][i])
+      // TODO(Lukas) Remove magic value or other solution
+      if(0.0000001f < a[i][i])
       {
         Lambda[i] = (b[i] - Delta) / a[i][i];
+      }
+      assert(LambdaMinMax[0] < LambdaMinMax[1]);
+      if(Lambda[i] < LambdaMinMax[i][0])
+      {
+        Lambda[i] = LambdaMinMax[i][0];
+      }
+      if(LambdaMinMax[i][1] < Lambda[i])
+      {
+        Lambda[i] = LambdaMinMax[i][1];
       }
     }
   }
