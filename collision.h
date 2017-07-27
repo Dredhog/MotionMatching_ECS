@@ -1094,7 +1094,7 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
   printf("FaceQueryB.Separation = %f\n", FaceQueryB.Separation);
   printf("EdgeQuery.Separation = %f\n", EdgeQuery.Separation);
   printf("=================\n");
-  if(FaceQueryA.Separation > EdgeQuery.Separation && FaceQueryB.Separation > EdgeQuery.Separation)
+  if(FaceQueryA.Separation > EdgeQuery.Separation || FaceQueryB.Separation > EdgeQuery.Separation)
   {
     if(FaceQueryA.Separation > FaceQueryB.Separation)
     {

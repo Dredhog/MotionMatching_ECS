@@ -3,7 +3,7 @@
 #include "basic_data_structures.h"
 
 const int RIGID_BODY_MAX_COUNT = 10;
-const int CONSTRAINT_MAX_COUNT = 10;
+const int CONSTRAINT_MAX_COUNT = 30;
 
 vec3  g_Force;
 vec3  g_ForceStart;
@@ -367,6 +367,7 @@ SimulateDynamics(game_state* GameState)
       TestConstraint.BodyRa = { 0, 1, 0 };
       g_Constraints.Push(TestConstraint);
       */
+
       mat4 TransformA = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[0].X),
                                       Math::MulMat4(g_RigidBodies[0].Mat4Scale,
                                                     Math::Mat3ToMat4(g_RigidBodies[0].R)));
@@ -378,14 +379,35 @@ SimulateDynamics(game_state* GameState)
       sat_contact_manifold Manifold;
       if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
       {
+        constraint Constraint;
+        Constraint.Type = CONSTRAINT_Contact;
         for(int i = 0; i < Manifold.PointCount; ++i)
         {
-          vec3 n  = Manifold.Normal;
-          vec4 P4 = vec4{ Manifold.Points[i].Position.X, Manifold.Points[i].Position.Y,
-                          Manifold.Points[i].Position.Z, 1 };
-          P4      = Math::MulMat4Vec4(TransformB, P4);
+          assert(0 < Manifold.Points[i].Penetration);
+          Constraint.n = Manifold.Normal;
+          vec3 P       = TransformVector(Manifold.Points[i].Position, TransformB);
+          if(Manfold.BelongsToA)
+          {
+            Constraint.BodyRa = P - g_RigidBodies[0].X;
+            Constraint.BodyRb =
+              P + (Manifold.Points[i].Penetration * Manifold.Normal) - g_RigidBodies[1].X;
+            Constraint.Penetration = Manifold.Points[i].Penetration;
+            Constraint.IndA        = 0;
+            Constraint.IndB        = 1;
+          }
+          else
+          {
+            Constraint.BodyRa =
+              P + (Manifold.Points[i].Penetration * Manifold.Normal) - g_RigidBodies[1].X;
+            Constraint.BodyRb = P - g_RigidBodies[0].X;
 
-          Debug::PushWireframeSphere({ P4.X, P4.Y, P4.Z }, 0.05f, { 0, 1, 0, 1 });
+            Constraint.Penetration = Manifold.Points[i].Penetration;
+            Constraint.IndA        = 1;
+            Constraint.IndB        = 0;
+          }
+          g_Constraints.Push(Constraint);
+
+          Debug::PushWireframeSphere(P, 0.05f, { 0, 1, 0, 1 });
         }
       }
     }

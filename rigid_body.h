@@ -18,9 +18,6 @@ struct constraint
   int32_t  IndA;
   int32_t  IndB;
 
-  float LambdaMin;
-  float LambdaMax;
-
   float L;
   vec3  BodyRa;
   vec3  BodyRb;
