@@ -376,7 +376,9 @@ SimulateDynamics(game_state* GameState)
                                                     Math::Mat3ToMat4(g_RigidBodies[1].R)));
 
       sat_contact_manifold Manifold;
-      if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
+      bool                 ReturnA;
+
+      if(SAT(&ReturnA, &Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
       {
         for(int i = 0; i < Manifold.PointCount; ++i)
         {
