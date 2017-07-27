@@ -383,9 +383,11 @@ SimulateDynamics(game_state* GameState)
           vec3 n  = Manifold.Normal;
           vec4 P4 = vec4{ Manifold.Points[i].Position.X, Manifold.Points[i].Position.Y,
                           Manifold.Points[i].Position.Z, 1 };
+          /*
           P4      = Math::MulMat4Vec4(TransformB, P4);
 
           Debug::PushWireframeSphere({ P4.X, P4.Y, P4.Z }, 0.05f, { 0, 1, 0, 1 });
+          */
         }
       }
     }
