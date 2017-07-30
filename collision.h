@@ -928,26 +928,31 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
       {
         if(PointToPlaneDistance(NewPoint, Centroid, Normal) < 0.0f)
         {
-          ContactPoints[ContactPointCount].Position = NewPoint;
+          ContactPoints[ContactPointCount].Position = TransformVector(NewPoint, TransformB);
           ContactPoints[ContactPointCount].Penetration =
             PointToPlaneDistance(NewPoint, Centroid, Normal);
           ++ContactPointCount;
         }
       }
 
-      float IncidentDistance = PointToPlaneDistance(i->Tail->Position, Centroid, Normal);
-      if(IncidentDistance < 0.0f)
-      {
-        ContactPoints[ContactPointCount].Position    = i->Tail->Position;
-        ContactPoints[ContactPointCount].Penetration = IncidentDistance;
-        ++ContactPointCount;
-      }
       i = i->Next;
     } while(i != IncidentFaceEdge);
     r = r->Next;
   } while(r != ReferenceFaceEdge);
 
-  Manifold->Normal = Normal;
+  do
+  {
+    float IncidentDistance = PointToPlaneDistance(i->Tail->Position, Centroid, Normal);
+    if(IncidentDistance < 0.0f)
+    {
+      ContactPoints[ContactPointCount].Position    = TransformVector(i->Tail->Position, TransformB);
+      ContactPoints[ContactPointCount].Penetration = IncidentDistance;
+      ++ContactPointCount;
+    }
+    i = i->Next;
+  } while(i != IncidentFaceEdge);
+
+  Manifold->Normal = TransformVector(Normal, TransformB) - TransformVector({}, TransformB);
   printf("ContactPointCount = %d\n", ContactPointCount);
   ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
 }
@@ -1055,21 +1060,27 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, const ma
                         EdgeB->Next->Tail->Position);
 
   Manifold->PointCount            = 1;
-  Manifold->Points[0].Position    = (ClosestA + ClosestB) / 2;
   Manifold->Points[0].Penetration = EdgeQuery.Separation;
   Manifold->Normal                = Math::Normalized(
     Math::Cross(EdgeAHead - EdgeATail, EdgeB->Next->Tail->Position - EdgeB->Tail->Position));
+  if(Math::Dot(Manifold->Normal, EdgeATail - TransformVector(HullA->Centroid, Transform)) < 0.0f)
+  {
+    Manifold->Normal = -Manifold->Normal;
+  }
+  Manifold->Normal =
+    TransformVector(Manifold->Normal, TransformB) - TransformVector({}, TransformB);
+  Manifold->Points[0].Position = TransformVector(ClosestB, TransformB);
 #if DEBUG_QUERIES
   Debug::PushLine(TransformVector(EdgeA->Tail->Position, TransformA),
                   TransformVector(EdgeA->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
   Debug::PushLine(TransformVector(EdgeB->Tail->Position, TransformB),
-                  TransformVector(EdgeB->Next->Tail->Position, TransformB), { 0, 0, 1, 1 });
+                  TransformVector(EdgeB->Next->Tail->Position, TransformB), { 1, 0, 0, 1 });
 #endif
 }
 
 bool
-SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const mat4 TransformB,
-    hull* HullB)
+SAT(bool* ReturnA, sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA,
+    const mat4 TransformB, hull* HullB)
 {
   face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)
@@ -1089,40 +1100,40 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, hull* HullA, const ma
     return false;
   }
 
+  /*
   printf("=================\n");
   printf("FaceQueryA.Separation = %f\n", FaceQueryA.Separation);
   printf("FaceQueryB.Separation = %f\n", FaceQueryB.Separation);
   printf("EdgeQuery.Separation = %f\n", EdgeQuery.Separation);
   printf("=================\n");
+  */
+
+  // Change if order to be more efficent
   if(FaceQueryA.Separation > EdgeQuery.Separation || FaceQueryB.Separation > EdgeQuery.Separation)
   {
     if(FaceQueryA.Separation > FaceQueryB.Separation)
     {
-      printf("FaceA Manifold\n");
+      // printf("FaceA Manifold\n");
       CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
-
-      for(int i = 0; i < Manifold->PointCount; ++i)
-      {
-        Debug::PushWireframeSphere(TransformVector(Manifold->Points[i].Position, TransformB), 0.05f,
-                                   { 1, 1, 1, 1 });
-      }
+      *ReturnA = true;
     }
     else
     {
-      printf("FaceB Manifold\n");
+      // printf("FaceB Manifold\n");
       CreateFaceContact(Manifold, FaceQueryB, TransformB, HullB, FaceQueryA, TransformA, HullA);
-
-      for(int i = 0; i < Manifold->PointCount; ++i)
-      {
-        Debug::PushWireframeSphere(TransformVector(Manifold->Points[i].Position, TransformA), 0.05f,
-                                   { 1, 1, 1, 1 });
-      }
+      *ReturnA = false;
     }
   }
   else
   {
-    printf("Edge Manifold\n");
+    // printf("Edge Manifold\n");
     CreateEdgeContact(Manifold, EdgeQuery, TransformA, HullA, TransformB, HullB);
+    *ReturnA = false;
+  }
+
+  for(int i = 0; i < Manifold->PointCount; ++i)
+  {
+    Debug::PushWireframeSphere(Manifold->Points[i].Position, 0.05f, { 1, 1, 1, 1 });
   }
 
   return true;

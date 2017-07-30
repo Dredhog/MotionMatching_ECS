@@ -57,7 +57,6 @@ FillEpsilonJmapJspLambdaMinMax(float Epsilon[], int Jmap[][2], vec3 Jsp[][4],
     int IndA = Constraints[i].IndA;
     int IndB = Constraints[i].IndB;
     assert(0 <= IndA && IndA < RBCount);
-    assert(IndA < IndB || IndB < 0);
 
     assert(0 <= Constraints[i].Type && Constraints[i].Type < CONSTRAINT_Count);
     if(Constraints[i].Type == CONSTRAINT_Distance)
@@ -107,7 +106,7 @@ FillEpsilonJmapJspLambdaMinMax(float Epsilon[], int Jmap[][2], vec3 Jsp[][4],
       vec3  rA = Constraints[i].BodyRa;
       vec3  rB = Constraints[i].BodyRb;
       vec3  n  = Constraints[i].n;
-      float C  = -Constraints[i].Penetration;
+      float C  = Constraints[i].Penetration;
 
       Epsilon[i] = -(g_Bias * C);
 
@@ -188,7 +187,7 @@ DYDT_FUNC(DYDT_PGS)
 
     b[i] -= Math::Dot(Jsp[i][0], MInvFext_a_f) + Math::Dot(Jsp[i][1], MInvFext_a_t);
 
-    if(0 < IndB)
+    if(0 <= IndB)
     {
       b[i] -= (Math::Dot(Jsp[i][2], V1[IndB][0]) + Math::Dot(Jsp[i][3], V1[IndB][1])) / dt;
       vec3 MInvFext_b_f = Math::MulMat3Vec3(MDiagInv[IndB][0], Fext[IndB][0]);
@@ -202,7 +201,7 @@ DYDT_FUNC(DYDT_PGS)
       int  IndAj    = Jmap[j][0];
       int  IndBj    = Jmap[j][1];
       bool MatchAtA = (IndA == IndAj);
-      bool MatchAtB = (IndB == IndBj && 0 < IndB && 0 < IndBj);
+      bool MatchAtB = (IndB == IndBj && 0 <= IndB && 0 <= IndBj);
       a[i][j]       = 0;
       a[i][j] +=
         MatchAtA ? Math::Dot(Jsp[i][0], Math::MulMat3Vec3(MDiagInv[IndA][0], Jsp[j][0])) : 0;
@@ -376,38 +375,45 @@ SimulateDynamics(game_state* GameState)
                                       Math::MulMat4(g_RigidBodies[1].Mat4Scale,
                                                     Math::Mat3ToMat4(g_RigidBodies[1].R)));
 
+      bool                 ReturnA;
       sat_contact_manifold Manifold;
-      if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
+      if(SAT(&ReturnA, &Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
       {
         constraint Constraint;
         Constraint.Type = CONSTRAINT_Contact;
         for(int i = 0; i < Manifold.PointCount; ++i)
         {
-          assert(0 < Manifold.Points[i].Penetration);
-          Constraint.n = Manifold.Normal;
-          vec3 P       = TransformVector(Manifold.Points[i].Position, TransformB);
-          if(Manfold.BelongsToA)
+          assert(Manifold.Points[i].Penetration < 0);
+          vec3 P                 = Manifold.Points[i].Position;
+          Constraint.Penetration = Manifold.Points[i].Penetration;
+          Constraint.n           = Manifold.Normal;
+
+          if(ReturnA)
+
           {
-            Constraint.BodyRa = P - g_RigidBodies[0].X;
-            Constraint.BodyRb =
-              P + (Manifold.Points[i].Penetration * Manifold.Normal) - g_RigidBodies[1].X;
-            Constraint.Penetration = Manifold.Points[i].Penetration;
-            Constraint.IndA        = 0;
-            Constraint.IndB        = 1;
+            Constraint.IndA = 0;
+            Constraint.IndB = 1;
           }
           else
           {
-            Constraint.BodyRa =
-              P + (Manifold.Points[i].Penetration * Manifold.Normal) - g_RigidBodies[1].X;
-            Constraint.BodyRb = P - g_RigidBodies[0].X;
 
-            Constraint.Penetration = Manifold.Points[i].Penetration;
-            Constraint.IndA        = 1;
-            Constraint.IndB        = 0;
+            Constraint.IndA = 1;
+            Constraint.IndB = 0;
           }
-          g_Constraints.Push(Constraint);
 
-          Debug::PushWireframeSphere(P, 0.05f, { 0, 1, 0, 1 });
+          Constraint.BodyRa = P - g_RigidBodies[Constraint.IndA].X;
+          Constraint.BodyRb =
+            (P - Manifold.Points[i].Penetration * Constraint.n) - g_RigidBodies[Constraint.IndB].X;
+
+          Debug::PushLine({}, Constraint.n, { 1, 0, 1, 1 });
+          Debug::PushWireframeSphere(Constraint.n, 0.05f, { 1, 0, 1, 1 });
+
+          Debug::PushWireframeSphere(g_RigidBodies[Constraint.IndA].X + Constraint.BodyRa, 0.05f,
+                                     { 1, 0, 0, 1 });
+          Debug::PushWireframeSphere(g_RigidBodies[Constraint.IndB].X + Constraint.BodyRb, 0.05f,
+                                     { 0, 0, 1, 1 });
+
+          g_Constraints.Push(Constraint);
         }
       }
     }
@@ -423,102 +429,3 @@ SimulateDynamics(game_state* GameState)
     }
   }
 }
-
-/*DYDT_FUNC(DYDT_IMPULSE)
-{
-  velocity    V[RIGID_BODY_MAX_COUNT];
-  const float dt = t1 - t0;
-  for(int i = 0; i < Count; i++)
-  {
-    assert(FloatsEqualByThreshold(Math::Length(Y[i].q), 1.0f, 0.001f));
-    g_RigidBodies[i].R = Math::QuatToMat3(Y[i].q);
-    g_RigidBodies[i].InertiaInv =
-      Math::MulMat3(g_RigidBodies[i].R, Math::MulMat3(g_RigidBodies[i].InertiaBodyInv,
-                                                      Math::Transposed3(g_RigidBodies[i].R)));
-
-    // Apply external forces
-    ComputeExternalForcesAndTorques(&dY[i], &g_RigidBodies[i]);
-    assert(g_RigidBodies[i].Mass == 0 ||
-           FloatsEqualByThreshold((g_RigidBodies[i].MassInv * g_RigidBodies[i].Mass), 1.0f,
-0.01f)); Y[i].P += dt * (g_RigidBodies[i].MassInv * dY[i].Force); Y[i].L += dt *
-Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, dY[i].Torque);
-
-    // Extract tentative velocity
-    V[i].v = g_RigidBodies[i].MassInv * Y[i].P;
-    V[i].w = Math::MulMat3Vec3(g_RigidBodies[i].InertiaInv, Y[i].L);
-  }
-
-  // Collision impulses
-  mat4 TransformA =
-    Math::MulMat4(Math::Mat4Translate(Y[0].X),
-                  Math::MulMat4(g_RigidBodies[0].Mat4Scale,
-Math::Mat3ToMat4(g_RigidBodies[0].R))); mat4 TransformB =
-    Math::MulMat4(Math::Mat4Translate(Y[1].X),
-                  Math::MulMat4(g_RigidBodies[1].Mat4Scale,
-Math::Mat3ToMat4(g_RigidBodies[1].R)));
-
-  sat_contact_manifold Manifold;
-  if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
-  {
-    for(int i = 0; i < Manifold.PointCount; ++i)
-    {
-      vec3 n     = Manifold.Normal;
-      vec3 P     = Manifold.Points[i].Position;
-      vec3 rA    = P - Y[0].X;
-      vec3 rB    = P - Y[1].X;
-      vec3 pAdot = V[0].v + Math::Cross(V[0].w, rA);
-      vec3 pBdot = V[1].v + Math::Cross(V[1].w, rB);
-      mat3 InvIA = g_RigidBodies[0].InertiaInv;
-      mat3 InvIB = g_RigidBodies[1].InertiaInv;
-
-      vec3  vRel     = (pAdot - pBdot);
-      float vRelNorm = Math::Dot(vRel, n);
-      if(vRelNorm <= 0)
-      {
-        float term1 = g_RigidBodies[0].MassInv + g_RigidBodies[1].MassInv;
-        float term2 = Math::Dot(n, Math::MulMat3Vec3(InvIA, Math::Cross(Math::Cross(rA, n), rA)));
-        float term3 = Math::Dot(n, Math::MulMat3Vec3(InvIB, Math::Cross(Math::Cross(rB, n), rB)));
-
-        float vBias     = (g_Bias / dt) * MaxFloat(0, Manifold.Points[i].Penetration - g_Slop);
-        float Numerator = -vRelNorm * (1.0f + g_Restitution) + vBias;
-        // float Numerator = -vRelNorm;
-        vec3 Impulse = MaxFloat((Numerator / (term1 + term2 + term3)), 0) * n;
-        V[0].v += Impulse * g_RigidBodies[0].MassInv;
-        V[0].w += Math::MulMat3Vec3(InvIA, Math::Cross(rA, Impulse));
-
-        V[1].v -= Impulse * g_RigidBodies[1].MassInv;
-        V[1].w -= Math::MulMat3Vec3(InvIB, Math::Cross(rB, Impulse));
-
-        if(0 < g_RigidBodies[0].Mass)
-        {
-          Y[0].P += Impulse;
-          Y[0].L += Math::Cross(rA, Impulse);
-        }
-        if(0 < g_RigidBodies[1].Mass)
-        {
-          Y[1].P -= Impulse;
-          Y[1].L -= Math::Cross(rB, Impulse);
-        }
-        // Debug::PushWireframeSphere(P, 1.0f);
-      }
-      Debug::PushLine(P, P + n * Manifold.Points[i].Penetration, { 0, 1, 0, 1 });
-      Debug::PushWireframeSphere(P, 0.05f, { 0, 1, 0, 1 });
-    }
-  }
-
-  if(isnan(Y[0].L.X) || isnan(Y[1].L.X))
-  {
-    char a = 9;
-    assert(0 && "Error with NaN");
-  }
-
-  for(int i = 0; i < Count; i++)
-  {
-    dY[i].v = V[i].v;
-
-    quat qOmega;
-    qOmega.S   = 0;
-    qOmega.V   = V[i].w;
-    dY[i].qDot = 0.5f * (qOmega * Y[i].q);
-  }
-}*/
