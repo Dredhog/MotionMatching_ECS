@@ -216,10 +216,7 @@ TestSAT(const mat4 TransformA, const mat4 TransformB)
   SetUpCubeHull(&Cube);
 
   sat_contact_manifold Manifold = {};
-
-  bool ReturnA;
-
-  if(SAT(&ReturnA, &Manifold, TransformA, &Cube, TransformB, &Cube))
+  if(SAT(&Manifold, TransformA, &Cube, TransformB, &Cube))
   {
     return true;
   }

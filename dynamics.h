@@ -375,9 +375,8 @@ SimulateDynamics(game_state* GameState)
                                       Math::MulMat4(g_RigidBodies[1].Mat4Scale,
                                                     Math::Mat3ToMat4(g_RigidBodies[1].R)));
 
-      bool                 ReturnA;
       sat_contact_manifold Manifold;
-      if(SAT(&ReturnA, &Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
+      if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
       {
         constraint Constraint;
         Constraint.Type = CONSTRAINT_Contact;
@@ -388,9 +387,8 @@ SimulateDynamics(game_state* GameState)
           Constraint.Penetration = Manifold.Points[i].Penetration;
           Constraint.n           = Manifold.Normal;
 
-          if(ReturnA)
-
-          {
+          if(Manifold.NormalFromA)
+{
             Constraint.IndA = 0;
             Constraint.IndB = 1;
           }
