@@ -655,8 +655,9 @@ struct edge_query
 void
 TransformedFaceParameters(vec3* Centroid, vec3* Normal, const face* Face, mat4 Transform)
 {
+  mat4 NormalMatrix = Math::Transposed4(Math::InvMat4(Transform));
   *Centroid = TransformVector(Face->Centroid, Transform);
-  *Normal = Math::Normalized(TransformVector(Face->Centroid + Face->Normal, Transform) - *Centroid);
+  *Normal = Math::Normalized(TransformVector(Face->Centroid + Face->Normal, NormalMatrix) - TransformVector(Face->Centroid, NormalMatrix));
 }
 
 face_query
