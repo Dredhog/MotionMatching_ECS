@@ -871,6 +871,7 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
 
   do
   {
+    bool AllNegative = true;
     do
     {
       vec3 AdjacentFaceCentroid;
@@ -878,16 +879,6 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
 
       TransformedFaceParameters(&AdjacentFaceCentroid, &AdjacentFaceNormal, r->Twin->Face,
                                 Transform);
-#if DEBUG_QUERIES
-      half_edge* Clip = r->Twin;
-
-      do
-      {
-        Debug::PushLine(TransformVector(Clip->Tail->Position, TransformA),
-                        TransformVector(Clip->Next->Tail->Position, TransformA), { 0, 1, 0, 1 });
-        Clip = Clip->Next;
-      } while(Clip != r->Twin);
-#endif
 
       vec3 NewPoint;
       if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
@@ -902,20 +893,28 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
         }
       }
 
-      i = i->Next;
-    } while(i != IncidentFaceEdge);
-    r = r->Next;
-  } while(r != ReferenceFaceEdge);
+      if(AllNegative)
+      {
+        if(PointToPlaneDistance(i->Tail->Position, AdjacentFaceCentroid, AdjacentFaceNormal) >= 0.0f)
+        {
+          AllNegative = false;
+        }
+      }
 
-  do
-  {
-    float IncidentDistance = PointToPlaneDistance(i->Tail->Position, Centroid, Normal);
-    if(IncidentDistance < 0.0f)
+      r = r->Next;
+    } while(r != ReferenceFaceEdge);
+
+    if(AllNegative)
     {
-      ContactPoints[ContactPointCount].Position    = TransformVector(i->Tail->Position, TransformB);
-      ContactPoints[ContactPointCount].Penetration = IncidentDistance;
-      ++ContactPointCount;
+      if(PointToPlaneDistance(i->Tail->Position, Centroid, Normal) < 0.0f)
+      {
+        ContactPoints[ContactPointCount].Position = TransformVector(i->Tail->Position, TransformB);
+        ContactPoints[ContactPointCount].Penetration =
+          PointToPlaneDistance(i->Tail->Position, Centroid, Normal);
+        ++ContactPointCount;
+      }
     }
+
     i = i->Next;
   } while(i != IncidentFaceEdge);
 
