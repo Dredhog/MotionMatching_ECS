@@ -329,10 +329,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       Debug::PushWireframeSphere(RB.X + RB.v, 0.05f, { 1, 1, 0, 1 });
     }
   }
-  if(GameState->SimulateDynamics)
-  {
-    SimulateDynamics(GameState);
-  }
+  SimulateDynamics(GameState);
 
   /*
   if(Input->i.EndedDown && Input->i.Changed)

@@ -425,8 +425,12 @@ SimulateDynamics(game_state* GameState)
       }
     }
 
-    ODE(g_RigidBodies, BodyCount, g_Constraints.Elements, g_Constraints.Count, 0.0f,
-        (FRAME_TIME_MS / 1000.0f), DYDT_PGS, GameState->PGSIterationCount);
+    if(GameState->SimulateDynamics ||
+       (!GameState->SimulateDynamics && GameState->PerformDynamicsStep))
+    {
+      ODE(g_RigidBodies, BodyCount, g_Constraints.Elements, g_Constraints.Count, 0.0f,
+          (FRAME_TIME_MS / 1000.0f), DYDT_PGS, GameState->PGSIterationCount);
+    }
 
     for(int i = 0; i < BodyCount; i++)
     {

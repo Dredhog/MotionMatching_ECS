@@ -101,6 +101,7 @@ namespace UI
       if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
       {
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
+        GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
         UI::Checkbox("Gravity", &GameState->UseGravity);
         UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
         UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);

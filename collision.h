@@ -524,7 +524,7 @@ EPA(vec3* CollisionPoint, vec3* Simplex, Render::mesh* MeshA, Render::mesh* Mesh
 // ==================
 // SAT Implementation
 // ==================
-// TODO(rytis): Manifold point reduction (face case); Primitive test; Visualisations for debugging;
+// TODO(rytis): Manifold point reduction (face case)
 
 struct sat_contact_point
 {
@@ -535,7 +535,7 @@ struct sat_contact_point
 struct sat_contact_manifold
 {
   int32_t           PointCount;
-  sat_contact_point Points[15];
+  sat_contact_point Points[20];
   vec3              Normal;
   bool              NormalFromA;
 };
@@ -694,32 +694,6 @@ QueryFaceDirections(const mat4 TransformA, const hull* HullA, const mat4 Transfo
   return Result;
 }
 
-vec3
-TransformedHullSupport(const hull* Hull, vec3 Direction, const mat4 Transform)
-{
-  vec3 Transformed = TransformVector(Hull->Vertices[0].Position, Transform);
-
-  float   Max   = Math::Dot(Transformed, Direction);
-  int32_t Index = 0;
-
-  float DotProduct;
-
-  for(int i = 1; i < Hull->VertexCount; i++)
-  {
-    Transformed = TransformVector(Hull->Vertices[i].Position, Transform);
-    DotProduct  = Math::Dot(Transformed, Direction);
-    if(DotProduct > Max)
-    {
-      Max   = DotProduct;
-      Index = i;
-    }
-  }
-
-  return TransformVector(Hull->Vertices[Index].Position, Transform);
-}
-
-// TODO(rytis): EdgeQuery implementation using Gauss Maps (to eliminate Support function usage).
-
 bool
 IsMinkowskiFace(vec3 A, vec3 B, vec3 BA, vec3 C, vec3 D, vec3 DC)
 {
@@ -790,7 +764,6 @@ QueryEdgeDirections(mat4 TransformA, const hull* HullA, mat4 TransformB, const h
       vec3 FaceNormalB     = HalfEdgeB->Face->Normal;
       vec3 TwinFaceNormalB = HalfEdgeB->Twin->Face->Normal;
 
-#if 1
       if(IsMinkowskiFace(FaceNormalA, TwinFaceNormalA, -EdgeA, -FaceNormalB, -TwinFaceNormalB,
                          -EdgeB))
       {
@@ -803,26 +776,6 @@ QueryEdgeDirections(mat4 TransformA, const hull* HullA, mat4 TransformB, const h
           MaxSeparation = Separation;
         }
       }
-#else
-      vec3 Axis = Math::Normalized(Math::Cross(EdgeA, EdgeB));
-
-      // Needs consistent vector for dotproduct check (Valve uses EdgeATail - HullCenter)
-      if(Math::Dot(Axis, EdgeATail - CentroidA) < 0.0f)
-      {
-        Axis = -Axis;
-      }
-
-      vec3 VertexB = HullSupport(HullB, -Axis);
-
-      float Separation = PointToPlaneDistance(VertexB, EdgeATail, Axis);
-
-      if(Separation > MaxSeparation)
-      {
-        MaxIndexA     = i;
-        MaxIndexB     = j;
-        MaxSeparation = Separation;
-      }
-#endif
     }
   }
 
@@ -955,7 +908,6 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
   } while(i != IncidentFaceEdge);
 
   Manifold->Normal = TransformVector(Normal, TransformB) - TransformVector({}, TransformB);
-  printf("ContactPointCount = %d\n", ContactPointCount);
   ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
 }
 
@@ -1084,7 +1036,8 @@ bool
 SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 TransformB,
     const hull* HullB)
 {
-  const float FACE_EDGE_THRESHOLD = 0.1f;
+  const float EDGE_THRESHOLD = 0; // 0.0000001f;
+  const float FACE_THRESHOLD = 0; // 0.000001f;
 
   const face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)
@@ -1105,10 +1058,9 @@ SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 Tra
   }
 
   // Change if order to be more efficent
-  if(EdgeQuery.Separation <
-     MaxFloat(FaceQueryA.Separation, FaceQueryB.Separation) + FACE_EDGE_THRESHOLD)
+  if(EdgeQuery.Separation < MaxFloat(FaceQueryA.Separation, FaceQueryB.Separation) + EDGE_THRESHOLD)
   {
-    if(FaceQueryB.Separation + FACE_EDGE_THRESHOLD < FaceQueryA.Separation)
+    if(FaceQueryB.Separation + FACE_THRESHOLD < FaceQueryA.Separation)
     {
       // printf("FaceA Manifold\n");
       CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
@@ -1125,7 +1077,7 @@ SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 Tra
   {
     // printf("Edge Manifold\n");
     CreateEdgeContact(Manifold, EdgeQuery, TransformA, HullA, TransformB, HullB);
-    Manifold->NormalFromA = false;
+    Manifold->NormalFromA = true;
   }
 
   for(int i = 0; i < Manifold->PointCount; ++i)
