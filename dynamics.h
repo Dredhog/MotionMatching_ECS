@@ -368,20 +368,34 @@ SimulateDynamics(game_state* GameState)
       */
 
       Anim::transform ATransform = GameState->Entities[0].Transform;
-      mat4            TransformA = Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
-                                      Math::MulMat4(Math::Mat4Rotate(ATransform.Rotation),
-                                                    Math::Mat4Scale(ATransform.Scale)));
-      /*Math::MulMat4(Math::Mat4Translate(g_RigidBodies[0].X),
-            Math::MulMat4(g_RigidBodies[0].Mat4Scale,
-                          Math::Mat3ToMat4(g_RigidBodies[0].R)));*/
-
+      mat4            TransformA = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[0].X),
+                                      Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[0].R),
+                                                    g_RigidBodies[0].Mat4Scale));
       Anim::transform BTransform = GameState->Entities[1].Transform;
-      mat4            TransformB = Math::MulMat4(Math::Mat4Translate(BTransform.Translation),
-                                      Math::MulMat4(Math::Mat4Rotate(BTransform.Rotation),
-                                                    Math::Mat4Scale(BTransform.Scale)));
-      /*Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
-     Math::MulMat4(g_RigidBodies[1].Mat4Scale,
-                   Math::Mat3ToMat4(g_RigidBodies[1].R)));*/
+      mat4            TransformB = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
+                                      Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[1].R),
+                                                    g_RigidBodies[1].Mat4Scale));
+      /*Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
+                                    Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[1].R),
+                                                  g_RigidBodies[1].Mat4Scale)));
+      Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
+                                    Math::MulMat4(g_RigidBodies[1].Mat4Scale,
+                                                  Math::Mat3ToMat4(g_RigidBodies[1].R))));*/
+      mat4 RotationMat = Math::Mat4Rotate(ATransform.Rotation);
+      printf("\n1. Euler\n");
+      Math::PrintMat4(RotationMat);
+      printf("\n2. Quat\n");
+      Math::PrintMat4(Math::Mat3ToMat4(Math::Mat4ToMat3(RotationMat)));
+
+      printf("\n1. T * R * S\n");
+      Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
+                                    Math::MulMat4(Math::Mat4Rotate(ATransform.Rotation),
+                                                  Math::Mat4Scale(ATransform.Scale))));
+
+      printf("\n2. T * S * R\n");
+      Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
+                                    Math::MulMat4(Math::Mat4Scale(ATransform.Scale),
+                                                  Math::Mat4Rotate(ATransform.Rotation))));
 
       sat_contact_manifold Manifold;
       if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
