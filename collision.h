@@ -535,7 +535,7 @@ struct sat_contact_point
 struct sat_contact_manifold
 {
   int32_t           PointCount;
-  sat_contact_point Points[20];
+  sat_contact_point Points[50];
   vec3              Normal;
   bool              NormalFromA;
 };
@@ -876,6 +876,16 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
 
       TransformedFaceParameters(&AdjacentFaceCentroid, &AdjacentFaceNormal, r->Twin->Face,
                                 Transform);
+#if DEBUG_QUERIES
+      half_edge* Clip = r->Twin;
+
+      do
+      {
+        Debug::PushLine(TransformVector(Clip->Tail->Position, TransformA),
+                        TransformVector(Clip->Next->Tail->Position, TransformA), { 0, 1, 0, 1 });
+        Clip = Clip->Next;
+      } while(Clip != r->Twin);
+#endif
 
       vec3 NewPoint;
       if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
