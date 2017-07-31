@@ -871,7 +871,7 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
 
   do
   {
-    bool AllNegative = true;
+    bool TailInside = true;
     do
     {
       vec3 AdjacentFaceCentroid;
@@ -884,27 +884,50 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
       if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
                            AdjacentFaceCentroid, AdjacentFaceNormal))
       {
-        if(PointToPlaneDistance(NewPoint, Centroid, Normal) < 0.0f)
+        bool IntersectionInside = true;
+
+        half_edge* s = r;
+
+        do
         {
-          ContactPoints[ContactPointCount].Position = TransformVector(NewPoint, TransformB);
-          ContactPoints[ContactPointCount].Penetration =
-            PointToPlaneDistance(NewPoint, Centroid, Normal);
-          ++ContactPointCount;
+          TransformedFaceParameters(&AdjacentFaceCentroid, &AdjacentFaceNormal, s->Twin->Face,
+                                    Transform);
+
+          if(PointToPlaneDistance(NewPoint, AdjacentFaceCentroid, AdjacentFaceNormal) >= 0.00001f)
+          {
+            IntersectionInside = false;
+            break;
+          }
+          s = s->Next;
+        } while(s != r);
+
+        TransformedFaceParameters(&AdjacentFaceCentroid, &AdjacentFaceNormal, s->Twin->Face,
+                                  Transform);
+
+        if(IntersectionInside)
+        {
+          if(PointToPlaneDistance(NewPoint, Centroid, Normal) < 0.0f)
+          {
+            ContactPoints[ContactPointCount].Position = TransformVector(NewPoint, TransformB);
+            ContactPoints[ContactPointCount].Penetration =
+              PointToPlaneDistance(NewPoint, Centroid, Normal);
+            ++ContactPointCount;
+          }
         }
       }
 
-      if(AllNegative)
+      if(TailInside)
       {
         if(PointToPlaneDistance(i->Tail->Position, AdjacentFaceCentroid, AdjacentFaceNormal) >= 0.0f)
         {
-          AllNegative = false;
+          TailInside = false;
         }
       }
 
       r = r->Next;
     } while(r != ReferenceFaceEdge);
 
-    if(AllNegative)
+    if(TailInside)
     {
       if(PointToPlaneDistance(i->Tail->Position, Centroid, Normal) < 0.0f)
       {
