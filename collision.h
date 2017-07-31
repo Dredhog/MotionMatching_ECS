@@ -918,7 +918,8 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
 
       if(TailInside)
       {
-        if(PointToPlaneDistance(i->Tail->Position, AdjacentFaceCentroid, AdjacentFaceNormal) >= 0.0f)
+        if(PointToPlaneDistance(i->Tail->Position, AdjacentFaceCentroid, AdjacentFaceNormal) >=
+           0.0f)
         {
           TailInside = false;
         }
@@ -1072,8 +1073,8 @@ bool
 SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 TransformB,
     const hull* HullB)
 {
-  const float EDGE_THRESHOLD = 0; // 0.0000001f;
-  const float FACE_THRESHOLD = 0; // 0.000001f;
+  const float EDGE_THRESHOLD = 0.1f;      // 0.0000001f;
+  const float FACE_THRESHOLD = 0.000001f; // 0.000001f;
 
   const face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)

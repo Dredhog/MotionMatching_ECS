@@ -3,7 +3,7 @@
 #include "basic_data_structures.h"
 
 const int RIGID_BODY_MAX_COUNT = 10;
-const int CONSTRAINT_MAX_COUNT = 30;
+const int CONSTRAINT_MAX_COUNT = 40;
 
 vec3  g_Force;
 vec3  g_ForceStart;
@@ -367,74 +367,82 @@ SimulateDynamics(game_state* GameState)
       g_Constraints.Push(TestConstraint);
       */
 
-      Anim::transform ATransform = GameState->Entities[0].Transform;
-      mat4            TransformA = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[0].X),
-                                      Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[0].R),
-                                                    g_RigidBodies[0].Mat4Scale));
-      Anim::transform BTransform = GameState->Entities[1].Transform;
-      mat4            TransformB = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
-                                      Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[1].R),
-                                                    g_RigidBodies[1].Mat4Scale));
-      /*Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
-                                    Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[1].R),
-                                                  g_RigidBodies[1].Mat4Scale)));
-      Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
-                                    Math::MulMat4(g_RigidBodies[1].Mat4Scale,
-                                                  Math::Mat3ToMat4(g_RigidBodies[1].R))));*/
-      mat4 RotationMat = Math::Mat4Rotate(ATransform.Rotation);
-      printf("\n1. Euler\n");
-      Math::PrintMat4(RotationMat);
-      printf("\n2. Quat\n");
-      Math::PrintMat4(Math::Mat3ToMat4(Math::Mat4ToMat3(RotationMat)));
-
-      printf("\n1. T * R * S\n");
-      Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
-                                    Math::MulMat4(Math::Mat4Rotate(ATransform.Rotation),
-                                                  Math::Mat4Scale(ATransform.Scale))));
-
-      printf("\n2. T * S * R\n");
-      Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
-                                    Math::MulMat4(Math::Mat4Scale(ATransform.Scale),
-                                                  Math::Mat4Rotate(ATransform.Rotation))));
-
-      sat_contact_manifold Manifold;
-      if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
+      for(int i = 0; i < GameState->EntityCount; i++)
       {
-        constraint Contact;
-        Contact.Type = CONSTRAINT_Contact;
-        for(int i = 0; i < Manifold.PointCount; ++i)
+        for(int j = 0; j < i; j++)
         {
-          assert(Manifold.Points[i].Penetration < 0);
-          vec3 P              = Manifold.Points[i].Position;
-          Contact.Penetration = Manifold.Points[i].Penetration;
-          Contact.n           = Manifold.Normal;
 
-          if(Manifold.NormalFromA)
+          Anim::transform ATransform = GameState->Entities[i].Transform;
+          mat4            TransformA = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[i].X),
+                                          Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[i].R),
+                                                        g_RigidBodies[i].Mat4Scale));
+          Anim::transform BTransform = GameState->Entities[j].Transform;
+          mat4            TransformB = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[j].X),
+                                          Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[j].R),
+                                                        g_RigidBodies[j].Mat4Scale));
+          /*Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
+                                        Math::MulMat4(Math::Mat3ToMat4(g_RigidBodies[1].R),
+                                                      g_RigidBodies[1].Mat4Scale)));
+          Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
+                                        Math::MulMat4(g_RigidBodies[1].Mat4Scale,
+                                                      Math::Mat3ToMat4(g_RigidBodies[1].R))));*/
+          /*
+          mat4 RotationMat = Math::Mat4Rotate(ATransform.Rotation);
+          printf("\n1. Euler\n");
+          Math::PrintMat4(RotationMat);
+          printf("\n2. Quat\n");
+          Math::PrintMat4(Math::Mat3ToMat4(Math::Mat4ToMat3(RotationMat)));
+
+          printf("\n1. T * R * S\n");
+          Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
+                                        Math::MulMat4(Math::Mat4Rotate(ATransform.Rotation),
+                                                      Math::Mat4Scale(ATransform.Scale))));
+
+          printf("\n2. T * S * R\n");
+          Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
+                                        Math::MulMat4(Math::Mat4Scale(ATransform.Scale),
+                                                      Math::Mat4Rotate(ATransform.Rotation))));
+                                                      */
+          sat_contact_manifold Manifold;
+          if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
           {
-            Contact.IndA = 0;
-            Contact.IndB = 1;
+            constraint Contact;
+            Contact.Type = CONSTRAINT_Contact;
+            for(int c = 0; c < Manifold.PointCount; ++c)
+            {
+              assert(Manifold.Points[c].Penetration < 0);
+              vec3 P              = Manifold.Points[c].Position;
+              Contact.Penetration = Manifold.Points[c].Penetration;
+              Contact.n           = Manifold.Normal;
+
+              if(Manifold.NormalFromA)
+              {
+                Contact.IndA = i;
+                Contact.IndB = j;
+              }
+              else
+              {
+
+                Contact.IndA = j;
+                Contact.IndB = i;
+              }
+
+              Contact.BodyRa = P - g_RigidBodies[Contact.IndA].X;
+              Contact.BodyRb =
+                (P - Manifold.Points[c].Penetration * Contact.n) - g_RigidBodies[Contact.IndB].X;
+
+              Debug::PushLine({}, Contact.n, { 1, 0, 1, 1 });
+              Debug::PushWireframeSphere(Contact.n, 0.05f, { 1, 0, 1, 1 });
+
+              /*Debug::PushWireframeSphere(g_RigidBodies[Contact.IndA].X + Contact.BodyRa, 0.05f,
+                                         { 1, 0, 0, 1 });
+              Debug::PushWireframeSphere(g_RigidBodies[Contact.IndB].X + Contact.BodyRb, 0.05f,
+                                         { 0, 0, 1, 1 });
+                                         */
+
+              g_Constraints.Push(Contact);
+            }
           }
-          else
-          {
-
-            Contact.IndA = 1;
-            Contact.IndB = 0;
-          }
-
-          Contact.BodyRa = P - g_RigidBodies[Contact.IndA].X;
-          Contact.BodyRb =
-            (P - Manifold.Points[i].Penetration * Contact.n) - g_RigidBodies[Contact.IndB].X;
-
-          Debug::PushLine({}, Contact.n, { 1, 0, 1, 1 });
-          Debug::PushWireframeSphere(Contact.n, 0.05f, { 1, 0, 1, 1 });
-
-          /*Debug::PushWireframeSphere(g_RigidBodies[Contact.IndA].X + Contact.BodyRa, 0.05f,
-                                     { 1, 0, 0, 1 });
-          Debug::PushWireframeSphere(g_RigidBodies[Contact.IndB].X + Contact.BodyRb, 0.05f,
-                                     { 0, 0, 1, 1 });
-                                     */
-
-          g_Constraints.Push(Contact);
         }
       }
     }
