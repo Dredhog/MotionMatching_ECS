@@ -884,35 +884,12 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
       if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
                            AdjacentFaceCentroid, AdjacentFaceNormal))
       {
-        bool IntersectionInside = true;
-
-        half_edge* s = r;
-
-        do
+        if(PointToPlaneDistance(NewPoint, Centroid, Normal) < 0.0f)
         {
-          TransformedFaceParameters(&AdjacentFaceCentroid, &AdjacentFaceNormal, s->Twin->Face,
-                                    Transform);
-
-          if(PointToPlaneDistance(NewPoint, AdjacentFaceCentroid, AdjacentFaceNormal) >= 0.00001f)
-          {
-            IntersectionInside = false;
-            break;
-          }
-          s = s->Next;
-        } while(s != r);
-
-        TransformedFaceParameters(&AdjacentFaceCentroid, &AdjacentFaceNormal, s->Twin->Face,
-                                  Transform);
-
-        if(IntersectionInside)
-        {
-          if(PointToPlaneDistance(NewPoint, Centroid, Normal) < 0.0f)
-          {
-            ContactPoints[ContactPointCount].Position = TransformVector(NewPoint, TransformB);
-            ContactPoints[ContactPointCount].Penetration =
-              PointToPlaneDistance(NewPoint, Centroid, Normal);
-            ++ContactPointCount;
-          }
+          ContactPoints[ContactPointCount].Position = TransformVector(NewPoint, TransformB);
+          ContactPoints[ContactPointCount].Penetration =
+            PointToPlaneDistance(NewPoint, Centroid, Normal);
+          ++ContactPointCount;
         }
       }
 
