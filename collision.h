@@ -655,9 +655,10 @@ struct edge_query
 void
 TransformedFaceParameters(vec3* Centroid, vec3* Normal, const face* Face, mat4 Transform)
 {
-  mat4 NormalMatrix = Math::Transposed4(Math::InvMat4(Transform));
   *Centroid = TransformVector(Face->Centroid, Transform);
-  *Normal = Math::Normalized(TransformVector(Face->Centroid + Face->Normal, NormalMatrix) - TransformVector(Face->Centroid, NormalMatrix));
+
+  mat4 NormalMatrix = Math::Transposed4(Math::InvMat4(Transform));
+  *Normal = Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Face->Normal, 0)));
 }
 
 face_query
@@ -918,7 +919,9 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
     i = i->Next;
   } while(i != IncidentFaceEdge);
 
-  Manifold->Normal = TransformVector(Normal, TransformB) - TransformVector({}, TransformB);
+  mat4 NormalMatrix = Math::Transposed4(Math::InvMat4(TransformB));
+  Manifold->Normal  = Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Normal, 0)));
+
   ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
 }
 
