@@ -367,51 +367,60 @@ SimulateDynamics(game_state* GameState)
       g_Constraints.Push(TestConstraint);
       */
 
-      mat4 TransformA = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[0].X),
-                                      Math::MulMat4(g_RigidBodies[0].Mat4Scale,
-                                                    Math::Mat3ToMat4(g_RigidBodies[0].R)));
+      Anim::transform ATransform = GameState->Entities[0].Transform;
+      mat4            TransformA = Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
+                                      Math::MulMat4(Math::Mat4Rotate(ATransform.Rotation),
+                                                    Math::Mat4Scale(ATransform.Scale)));
+      /*Math::MulMat4(Math::Mat4Translate(g_RigidBodies[0].X),
+            Math::MulMat4(g_RigidBodies[0].Mat4Scale,
+                          Math::Mat3ToMat4(g_RigidBodies[0].R)));*/
 
-      mat4 TransformB = Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
-                                      Math::MulMat4(g_RigidBodies[1].Mat4Scale,
-                                                    Math::Mat3ToMat4(g_RigidBodies[1].R)));
+      Anim::transform BTransform = GameState->Entities[1].Transform;
+      mat4            TransformB = Math::MulMat4(Math::Mat4Translate(BTransform.Translation),
+                                      Math::MulMat4(Math::Mat4Rotate(BTransform.Rotation),
+                                                    Math::Mat4Scale(BTransform.Scale)));
+      /*Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
+     Math::MulMat4(g_RigidBodies[1].Mat4Scale,
+                   Math::Mat3ToMat4(g_RigidBodies[1].R)));*/
 
       sat_contact_manifold Manifold;
       if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
       {
-        constraint Constraint;
-        Constraint.Type = CONSTRAINT_Contact;
+        constraint Contact;
+        Contact.Type = CONSTRAINT_Contact;
         for(int i = 0; i < Manifold.PointCount; ++i)
         {
           assert(Manifold.Points[i].Penetration < 0);
-          vec3 P                 = Manifold.Points[i].Position;
-          Constraint.Penetration = Manifold.Points[i].Penetration;
-          Constraint.n           = Manifold.Normal;
+          vec3 P              = Manifold.Points[i].Position;
+          Contact.Penetration = Manifold.Points[i].Penetration;
+          Contact.n           = Manifold.Normal;
 
           if(Manifold.NormalFromA)
-{
-            Constraint.IndA = 0;
-            Constraint.IndB = 1;
+          {
+            Contact.IndA = 0;
+            Contact.IndB = 1;
           }
           else
           {
 
-            Constraint.IndA = 1;
-            Constraint.IndB = 0;
+            Contact.IndA = 1;
+            Contact.IndB = 0;
           }
 
-          Constraint.BodyRa = P - g_RigidBodies[Constraint.IndA].X;
-          Constraint.BodyRb =
-            (P - Manifold.Points[i].Penetration * Constraint.n) - g_RigidBodies[Constraint.IndB].X;
+          Contact.BodyRa = P - g_RigidBodies[Contact.IndA].X;
+          Contact.BodyRb =
+            (P - Manifold.Points[i].Penetration * Contact.n) - g_RigidBodies[Contact.IndB].X;
 
-          Debug::PushLine({}, Constraint.n, { 1, 0, 1, 1 });
-          Debug::PushWireframeSphere(Constraint.n, 0.05f, { 1, 0, 1, 1 });
+          Debug::PushLine({}, Contact.n, { 1, 0, 1, 1 });
+          Debug::PushWireframeSphere(Contact.n, 0.05f, { 1, 0, 1, 1 });
 
-          Debug::PushWireframeSphere(g_RigidBodies[Constraint.IndA].X + Constraint.BodyRa, 0.05f,
+          /*Debug::PushWireframeSphere(g_RigidBodies[Contact.IndA].X + Contact.BodyRa, 0.05f,
                                      { 1, 0, 0, 1 });
-          Debug::PushWireframeSphere(g_RigidBodies[Constraint.IndB].X + Constraint.BodyRb, 0.05f,
+          Debug::PushWireframeSphere(g_RigidBodies[Contact.IndB].X + Contact.BodyRb, 0.05f,
                                      { 0, 0, 1, 1 });
+                                     */
 
-          g_Constraints.Push(Constraint);
+          g_Constraints.Push(Contact);
         }
       }
     }

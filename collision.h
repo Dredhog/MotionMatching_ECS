@@ -535,7 +535,7 @@ struct sat_contact_point
 struct sat_contact_manifold
 {
   int32_t           PointCount;
-  sat_contact_point Points[10];
+  sat_contact_point Points[15];
   vec3              Normal;
   bool              NormalFromA;
 };
@@ -1084,7 +1084,7 @@ bool
 SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 TransformB,
     const hull* HullB)
 {
-  const float FACE_EDGE_THRESHOLD = 0.00001f;
+  const float FACE_EDGE_THRESHOLD = 0.1f;
 
   const face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)
@@ -1108,7 +1108,7 @@ SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 Tra
   if(EdgeQuery.Separation <
      MaxFloat(FaceQueryA.Separation, FaceQueryB.Separation) + FACE_EDGE_THRESHOLD)
   {
-    if(FaceQueryB.Separation < FaceQueryA.Separation + FACE_EDGE_THRESHOLD)
+    if(FaceQueryB.Separation + FACE_EDGE_THRESHOLD < FaceQueryA.Separation)
     {
       // printf("FaceA Manifold\n");
       CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
