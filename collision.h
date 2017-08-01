@@ -7,6 +7,8 @@
 #include "debug_drawing.h"
 #include "mesh.h"
 
+#define MAX_CONTACT_POINTS 50
+
 vec3
 TransformVector(vec3 Vector, mat4 Matrix)
 {
@@ -306,6 +308,12 @@ PointToPlaneDistance(vec3 Point, vec3 PlanePoint, vec3 PlaneNormal)
   return Math::Dot(Point - PlanePoint, PlaneNormal);
 }
 
+vec3
+ClosestPointInPlane(vec3 Point, vec3 PlanePoint, vec3 PlaneNormal)
+{
+  return Point - PointToPlaneDistance(Point, PlanePoint, PlaneNormal) * PlaneNormal;
+}
+
 int32_t
 FindEdge(edge* Edges, int32_t EdgeCount, vec3 A, vec3 B)
 {
@@ -535,7 +543,7 @@ struct sat_contact_point
 struct sat_contact_manifold
 {
   int32_t           PointCount;
-  sat_contact_point Points[50];
+  sat_contact_point Points[MAX_CONTACT_POINTS];
   vec3              Normal;
   bool              NormalFromA;
 };
@@ -788,41 +796,215 @@ QueryEdgeDirections(mat4 TransformA, const hull* HullA, mat4 TransformB, const h
 }
 
 bool
-IntersectEdgeFace(vec3* IntersectionPoint, vec3 PointA, vec3 PointB, vec3 FacePoint,
-                  vec3 FaceNormal)
+IntersectEdgePlane(vec3* IntersectionPoint, vec3 EdgeTail, vec3 EdgeHead, vec3 PlanePoint,
+                  vec3 PlaneNormal)
 {
-  vec3  Edge = PointB - PointA;
-  float d    = Math::Dot(FaceNormal, FacePoint);
-  float t    = (d - Math::Dot(FaceNormal, PointA)) / Math::Dot(FaceNormal, Edge);
+  vec3  Edge = EdgeHead - EdgeTail;
+  float d    = Math::Dot(PlaneNormal, PlanePoint);
+  float t    = (d - Math::Dot(PlaneNormal, EdgeTail)) / Math::Dot(PlaneNormal, Edge);
 
   if(t >= 0.0f && t <= 1.0f)
   {
-    *IntersectionPoint = PointA + t * Edge;
+    *IntersectionPoint = EdgeTail + t * Edge;
     return true;
   }
 
   return false;
 }
 
-void
-ReduceContactPoints(sat_contact_manifold* Manifold, sat_contact_point* ContactPoints,
-                    int32_t ContactPointCount)
+int32_t
+ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, vec3 PlaneNormal)
 {
-  assert(ContactPointCount <= 50);
-  Manifold->PointCount = ContactPointCount;
-  for(int i = 0; i < ContactPointCount; ++i)
+  vec3 NewPolygon[MAX_CONTACT_POINTS];
+  int32_t VertexCount = 0;
+
+  vec3 Tail = Polygon[PolygonPointCount - 1];
+  vec3 Head;
+
+  float TailDistance = PointToPlaneDistance(Tail, PlanePoint, PlaneNormal);
+  float HeadDistance;
+
+  for(int i = 0; i < PolygonPointCount; ++i)
   {
-    Manifold->Points[i] = ContactPoints[i];
+    Head = Polygon[i];
+
+    HeadDistance = PointToPlaneDistance(Head, PlanePoint, PlaneNormal);
+
+    if(TailDistance <= 0.0f && HeadDistance <= 0.0f)
+    {
+      NewPolygon[VertexCount++] = Head;
+    }
+    else if(TailDistance <= 0.0f && HeadDistance > 0.0f)
+    {
+      vec3 IntersectionPoint;
+      if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
+      {
+        printf("Intersection could not be found!\n");
+        assert(0);
+      }
+      NewPolygon[VertexCount++] = IntersectionPoint;
+    }
+    else if(TailDistance > 0.0f && HeadDistance <= 0.0f)
+    {
+      vec3 IntersectionPoint;
+      if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
+      {
+        printf("Intersection could not be found!\n");
+        assert(0);
+      }
+      NewPolygon[VertexCount++] = IntersectionPoint;
+      NewPolygon[VertexCount++] = Head;
+    }
+
+    Tail = Head;
+    TailDistance = HeadDistance;
   }
+
+  for(int i = 0; i < VertexCount; ++i)
+  {
+    Polygon[i] = NewPolygon[i];
+  }
+
+  return VertexCount;
+}
+
+int32_t
+ClipPolygonToFace(vec3* Polygon, int32_t PolygonVertexCount, const face* Face, const mat4 Transform)
+{
+  half_edge* FaceEdge = Face->Edge;
+  half_edge* r = FaceEdge;
+
+  int32_t VertexCount = PolygonVertexCount;
+  do
+  {
+    vec3 TwinCentroid;
+    vec3 TwinNormal;
+    TransformedFaceParameters(&TwinCentroid, &TwinNormal, r->Twin->Face, Transform);
+
+    VertexCount = ClipPolygonToPlane(Polygon, VertexCount, TwinCentroid, TwinNormal);
+
+    r = r->Next;
+  } while(r != FaceEdge);
+
+  return VertexCount;
+}
+
+int32_t
+ReducePolygon(vec3* Polygon, int32_t PolygonPointCount, vec3 ReferenceFaceCentroid, vec3 ReferenceFaceNormal)
+{
+  if(PolygonPointCount > 4)
+  {
+    vec3 ProjectedPolygon[MAX_CONTACT_POINTS];
+
+    int32_t MinSeparationIndex = -1;
+    float MinSeparation = FLT_MAX;
+
+    for(int i = 0; i < PolygonPointCount; ++i)
+    {
+      float Separation = PointToPlaneDistance(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal);
+
+      if(Separation < MinSeparation)
+      {
+        MinSeparationIndex = i;
+        MinSeparation = Separation;
+      }
+
+      ProjectedPolygon[i] = ClosestPointInPlane(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal);
+    }
+
+    vec3 A = ProjectedPolygon[MinSeparationIndex];
+
+    int32_t MaxLengthIndex = -1;
+    float MaxLength = -FLT_MAX;
+
+    for(int i = 0; i < PolygonPointCount; ++i)
+    {
+      vec3 B = ProjectedPolygon[i];
+      vec3 Vector = B - A;
+      float Length = Math::Length(Vector);
+      if(Length > MaxLength)
+      {
+        MaxLengthIndex = i;
+        MaxLength = Length;
+      }
+    }
+
+    vec3 B = ProjectedPolygon[MaxLengthIndex];
+
+    int32_t MaxAreaIndex = -1;
+    float MaxArea = -FLT_MAX;
+
+    for(int i = 0; i < PolygonPointCount; ++i)
+    {
+      vec3 C = ProjectedPolygon[i];
+      float Area = 0.5f * Math::Dot(Math::Cross(A - C, B - C), ReferenceFaceNormal);
+      if(Area > MaxArea)
+      {
+        MaxAreaIndex = i;
+        MaxArea = Area;
+      }
+    }
+
+    vec3 C = ProjectedPolygon[MaxAreaIndex];
+
+    int32_t MinAreaIndex = -1;
+    float MinArea = FLT_MAX;
+
+    for(int i = 0; i < PolygonPointCount; ++i)
+    {
+      vec3 Q = ProjectedPolygon[i];
+      float AreaQAB = 0.5f * Math::Dot(Math::Cross(A - Q, B - Q), ReferenceFaceNormal);
+      if(AreaQAB < 0.0f)
+      {
+        if(AreaQAB < MinArea)
+        {
+          MinAreaIndex = i;
+          MinArea = AreaQAB;
+        }
+      }
+
+      float AreaQBC = 0.5f * Math::Dot(Math::Cross(B - Q, C - Q), ReferenceFaceNormal);
+      if(AreaQBC < 0.0f)
+      {
+        if(AreaQBC < MinArea)
+        {
+          MinAreaIndex = i;
+          MinArea = AreaQBC;
+        }
+      }
+
+      float AreaQCA = 0.5f * Math::Dot(Math::Cross(C - Q, A - Q), ReferenceFaceNormal);
+      if(AreaQCA < 0.0f)
+      {
+        if(AreaQCA < MinArea)
+        {
+          MinAreaIndex = i;
+          MinArea = AreaQCA;
+        }
+      }
+    }
+
+    vec3 NewPolygon[MAX_CONTACT_POINTS];
+    int32_t VertexCount = 4;
+
+    NewPolygon[0] = Polygon[MinSeparationIndex];
+    NewPolygon[1] = Polygon[MaxLengthIndex];
+    NewPolygon[2] = Polygon[MaxAreaIndex];
+    NewPolygon[3] = Polygon[MinAreaIndex];
+
+    for(int i = 0; i < VertexCount; ++i)
+    {
+      Polygon[i] = NewPolygon[i];
+    }
+    return VertexCount;
+  }
+  return PolygonPointCount;
 }
 
 void
-CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 TransformA,
-                  const hull* HullA, face_query QueryB, mat4 TransformB, const hull* HullB)
+CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 TransformA,
+                  const hull* HullA, const mat4 TransformB, const hull* HullB)
 {
-  int32_t           ContactPointCount = 0;
-  sat_contact_point ContactPoints[50];
-
   // Local space of HullB
   mat4 Transform = Math::MulMat4(Math::InvMat4(TransformB), TransformA);
 
@@ -866,63 +1048,33 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, mat4 Transf
   } while(b != IncidentFaceEdge);
 #endif
 
-  half_edge* r = ReferenceFaceEdge;
+  vec3 Polygon[MAX_CONTACT_POINTS];
+  int32_t PolygonPointCount = 0;
+
   half_edge* i = IncidentFaceEdge;
 
   do
   {
-    bool TailInside = true;
-    do
-    {
-      vec3 AdjacentFaceCentroid;
-      vec3 AdjacentFaceNormal;
-
-      TransformedFaceParameters(&AdjacentFaceCentroid, &AdjacentFaceNormal, r->Twin->Face,
-                                Transform);
-
-      vec3 NewPoint;
-      if(IntersectEdgeFace(&NewPoint, i->Tail->Position, i->Next->Tail->Position,
-                           AdjacentFaceCentroid, AdjacentFaceNormal))
-      {
-        if(PointToPlaneDistance(NewPoint, Centroid, Normal) < 0.0f)
-        {
-          ContactPoints[ContactPointCount].Position = TransformVector(NewPoint, TransformB);
-          ContactPoints[ContactPointCount].Penetration =
-            PointToPlaneDistance(NewPoint, Centroid, Normal);
-          ++ContactPointCount;
-        }
-      }
-
-      if(TailInside)
-      {
-        if(PointToPlaneDistance(i->Tail->Position, AdjacentFaceCentroid, AdjacentFaceNormal) >=
-           0.0f)
-        {
-          TailInside = false;
-        }
-      }
-
-      r = r->Next;
-    } while(r != ReferenceFaceEdge);
-
-    if(TailInside)
-    {
-      if(PointToPlaneDistance(i->Tail->Position, Centroid, Normal) < 0.0f)
-      {
-        ContactPoints[ContactPointCount].Position = TransformVector(i->Tail->Position, TransformB);
-        ContactPoints[ContactPointCount].Penetration =
-          PointToPlaneDistance(i->Tail->Position, Centroid, Normal);
-        ++ContactPointCount;
-      }
-    }
-
+    Polygon[PolygonPointCount++] = i->Tail->Position;
     i = i->Next;
   } while(i != IncidentFaceEdge);
 
+  PolygonPointCount = ClipPolygonToFace(Polygon, PolygonPointCount, &HullA->Faces[QueryA.Index], Transform);
+  PolygonPointCount = ReducePolygon(Polygon, PolygonPointCount, Centroid, Normal);
+
   mat4 NormalMatrix = Math::Transposed4(Math::InvMat4(TransformB));
   Manifold->Normal  = Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Normal, 0)));
+  Manifold->PointCount = 0;
 
-  ReduceContactPoints(Manifold, ContactPoints, ContactPointCount);
+  for(int i = 0; i < PolygonPointCount; ++i)
+  {
+    if(PointToPlaneDistance(Polygon[i], Centroid, Normal) < 0.0f)
+    {
+      Manifold->Points[Manifold->PointCount].Position = TransformVector(Polygon[i], TransformB);
+      Manifold->Points[Manifold->PointCount].Penetration = PointToPlaneDistance(Polygon[i], Centroid, Normal);
+      ++Manifold->PointCount;
+    }
+  }
 }
 
 float
@@ -1047,7 +1199,7 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, mat4 Tra
 }
 
 bool
-SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 TransformB,
+SAT(sat_contact_manifold* Manifold, const mat4 TransformA, const hull* HullA, const mat4 TransformB,
     const hull* HullB)
 {
   const float EDGE_THRESHOLD = 0.1f;      // 0.0000001f;
@@ -1077,13 +1229,13 @@ SAT(sat_contact_manifold* Manifold, mat4 TransformA, const hull* HullA, mat4 Tra
     if(FaceQueryB.Separation + FACE_THRESHOLD < FaceQueryA.Separation)
     {
       // printf("FaceA Manifold\n");
-      CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, FaceQueryB, TransformB, HullB);
+      CreateFaceContact(Manifold, FaceQueryA, TransformA, HullA, TransformB, HullB);
       Manifold->NormalFromA = true;
     }
     else
     {
       // printf("FaceB Manifold\n");
-      CreateFaceContact(Manifold, FaceQueryB, TransformB, HullB, FaceQueryA, TransformA, HullA);
+      CreateFaceContact(Manifold, FaceQueryB, TransformB, HullB, TransformA, HullA);
       Manifold->NormalFromA = false;
     }
   }
