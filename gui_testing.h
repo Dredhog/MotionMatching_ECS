@@ -103,9 +103,10 @@ namespace UI
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
         GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
         UI::Checkbox("Gravity", &GameState->UseGravity);
-        UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
-        UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
+        // UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
+        // UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
         UI::SliderFloat("Bias", &GameState->Bias, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+        UI::SliderFloat("Mu", &GameState->Mu, 0.0f, 1.0f);
         UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 100);
 
         UI::Checkbox("Draw Omega (green)", &GameState->VisualizeOmega);

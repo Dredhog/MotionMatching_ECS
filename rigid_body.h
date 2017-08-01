@@ -9,6 +9,7 @@ enum constraint_type
   CONSTRAINT_Distance,
   CONSTRAINT_Point,
   CONSTRAINT_Contact,
+  CONSTRAINT_Friction,
   CONSTRAINT_Count,
 };
 
@@ -24,6 +25,9 @@ struct constraint
   float Penetration;
   vec3  n;
   vec3  P;
+  vec3  Tangent;
+  // For friction
+  int32_t ContactIndex;
 };
 
 struct rigid_body

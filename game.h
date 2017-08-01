@@ -117,6 +117,7 @@ struct game_state
   float   Restitution;
   float   Bias;
   float   Slop;
+  float   Mu;
 
   bool ApplyingForce;
   bool ApplyingTorque;

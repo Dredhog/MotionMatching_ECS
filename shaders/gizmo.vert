@@ -2,7 +2,9 @@
 
 in vec3 vert_position;
 
-uniform mat4  mat_mvp;
+uniform mat4 mat_mvp;
+uniform vec3 scale;
+
 uniform float depth;
 
 out vec3 frag_position;
@@ -14,6 +16,7 @@ main()
 {
   frag_position = vert_position;
 
-  vec3 scaled  = vert_position * (-depth) * gizmo_scale;
-  gl_Position  = mat_mvp * vec4(scaled, 1.0f);
+  vec3 scaled =
+    vert_position * (-depth) * gizmo_scale * vec3(1 / scale.x, 1 / scale.y, 1 / scale.z);
+  gl_Position = mat_mvp * vec4(scaled, 1.0f);
 }
