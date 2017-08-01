@@ -155,6 +155,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Restitution       = 0.5f;
     GameState->Bias              = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
     GameState->Slop              = 0.1f;
+    GameState->Mu                = 1.0f;
     GameState->PGSIterationCount = 10;
     GameState->UseGravity        = true;
     GameState->VisualizeOmega    = true;
@@ -309,6 +310,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   g_ApplyingTorque = GameState->ApplyingTorque;
   g_UseGravity     = GameState->UseGravity;
   g_Bias           = GameState->Bias;
+  g_Mu             = GameState->Mu;
   g_VisualizeFc    = GameState->VisualizeFc;
 
   for(int i = 0; i < GameState->EntityCount; i++)

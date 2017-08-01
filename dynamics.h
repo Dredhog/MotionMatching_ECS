@@ -3,7 +3,7 @@
 #include "basic_data_structures.h"
 
 const int RIGID_BODY_MAX_COUNT = 10;
-const int CONSTRAINT_MAX_COUNT = 40;
+const int CONSTRAINT_MAX_COUNT = 50;
 
 vec3  g_Force;
 vec3  g_ForceStart;
@@ -12,6 +12,7 @@ bool  g_UseGravity;
 bool  g_ApplyingTorque;
 bool  g_VisualizeFc;
 float g_Bias;
+float g_Mu;
 hull  g_CubeHull;
 
 rigid_body g_RigidBodies[RIGID_BODY_MAX_COUNT]; // Indices correspond to entities
@@ -48,9 +49,11 @@ ComputeExternalForcesAndTorques(vec3 F[][2], const rigid_body RigidBodies[], int
   }
 }
 void
-FillEpsilonJmapJspLambdaMinMax(float Epsilon[], int Jmap[][2], vec3 Jsp[][4],
-                               float LambdaMinMax[][2], const rigid_body RigidBodies[], int RBCount,
-                               const constraint Constraints[], int ConstraintCount)
+FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(float Epsilon[], int Jmap[][2], vec3 Jsp[][4],
+                                                 float LambdaMinMax[][2], int32_t Dependencies[],
+                                                 const rigid_body RigidBodies[], int RBCount,
+                                                 const constraint Constraints[],
+                                                 int              ConstraintCount)
 {
   for(int i = 0; i < ConstraintCount; i++)
   {
@@ -58,6 +61,7 @@ FillEpsilonJmapJspLambdaMinMax(float Epsilon[], int Jmap[][2], vec3 Jsp[][4],
     int IndB = Constraints[i].IndB;
     assert(0 <= IndA && IndA < RBCount);
 
+    Dependencies[i] = -1;
     assert(0 <= Constraints[i].Type && Constraints[i].Type < CONSTRAINT_Count);
     if(Constraints[i].Type == CONSTRAINT_Distance)
     {
@@ -118,6 +122,27 @@ FillEpsilonJmapJspLambdaMinMax(float Epsilon[], int Jmap[][2], vec3 Jsp[][4],
       Jsp[i][2] = n;
       Jsp[i][3] = Math::Cross(rB, n);
     }
+    else if(Constraints[i].Type == CONSTRAINT_Friction)
+    {
+      LambdaMinMax[i][0] = -g_Mu;
+      LambdaMinMax[i][1] = g_Mu;
+
+      vec3 rA = Constraints[i].BodyRa;
+      vec3 rB = Constraints[i].BodyRb;
+      vec3 u  = Constraints[i].Tangent;
+
+      Epsilon[i] = 0;
+
+      Dependencies[i] = Constraints[i].ContactIndex;
+
+      Jmap[i][0] = IndA;
+      Jmap[i][1] = IndB;
+
+      Jsp[i][0] = -u;
+      Jsp[i][1] = -Math::Cross(rA, u);
+      Jsp[i][2] = u;
+      Jsp[i][3] = Math::Cross(rB, u);
+    }
   }
 }
 
@@ -154,19 +179,21 @@ DYDT_FUNC(DYDT_PGS)
   vec3  V1[RIGID_BODY_MAX_COUNT][2];
   float Epsilon[CONSTRAINT_MAX_COUNT];
 
-  float Lambda[CONSTRAINT_MAX_COUNT];
-  float LambdaMinMax[CONSTRAINT_MAX_COUNT][2];
-  mat3  MDiagInv[RIGID_BODY_MAX_COUNT][2];
-  vec3  Fext[RIGID_BODY_MAX_COUNT][2];
-  vec3  dtFc[RIGID_BODY_MAX_COUNT][2];
+  float   Lambda[CONSTRAINT_MAX_COUNT];
+  float   LambdaMinMax[CONSTRAINT_MAX_COUNT][2];
+  int32_t LambdaDependencies[CONSTRAINT_MAX_COUNT];
+  mat3    MDiagInv[RIGID_BODY_MAX_COUNT][2];
+  vec3    Fext[RIGID_BODY_MAX_COUNT][2];
+  vec3    dtFc[RIGID_BODY_MAX_COUNT][2];
 
   float a[CONSTRAINT_MAX_COUNT][CONSTRAINT_MAX_COUNT]; // J*(M^-1)*Jt
   float b[CONSTRAINT_MAX_COUNT]; // epsilon/dt - J*V1/dt - J*(M^-1) - J*(M^-1)*Fext
 
   FillV1(V1, RigidBodies, RBCount);
   FillMDiagInvMatrix(MDiagInv, RigidBodies, RBCount);
-  FillEpsilonJmapJspLambdaMinMax(Epsilon, Jmap, Jsp, LambdaMinMax, RigidBodies, RBCount,
-                                 Constraints, ConstraintCount);
+  FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(Epsilon, Jmap, Jsp, LambdaMinMax,
+                                                   LambdaDependencies, RigidBodies, RBCount,
+                                                   Constraints, ConstraintCount);
   ComputeExternalForcesAndTorques(Fext, RigidBodies, RBCount);
 
   const float dt = t1 - t0;
@@ -214,8 +241,7 @@ DYDT_FUNC(DYDT_PGS)
     }
   }
 
-// Solve for lambda (GS)
-#if 1
+  // Solve for lambda (GS)
   for(int k = 0; k < IterationCount; k++)
   {
     for(int i = 0; i < ConstraintCount; i++)
@@ -232,28 +258,28 @@ DYDT_FUNC(DYDT_PGS)
         }
       }
       // TODO(Lukas) Remove magic value or other solution
-      if(0.0000001f < a[i][i])
+      if(0.00001f < a[i][i])
       {
         Lambda[i] = (b[i] - Delta) / a[i][i];
       }
-      assert(LambdaMinMax[0] < LambdaMinMax[1]);
-      if(Lambda[i] < LambdaMinMax[i][0])
+
+      float S = 1.0f;
+      if(0 <= LambdaDependencies[i])
       {
-        Lambda[i] = LambdaMinMax[i][0];
+        S = Lambda[LambdaDependencies[i]];
       }
-      if(LambdaMinMax[i][1] < Lambda[i])
+
+      assert(LambdaMinMax[0] < LambdaMinMax[1]);
+      if(Lambda[i] < LambdaMinMax[i][0] * S)
       {
-        Lambda[i] = LambdaMinMax[i][1];
+        Lambda[i] = LambdaMinMax[i][0] * S;
+      }
+      if(LambdaMinMax[i][1] * S < Lambda[i])
+      {
+        Lambda[i] = LambdaMinMax[i][1] * S;
       }
     }
   }
-#else
-  assert(ConstraintCount == 1);
-  if(ConstraintCount == 1)
-  {
-    Lambda[0] = b[0] / a[0][0];
-  }
-#endif
 
   for(int i = 0; i < RBCount; i++)
   {
@@ -336,11 +362,11 @@ SimulateDynamics(game_state* GameState)
 
     { // Constrainttest
       g_Constraints.Clear();
-      /*
-      constraint TestConstraint = {};
+
+      /*constraint TestConstraint = {};
       TestConstraint.Type       = CONSTRAINT_Distance;
-      TestConstraint.IndA       = 0;
-      TestConstraint.IndB       = 1;
+      TestConstraint.IndA       = 5;
+      TestConstraint.IndB       = 6;
       TestConstraint.L          = 0;
       TestConstraint.BodyRa     = { 1, -1, 1 };
       TestConstraint.BodyRb     = { -1, -1, 1 };
@@ -349,13 +375,13 @@ SimulateDynamics(game_state* GameState)
       TestConstraint.BodyRa = { 1, -1, -1 };
       TestConstraint.BodyRb = { -1, -1, -1 };
       g_Constraints.Push(TestConstraint);
-      TestConstraint.IndA   = 1;
-      TestConstraint.IndB   = 2;
+      TestConstraint.IndA   = 6;
+      TestConstraint.IndB   = 7;
       TestConstraint.BodyRa = { -1, 1, 1 };
       TestConstraint.BodyRb = { -1, -1, -1 };
       g_Constraints.Push(TestConstraint);
-      TestConstraint.IndA   = 1;
-      TestConstraint.IndB   = 2;
+      TestConstraint.IndA   = 6;
+      TestConstraint.IndB   = 7;
       TestConstraint.BodyRa = { 1, 1, 1 };
       TestConstraint.BodyRb = { -1, 1, -1 };
       g_Constraints.Push(TestConstraint);
@@ -363,9 +389,7 @@ SimulateDynamics(game_state* GameState)
       TestConstraint.P      = {};
       TestConstraint.L      = 0;
       TestConstraint.IndA   = 0;
-      TestConstraint.BodyRa = { 0, 1, 0 };
-      g_Constraints.Push(TestConstraint);
-      */
+      g_Constraints.Push(TestConstraint);*/
 
       for(int i = 0; i < GameState->EntityCount; i++)
       {
@@ -385,7 +409,8 @@ SimulateDynamics(game_state* GameState)
                                                       g_RigidBodies[1].Mat4Scale)));
           Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(g_RigidBodies[1].X),
                                         Math::MulMat4(g_RigidBodies[1].Mat4Scale,
-                                                      Math::Mat3ToMat4(g_RigidBodies[1].R))));*/
+                                                      Math::Mat3ToMat4(g_RigidBodies[1].R))));
+          */
           /*
           mat4 RotationMat = Math::Mat4Rotate(ATransform.Rotation);
           printf("\n1. Euler\n");
@@ -402,45 +427,63 @@ SimulateDynamics(game_state* GameState)
           Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(ATransform.Translation),
                                         Math::MulMat4(Math::Mat4Scale(ATransform.Scale),
                                                       Math::Mat4Rotate(ATransform.Rotation))));
-                                                      */
+          */
           sat_contact_manifold Manifold;
           if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
           {
-            constraint Contact;
-            Contact.Type = CONSTRAINT_Contact;
+            constraint Constraint;
+            Constraint.Type = CONSTRAINT_Contact;
             for(int c = 0; c < Manifold.PointCount; ++c)
             {
+              // Constraint
               assert(Manifold.Points[c].Penetration < 0);
-              vec3 P              = Manifold.Points[c].Position;
-              Contact.Penetration = Manifold.Points[c].Penetration;
-              Contact.n           = Manifold.Normal;
+              vec3 P                 = Manifold.Points[c].Position;
+              Constraint.Penetration = Manifold.Points[c].Penetration;
+              Constraint.n           = Manifold.Normal;
 
               if(Manifold.NormalFromA)
               {
-                Contact.IndA = i;
-                Contact.IndB = j;
+                Constraint.IndA = i;
+                Constraint.IndB = j;
               }
               else
               {
 
-                Contact.IndA = j;
-                Contact.IndB = i;
+                Constraint.IndA = j;
+                Constraint.IndB = i;
               }
 
-              Contact.BodyRa = P - g_RigidBodies[Contact.IndA].X;
-              Contact.BodyRb =
-                (P - Manifold.Points[c].Penetration * Contact.n) - g_RigidBodies[Contact.IndB].X;
+              Constraint.BodyRa = P - g_RigidBodies[Constraint.IndA].X;
+              Constraint.BodyRb = (P - Manifold.Points[c].Penetration * Constraint.n) -
+                                  g_RigidBodies[Constraint.IndB].X;
 
-              Debug::PushLine({}, Contact.n, { 1, 0, 1, 1 });
-              Debug::PushWireframeSphere(Contact.n, 0.05f, { 1, 0, 1, 1 });
+              Debug::PushLine({}, Constraint.n, { 1, 0, 1, 1 });
+              Debug::PushWireframeSphere(Constraint.n, 0.05f, { 1, 0, 1, 1 });
 
-              /*Debug::PushWireframeSphere(g_RigidBodies[Contact.IndA].X + Contact.BodyRa, 0.05f,
-                                         { 1, 0, 0, 1 });
-              Debug::PushWireframeSphere(g_RigidBodies[Contact.IndB].X + Contact.BodyRb, 0.05f,
-                                         { 0, 0, 1, 1 });
-                                         */
+              int32_t ContactIndex = g_Constraints.Count;
+              g_Constraints.Push(Constraint);
 
-              g_Constraints.Push(Contact);
+              // Friction
+              /*
+              vec3 U1 =
+                Math::Normalized(Math::Cross(Manifold.Normal, Manifold.Normal + vec3{ 1, 1, 1 }));
+              vec3 U2 = Math::Normalized(Math::Cross(Manifold.Normal, U1));
+
+              Constraint.Type         = CONSTRAINT_Friction;
+              Constraint.ContactIndex = ContactIndex;
+
+              Constraint.Tangent = U1;
+              g_Constraints.Push(Constraint);
+
+              Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
+              Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
+
+              Constraint.Tangent = U2;
+              g_Constraints.Push(Constraint);
+
+              Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
+              Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
+              */
             }
           }
         }

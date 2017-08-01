@@ -13,6 +13,7 @@ vec4    g_SphereColors[SPHERE_MAX_COUNT];
 int32_t g_SphereCount;
 
 mat4    g_GizmoMatrices[GIZMO_MAX_COUNT];
+vec3    g_GizmoScales[GIZMO_MAX_COUNT];
 float   g_GizmoDepths[GIZMO_MAX_COUNT];
 int32_t g_GizmoCount;
 
@@ -47,6 +48,7 @@ Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase)
   float GizmoDepth = Math::GetTranslationVec3(MVMatrix).Z;
 
   g_GizmoMatrices[g_GizmoCount] = MVPMatrix;
+  g_GizmoScales[g_GizmoCount]   = vec3{ GizmoBase->_11, GizmoBase->_22, GizmoBase->_33 };
   g_GizmoDepths[g_GizmoCount]   = GizmoDepth;
   ++g_GizmoCount;
 }
@@ -108,6 +110,8 @@ Debug::DrawGizmos(game_state* GameState)
   {
     glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderGizmo, "mat_mvp"), 1, GL_FALSE,
                        g_GizmoMatrices[g].e);
+    glUniform3fv(glGetUniformLocation(GameState->R.ShaderGizmo, "scale"), 1,
+                 (float*)&g_GizmoScales[g]);
     glUniform1f(glGetUniformLocation(GameState->R.ShaderGizmo, "depth"), g_GizmoDepths[g]);
     for(int i = 0; i < GizmoModel->MeshCount; i++)
     {
