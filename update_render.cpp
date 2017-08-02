@@ -162,6 +162,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->VisualizeV        = true;
     GameState->VisualizeFc       = false;
     GameState->SimulateDynamics  = false;
+    GameState->SimulateFriction  = false;
 
     SetUpCubeHull(&g_CubeHull);
   }

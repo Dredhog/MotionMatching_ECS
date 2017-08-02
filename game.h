@@ -111,6 +111,7 @@ struct game_state
 
   bool    SimulateDynamics;
   bool    PerformDynamicsStep;
+  bool    SimulateFriction;
   int32_t PGSIterationCount;
   vec3    ForceStart;
   vec3    Force;

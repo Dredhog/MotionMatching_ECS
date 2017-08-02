@@ -101,13 +101,14 @@ namespace UI
       if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
       {
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
+        UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 100);
+        UI::SliderFloat("Bias", &GameState->Bias, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
         GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
         UI::Checkbox("Gravity", &GameState->UseGravity);
         // UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
         // UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
-        UI::SliderFloat("Bias", &GameState->Bias, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+        UI::Checkbox("Friction", &GameState->SimulateFriction);
         UI::SliderFloat("Mu", &GameState->Mu, 0.0f, 1.0f);
-        UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 100);
 
         UI::Checkbox("Draw Omega (green)", &GameState->VisualizeOmega);
         UI::Checkbox("Draw V     (yellow)", &GameState->VisualizeV);

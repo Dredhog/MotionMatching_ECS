@@ -464,26 +464,27 @@ SimulateDynamics(game_state* GameState)
               g_Constraints.Push(Constraint);
 
               // Friction
-              /*
-              vec3 U1 =
-                Math::Normalized(Math::Cross(Manifold.Normal, Manifold.Normal + vec3{ 1, 1, 1 }));
-              vec3 U2 = Math::Normalized(Math::Cross(Manifold.Normal, U1));
+              if(GameState->SimulateFriction)
+              {
+                vec3 U1 =
+                  Math::Normalized(Math::Cross(Manifold.Normal, Manifold.Normal + vec3{ 1, 1, 1 }));
+                vec3 U2 = Math::Normalized(Math::Cross(Manifold.Normal, U1));
 
-              Constraint.Type         = CONSTRAINT_Friction;
-              Constraint.ContactIndex = ContactIndex;
+                Constraint.Type         = CONSTRAINT_Friction;
+                Constraint.ContactIndex = ContactIndex;
 
-              Constraint.Tangent = U1;
-              g_Constraints.Push(Constraint);
+                Constraint.Tangent = U1;
+                g_Constraints.Push(Constraint);
 
-              Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
-              Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
+                Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
+                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
 
-              Constraint.Tangent = U2;
-              g_Constraints.Push(Constraint);
+                Constraint.Tangent = U2;
+                g_Constraints.Push(Constraint);
 
-              Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
-              Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
-              */
+                Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
+                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
+              }
             }
           }
         }
