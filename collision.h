@@ -892,6 +892,19 @@ ClipPolygonToFace(vec3* Polygon, int32_t PolygonVertexCount, const face* Face, c
 int32_t
 ReducePolygon(vec3* Polygon, int32_t PolygonPointCount, vec3 ReferenceFaceCentroid, vec3 ReferenceFaceNormal)
 {
+  for(int i = 0; i < PolygonPointCount; ++i)
+  {
+    if(PointToPlaneDistance(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal) >= 0.0f)
+    {
+      for(int j = i; j < PolygonPointCount - 1; ++j)
+      {
+        Polygon[j] = Polygon[j + 1];
+      }
+      --PolygonPointCount;
+      --i;
+    }
+  }
+
   if(PolygonPointCount > 4)
   {
     vec3 ProjectedPolygon[MAX_CONTACT_POINTS];
@@ -1068,12 +1081,12 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
 
   for(int i = 0; i < PolygonPointCount; ++i)
   {
-    if(PointToPlaneDistance(Polygon[i], Centroid, Normal) < 0.0f)
-    {
-      Manifold->Points[Manifold->PointCount].Position = TransformVector(Polygon[i], TransformB);
-      Manifold->Points[Manifold->PointCount].Penetration = PointToPlaneDistance(Polygon[i], Centroid, Normal);
-      ++Manifold->PointCount;
-    }
+    float Penetration = PointToPlaneDistance(Polygon[i], Centroid, Normal);
+    assert(Penetration < 0.0f);
+
+    Manifold->Points[Manifold->PointCount].Position = TransformVector(Polygon[i], TransformB);
+    Manifold->Points[Manifold->PointCount].Penetration = Penetration;
+    ++Manifold->PointCount;
   }
 }
 
