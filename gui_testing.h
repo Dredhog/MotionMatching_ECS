@@ -101,7 +101,7 @@ namespace UI
       if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
       {
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
-        UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 100);
+        UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 200);
         UI::SliderFloat("Beta", &GameState->Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
         GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
         UI::Checkbox("Gravity", &GameState->UseGravity);

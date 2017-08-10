@@ -893,6 +893,19 @@ int32_t
 ReducePolygon(vec3* Polygon, int32_t PolygonPointCount, vec3 ReferenceFaceCentroid,
               vec3 ReferenceFaceNormal)
 {
+  for(int i = 0; i < PolygonPointCount; ++i)
+  {
+    if(PointToPlaneDistance(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal) >= 0.0f)
+    {
+      for(int j = i; j < PolygonPointCount - 1; ++j)
+      {
+        Polygon[j] = Polygon[j + 1];
+      }
+      --PolygonPointCount;
+      --i;
+    }
+  }
+
   if(PolygonPointCount > 4)
   {
     vec3 ProjectedPolygon[MAX_CONTACT_POINTS];
@@ -1073,13 +1086,12 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
 
   for(int i = 0; i < PolygonPointCount; ++i)
   {
-    if(PointToPlaneDistance(Polygon[i], Centroid, Normal) < 0.0f)
-    {
-      Manifold->Points[Manifold->PointCount].Position = TransformVector(Polygon[i], TransformB);
-      Manifold->Points[Manifold->PointCount].Penetration =
-        PointToPlaneDistance(Polygon[i], Centroid, Normal);
-      ++Manifold->PointCount;
-    }
+    float Penetration = PointToPlaneDistance(Polygon[i], Centroid, Normal);
+    assert(Penetration < 0.0f);
+
+    Manifold->Points[Manifold->PointCount].Position    = TransformVector(Polygon[i], TransformB);
+    Manifold->Points[Manifold->PointCount].Penetration = Penetration;
+    ++Manifold->PointCount;
   }
 }
 
@@ -1213,8 +1225,8 @@ bool
 SAT(sat_contact_manifold* Manifold, const mat4 TransformA, const hull* HullA, const mat4 TransformB,
     const hull* HullB)
 {
-  const float EDGE_THRESHOLD = 0.0001f;
-  const float FACE_THRESHOLD = 0.001f;
+  const float EDGE_THRESHOLD = 0.0001f; // FLT_EPSILON;
+  const float FACE_THRESHOLD = 0.1f;  // FLT_EPSILON;
 
   const face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)
