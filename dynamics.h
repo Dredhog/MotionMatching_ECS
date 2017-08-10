@@ -3,7 +3,7 @@
 #include "basic_data_structures.h"
 
 const int RIGID_BODY_MAX_COUNT = 10;
-const int CONSTRAINT_MAX_COUNT = 50;
+const int CONSTRAINT_MAX_COUNT = 100;
 
 vec3  g_Force;
 vec3  g_ForceStart;
@@ -11,6 +11,7 @@ bool  g_ApplyingForce;
 bool  g_UseGravity;
 bool  g_ApplyingTorque;
 bool  g_VisualizeFc;
+bool  g_VisualizeFcComponents = true;
 float g_Bias;
 float g_Mu;
 hull  g_CubeHull;
@@ -19,8 +20,9 @@ rigid_body g_RigidBodies[RIGID_BODY_MAX_COUNT]; // Indices correspond to entitie
 fixed_stack<constraint, CONSTRAINT_MAX_COUNT> g_Constraints;
 
 #define DYDT_FUNC(name)                                                                            \
-  void name(rigid_body RigidBodies[], int RBCount, const constraint Constraints[],                 \
-            int ConstraintCount, float t0, float t1, int IterationCount)
+  void name(vec3 Fext[][2], vec3 Fc[][2], rigid_body RigidBodies[], int RBCount,                   \
+            const constraint Constraints[], int ConstraintCount, float t0, float t1,               \
+            int IterationCount)
 typedef DYDT_FUNC(dydt_func);
 
 void
@@ -124,8 +126,8 @@ FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(float Epsilon[], int Jmap[][2],
     }
     else if(Constraints[i].Type == CONSTRAINT_Friction)
     {
-      LambdaMinMax[i][0] = -g_Mu;
-      LambdaMinMax[i][1] = g_Mu;
+      LambdaMinMax[i][0] = -INFINITY; //-g_Mu;
+      LambdaMinMax[i][1] = INFINITY;  // g_Mu;
 
       vec3 rA = Constraints[i].BodyRa;
       vec3 rB = Constraints[i].BodyRb;
@@ -133,7 +135,7 @@ FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(float Epsilon[], int Jmap[][2],
 
       Epsilon[i] = 0;
 
-      Dependencies[i] = Constraints[i].ContactIndex;
+      // Dependencies[i] = Constraints[i].ContactIndex;
 
       Jmap[i][0] = IndA;
       Jmap[i][1] = IndB;
@@ -183,8 +185,6 @@ DYDT_FUNC(DYDT_PGS)
   float   LambdaMinMax[CONSTRAINT_MAX_COUNT][2];
   int32_t LambdaDependencies[CONSTRAINT_MAX_COUNT];
   mat3    MDiagInv[RIGID_BODY_MAX_COUNT][2];
-  vec3    Fext[RIGID_BODY_MAX_COUNT][2];
-  vec3    dtFc[RIGID_BODY_MAX_COUNT][2];
 
   float a[CONSTRAINT_MAX_COUNT][CONSTRAINT_MAX_COUNT]; // J*(M^-1)*Jt
   float b[CONSTRAINT_MAX_COUNT]; // epsilon/dt - J*V1/dt - J*(M^-1) - J*(M^-1)*Fext
@@ -241,7 +241,12 @@ DYDT_FUNC(DYDT_PGS)
     }
   }
 
-  // Solve for lambda (GS)
+  for(int i = 0; i < ConstraintCount; i++)
+  {
+    Lambda[i] = 0.0f;
+  }
+
+  // Solve for lambda (PGS)
   for(int k = 0; k < IterationCount; k++)
   {
     for(int i = 0; i < ConstraintCount; i++)
@@ -257,6 +262,7 @@ DYDT_FUNC(DYDT_PGS)
           Delta += a[i][j] * Lambda[j];
         }
       }
+
       // TODO(Lukas) Remove magic value or other solution
       if(0.00001f < a[i][i])
       {
@@ -270,70 +276,94 @@ DYDT_FUNC(DYDT_PGS)
       }
 
       assert(LambdaMinMax[0] < LambdaMinMax[1]);
-      if(Lambda[i] < LambdaMinMax[i][0] * S)
-      {
-        Lambda[i] = LambdaMinMax[i][0] * S;
-      }
-      if(LambdaMinMax[i][1] * S < Lambda[i])
-      {
-        Lambda[i] = LambdaMinMax[i][1] * S;
-      }
+      Lambda[i] = ClampFloat(LambdaMinMax[i][0] * S, Lambda[i], LambdaMinMax[i][1] * S);
     }
   }
 
   for(int i = 0; i < RBCount; i++)
   {
-    dtFc[i][0] = {};
-    dtFc[i][1] = {};
+    Fc[i][0] = {};
+    Fc[i][1] = {};
   }
   for(int i = 0; i < ConstraintCount; i++)
   {
     int IndA = Jmap[i][0];
     int IndB = Jmap[i][1];
 
-    dtFc[IndA][0] += Jsp[i][0] * Lambda[i];
-    dtFc[IndA][1] += Jsp[i][1] * Lambda[i];
-    dtFc[IndB][0] += Jsp[i][2] * Lambda[i];
-    dtFc[IndB][1] += Jsp[i][3] * Lambda[i];
+    Fc[IndA][0] += Jsp[i][0] * Lambda[i];
+    Fc[IndA][1] += Jsp[i][1] * Lambda[i];
+    Fc[IndB][0] += Jsp[i][2] * Lambda[i];
+    Fc[IndB][1] += Jsp[i][3] * Lambda[i];
 
-    if(g_VisualizeFc)
+    if(g_VisualizeFcComponents)
     {
-      Debug::PushLine(RigidBodies[IndA].X, RigidBodies[IndA].X + dtFc[IndA][0]);
-      Debug::PushWireframeSphere(RigidBodies[IndA].X + dtFc[IndA][0], 0.05f);
+      vec3 Pa0 = RigidBodies[IndA].X + Constraints[i].BodyRa;
+      vec3 Pa1 = Pa0 + Jsp[i][0] * Lambda[i];
+      switch(Constraints[i].Type)
+      {
+        case CONSTRAINT_Contact:
+        {
+          Debug::PushLine(Pa0, Pa1, { 1, 0, 0.5f, 1 });
+          Debug::PushWireframeSphere(Pa1, 0.05f, { 1, 0, 0.5f, 1 });
+          break;
+        }
+        case CONSTRAINT_Friction:
+        {
+          Debug::PushLine(Pa0, Pa1, { 1, 1, 0, 1 });
+          Debug::PushWireframeSphere(Pa1, 0.05f, { 1, 1, 0, 1 });
+          break;
+        }
+      }
     }
-  }
-
-  for(int i = 0; i < RBCount; i++)
-  {
-    RigidBodies[i].v += dt * (RigidBodies[i].MassInv * (Fext[i][0] + dtFc[i][0]));
-    RigidBodies[i].w += dt * Math::MulMat3Vec3(RigidBodies[i].InertiaInv, Fext[i][1] + dtFc[i][1]);
   }
 }
 
 void
 ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int ConstraintCount,
-    float t0, float t1, dydt_func dydt, int32_t IterationCount)
+    float t0, float t1, dydt_func dydt, int32_t IterationCount, bool UpdateState)
 {
-  dydt(RigidBodies, RBCount, Constraints, ConstraintCount, t0, t1, IterationCount);
+  vec3 Fext[RIGID_BODY_MAX_COUNT][2];
+  vec3 Fc[RIGID_BODY_MAX_COUNT][2];
+  dydt(Fext, Fc, RigidBodies, RBCount, Constraints, ConstraintCount, t0, t1, IterationCount);
 
   const float dt = t1 - t0;
-  // Y(t1) = Y(t0) + dY(t0)
+  // Euler step
   for(int i = 0; i < RBCount; i++)
   {
-    RigidBodies[i].X += dt * RigidBodies[i].v;
-
-    quat qOmega = {};
-    qOmega.V    = RigidBodies[i].w;
-    quat qDot   = 0.5f * (qOmega * RigidBodies[i].q);
-
-    RigidBodies[i].q = RigidBodies[i].q + dt * qDot;
-    if(0.0001f < Math::Length(RigidBodies[i].q))
+    if(g_VisualizeFc)
     {
-      Math::Normalize(&RigidBodies[i].q);
+      Debug::PushLine(RigidBodies[i].X, RigidBodies[i].X + Fext[i][0], { 0, 0, 1, 1 });
+      Debug::PushWireframeSphere(RigidBodies[i].X + Fext[i][0], 0.05f, { 0, 0, 1, 1 });
     }
-    else
+
+    if(g_VisualizeFc)
     {
-      RigidBodies[i].q = { 1, 0, 0, 0 };
+      Debug::PushLine(RigidBodies[i].X, RigidBodies[i].X + Fc[i][0]);
+      Debug::PushWireframeSphere(RigidBodies[i].X + Fc[i][0], 0.05f);
+    }
+
+    if(UpdateState)
+    {
+      // update v and w first
+      RigidBodies[i].v += dt * (RigidBodies[i].MassInv * (Fext[i][0] + Fc[i][0]));
+      RigidBodies[i].w += dt * Math::MulMat3Vec3(RigidBodies[i].InertiaInv, Fext[i][1] + Fc[i][1]);
+
+      // update X and q after
+      RigidBodies[i].X += dt * RigidBodies[i].v;
+
+      quat qOmega = {};
+      qOmega.V    = RigidBodies[i].w;
+      quat qDot   = 0.5f * (qOmega * RigidBodies[i].q);
+
+      RigidBodies[i].q = RigidBodies[i].q + dt * qDot;
+      if(0.0001f < Math::Length(RigidBodies[i].q))
+      {
+        Math::Normalize(&RigidBodies[i].q);
+      }
+      else
+      {
+        RigidBodies[i].q = { 1, 0, 0, 0 };
+      }
     }
   }
 }
@@ -476,14 +506,14 @@ SimulateDynamics(game_state* GameState)
                 Constraint.Tangent = U1;
                 g_Constraints.Push(Constraint);
 
-                Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
-                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
+                Debug::PushLine(P, P + Constraint.Tangent, { 0, 0.7f, 0, 1 });
+                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 0.7f, 0, 1 });
 
                 Constraint.Tangent = U2;
                 g_Constraints.Push(Constraint);
 
                 Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
-                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 7, 0, 1 });
+                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 0.7f, 0, 1 });
               }
             }
           }
@@ -491,12 +521,10 @@ SimulateDynamics(game_state* GameState)
       }
     }
 
-    if(GameState->SimulateDynamics ||
-       (!GameState->SimulateDynamics && GameState->PerformDynamicsStep))
-    {
-      ODE(g_RigidBodies, BodyCount, g_Constraints.Elements, g_Constraints.Count, 0.0f,
-          (FRAME_TIME_MS / 1000.0f), DYDT_PGS, GameState->PGSIterationCount);
-    }
+    bool UpdateState = (GameState->SimulateDynamics ||
+                        (!GameState->SimulateDynamics && GameState->PerformDynamicsStep));
+    ODE(g_RigidBodies, BodyCount, g_Constraints.Elements, g_Constraints.Count, 0.0f,
+        (FRAME_TIME_MS / 1000.0f), DYDT_PGS, GameState->PGSIterationCount, UpdateState);
 
     for(int i = 0; i < BodyCount; i++)
     {

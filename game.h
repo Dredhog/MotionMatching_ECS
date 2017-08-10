@@ -103,12 +103,7 @@ struct game_state
   uint32_t DepthRBO;
   uint32_t IDTexture;
 
-  // Collision testing
-  entity* EntityA;
-  entity* EntityB;
-  bool    ABPenetrating;
-  int32_t CollisionIterationCount;
-
+  // Physics
   bool    SimulateDynamics;
   bool    PerformDynamicsStep;
   bool    SimulateFriction;
@@ -116,7 +111,7 @@ struct game_state
   vec3    ForceStart;
   vec3    Force;
   float   Restitution;
-  float   Bias;
+  float   Beta;
   float   Slop;
   float   Mu;
 

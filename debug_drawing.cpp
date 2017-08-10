@@ -1,8 +1,8 @@
 #include "debug_drawing.h"
 #include "basic_data_structures.h"
 
-#define SPHERE_MAX_COUNT 100
-#define GIZMO_MAX_COUNT 100
+#define SPHERE_MAX_COUNT 300
+#define GIZMO_MAX_COUNT 300
 #define TEXTURED_QUAD_MAX_COUNT 300
 #define COLORED_QUAD_MAX_COUNT 500
 #define LINE_INSTRUCTION_COUNT 150
@@ -40,7 +40,7 @@ Debug::PushWireframeSphere(vec3 Position, float Radius, vec4 Color)
 }
 
 void
-Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase)
+Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase, vec3 Scale)
 {
   assert(0 <= g_GizmoCount && g_GizmoCount < GIZMO_MAX_COUNT);
   mat4  MVMatrix   = Math::MulMat4(Camera->ViewMatrix, *GizmoBase);
@@ -48,7 +48,7 @@ Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase)
   float GizmoDepth = Math::GetTranslationVec3(MVMatrix).Z;
 
   g_GizmoMatrices[g_GizmoCount] = MVPMatrix;
-  g_GizmoScales[g_GizmoCount]   = vec3{ GizmoBase->_11, GizmoBase->_22, GizmoBase->_33 };
+  g_GizmoScales[g_GizmoCount]   = Scale;
   g_GizmoDepths[g_GizmoCount]   = GizmoDepth;
   ++g_GizmoCount;
 }

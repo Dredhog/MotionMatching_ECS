@@ -102,7 +102,7 @@ namespace UI
       {
         UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
         UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 100);
-        UI::SliderFloat("Bias", &GameState->Bias, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+        UI::SliderFloat("Beta", &GameState->Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
         GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
         UI::Checkbox("Gravity", &GameState->UseGravity);
         // UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
@@ -120,36 +120,6 @@ namespace UI
         Debug::PushLine(GameState->ForceStart, GameState->ForceStart + GameState->Force,
                         { 1, 1, 0, 1 });
         Debug::PushWireframeSphere(GameState->ForceStart + GameState->Force, 0.05f, { 1, 1, 0, 1 });
-      }
-      static bool s_ShowCollisionTools = true;
-      if(UI::CollapsingHeader("Collision tools", &s_ShowCollisionTools))
-      {
-        entity* Entity;
-        if(GetSelectedEntity(GameState, &Entity))
-        {
-          if(UI::Button("Assign to A"))
-          {
-            GameState->EntityA = Entity;
-          }
-
-          if(UI::Button("Assign to B"))
-          {
-            GameState->EntityB = Entity;
-          }
-        }
-        if(GameState->EntityA && GameState->EntityB)
-        {
-          UI::SliderInt("IterationCount", &GameState->CollisionIterationCount, 0, 50, false);
-
-          if(GameState->ABPenetrating)
-          {
-            UI::Text("Collision detected.");
-          }
-          else
-          {
-            UI::Text("No collision detected.");
-          }
-        }
       }
     }
     UI::EndWindow();

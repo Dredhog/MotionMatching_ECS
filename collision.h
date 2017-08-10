@@ -797,7 +797,7 @@ QueryEdgeDirections(mat4 TransformA, const hull* HullA, mat4 TransformB, const h
 
 bool
 IntersectEdgePlane(vec3* IntersectionPoint, vec3 EdgeTail, vec3 EdgeHead, vec3 PlanePoint,
-                  vec3 PlaneNormal)
+                   vec3 PlaneNormal)
 {
   vec3  Edge = EdgeHead - EdgeTail;
   float d    = Math::Dot(PlaneNormal, PlanePoint);
@@ -815,7 +815,7 @@ IntersectEdgePlane(vec3* IntersectionPoint, vec3 EdgeTail, vec3 EdgeHead, vec3 P
 int32_t
 ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, vec3 PlaneNormal)
 {
-  vec3 NewPolygon[MAX_CONTACT_POINTS];
+  vec3    NewPolygon[MAX_CONTACT_POINTS];
   int32_t VertexCount = 0;
 
   vec3 Tail = Polygon[PolygonPointCount - 1];
@@ -856,7 +856,7 @@ ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, ve
       NewPolygon[VertexCount++] = Head;
     }
 
-    Tail = Head;
+    Tail         = Head;
     TailDistance = HeadDistance;
   }
 
@@ -872,7 +872,7 @@ int32_t
 ClipPolygonToFace(vec3* Polygon, int32_t PolygonVertexCount, const face* Face, const mat4 Transform)
 {
   half_edge* FaceEdge = Face->Edge;
-  half_edge* r = FaceEdge;
+  half_edge* r        = FaceEdge;
 
   int32_t VertexCount = PolygonVertexCount;
   do
@@ -890,76 +890,79 @@ ClipPolygonToFace(vec3* Polygon, int32_t PolygonVertexCount, const face* Face, c
 }
 
 int32_t
-ReducePolygon(vec3* Polygon, int32_t PolygonPointCount, vec3 ReferenceFaceCentroid, vec3 ReferenceFaceNormal)
+ReducePolygon(vec3* Polygon, int32_t PolygonPointCount, vec3 ReferenceFaceCentroid,
+              vec3 ReferenceFaceNormal)
 {
   if(PolygonPointCount > 4)
   {
     vec3 ProjectedPolygon[MAX_CONTACT_POINTS];
 
     int32_t MinSeparationIndex = -1;
-    float MinSeparation = FLT_MAX;
+    float   MinSeparation      = FLT_MAX;
 
     for(int i = 0; i < PolygonPointCount; ++i)
     {
-      float Separation = PointToPlaneDistance(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal);
+      float Separation =
+        PointToPlaneDistance(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal);
 
       if(Separation < MinSeparation)
       {
         MinSeparationIndex = i;
-        MinSeparation = Separation;
+        MinSeparation      = Separation;
       }
 
-      ProjectedPolygon[i] = ClosestPointInPlane(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal);
+      ProjectedPolygon[i] =
+        ClosestPointInPlane(Polygon[i], ReferenceFaceCentroid, ReferenceFaceNormal);
     }
 
     vec3 A = ProjectedPolygon[MinSeparationIndex];
 
     int32_t MaxLengthIndex = -1;
-    float MaxLength = -FLT_MAX;
+    float   MaxLength      = -FLT_MAX;
 
     for(int i = 0; i < PolygonPointCount; ++i)
     {
-      vec3 B = ProjectedPolygon[i];
-      vec3 Vector = B - A;
+      vec3  B      = ProjectedPolygon[i];
+      vec3  Vector = B - A;
       float Length = Math::Length(Vector);
       if(Length > MaxLength)
       {
         MaxLengthIndex = i;
-        MaxLength = Length;
+        MaxLength      = Length;
       }
     }
 
     vec3 B = ProjectedPolygon[MaxLengthIndex];
 
     int32_t MaxAreaIndex = -1;
-    float MaxArea = -FLT_MAX;
+    float   MaxArea      = -FLT_MAX;
 
     for(int i = 0; i < PolygonPointCount; ++i)
     {
-      vec3 C = ProjectedPolygon[i];
+      vec3  C    = ProjectedPolygon[i];
       float Area = 0.5f * Math::Dot(Math::Cross(A - C, B - C), ReferenceFaceNormal);
       if(Area > MaxArea)
       {
         MaxAreaIndex = i;
-        MaxArea = Area;
+        MaxArea      = Area;
       }
     }
 
     vec3 C = ProjectedPolygon[MaxAreaIndex];
 
     int32_t MinAreaIndex = -1;
-    float MinArea = FLT_MAX;
+    float   MinArea      = FLT_MAX;
 
     for(int i = 0; i < PolygonPointCount; ++i)
     {
-      vec3 Q = ProjectedPolygon[i];
+      vec3  Q       = ProjectedPolygon[i];
       float AreaQAB = 0.5f * Math::Dot(Math::Cross(A - Q, B - Q), ReferenceFaceNormal);
       if(AreaQAB < 0.0f)
       {
         if(AreaQAB < MinArea)
         {
           MinAreaIndex = i;
-          MinArea = AreaQAB;
+          MinArea      = AreaQAB;
         }
       }
 
@@ -969,7 +972,7 @@ ReducePolygon(vec3* Polygon, int32_t PolygonPointCount, vec3 ReferenceFaceCentro
         if(AreaQBC < MinArea)
         {
           MinAreaIndex = i;
-          MinArea = AreaQBC;
+          MinArea      = AreaQBC;
         }
       }
 
@@ -979,12 +982,12 @@ ReducePolygon(vec3* Polygon, int32_t PolygonPointCount, vec3 ReferenceFaceCentro
         if(AreaQCA < MinArea)
         {
           MinAreaIndex = i;
-          MinArea = AreaQCA;
+          MinArea      = AreaQCA;
         }
       }
     }
 
-    vec3 NewPolygon[MAX_CONTACT_POINTS];
+    vec3    NewPolygon[MAX_CONTACT_POINTS];
     int32_t VertexCount = 4;
 
     NewPolygon[0] = Polygon[MinSeparationIndex];
@@ -1048,7 +1051,7 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
   } while(b != IncidentFaceEdge);
 #endif
 
-  vec3 Polygon[MAX_CONTACT_POINTS];
+  vec3    Polygon[MAX_CONTACT_POINTS];
   int32_t PolygonPointCount = 0;
 
   half_edge* i = IncidentFaceEdge;
@@ -1056,14 +1059,16 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
   do
   {
     Polygon[PolygonPointCount++] = i->Tail->Position;
-    i = i->Next;
+    i                            = i->Next;
   } while(i != IncidentFaceEdge);
 
-  PolygonPointCount = ClipPolygonToFace(Polygon, PolygonPointCount, &HullA->Faces[QueryA.Index], Transform);
+  PolygonPointCount =
+    ClipPolygonToFace(Polygon, PolygonPointCount, &HullA->Faces[QueryA.Index], Transform);
   PolygonPointCount = ReducePolygon(Polygon, PolygonPointCount, Centroid, Normal);
 
   mat4 NormalMatrix = Math::Transposed4(Math::InvMat4(TransformB));
-  Manifold->Normal  = Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Normal, 0)));
+  Manifold->Normal =
+    Math::Normalized(Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Normal, 0))));
   Manifold->PointCount = 0;
 
   for(int i = 0; i < PolygonPointCount; ++i)
@@ -1071,7 +1076,8 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
     if(PointToPlaneDistance(Polygon[i], Centroid, Normal) < 0.0f)
     {
       Manifold->Points[Manifold->PointCount].Position = TransformVector(Polygon[i], TransformB);
-      Manifold->Points[Manifold->PointCount].Penetration = PointToPlaneDistance(Polygon[i], Centroid, Normal);
+      Manifold->Points[Manifold->PointCount].Penetration =
+        PointToPlaneDistance(Polygon[i], Centroid, Normal);
       ++Manifold->PointCount;
     }
   }
@@ -1187,8 +1193,13 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, mat4 Tra
   {
     Manifold->Normal = -Manifold->Normal;
   }
-  Manifold->Normal =
-    TransformVector(Manifold->Normal, TransformB) - TransformVector({}, TransformB);
+  // Manifold->Normal =
+  // TransformVector(Manifold->Normal, TransformB) - TransformVector({}, TransformB);
+
+  mat4 NormalMatrix = Math::Transposed4(Math::InvMat4(TransformB));
+  Manifold->Normal  = Math::Normalized(
+    Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Manifold->Normal, 0))));
+
   Manifold->Points[0].Position = TransformVector(ClosestB, TransformB);
 #if DEBUG_QUERIES
   Debug::PushLine(TransformVector(EdgeA->Tail->Position, TransformA),
@@ -1202,8 +1213,8 @@ bool
 SAT(sat_contact_manifold* Manifold, const mat4 TransformA, const hull* HullA, const mat4 TransformB,
     const hull* HullB)
 {
-  const float EDGE_THRESHOLD = 0; // 0.00000001f;
-  const float FACE_THRESHOLD = 0; // 0.000001f;
+  const float EDGE_THRESHOLD = 0.0001f;
+  const float FACE_THRESHOLD = 0.001f;
 
   const face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)

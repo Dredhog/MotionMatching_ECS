@@ -150,10 +150,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->EditorBoneRotationSpeed = 45.0f;
     GameState->CurrentMaterialID       = { 0 };
     GameState->PlayerEntityIndex       = -1;
-    GameState->CollisionIterationCount = 0;
 
     GameState->Restitution       = 0.5f;
-    GameState->Bias              = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
+    GameState->Beta              = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
     GameState->Slop              = 0.1f;
     GameState->Mu                = 1.0f;
     GameState->PGSIterationCount = 10;
@@ -192,11 +191,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   if(Input->IsMouseInEditorMode)
   {
-    UI::TestGui(GameState, Input);
     // GUI
-    /*IMGUIControlPanel(GameState, Input);
+    UI::TestGui(GameState, Input);
 
-    // ANIMATION TIMELINE
+    /* // ANIMATION TIMELINE
     if(GameState->SelectionMode == SELECT_Bone && GameState->DrawTimeline &&
        GameState->AnimEditor.Skeleton)
     {
@@ -310,7 +308,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   g_ApplyingForce  = GameState->ApplyingForce;
   g_ApplyingTorque = GameState->ApplyingTorque;
   g_UseGravity     = GameState->UseGravity;
-  g_Bias           = GameState->Bias;
+  g_Bias           = GameState->Beta;
   g_Mu             = GameState->Mu;
   g_VisualizeFc    = GameState->VisualizeFc;
 
@@ -333,79 +331,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
   SimulateDynamics(GameState);
-
-  /*
-  if(Input->i.EndedDown && Input->i.Changed)
-  {
-    ++GameState->IterationCount;
-  }
-  else if(Input->o.EndedDown && Input->o.Changed)
-  {
-    --GameState->IterationCount;
-  }
-  // Collision testing
-  if(GameState->EntityA && GameState->EntityB)
-  {
-    // entity* EntityA;
-    // GetEntityAtIndex(GameState, &EntityA, GameState->EntityA);
-
-    // entity* EntityB;
-    // GetEntityAtIndex(GameState, &EntityB, GameState->EntityB);
-
-    // GameState->MeshA = GameState->Resources.GetModel(EntityA->ModelID)->Meshes[0];
-    // GameState->MeshB = GameState->Resources.GetModel(EntityB->ModelID)->Meshes[0];
-
-    // mat4 ModelAMatrix = GetEntityModelMatrix(GameState, GameState->EntityA);
-    // mat4 ModelBMatrix = GetEntityModelMatrix(GameState, GameState->EntityB);
-
-    material* EntityAMaterial = GameState->Resources.GetMaterial(EntityA->MaterialIDs[0]);
-    material* EntityBMaterial = GameState->Resources.GetMaterial(EntityB->MaterialIDs[0]);
-
-    Debug::PushWireframeSphere({}, 0.05f, { 1, 1, 0, 1 });
-
-<<<<<<< HEAD
-    sat_contact_manifold Manifold;
-    if(TestHullvsHull(&Manifold, MeshA, MeshB, ModelAMatrix, ModelBMatrix,
-                      GameState->IterationCount))
-=======
-#if 0
-    if(AreColliding(MeshA, MeshB, ModelAMatrix, ModelBMatrix, GameState->IterationCount))
->>>>>>> da89c33b0b72b26d82ca9ee368df8c6adac629b9
-    {
-      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityAMaterial->Common.UseBlending = true;
-      EntityBMaterial->Common.UseBlending = true;
-
-      vec4 Color                          = { 1.0f, 0.0f, 0.0f, 0.8f };
-      EntityAMaterial->Phong.DiffuseColor = Color;
-      EntityBMaterial->Phong.DiffuseColor = Color;
-      GameState->ABCollide                = true;
-    }
-    else
-    {
-      EntityAMaterial->Phong.Flags        = EntityAMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityBMaterial->Phong.Flags        = EntityBMaterial->Phong.Flags & !(PHONG_UseDiffuseMap);
-      EntityAMaterial->Common.UseBlending = true;
-      EntityBMaterial->Common.UseBlending = true;
-
-      vec4 Color                          = { 0.5f, 0.5f, 0.5f, 0.8f };
-      EntityAMaterial->Phong.DiffuseColor = Color;
-      EntityBMaterial->Phong.DiffuseColor = Color;
-      GameState->ABCollide                = false;
-    }
-#else
-    if(TestSAT(ModelAMatrix, ModelBMatrix, GameState->IterationCount))
-    {
-      GameState->ABCollide = true;
-    }
-    else
-    {
-      GameState->ABCollide = false;
-    }
-#endif
-  }
-  */
 
   if(GameState->PlayerEntityIndex != -1)
   {
@@ -667,7 +592,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindVertexArray(0);
   }
 
-  // Higlight entity
+  // Higlighting
   entity* SelectedEntity;
   if(Input->IsMouseInEditorMode && GetSelectedEntity(GameState, &SelectedEntity))
   {
@@ -709,7 +634,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       if(GetSelectedEntity(GameState, &SelectedEntity))
       {
         mat4 Mat4EntityTransform = TransformToMat4(&SelectedEntity->Transform);
-        Debug::PushGizmo(&GameState->Camera, &Mat4EntityTransform);
+        Debug::PushGizmo(&GameState->Camera, &Mat4EntityTransform, SelectedEntity->Transform.Scale);
         Render::model* Model = GameState->Resources.GetModel(SelectedEntity->ModelID);
         for(int m = 0; m < Model->MeshCount; m++)
         {
