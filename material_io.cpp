@@ -9,7 +9,7 @@ GetLine(char** Line, int32_t* LineLength, char* CharArray, int32_t ArraySize, in
 {
   *Line       = &CharArray[*CharCounter];
   *LineLength = 0;
-  while((CharArray[*CharCounter] != '\n') /*|| (CharArray[*CharCounter] != '\0')*/)
+  while((CharArray[*CharCounter] != '\n') /*&& (CharArray[*CharCounter] != '\0')*/)
   {
     ++(*LineLength);
     ++(*CharCounter);

@@ -104,6 +104,7 @@ LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
   }
   printf("error: text surface was not created!\nError: %s\n", SDL_GetError());
   assert(0 && "assert: failed to load text surface");
+  return 0;
 }
 
 bool

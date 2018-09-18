@@ -187,7 +187,7 @@ CheckFile(const WIN32_FIND_DATA* Stat, const char* Path)
     size_t PathLength = strlen(Path);
     if(PathLength > PATH_MAX_LENGTH)
     {
-      printf("Cannot fit: length: %lu, %s\n", strlen(Path), Path);
+      printf("Cannot fit: length: %lld, %s\n", strlen(Path), Path);
     }
     assert(PathLength <= PATH_MAX_LENGTH);
 

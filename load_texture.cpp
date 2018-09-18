@@ -32,5 +32,6 @@ namespace Texture
       printf("Platform: texture load from image error: %s\n", SDL_GetError());
       assert(0);
     }
+    return 0;
   }
 }

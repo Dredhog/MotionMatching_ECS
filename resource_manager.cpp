@@ -323,6 +323,7 @@ namespace Resource
       assert(0 && "assert: invalid rid");                                                                                                                                                              \
     }                                                                                                                                                                                                  \
     assert(0 && "assert: invalid codepath");                                                                                                                                                           \
+    return TYPE_NAME;                                                                                                                                                                                  \
   }
 
   CREATE_GET_FUNCTION(uint32_t, Texture);
