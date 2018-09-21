@@ -86,6 +86,13 @@ struct game_state
   // Fonts/text
   Text::font Font;
 
+  // Temporary stuff for post-processing
+  uint32_t ScreenQuadVAO;
+  uint32_t ScreenQuadVBO;
+  uint32_t ScreenFBO;
+  uint32_t ScreenRBO;
+  uint32_t ScreenTexture;
+
   // Switches/Flags
   bool  DrawCubemap;
   bool  DrawGizmos;
@@ -102,7 +109,7 @@ struct game_state
   uint32_t IndexFBO;
   uint32_t DepthRBO;
   uint32_t IDTexture;
-
+  
   // Physics
   bool    SimulateDynamics;
   bool    PerformDynamicsStep;

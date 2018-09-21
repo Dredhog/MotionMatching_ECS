@@ -77,6 +77,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShaderID =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
 
+    GameState->R.ShaderDefault =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/default");
+    // NOTE(rytis): Toon shader is currently written as a model shader,
+    // although it probably should be a post-processing effect.
+    GameState->R.ShaderToon =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
+    GameState->R.ShaderGrayscale =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
+
     //------------LOAD TEXTURES-----------
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
@@ -85,6 +94,47 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     //--------------LOAD FONT--------------
     GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
+
+    // Create VAO and VBO for screen quad
+    float QuadVertices[] = {
+        -1.0f,  1.0f,  0.0f,  1.0f,
+        -1.0f, -1.0f,  0.0f,  0.0f,
+         1.0f, -1.0f,  1.0f,  0.0f,
+        -1.0f,  1.0f,  0.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,  0.0f,
+         1.0f,  1.0f,  1.0f,  1.0f
+    };
+
+    glGenVertexArrays(1, &GameState->ScreenQuadVAO);
+    glGenBuffers(1, &GameState->ScreenQuadVBO);
+    glBindVertexArray(GameState->ScreenQuadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, GameState->ScreenQuadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(QuadVertices), &QuadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    // Screen framebuffer, renderbuffer and texture setup
+    glGenFramebuffers(1, &GameState->ScreenFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO);
+
+    glGenTextures(1, &GameState->ScreenTexture);
+    glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, GameState->ScreenTexture, 0);
+    glGenRenderbuffers(1, &GameState->ScreenRBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, GameState->ScreenRBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, GameState->ScreenRBO);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+      assert(0 && "error: incomplete framebuffer!\n");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
@@ -112,7 +162,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
-      assert(0 && "error: incomplete frambuffer!\n");
+      assert(0 && "error: incomplete framebuffer!\n");
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -493,6 +543,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   //---------------------RENDERING----------------------------
 
+  glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO);
+
   GameState->R.MeshInstanceCount = 0;
   // Put entiry data to draw drawing queue every frame to avoid erroneous indirection due to
   // sorting
@@ -596,7 +648,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   entity* SelectedEntity;
   if(Input->IsMouseInEditorMode && GetSelectedEntity(GameState, &SelectedEntity))
   {
-    // Higlight mesh
+    // Highlight mesh
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDepthFunc(GL_LEQUAL);
     vec4 ColorRed = vec4{ 1, 1, 0, 1 };
@@ -646,6 +698,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   }
 
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
   // Draw material preview to texture
   if(GameState->CurrentMaterialID.Value > 0)
   {
@@ -679,6 +733,33 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
+  // ------------POST-PROCESSING------------
+  // NOTE(rytis): Post-processing was done pretty sloppily, so it will most likely require some
+  // kind of rewrite/reintegration in the future.
+  //
+  // For now, though, it should be good enough?? Might still want to improve some parts (like the hard-coded
+  // screen quad vertices).
+  //
+  // Currently post-processing shaders only affect scene elements (entities, cubemap). GUI and debug drawings
+  // *should* be untouched.
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDisable(GL_DEPTH_TEST);
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+#if 1
+  glUseProgram(GameState->R.ShaderDefault);
+#else
+  glUseProgram(GameState->R.ShaderGrayscale);
+#endif
+  glBindVertexArray(GameState->ScreenQuadVAO);
+  glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
+
+  glEnable(GL_DEPTH_TEST);
+
+  // ------------------DEBUG------------------
   Debug::DrawWireframeSpheres(GameState);
 
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

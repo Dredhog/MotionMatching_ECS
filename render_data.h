@@ -66,6 +66,11 @@ struct render_data
   uint32_t ShaderCubemap;
   uint32_t ShaderID;
 
+  // Post-processing shaders
+  uint32_t ShaderDefault;
+  uint32_t ShaderToon;
+  uint32_t ShaderGrayscale;
+
   // Light
   vec3 LightPosition;
   bool ShowLightPosition;
