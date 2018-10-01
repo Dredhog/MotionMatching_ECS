@@ -41,5 +41,5 @@ Tools
 
 ### Rigid Body Dynamics and Debug Drawing ###
 
-![Rigid Body Dynamics](docs/dynamics.png "Stacking Boxesk")
+![Rigid Body Dynamics](docs/dynamics.png "Stacking Boxes")
 
