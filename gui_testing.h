@@ -5,7 +5,7 @@ void MaterialGUI(game_state* GameState, bool& g_ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& g_ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
-             bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings);
+             bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings, bool& g_ShowPostProcessing);
 
 namespace UI
 {
@@ -27,12 +27,13 @@ namespace UI
       static bool g_DrawMemoryMaps      = false;
       static bool g_ShowCameraSettings  = false;
       static bool g_ShowSceneSettings   = false;
+      static bool g_ShowPostProcessing  = false;
 
       EntityGUI(GameState, g_ShowEntityTools);
       MaterialGUI(GameState, g_ShowMaterialEditor);
       AnimationGUI(GameState, g_ShowAnimationEditor, g_ShowEntityTools);
       MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps,
-              g_ShowCameraSettings, g_ShowSceneSettings);
+              g_ShowCameraSettings, g_ShowSceneSettings, g_ShowPostProcessing);
     }
     UI::EndWindow();
 
@@ -817,8 +818,14 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
 
 void
 MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
-        bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings)
+        bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings, bool& g_ShowPostProcessing)
 {
+    if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessing))
+    {
+        const char* PPEffects[] = { "Default", "Grayscale" };
+        UI::Combo("Screen effect", &GameState->R.CurrentPPEffect, PPEffects, (int32_t)ARRAY_SIZE(PPEffects), 10, 150.0f);
+    }
+
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
   {
     UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 1, 5);

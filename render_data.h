@@ -16,6 +16,14 @@ enum shader_type
   SHADER_EnumCount,
 };
 
+enum pp_type
+{
+    POST_Default,
+    POST_Grayscale,
+
+    POST_EnumCount,
+};
+
 union material {
   struct material_header
   {
@@ -67,9 +75,11 @@ struct render_data
   uint32_t ShaderID;
 
   // Post-processing shaders
-  uint32_t ShaderDefault;
-  uint32_t ShaderToon;
-  uint32_t ShaderGrayscale;
+  uint32_t PostDefaultShader;
+  uint32_t PostGrayscale;
+  uint32_t PostToon;
+
+  int32_t CurrentPPEffect;
 
   // Light
   vec3 LightPosition;

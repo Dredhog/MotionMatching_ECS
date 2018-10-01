@@ -77,13 +77,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ShaderID =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
 
-    GameState->R.ShaderDefault =
+    GameState->R.PostDefaultShader =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/default");
     // NOTE(rytis): Toon shader is currently written as a model shader,
     // although it probably should be a post-processing effect.
-    GameState->R.ShaderToon =
+    GameState->R.PostToon =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
-    GameState->R.ShaderGrayscale =
+    GameState->R.PostGrayscale =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
 
     //------------LOAD TEXTURES-----------
@@ -748,11 +748,18 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
 
-#if 1
-  glUseProgram(GameState->R.ShaderDefault);
-#else
-  glUseProgram(GameState->R.ShaderGrayscale);
-#endif
+  switch(GameState->R.CurrentPPEffect)
+  {
+      default:
+      {
+          glUseProgram(GameState->R.PostDefaultShader);
+      } break;
+      case POST_Grayscale:
+      {
+          glUseProgram(GameState->R.PostGrayscale);
+      } break;
+  }
+
   glBindVertexArray(GameState->ScreenQuadVAO);
   glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture);
   glDrawArrays(GL_TRIANGLES, 0, 6);
