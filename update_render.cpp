@@ -85,6 +85,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
     GameState->R.PostGrayscale =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
+    GameState->R.PostBlur =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur");
 
     //------------LOAD TEXTURES-----------
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
@@ -757,6 +759,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       case POST_Grayscale:
       {
           glUseProgram(GameState->R.PostGrayscale);
+      } break;
+      case POST_Blur:
+      {
+          glUseProgram(GameState->R.PostBlur);
       } break;
   }
 

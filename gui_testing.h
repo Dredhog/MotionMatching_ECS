@@ -822,7 +822,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 {
     if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessing))
     {
-        const char* PPEffects[] = { "Default", "Grayscale" };
+        const char* PPEffects[] = { "Default", "Grayscale", "Blur" };
         UI::Combo("Screen effect", &GameState->R.CurrentPPEffect, PPEffects, (int32_t)ARRAY_SIZE(PPEffects), 10, 150.0f);
     }
 

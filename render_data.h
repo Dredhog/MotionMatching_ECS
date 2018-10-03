@@ -20,6 +20,7 @@ enum pp_type
 {
     POST_Default,
     POST_Grayscale,
+    POST_Blur,
 
     POST_EnumCount,
 };
@@ -77,6 +78,7 @@ struct render_data
   // Post-processing shaders
   uint32_t PostDefaultShader;
   uint32_t PostGrayscale;
+  uint32_t PostBlur;
   uint32_t PostToon;
 
   int32_t CurrentPPEffect;
