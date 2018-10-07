@@ -19,7 +19,7 @@
 #include "edit_animation.h"
 #include "resource_manager.h"
 
-#define FRAMEBUFFER_MAX_COUNT 2
+#define FRAMEBUFFER_MAX_COUNT 5
 
 struct cubemap
 {

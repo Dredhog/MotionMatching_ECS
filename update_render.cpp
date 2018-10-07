@@ -726,17 +726,25 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   uint32_t CurrentFramebuffer = GameState->CurrentFramebuffer;
   uint32_t CurrentTexture = GameState->CurrentTexture;
-  switch(GameState->R.CurrentPPEffect)
+
+  if(GameState->R.PPEffects)
   {
-      default:
+      if(GameState->R.PPEffects & POST_Grayscale)
       {
-          glUseProgram(GameState->R.PostDefaultShader);
-      } break;
-      case POST_Grayscale:
-      {
+          assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+          assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+
           glUseProgram(GameState->R.PostGrayscale);
-      } break;
-      case POST_Blur:
+
+          glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+          glDisable(GL_DEPTH_TEST);
+
+          glBindVertexArray(GameState->ScreenQuadVAO);
+          glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+          glDrawArrays(GL_TRIANGLES, 0, 6);
+      }
+
+      if(GameState->R.PPEffects & POST_Blur)
       {
           assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
           assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
@@ -763,7 +771,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
           glUniform1f(glGetUniformLocation(GameState->R.PostBlurV, "Offset"), 1.0f / SCREEN_HEIGHT);
           glUniform1fv(glGetUniformLocation(GameState->R.PostBlurV, "Kernel"), BLUR_KERNEL_SIZE, GameState->R.PostBlurKernel);
-      } break;
+      }
+  }
+  else
+  {
+      glUseProgram(GameState->R.PostDefaultShader);
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);

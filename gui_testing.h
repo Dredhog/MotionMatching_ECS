@@ -822,11 +822,29 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 {
     if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessing))
     {
-        const char* PPEffects[] = { "Default", "Grayscale", "Blur" };
-        UI::Combo("Screen effect", &GameState->R.CurrentPPEffect, PPEffects, (int32_t)ARRAY_SIZE(PPEffects), 10, 150.0f);
-        if(GameState->R.CurrentPPEffect == POST_Blur)
+        bool Grayscale = GameState->R.PPEffects & POST_Grayscale;
+        bool Blur = GameState->R.PPEffects & POST_Blur;
+
+        UI::Checkbox("Grayscale", &Grayscale);
+        UI::Checkbox("Blur", &Blur);
+
+        if(Grayscale)
         {
+            GameState->R.PPEffects |= POST_Grayscale;
+        }
+        else
+        {
+            GameState->R.PPEffects &= ~POST_Grayscale;
+        }
+
+        if(Blur)
+        {
+            GameState->R.PPEffects |= POST_Blur;
             UI::SliderFloat("StdDev", &GameState->R.PostBlurStdDev, 0.01f, 10.0f);
+        }
+        else
+        {
+            GameState->R.PPEffects &= ~POST_Blur;
         }
     }
 
