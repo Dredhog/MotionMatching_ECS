@@ -19,6 +19,8 @@
 #include "edit_animation.h"
 #include "resource_manager.h"
 
+#define FRAMEBUFFER_MAX_COUNT 2
+
 struct cubemap
 {
   char     Name[TEXT_LINE_MAX_LENGTH];
@@ -89,9 +91,11 @@ struct game_state
   // Temporary stuff for post-processing
   uint32_t ScreenQuadVAO;
   uint32_t ScreenQuadVBO;
-  uint32_t ScreenFBO;
-  uint32_t ScreenRBO;
-  uint32_t ScreenTexture;
+  uint32_t ScreenFBO[FRAMEBUFFER_MAX_COUNT];
+  uint32_t ScreenRBO[FRAMEBUFFER_MAX_COUNT];
+  uint32_t ScreenTexture[FRAMEBUFFER_MAX_COUNT];
+  uint32_t CurrentFramebuffer;
+  uint32_t CurrentTexture;
 
   // Switches/Flags
   bool  DrawCubemap;
@@ -334,4 +338,53 @@ LoadCubemap(Resource::resource_manager* Resources, rid* RIDs)
   glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
   return Texture;
+}
+
+inline void
+GenerateScreenQuad(uint32_t* VAO, uint32_t* VBO)
+{
+    // Create VAO and VBO for screen quad
+    float QuadVertices[] = {
+        -1.0f,  1.0f,  0.0f,  1.0f,
+        -1.0f, -1.0f,  0.0f,  0.0f,
+         1.0f, -1.0f,  1.0f,  0.0f,
+        -1.0f,  1.0f,  0.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,  0.0f,
+         1.0f,  1.0f,  1.0f,  1.0f
+    };
+
+    glGenVertexArrays(1, VAO);
+    glGenBuffers(1, VBO);
+    glBindVertexArray(*VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, *VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(QuadVertices), &QuadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+}
+
+inline void
+GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
+{
+    // Screen framebuffer, renderbuffer and texture setup
+    glGenFramebuffers(1, FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
+
+    glGenTextures(1, Texture);
+    glBindTexture(GL_TEXTURE_2D, *Texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *Texture, 0);
+    glGenRenderbuffers(1, RBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, *RBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, *RBO);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+      assert(0 && "error: incomplete framebuffer!\n");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

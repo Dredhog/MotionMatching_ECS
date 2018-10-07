@@ -78,7 +78,8 @@ struct render_data
   // Post-processing shaders
   uint32_t PostDefaultShader;
   uint32_t PostGrayscale;
-  uint32_t PostBlur;
+  uint32_t PostBlurH;
+  uint32_t PostBlurV;
   uint32_t PostToon;
 
   int32_t CurrentPPEffect;
