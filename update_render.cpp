@@ -2,6 +2,7 @@
 
 #include "linear_math/matrix.h"
 #include "linear_math/vector.h"
+#include "linear_math/distribution.h"
 
 #include "game.h"
 #include "mesh.h"
@@ -109,6 +110,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->CurrentFramebuffer = 0;
     GameState->CurrentTexture = 0;
+
+    // Default blur parameters
+
+    GameState->R.PostBlurLastStdDev = 10.0f;
+    GameState->R.PostBlurStdDev = GameState->R.PostBlurLastStdDev;
+    GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE, GameState->R.PostBlurStdDev);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
@@ -734,16 +741,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
           assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
 
+          if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
+          {
+              GameState->R.PostBlurLastStdDev = GameState->R.PostBlurStdDev;
+              GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE, GameState->R.PostBlurLastStdDev);
+          }
+
           glUseProgram(GameState->R.PostBlurH);
 
           glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
           glDisable(GL_DEPTH_TEST);
+
+          glUniform1f(glGetUniformLocation(GameState->R.PostBlurH, "Offset"), 1.0f / SCREEN_WIDTH);
+          glUniform1fv(glGetUniformLocation(GameState->R.PostBlurH, "Kernel"), BLUR_KERNEL_SIZE, GameState->R.PostBlurKernel);
 
           glBindVertexArray(GameState->ScreenQuadVAO);
           glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
           glDrawArrays(GL_TRIANGLES, 0, 6);
 
           glUseProgram(GameState->R.PostBlurV);
+
+          glUniform1f(glGetUniformLocation(GameState->R.PostBlurV, "Offset"), 1.0f / SCREEN_HEIGHT);
+          glUniform1fv(glGetUniformLocation(GameState->R.PostBlurV, "Kernel"), BLUR_KERNEL_SIZE, GameState->R.PostBlurKernel);
       } break;
   }
 

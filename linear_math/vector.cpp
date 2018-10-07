@@ -2,6 +2,108 @@
 #include "math.h"
 
 // Vector
+vec2
+operator-(const vec2& V)
+{
+  return vec2{ -V.X, -V.Y };
+}
+
+vec2
+operator+(const vec2& A, const vec2& B)
+{
+  return vec2{ A.X + B.X, A.Y + B.Y };
+}
+
+vec2
+operator-(const vec2& A, const vec2& B)
+{
+  return vec2{ A.X - B.X, A.Y - B.Y };
+}
+
+bool
+operator==(const vec2& A, const vec2& B)
+{
+  return (A.X == B.X && A.Y == B.Y);
+}
+
+bool
+operator!=(const vec2& A, const vec2& B)
+{
+  return (A.X != B.X || A.Y != B.Y);
+}
+
+vec2&
+operator+=(vec2& A, const vec2& B)
+{
+  A.X += B.X;
+  A.Y += B.Y;
+  return A;
+}
+
+vec2&
+operator-=(vec2& A, const vec2& B)
+{
+  A.X -= B.X;
+  A.Y -= B.Y;
+  return A;
+}
+
+vec2 operator*(const vec2& A, float s)
+{
+  return vec2{ A.X * s, A.Y * s };
+}
+
+vec2 operator*(float s, const vec2& A)
+{
+  return A * s;
+}
+
+vec2
+operator/(const vec2 A, float s)
+{
+  return vec2{ A.X / s, A.Y / s };
+}
+
+vec2
+operator/(float s, const vec2 A)
+{
+  return A / s;
+}
+
+vec2&
+operator*=(vec2& A, float s)
+{
+  A.X *= s;
+  A.Y *= s;
+  return A;
+}
+
+vec2&
+operator/=(vec2& A, float s)
+{
+  A.X /= s;
+  A.Y /= s;
+  return A;
+}
+
+float
+Math::Dot(vec2 v1, vec2 v2)
+{
+  return v1.X * v2.X + v1.Y * v2.Y;
+}
+
+float
+Math::Length(vec2 V)
+{
+  return sqrtf(V.X * V.X + V.Y * V.Y);
+}
+
+vec2
+Math::Normalized(vec2 V)
+{
+  return V / Length(V);
+}
+
 vec3
 operator-(const vec3& V)
 {

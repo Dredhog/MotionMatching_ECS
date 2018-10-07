@@ -1,5 +1,7 @@
 #pragma once
 
+#define BLUR_KERNEL_SIZE 5
+
 enum phong_flags
 {
   PHONG_UseDiffuseMap  = 1,
@@ -83,6 +85,10 @@ struct render_data
   uint32_t PostToon;
 
   int32_t CurrentPPEffect;
+
+  float PostBlurLastStdDev;
+  float PostBlurStdDev;
+  float PostBlurKernel[BLUR_KERNEL_SIZE];
 
   // Light
   vec3 LightPosition;

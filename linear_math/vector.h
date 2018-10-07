@@ -1,5 +1,17 @@
 #pragma once
 
+union vec2
+{
+    struct
+    {
+        float X, Y;
+    };
+    struct
+    {
+        float U, V;
+    };
+};
+
 union vec3 {
   struct
   {
@@ -23,6 +35,28 @@ union vec4 {
   vec3 XYZ;
   vec3 RGB;
 };
+
+namespace Math
+{
+  float Dot(vec2 v1, vec2 v2);
+  float Length(vec2 V);
+  vec2  Normalized(vec2 V);
+}
+
+vec2 operator-(const vec2& V);
+vec2 operator+(const vec2& A, const vec2& B);
+vec2 operator-(const vec2& A, const vec2& B);
+vec2 operator*(const vec2& A, float s);
+vec2 operator*(float s, const vec2& A);
+vec2 operator/(const vec2 A, float s);
+vec2 operator/(float s, const vec2 A);
+
+bool  operator==(const vec2& A, const vec2& B);
+bool  operator!=(const vec2& A, const vec2& B);
+vec2& operator+=(vec2& A, const vec2& B);
+vec2& operator-=(vec2& A, const vec2& B);
+vec2& operator*=(vec2& A, float s);
+vec2& operator/=(vec2& A, float s);
 
 namespace Math
 {

@@ -824,6 +824,10 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     {
         const char* PPEffects[] = { "Default", "Grayscale", "Blur" };
         UI::Combo("Screen effect", &GameState->R.CurrentPPEffect, PPEffects, (int32_t)ARRAY_SIZE(PPEffects), 10, 150.0f);
+        if(GameState->R.CurrentPPEffect == POST_Blur)
+        {
+            UI::SliderFloat("StdDev", &GameState->R.PostBlurStdDev, 0.01f, 10.0f);
+        }
     }
 
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
