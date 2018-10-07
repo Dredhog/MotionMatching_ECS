@@ -1,6 +1,6 @@
 #pragma once
 
-#define BLUR_KERNEL_SIZE 5
+#define BLUR_KERNEL_SIZE 11
 
 enum phong_flags
 {
