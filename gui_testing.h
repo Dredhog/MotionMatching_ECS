@@ -1,11 +1,13 @@
 #include "ui.h"
 #include "scene.h"
+#include "shader_def.h"
 
 void MaterialGUI(game_state* GameState, bool& g_ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& g_ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
-             bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings, bool& g_ShowPostProcessing);
+             bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
+             bool& g_ShowPostProcessing);
 
 namespace UI
 {
@@ -167,7 +169,7 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
           }
         }
       }
-      if(GameState->CurrentMaterialID.Value > 0)
+      if(0 < GameState->CurrentMaterialID.Value)
       {
         // Draw material preview to texture
         UI::Image("Material preview", GameState->IDTexture, { 360, 200 });
@@ -177,10 +179,9 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         {
           if(CurrentMaterial->Common.ShaderType > 0)
           {
-            uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
-            *CurrentMaterial                    = {};
-            CurrentMaterial->Common.ShaderType  = ShaderType;
-            CurrentMaterial->Common.UseBlending = true;
+            int32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
+            *CurrentMaterial                   = {};
+            CurrentMaterial->Common.ShaderType = ShaderType;
           }
         }
         UI::SameLine();
@@ -188,10 +189,9 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         {
           if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
           {
-            uint32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
-            *CurrentMaterial                    = {};
-            CurrentMaterial->Common.ShaderType  = ShaderType;
-            CurrentMaterial->Common.UseBlending = true;
+            int32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
+            *CurrentMaterial                   = {};
+            CurrentMaterial->Common.ShaderType = ShaderType;
           }
         }
         UI::SameLine();
@@ -352,6 +352,84 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             UI::DragFloat4("Color", &CurrentMaterial->Color.Color.X, 0, 1, 5);
           }
           break;
+          default:
+          {
+            struct shader_def*     ShaderDef      = NULL;
+            named_shader_param_def ShaderParamDef = {};
+            assert(GetShaderDef(&ShaderDef, CurrentMaterial->Common.ShaderType));
+            {
+              ResetShaderDefIterator(ShaderDef);
+              while(GetNextShaderParam(&ShaderParamDef, ShaderDef))
+              {
+                void* ParamLocation =
+                  (void*)(((uint8_t*)CurrentMaterial) + ShaderParamDef.OffsetIntoMaterial);
+                switch(ShaderParamDef.Type)
+                {
+                  case SHADER_PARAM_TYPE_Int:
+                  {
+                    int32_t* ParamPtr = (int32_t*)ParamLocation;
+                    UI::SliderInt(ShaderParamDef.Name, ParamPtr, 0, 10);
+                  }
+                  break;
+                  case SHADER_PARAM_TYPE_Bool:
+                  {
+                    bool* ParamPtr = (bool*)ParamLocation;
+                    UI::Checkbox(ShaderParamDef.Name, ParamPtr);
+                  }
+                  break;
+                  case SHADER_PARAM_TYPE_Float:
+                  {
+                    float* ParamPtr = (float*)ParamLocation;
+                    UI::DragFloat(ShaderParamDef.Name, ParamPtr, -100, 100, 2.0f);
+                  }
+                  break;
+                  case SHADER_PARAM_TYPE_Vec3:
+                  {
+                    vec3* ParamPtr = (vec3*)ParamLocation;
+                    UI::DragFloat3(ShaderParamDef.Name, (float*)ParamPtr, 0, INFINITY, 10);
+                  }
+                  break;
+                  case SHADER_PARAM_TYPE_Vec4:
+                  {
+                    vec4* ParamPtr = (vec4*)ParamLocation;
+                    UI::DragFloat4(ShaderParamDef.Name, (float*)ParamPtr, 0, INFINITY, 10);
+                  }
+                  break;
+                  case SHADER_PARAM_TYPE_Map:
+                  {
+                    int32_t ActivePathIndex        = 0;
+                    rid*    CurrentParamTextureRID = (rid*)ParamLocation;
+                    if(0 < CurrentParamTextureRID->Value)
+                    {
+                      ActivePathIndex =
+                        GameState->Resources.GetTexturePathIndex(*CurrentParamTextureRID);
+                    }
+                    if(0 < GameState->Resources.TexturePathCount)
+                    {
+                      UI::Combo(ShaderParamDef.Name, &ActivePathIndex,
+                                GameState->Resources.TexturePaths,
+                                GameState->Resources.TexturePathCount, PathArrayToString);
+                      rid NewRID;
+                      if(GameState->Resources.GetTexturePathRID(&NewRID,
+                                                                GameState->Resources
+                                                                  .TexturePaths[ActivePathIndex]
+                                                                  .Name))
+                      {
+                        *CurrentParamTextureRID = NewRID;
+                      }
+                      else
+                      {
+                        *CurrentParamTextureRID = GameState->Resources.RegisterTexture(
+                          GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                      }
+                      assert(0 < CurrentParamTextureRID->Value);
+                    }
+                  }
+                  break;
+                }
+              }
+            }
+          }
         }
         if(GameState->Resources.MaterialPathCount > 0 && GameState->CurrentMaterialID.Value > 0)
         {
@@ -818,13 +896,15 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
 
 void
 MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
-        bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings, bool& g_ShowPostProcessing)
+        bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
+        bool& g_ShowPostProcessing)
 {
-    if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessing))
-    {
-        const char* PPEffects[] = { "Default", "Grayscale", "Blur" };
-        UI::Combo("Screen effect", &GameState->R.CurrentPPEffect, PPEffects, (int32_t)ARRAY_SIZE(PPEffects), 10, 150.0f);
-    }
+  if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessing))
+  {
+    const char* PPEffects[] = { "Default", "Grayscale", "Blur" };
+    UI::Combo("Screen effect", &GameState->R.CurrentPPEffect, PPEffects,
+              (int32_t)ARRAY_SIZE(PPEffects), 10, 150.0f);
+  }
 
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
   {

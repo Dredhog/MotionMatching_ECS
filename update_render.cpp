@@ -25,6 +25,7 @@
 #include "gui_testing.h"
 #include <limits.h>
 #include "dynamics.h"
+#include "shader_def.h"
 
 void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform);
 mat4 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex);
@@ -98,14 +99,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
 
     // Create VAO and VBO for screen quad
-    float QuadVertices[] = {
-        -1.0f,  1.0f,  0.0f,  1.0f,
-        -1.0f, -1.0f,  0.0f,  0.0f,
-         1.0f, -1.0f,  1.0f,  0.0f,
-        -1.0f,  1.0f,  0.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,  0.0f,
-         1.0f,  1.0f,  1.0f,  1.0f
-    };
+    float QuadVertices[] = { -1.0f, 1.0f,  0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+                             1.0f,  -1.0f, 1.0f, 0.0f, -1.0f, 1.0f,  0.0f, 1.0f,
+                             1.0f,  -1.0f, 1.0f, 0.0f, 1.0f,  1.0f,  1.0f, 1.0f };
 
     glGenVertexArrays(1, &GameState->ScreenQuadVAO);
     glGenBuffers(1, &GameState->ScreenQuadVBO);
@@ -123,15 +119,18 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     glGenTextures(1, &GameState->ScreenTexture);
     glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
+                 GL_UNSIGNED_INT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, GameState->ScreenTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           GameState->ScreenTexture, 0);
     glGenRenderbuffers(1, &GameState->ScreenRBO);
     glBindRenderbuffer(GL_RENDERBUFFER, GameState->ScreenRBO);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, GameState->ScreenRBO);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+                              GameState->ScreenRBO);
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
     {
       assert(0 && "error: incomplete framebuffer!\n");
@@ -216,6 +215,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->SimulateFriction  = false;
 
     SetUpCubeHull(&g_CubeHull);
+
+    struct shader_def* PhongShaderDef = AddShaderDef(SHADER_Toon, "toon");
+    AddParamDef(PhongShaderDef, "sth_int", { SHADER_PARAM_TYPE_Int, offsetof(material, Toon.Int) });
+    AddParamDef(PhongShaderDef, "sth_vec3",
+                { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.Vec3) });
+    AddParamDef(PhongShaderDef, "map_specular",
+                { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.SpecularID) });
+    AddParamDef(PhongShaderDef, "map_normal",
+                { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.NormalID) });
+    AddParamDef(PhongShaderDef, "sth_float",
+                { SHADER_PARAM_TYPE_Float, offsetof(material, Toon.Float) });
+    AddParamDef(PhongShaderDef, "map_diffuse",
+                { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.DiffuseID) });
   }
   //---------------------END INIT -------------------------
 
@@ -739,11 +751,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // NOTE(rytis): Post-processing was done pretty sloppily, so it will most likely require some
   // kind of rewrite/reintegration in the future.
   //
-  // For now, though, it should be good enough?? Might still want to improve some parts (like the hard-coded
-  // screen quad vertices).
+  // For now, though, it should be good enough?? Might still want to improve some parts (like the
+  // hard-coded screen quad vertices).
   //
-  // Currently post-processing shaders only affect scene elements (entities, cubemap). GUI and debug drawings
-  // *should* be untouched.
+  // Currently post-processing shaders only affect scene elements (entities, cubemap). GUI and debug
+  // drawings *should* be untouched.
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDisable(GL_DEPTH_TEST);
@@ -752,18 +764,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   switch(GameState->R.CurrentPPEffect)
   {
-      default:
-      {
-          glUseProgram(GameState->R.PostDefaultShader);
-      } break;
-      case POST_Grayscale:
-      {
-          glUseProgram(GameState->R.PostGrayscale);
-      } break;
-      case POST_Blur:
-      {
-          glUseProgram(GameState->R.PostBlur);
-      } break;
+    default:
+    {
+      glUseProgram(GameState->R.PostDefaultShader);
+    }
+    break;
+    case POST_Grayscale:
+    {
+      glUseProgram(GameState->R.PostGrayscale);
+    }
+    break;
+    case POST_Blur:
+    {
+      glUseProgram(GameState->R.PostBlur);
+    }
+    break;
   }
 
   glBindVertexArray(GameState->ScreenQuadVAO);

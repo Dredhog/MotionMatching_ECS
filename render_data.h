@@ -11,6 +11,7 @@ enum phong_flags
 enum shader_type
 {
   SHADER_Phong,
+  SHADER_Toon,
   SHADER_Color,
 
   SHADER_EnumCount,
@@ -18,19 +19,19 @@ enum shader_type
 
 enum pp_type
 {
-    POST_Default,
-    POST_Grayscale,
-    POST_Blur,
+  POST_Default,
+  POST_Grayscale,
+  POST_Blur,
 
-    POST_EnumCount,
+  POST_EnumCount,
 };
 
 union material {
   struct material_header
   {
-    uint32_t ShaderType;
-    bool     IsSkeletal;
-    bool     UseBlending;
+    int32_t ShaderType;
+    bool    IsSkeletal;
+    bool    UseBlending;
   } Common;
 
   struct
@@ -45,11 +46,23 @@ union material {
     rid             NormalMapID;
     float           Shininess;
   } Phong;
+
   struct
   {
     material_header Common;
     vec4            Color;
   } Color;
+
+  struct
+  {
+    material_header Common;
+    vec3            Vec3;
+    int32_t         Int;
+    float           Float;
+    rid             NormalID;
+    rid             SpecularID;
+    rid             DiffuseID;
+  } Toon;
 };
 
 const int32_t MESH_INSTANCE_MAX_COUNT = 10000;

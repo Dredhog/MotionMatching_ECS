@@ -1,11 +1,14 @@
 #include "material_io.h"
 #include "file_io.h"
+#include "shader_def.h"
+#include "stack_alloc.h"
+#include "shader_def.h"
 
 #include <stdio.h>
 #include <string.h>
 
 int32_t
-GetLine(char** Line, int32_t* LineLength, char* CharArray, int32_t ArraySize, int32_t* CharCounter)
+GetLine(char** Line, int* LineLength, char* CharArray, int ArraySize, int* CharCounter)
 {
   *Line       = &CharArray[*CharCounter];
   *LineLength = 0;
@@ -25,41 +28,24 @@ GetLine(char** Line, int32_t* LineLength, char* CharArray, int32_t ArraySize, in
 }
 
 material
-ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* Resources,
-               const char* Path)
+ImportPhongMaterial_Deprecated(debug_read_file_result      FileData,
+                               Resource::resource_manager* Resources)
 {
-  if(strlen(Path) <= strlen(".mat"))
-  {
-    printf("%s is not a .mat file!\n", Path);
-    assert(0);
-  }
-  else if(!strcmp(&Path[strlen(Path) - strlen(".mat") - 1], ".mat"))
-  {
-    printf("%s is not a .mat file!\n", Path);
-    assert(0);
-  }
-
   material Material          = {};
   Material.Common.ShaderType = SHADER_Phong;
 
   bool LoadingMaterial = false;
 
-  debug_read_file_result FileData    = Platform::ReadEntireFile(Allocator, Path);
-  int32_t                CharCounter = 0;
+  int CharCounter = 0;
 
-  if(FileData.ContentsSize <= 0)
-  {
-    printf("File %s is empty!\n", Path);
-  }
-
-  char*   Line       = NULL;
-  int32_t LineLength = 0;
+  char* Line       = NULL;
+  int   LineLength = 0;
 
   while(GetLine(&Line, &LineLength, (char*)FileData.Contents, FileData.ContentsSize,
                 &CharCounter) != -1)
   {
-    int32_t Offset = 0;
-    rid     RID;
+    int Offset = 0;
+    rid RID;
 
     while((Line[Offset] == ' ') || (Line[Offset] == '\t'))
     {
@@ -253,6 +239,149 @@ ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* R
     LineLength = 0;
   }
 
+  return Material;
+}
+
+material
+ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* Resources,
+               const char* Path)
+{
+  // Make sure file extension is correct
+  if(strlen(Path) <= strlen(".mat"))
+  {
+    printf("%s is not a .mat file!\n", Path);
+    assert(0);
+  }
+  else if(!strcmp(&Path[strlen(Path) - strlen(".mat") - 1], ".mat"))
+  {
+    printf("%s is not a .mat file!\n", Path);
+    assert(0);
+  }
+
+  // Read File Into Memory
+  debug_read_file_result FileData = Platform::ReadEntireFile(Allocator, Path);
+  if(FileData.ContentsSize <= 0)
+  {
+    printf("File %s is empty!\n", Path);
+    assert(FileData.ContentsSize > 0);
+  }
+
+  char* Line        = NULL;
+  int   LineLength  = 0;
+  int   CharCounter = 0;
+
+  material Material          = {};
+  Material.Common.ShaderType = -1;
+
+  struct shader_def* ShaderDefinition = NULL;
+
+  char LineBuffer[100];
+  // Checking if file not empty
+  if(GetLine(&Line, &LineLength, (char*)FileData.Contents, FileData.ContentsSize, &CharCounter) !=
+     -1)
+  {
+    const char*  TypeParamString       = "type: ";
+    const size_t TypeParamStringLength = strlen(TypeParamString);
+    if(LineLength >= TypeParamStringLength &&
+       strncmp(TypeParamString, Line, TypeParamStringLength) == 0)
+    {
+      const char* const ShaderNameStart        = Line + TypeParamStringLength;
+      size_t            ShaderNameStringLength = LineLength - TypeParamStringLength;
+
+      strncpy(LineBuffer, ShaderNameStart, ShaderNameStringLength);
+      LineBuffer[ShaderNameStringLength] = '\0';
+
+      assert(GetShaderDef(&ShaderDefinition, LineBuffer));
+
+      Material.Common.ShaderType = GetShaderType(ShaderDefinition);
+      assert(0 <= Material.Common.ShaderType);
+    }
+    else
+    {
+      // USING OLD IMPORTER IF FAILED TO FIND "type: " field
+      Material = ImportPhongMaterial_Deprecated(FileData, Resources);
+    }
+  }
+
+  // Parse with shader def available
+  while(ShaderDefinition && GetLine(&Line, &LineLength, (char*)FileData.Contents,
+                                    FileData.ContentsSize, &CharCounter) != -1)
+  {
+    path ParamName;
+    sscanf(Line, "%[^:]: ", (char*)ParamName.Name);
+
+    const char* RestOfLine = Line + strlen(ParamName.Name) + strlen(": ");
+
+    shader_param_def ParamDef = {};
+    assert(GetShaderParamDef(&ParamDef, ShaderDefinition, ParamName.Name));
+
+    uint8_t* ParamLocation = (((uint8_t*)&Material) + ParamDef.OffsetIntoMaterial);
+    switch(ParamDef.Type)
+    {
+      case SHADER_PARAM_TYPE_Int:
+      {
+        int32_t Value;
+        assert(sscanf(RestOfLine, "%d", &Value) == 1);
+        *((int32_t*)ParamLocation) = Value;
+      }
+      break;
+      case SHADER_PARAM_TYPE_Bool:
+      {
+        int32_t Value;
+        assert(sscanf(RestOfLine, "%d", &Value) == 1);
+        *((bool*)ParamLocation) = (bool)Value;
+      }
+      break;
+      case SHADER_PARAM_TYPE_Float:
+      {
+        float Value;
+        assert(sscanf(RestOfLine, "%f", &Value) == 1);
+        *((float*)ParamLocation) = Value;
+      }
+      break;
+      case SHADER_PARAM_TYPE_Vec3:
+      {
+        vec3 Value;
+        assert(sscanf(RestOfLine, "%f %f %f", &Value.X, &Value.Y, &Value.Z) == 3);
+        *((vec3*)ParamLocation) = Value;
+      }
+      break;
+      case SHADER_PARAM_TYPE_Vec4:
+      {
+        vec4 Value;
+        assert(sscanf(RestOfLine, "%f %f %f %f", &Value.X, &Value.Y, &Value.Z, &Value.W) == 4);
+        *((vec4*)ParamLocation) = Value;
+      }
+      break;
+      case SHADER_PARAM_TYPE_Map:
+      {
+        rid    RID;
+        path   Path       = {};
+        size_t PathLength = strcspn(RestOfLine, " \t\n");
+
+        if(PATH_MAX_LENGTH <= PathLength)
+        {
+          printf("Path in line\n%sis too long\n", Line);
+        }
+        assert(PathLength < PATH_MAX_LENGTH);
+
+        strncpy(Path.Name, RestOfLine, PathLength);
+        Path.Name[PathLength] = '\0';
+
+        if(Resources->GetTexturePathRID(&RID, Path.Name))
+        {
+          *((rid*)ParamLocation) = RID;
+        }
+        else
+        {
+          *((rid*)ParamLocation) = Resources->RegisterTexture(Path.Name);
+        }
+      }
+      break;
+    }
+  }
+
+  assert(Material.Common.ShaderType >= 0);
   return Material;
 }
 

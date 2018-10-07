@@ -1,6 +1,6 @@
 ngpe - None General Purpose Engine
 ======
-A game engine developed bottom up with the goal of learning as much as possible about game engine architecture and the intricacies large real-time sofrware systems. The title serves as a reminder to not overgeneralize when programming (To help remember to not solve nonexistent problems and avoid "futureproofing"). Developed by Lukas Taparauskas (Dredhog) and Rytis Pranckūnas (QuickShift). Repo began as a university project at KTU and has been continued afterwards.
+A game engine developed bottom up with the goal of learning as much as possible about game engine architecture and the intricacies of large real-time sofrware systems. The title serves as a reminder to not overgeneralize when programming (helps remember to not solve nonexistent problems and avoid "futureproofing"). Developed by Lukas Taparauskas (Dredhog) and Rytis Pranckūnas (QuickShift). Repo began as a university project at KTU and has been continued afterwards.
 
 Features
 --------
@@ -24,11 +24,11 @@ Features
 
 Tools
 -----
-* Language
-	c++ - technically, but the style is very reminescent of c, only utilising few c++ features, such as namespaces, operator overloading and anything that is worth the overhead and friction. Avoiding unnecessary abstraction and premature code compression into functions (only if used in multiple places).
+* Language/Coding Style
+	We use c++, howerver most parts of the codebase resemble c, as code is mostry written in a procedural style. We only utilize a few c++ features, such as namespaces, small templates for containers, operator overloading for vectors and anything that is worth the overhead and friction. We try to avoid unnecessary abstraction and premature code compression into functions (only if used in multiple places) as recommended by people such as John Carmack and Casey Muratori. The codebase follows the Insomniac Games' [core-coding-standard](https://gist.github.com/Kerollmops/fcad27cfef9e3552cb75a3d201494ba6 "github page for Insomniac Games' core coding standard.") with the exception that all variable names are in PascalCase;
 * Libraries
   * SDL - Resides in platform dependent layer, easily replacable by fully custom platform library
-  * OpenGL
+  * OpenGL - Currently using opengl version 3.3
   * Assimp - used only in offline build system for .obj and .dae file parsing
 
 ### GUI ###
