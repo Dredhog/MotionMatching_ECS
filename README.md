@@ -1,6 +1,6 @@
 ngpe - None General Purpose Engine
 ======
-A game engine developed bottom up with the goal of learning as much as possible about game engine architecture and the intricacies of large real-time sofrware systems. The title serves as a reminder to not overgeneralize when programming (helps remember to not solve nonexistent problems and avoid "futureproofing"). Developed by Lukas Taparauskas (Dredhog) and Rytis Pranckūnas (QuickShift). Repo began as a university project at KTU and has been continued afterwards.
+A game engine developed bottom up with the goal of learning as much as possible about game engine architecture and the intricacies of large real-time software systems. The title serves as a reminder to not overgeneralize when programming (helps remember to not solve nonexistent problems and avoid "futureproofing"). Developed by Lukas Taparauskas (Dredhog) and Rytis Pranckūnas (QuickShift). Repo began as a university project at KTU and has been continued afterwards.
 
 Features
 --------
