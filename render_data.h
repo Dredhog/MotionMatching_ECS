@@ -1,5 +1,7 @@
 #pragma once
 
+#define BLUR_KERNEL_SIZE 11
+
 enum phong_flags
 {
   PHONG_UseDiffuseMap  = 1,
@@ -19,9 +21,9 @@ enum shader_type
 
 enum pp_type
 {
-  POST_Default,
-  POST_Grayscale,
-  POST_Blur,
+  POST_Default   = 0,
+  POST_Grayscale = 1 << 0,
+  POST_Blur      = 1 << 1,
 
   POST_EnumCount,
 };
@@ -91,10 +93,15 @@ struct render_data
   // Post-processing shaders
   uint32_t PostDefaultShader;
   uint32_t PostGrayscale;
-  uint32_t PostBlur;
+  uint32_t PostBlurH;
+  uint32_t PostBlurV;
   uint32_t PostToon;
 
-  int32_t CurrentPPEffect;
+  int32_t PPEffects;
+
+  float PostBlurLastStdDev;
+  float PostBlurStdDev;
+  float PostBlurKernel[BLUR_KERNEL_SIZE];
 
   // Light
   vec3 LightPosition;

@@ -2,6 +2,7 @@
 
 #include "linear_math/matrix.h"
 #include "linear_math/vector.h"
+#include "linear_math/distribution.h"
 
 #include "game.h"
 #include "mesh.h"
@@ -86,8 +87,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
     GameState->R.PostGrayscale =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
-    GameState->R.PostBlur =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur");
+    GameState->R.PostBlurH =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_horizontal");
+    GameState->R.PostBlurV =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_vertical");
 
     //------------LOAD TEXTURES-----------
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
@@ -98,44 +101,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     //--------------LOAD FONT--------------
     GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
 
-    // Create VAO and VBO for screen quad
-    float QuadVertices[] = { -1.0f, 1.0f,  0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
-                             1.0f,  -1.0f, 1.0f, 0.0f, -1.0f, 1.0f,  0.0f, 1.0f,
-                             1.0f,  -1.0f, 1.0f, 0.0f, 1.0f,  1.0f,  1.0f, 1.0f };
+    // Framebuffer generation for post-processing effects
+    GenerateScreenQuad(&GameState->ScreenQuadVAO, &GameState->ScreenQuadVBO);
 
-    glGenVertexArrays(1, &GameState->ScreenQuadVAO);
-    glGenBuffers(1, &GameState->ScreenQuadVBO);
-    glBindVertexArray(GameState->ScreenQuadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, GameState->ScreenQuadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(QuadVertices), &QuadVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-    // Screen framebuffer, renderbuffer and texture setup
-    glGenFramebuffers(1, &GameState->ScreenFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO);
-
-    glGenTextures(1, &GameState->ScreenTexture);
-    glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
-                 GL_UNSIGNED_INT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           GameState->ScreenTexture, 0);
-    glGenRenderbuffers(1, &GameState->ScreenRBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, GameState->ScreenRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-                              GameState->ScreenRBO);
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
     {
-      assert(0 && "error: incomplete framebuffer!\n");
+      GenerateFramebuffer(&GameState->ScreenFBO[i], &GameState->ScreenRBO[i],
+                          &GameState->ScreenTexture[i]);
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    GameState->CurrentFramebuffer = 0;
+    GameState->CurrentTexture     = 0;
+
+    // Default blur parameters
+
+    GameState->R.PostBlurLastStdDev = 10.0f;
+    GameState->R.PostBlurStdDev     = GameState->R.PostBlurLastStdDev;
+    GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
+                               GameState->R.PostBlurStdDev);
 
     // ======Set GL state
     glEnable(GL_DEPTH_TEST);
@@ -557,7 +540,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   //---------------------RENDERING----------------------------
 
-  glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[GameState->CurrentFramebuffer]);
 
   GameState->R.MeshInstanceCount = 0;
   // Put entiry data to draw drawing queue every frame to avoid erroneous indirection due to
@@ -757,35 +740,76 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // Currently post-processing shaders only affect scene elements (entities, cubemap). GUI and debug
   // drawings *should* be untouched.
 
+  uint32_t CurrentFramebuffer = GameState->CurrentFramebuffer;
+  uint32_t CurrentTexture     = GameState->CurrentTexture;
+
+  if(GameState->R.PPEffects)
+  {
+    if(GameState->R.PPEffects & POST_Blur)
+    {
+      assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+      assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+
+      if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
+      {
+        GameState->R.PostBlurLastStdDev = GameState->R.PostBlurStdDev;
+        GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
+                                   GameState->R.PostBlurLastStdDev);
+      }
+
+      glUseProgram(GameState->R.PostBlurH);
+
+      glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+      glDisable(GL_DEPTH_TEST);
+
+      glUniform1f(glGetUniformLocation(GameState->R.PostBlurH, "Offset"), 1.0f / SCREEN_WIDTH);
+      glUniform1fv(glGetUniformLocation(GameState->R.PostBlurH, "Kernel"), BLUR_KERNEL_SIZE,
+                   GameState->R.PostBlurKernel);
+
+      glBindVertexArray(GameState->ScreenQuadVAO);
+      glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+
+      glUseProgram(GameState->R.PostBlurV);
+
+      glUniform1f(glGetUniformLocation(GameState->R.PostBlurV, "Offset"), 1.0f / SCREEN_HEIGHT);
+      glUniform1fv(glGetUniformLocation(GameState->R.PostBlurV, "Kernel"), BLUR_KERNEL_SIZE,
+                   GameState->R.PostBlurKernel);
+    }
+
+    if(GameState->R.PPEffects & POST_Grayscale)
+    {
+      assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+      assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+
+      glUseProgram(GameState->R.PostGrayscale);
+
+      glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+      glDisable(GL_DEPTH_TEST);
+
+      glBindVertexArray(GameState->ScreenQuadVAO);
+      glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+  }
+  else
+  {
+    glUseProgram(GameState->R.PostDefaultShader);
+  }
+
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glDisable(GL_DEPTH_TEST);
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  switch(GameState->R.CurrentPPEffect)
-  {
-    default:
-    {
-      glUseProgram(GameState->R.PostDefaultShader);
-    }
-    break;
-    case POST_Grayscale:
-    {
-      glUseProgram(GameState->R.PostGrayscale);
-    }
-    break;
-    case POST_Blur:
-    {
-      glUseProgram(GameState->R.PostBlur);
-    }
-    break;
-  }
-
   glBindVertexArray(GameState->ScreenQuadVAO);
-  glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture);
+  glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture]);
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
   glEnable(GL_DEPTH_TEST);
+
+  GameState->CurrentFramebuffer = CurrentFramebuffer;
+  GameState->CurrentTexture     = CurrentTexture;
 
   // ------------------DEBUG------------------
   Debug::DrawWireframeSpheres(GameState);
