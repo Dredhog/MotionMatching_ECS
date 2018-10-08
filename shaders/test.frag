@@ -4,7 +4,7 @@ struct Material
 {
   sampler2D diffuseMap;
   sampler2D specularMap;
-  sampler2D texture3;
+  sampler2D normalMap;
   sampler2D texture4;
 };
 
@@ -40,6 +40,10 @@ out vec4 out_color;
 void
 main()
 {
-  out_color = texture(material.diffuseMap, frag.texCoord) +
-              uniform_float * texture(material.specularMap, frag.texCoord);
+  // texture(material.diffuseMap, frag.texCoord) +
+  vec3 reverseIncidence = normalize(frag.lightPos - frag.position);
+
+  float lightAmount = dot(frag.normal, reverseIncidence);
+  vec4  diffuse     = lightAmount * texture(material.diffuseMap, frag.texCoord);
+  out_color         = diffuse;
 }

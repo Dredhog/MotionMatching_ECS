@@ -37,181 +37,202 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   game_state* GameState = (game_state*)GameMemory.PersistentMemory;
   assert(GameMemory.HasBeenInitialized);
 
-  //---------------------BEGIN INIT -------------------------
+  // GAME STATE INITIALIZATION (ONLY RUN ON FIRST FRAME)
   if(GameState->MagicChecksum != 123456)
   {
     GameState->MagicChecksum = 123456;
 
-    GameState->TemporaryMemStack =
-      Memory::CreateStackAllocatorInPlace(GameMemory.TemporaryMemory,
-                                          GameMemory.TemporaryMemorySize);
-    // SEGMENT MEMORY
-    assert(GameMemory.PersistentMemorySize > sizeof(game_state));
-
-    uint32_t AvailableSubsystemMemory = GameMemory.PersistentMemorySize - sizeof(game_state);
-    uint32_t PersistentStackSize      = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
-    uint8_t* PersistentStackStart     = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
-
-    uint32_t ResourceMemorySize = AvailableSubsystemMemory - PersistentStackSize;
-    uint8_t* ResouceMemoryStart = PersistentStackStart + PersistentStackSize;
-
-    GameState->PersistentMemStack =
-      Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
-    GameState->Resources.Create(ResouceMemoryStart, ResourceMemorySize);
-    // END SEGMENTATION
-
-    // --------LOAD MODELS/ACTORS--------
-    RegisterDebugModels(GameState);
-
-    // -----------LOAD SHADERS------------
-    GameState->R.ShaderPhong =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/phong");
-    GameState->R.ShaderCubemap =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/cubemap");
-    GameState->R.ShaderGizmo =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/gizmo");
-    GameState->R.ShaderQuad =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_quad");
-    GameState->R.ShaderColor =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/color");
-    GameState->R.ShaderTexturedQuad =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_textured_quad");
-    GameState->R.ShaderID =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
-    GameState->R.ShaderToon =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
-    GameState->R.ShaderTest =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/test");
-
-    GameState->R.PostDefaultShader =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/default");
-    GameState->R.PostGrayscale =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
-    GameState->R.PostBlurH =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_horizontal");
-    GameState->R.PostBlurV =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_vertical");
-
-    //------------LOAD TEXTURES-----------
-    GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
-    GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
-    assert(GameState->CollapsedTextureID);
-    assert(GameState->ExpandedTextureID);
-
-    //--------------LOAD FONT--------------
-    GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
-
-    // Framebuffer generation for post-processing effects
-    GenerateScreenQuad(&GameState->ScreenQuadVAO, &GameState->ScreenQuadVBO);
-
-    for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
+    // INITIALIZE MEMORY
     {
-      GenerateFramebuffer(&GameState->ScreenFBO[i], &GameState->ScreenRBO[i],
-                          &GameState->ScreenTexture[i]);
+      GameState->TemporaryMemStack =
+        Memory::CreateStackAllocatorInPlace(GameMemory.TemporaryMemory,
+                                            GameMemory.TemporaryMemorySize);
+      assert(GameMemory.PersistentMemorySize > sizeof(game_state));
+
+      uint32_t AvailableSubsystemMemory = GameMemory.PersistentMemorySize - sizeof(game_state);
+      uint32_t PersistentStackSize      = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
+      uint8_t* PersistentStackStart = (uint8_t*)GameMemory.PersistentMemory + sizeof(game_state);
+
+      uint32_t ResourceMemorySize = AvailableSubsystemMemory - PersistentStackSize;
+      uint8_t* ResouceMemoryStart = PersistentStackStart + PersistentStackSize;
+
+      GameState->PersistentMemStack =
+        Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
+      GameState->Resources.Create(ResouceMemoryStart, ResourceMemorySize);
     }
 
-    GameState->CurrentFramebuffer = 0;
-    GameState->CurrentTexture     = 0;
+    // REGISTER DEBUG MODELS
+    {
+      RegisterDebugModels(GameState);
+    }
 
-    // Default blur parameters
+    // LOAD UNMANAGED TEXTURES (ONLY USED IN UI)
+    {
+      GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
+      GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
+      assert(GameState->CollapsedTextureID);
+      assert(GameState->ExpandedTextureID);
+    }
 
-    GameState->R.PostBlurLastStdDev = 10.0f;
-    GameState->R.PostBlurStdDev     = GameState->R.PostBlurLastStdDev;
-    GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
-                               GameState->R.PostBlurStdDev);
+    // LOAD FONTS
+    {
+      GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
+    }
 
-    // ======Set GL state
+    // HAND LOAD SHADERS
+    {
+      // TODO(2-tuple) Make mesh shader loading management automatic
+      GameState->R.ShaderPhong =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/phong");
+      GameState->R.ShaderCubemap =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/cubemap");
+      GameState->R.ShaderGizmo =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/gizmo");
+      GameState->R.ShaderQuad =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_quad");
+      GameState->R.ShaderColor =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/color");
+      GameState->R.ShaderTexturedQuad =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_textured_quad");
+      GameState->R.ShaderID =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
+      GameState->R.ShaderToon =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
+      GameState->R.ShaderTest =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/test");
+
+      GameState->R.PostDefaultShader =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/default");
+      GameState->R.PostGrayscale =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
+      GameState->R.PostBlurH =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_horizontal");
+      GameState->R.PostBlurV =
+        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_vertical");
+    }
+
+    // SET UP SHADER PARAMETER DEFINITIONS (CAN BE MADE AUTOMATIC BY PARSING ASSOCIATED SHADER)
+    {
+      struct shader_def* TestShaderDef = AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
+      AddParamDef(TestShaderDef, "sth_float", "uniform_float",
+                  { SHADER_PARAM_TYPE_Float, offsetof(material, Test.Float) });
+      AddParamDef(TestShaderDef, "sth_int", "uniform_int",
+                  { SHADER_PARAM_TYPE_Int, offsetof(material, Test.Int) });
+      AddParamDef(TestShaderDef, "sth_vec3", "uniform_vec3",
+                  { SHADER_PARAM_TYPE_Vec3, offsetof(material, Test.Vec3) });
+      AddParamDef(TestShaderDef, "map_diffuse", "material.diffuseMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Test.DiffuseID) });
+      AddParamDef(TestShaderDef, "map_normal", "material.normalMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Test.NormalID) });
+      AddParamDef(TestShaderDef, "map_specular", "material.specularMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Test.SpecularID) });
+    }
+
+    // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
+    {
+      GenerateScreenQuad(&GameState->ScreenQuadVAO, &GameState->ScreenQuadVBO);
+
+      for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
+      {
+        GenerateFramebuffer(&GameState->ScreenFBO[i], &GameState->ScreenRBO[i],
+                            &GameState->ScreenTexture[i]);
+      }
+
+      GameState->CurrentFramebuffer = 0;
+      GameState->CurrentTexture     = 0;
+
+      // Default blur parameters
+      GameState->R.PostBlurLastStdDev = 10.0f;
+      GameState->R.PostBlurStdDev     = GameState->R.PostBlurLastStdDev;
+      GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
+                                 GameState->R.PostBlurStdDev);
+    }
+
+    // ======Set GL state========
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glEnable(GL_CULL_FACE);
     glDepthFunc(GL_LEQUAL);
 
-    // Create index framebuffer for mesh picking
-    glGenFramebuffers(1, &GameState->IndexFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
-    glGenTextures(1, &GameState->IDTexture);
-    glBindTexture(GL_TEXTURE_2D, GameState->IDTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
-                 GL_UNSIGNED_INT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                           GameState->IDTexture, 0);
-    glGenRenderbuffers(1, &GameState->DepthRBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, GameState->DepthRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-                              GameState->DepthRBO);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    // FRAME BUFFER CREATION FOR ENTITY SELECTION
     {
-      assert(0 && "error: incomplete framebuffer!\n");
+      glGenFramebuffers(1, &GameState->IndexFBO);
+      glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
+      glGenTextures(1, &GameState->IDTexture);
+      glBindTexture(GL_TEXTURE_2D, GameState->IDTexture);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
+                   GL_UNSIGNED_INT, NULL);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glBindTexture(GL_TEXTURE_2D, 0);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                             GameState->IDTexture, 0);
+      glGenRenderbuffers(1, &GameState->DepthRBO);
+      glBindRenderbuffer(GL_RENDERBUFFER, GameState->DepthRBO);
+      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT);
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
+                                GameState->DepthRBO);
+      glBindRenderbuffer(GL_RENDERBUFFER, 0);
+      if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+      {
+        assert(0 && "error: incomplete framebuffer!\n");
+      }
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // -------Init GameState
-    GameState->Camera.Position      = { 0, 1.6f, 2 };
-    GameState->Camera.Up            = { 0, 1, 0 };
-    GameState->Camera.Forward       = { 0, 0, -1 };
-    GameState->Camera.Right         = { 1, 0, 0 };
-    GameState->Camera.Rotation      = { 0 };
-    GameState->Camera.NearClipPlane = 0.01f;
-    GameState->Camera.FarClipPlane  = 1000.0f;
-    GameState->Camera.FieldOfView   = 70.0f;
-    GameState->Camera.MaxTiltAngle  = 90.0f;
-    GameState->Camera.Speed         = 2.0f;
+    // GAME STATE FIELD INITIALIZATION
+    {
+      // CAMERA FIELD INITIALIZATION
+      {
+        GameState->Camera.Position      = { 0, 1.6f, 2 };
+        GameState->Camera.Up            = { 0, 1, 0 };
+        GameState->Camera.Forward       = { 0, 0, -1 };
+        GameState->Camera.Right         = { 1, 0, 0 };
+        GameState->Camera.Rotation      = { 0 };
+        GameState->Camera.NearClipPlane = 0.01f;
+        GameState->Camera.FarClipPlane  = 1000.0f;
+        GameState->Camera.FieldOfView   = 70.0f;
+        GameState->Camera.MaxTiltAngle  = 90.0f;
+        GameState->Camera.Speed         = 2.0f;
+      }
 
-    GameState->PreviewCamera          = GameState->Camera;
-    GameState->PreviewCamera.Position = { 0, 0, 2 };
-    GameState->PreviewCamera.Rotation = {};
-    UpdateCamera(&GameState->PreviewCamera, Input);
+      GameState->PreviewCamera          = GameState->Camera;
+      GameState->PreviewCamera.Position = { 0, 0, 2 };
+      GameState->PreviewCamera.Rotation = {};
+      UpdateCamera(&GameState->PreviewCamera, Input);
 
-    GameState->R.LightPosition        = { 0.7f, 1, 1 };
-    GameState->R.PreviewLightPosition = { 0.7f, 0, 2 };
+      GameState->R.LightPosition        = { 0.7f, 1, 1 };
+      GameState->R.PreviewLightPosition = { 0.7f, 0, 2 };
 
-    GameState->R.LightSpecularColor = { 1, 1, 1 };
-    GameState->R.LightDiffuseColor  = { 1, 1, 1 };
-    GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
-    GameState->R.ShowLightPosition  = false;
+      GameState->R.LightSpecularColor = { 1, 1, 1 };
+      GameState->R.LightDiffuseColor  = { 1, 1, 1 };
+      GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
+      GameState->R.ShowLightPosition  = false;
 
-    GameState->DrawCubemap      = true;
-    GameState->DrawDebugSpheres = true;
-    GameState->DrawTimeline     = true;
-    GameState->DrawGizmos       = true;
+      GameState->DrawCubemap      = true;
+      GameState->DrawDebugSpheres = true;
+      GameState->DrawTimeline     = true;
+      GameState->DrawGizmos       = true;
 
-    GameState->IsAnimationPlaying      = false;
-    GameState->EditorBoneRotationSpeed = 45.0f;
-    GameState->CurrentMaterialID       = { 0 };
-    GameState->PlayerEntityIndex       = -1;
+      GameState->IsAnimationPlaying      = false;
+      GameState->EditorBoneRotationSpeed = 45.0f;
+      GameState->CurrentMaterialID       = { 0 };
+      GameState->PlayerEntityIndex       = -1;
 
-    GameState->Restitution       = 0.5f;
-    GameState->Beta              = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
-    GameState->Slop              = 0.1f;
-    GameState->Mu                = 1.0f;
-    GameState->PGSIterationCount = 10;
-    GameState->UseGravity        = true;
-    GameState->VisualizeOmega    = true;
-    GameState->VisualizeV        = true;
-    GameState->VisualizeFc       = false;
-    GameState->SimulateDynamics  = false;
-    GameState->SimulateFriction  = false;
+      GameState->Restitution       = 0.5f;
+      GameState->Beta              = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
+      GameState->Slop              = 0.1f;
+      GameState->Mu                = 1.0f;
+      GameState->PGSIterationCount = 10;
+      GameState->UseGravity        = true;
+      GameState->VisualizeOmega    = true;
+      GameState->VisualizeV        = true;
+      GameState->VisualizeFc       = false;
+      GameState->SimulateDynamics  = false;
+      GameState->SimulateFriction  = false;
+    }
 
     SetUpCubeHull(&g_CubeHull);
-
-    struct shader_def* TestShaderDef = AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
-    AddParamDef(TestShaderDef, "sth_float", "float_uniform",
-                { SHADER_PARAM_TYPE_Float, offsetof(material, Test.Float) });
-    AddParamDef(TestShaderDef, "sth_int", "int_uniform",
-                { SHADER_PARAM_TYPE_Int, offsetof(material, Test.Int) });
-    AddParamDef(TestShaderDef, "sth_vec3", "vec3 uniform",
-                { SHADER_PARAM_TYPE_Vec3, offsetof(material, Test.Vec3) });
-    AddParamDef(TestShaderDef, "map_diffuse", NULL,
-                { SHADER_PARAM_TYPE_Map, offsetof(material, Test.DiffuseID) });
-    AddParamDef(TestShaderDef, "map_normal", NULL,
-                { SHADER_PARAM_TYPE_Map, offsetof(material, Test.NormalID) });
-    AddParamDef(TestShaderDef, "map_specular", NULL,
-                { SHADER_PARAM_TYPE_Map, offsetof(material, Test.SpecularID) });
   }
   //---------------------END INIT -------------------------
 

@@ -199,23 +199,21 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
 
         UI::Checkbox("Blending", &CurrentMaterial->Common.UseBlending);
         UI::SameLine();
-        {
-          bool SkeletalFlagValue = (CurrentMaterial->Phong.Flags & PHONG_UseSkeleton);
+        UI::Checkbox("Skeletel", &CurrentMaterial->Common.IsSkeletal);
+        UI::SameLine();
+        UI::NewLine();
 
-          UI::Checkbox("Skeletel", &SkeletalFlagValue);
-          if(SkeletalFlagValue)
+        if(CurrentMaterial->Common.ShaderType == SHADER_Phong)
+        {
+          if(CurrentMaterial->Common.IsSkeletal)
           {
             CurrentMaterial->Phong.Flags |= PHONG_UseSkeleton;
-            CurrentMaterial->Common.IsSkeletal = true;
           }
           else
           {
             CurrentMaterial->Phong.Flags &= ~PHONG_UseSkeleton;
-            CurrentMaterial->Common.IsSkeletal = false;
           }
         }
-        UI::SameLine();
-        UI::NewLine();
 
         switch(CurrentMaterial->Common.ShaderType)
         {

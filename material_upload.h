@@ -93,8 +93,8 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
       int32_t CurrentGLTextureBindIndex  = GL_TEXTURE0;
       int32_t MaximalBoundGLTextureCount = 0;
 
-      uint32_t ShaderID = GetShaderID(ShaderDef);
-      glUseProgram(ShaderID);
+      uint32_t CurrentShaderID = GetShaderID(ShaderDef);
+      glUseProgram(CurrentShaderID);
       glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &MaximalBoundGLTextureCount);
 
       named_shader_param_def ParamDef = {};
@@ -110,31 +110,33 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
           case SHADER_PARAM_TYPE_Int:
           {
             int32_t Value = *((int32_t*)ParamPtr);
-            glUniform1i(glGetUniformLocation(ShaderID, ParamDef.UniformName), Value);
+            glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
           }
           break;
           case SHADER_PARAM_TYPE_Bool:
           {
             bool    BoolValue = *((bool*)ParamPtr);
             int32_t Value     = (int32_t)BoolValue;
-            glUniform1i(glGetUniformLocation(ShaderID, ParamDef.UniformName), Value);
+            glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
           }
           break;
           case SHADER_PARAM_TYPE_Float:
           {
             float Value = *((float*)ParamPtr);
-            glUniform1f(glGetUniformLocation(ShaderID, ParamDef.UniformName), Value);
+            glUniform1f(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
           }
           break;
           case SHADER_PARAM_TYPE_Vec3:
           {
             vec3 Value = *((vec3*)ParamPtr);
-            glUniform3fv(glGetUniformLocation(ShaderID, ParamDef.UniformName), 1, (float*)ParamPtr);
+            glUniform3fv(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), 1,
+                         (float*)ParamPtr);
           }
           break;
           case SHADER_PARAM_TYPE_Vec4:
           {
-            glUniform4fv(glGetUniformLocation(ShaderID, ParamDef.UniformName), 1, (float*)ParamPtr);
+            glUniform4fv(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), 1,
+                         (float*)ParamPtr);
           }
           break;
           case SHADER_PARAM_TYPE_Map:
@@ -143,17 +145,17 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
 
             assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
             glActiveTexture(CurrentGLTextureBindIndex);
-            CurrentGLTextureBindIndex++;
-
-            // TODO(Lukas): Make texture binding based on uniform names and not their sequence
-            // (currently likely unreliable)
             glBindTexture(GL_TEXTURE_2D, GameState->Resources.GetTexture(RIDValue));
+            glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName),
+                        CurrentGLTextureBindIndex - GL_TEXTURE0);
+
             glActiveTexture(GL_TEXTURE0);
+            CurrentGLTextureBindIndex++;
           }
           break;
         }
       }
-      return ShaderID;
+      return CurrentShaderID;
     }
   }
   return -1;
