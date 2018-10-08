@@ -18,6 +18,7 @@ struct shader_def
   int32_t          Count;
   int32_t          CurrentIndex;
   fixed_string     Names[SHADER_PARAM_MAX_COUNT];
+  fixed_string     UniformNames[SHADER_PARAM_MAX_COUNT];
   shader_param_def Params[SHADER_PARAM_MAX_COUNT];
 };
 
@@ -26,6 +27,7 @@ struct shader_defs
   int32_t      Count;
   fixed_string Names[SHADER_DEF_MAX_COUNT];
   int32_t      Types[SHADER_DEF_MAX_COUNT];
+  uint32_t     IDs[SHADER_DEF_MAX_COUNT];
   shader_def   Defs[SHADER_DEF_MAX_COUNT];
 } static g_ShaderDefs;
 
@@ -33,7 +35,6 @@ static int32_t
 CompareFixedString(const fixed_string* FixedString, const char* String)
 {
   assert(String);
-  // TODO(Lukas) SWITCH AWAY FROM USING strlen_s
   size_t SourceStringLength = strnlen(String, sizeof(fixed_string));
   assert(SourceStringLength < sizeof(fixed_string));
 
@@ -53,30 +54,60 @@ SetFixedString(fixed_string* Dest, const char* Source)
 //---------------------------------PUBLIC API IMPLEMENTATION-------------------------------
 
 shader_def*
-AddShaderDef(int32_t ShaderType, const char* ShaderName)
+AddShaderDef(int32_t ShaderType, uint32_t ShaderID, const char* ShaderName)
 {
   SetFixedString(&g_ShaderDefs.Names[g_ShaderDefs.Count], ShaderName);
   g_ShaderDefs.Types[g_ShaderDefs.Count]      = ShaderType;
+  g_ShaderDefs.IDs[g_ShaderDefs.Count]        = ShaderID;
   g_ShaderDefs.Defs[g_ShaderDefs.Count].Count = 0;
   return &g_ShaderDefs.Defs[g_ShaderDefs.Count++];
 }
 
 void
-AddParamDef(shader_def* ShaderDefPtr, const char* ParamName, shader_param_def ParamDef)
+AddParamDef(shader_def* ShaderDefPtr, const char* ParamName, const char* UniformName,
+            shader_param_def ParamDef)
 {
   assert(ShaderDefPtr);
   SetFixedString(&ShaderDefPtr->Names[ShaderDefPtr->Count], ParamName);
+  if(UniformName)
+  {
+    SetFixedString(&ShaderDefPtr->UniformNames[ShaderDefPtr->Count], UniformName);
+  }
+  else
+  {
+    memset(&ShaderDefPtr->UniformNames[ShaderDefPtr->Count], 0, sizeof(fixed_string));
+  }
   ShaderDefPtr->Params[ShaderDefPtr->Count++] = ParamDef;
 }
 
 int32_t
-GetShaderType(const struct shader_def* OutputDefPtr)
+GetShaderType(const struct shader_def* ShaderDef)
 {
-  assert(OutputDefPtr);
-
-  size_t DefIndex = OutputDefPtr - g_ShaderDefs.Defs;
+  assert(ShaderDef);
+  size_t DefIndex = ShaderDef - g_ShaderDefs.Defs;
   assert(DefIndex >= 0);
+
   return g_ShaderDefs.Types[DefIndex];
+}
+
+uint32_t
+GetShaderID(const shader_def* ShaderDef)
+{
+  assert(ShaderDef);
+  size_t DefIndex = ShaderDef - g_ShaderDefs.Defs;
+  assert(DefIndex >= 0);
+
+  return g_ShaderDefs.IDs[DefIndex];
+}
+
+const char*
+GetShaderName(const shader_def* ShaderDef)
+{
+  assert(ShaderDef);
+  size_t DefIndex = ShaderDef - g_ShaderDefs.Defs;
+  assert(DefIndex >= 0);
+
+  return (char*)g_ShaderDefs.Names[DefIndex].Str;
 }
 
 bool
@@ -125,12 +156,11 @@ GetShaderParamDef(shader_param_def* OutputParamPtr, const shader_def* ShaderDefP
   return false;
 }
 
-bool
+void
 ResetShaderDefIterator(shader_def* ShaderDef)
 {
   assert(ShaderDef);
   ShaderDef->CurrentIndex = 0;
-  return true;
 }
 
 // returns0 on error

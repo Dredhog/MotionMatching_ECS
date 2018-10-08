@@ -13,7 +13,7 @@ enum phong_flags
 enum shader_type
 {
   SHADER_Phong,
-  SHADER_Toon,
+  SHADER_Test,
   SHADER_Color,
 
   SHADER_EnumCount,
@@ -64,7 +64,7 @@ union material {
     rid             NormalID;
     rid             SpecularID;
     rid             DiffuseID;
-  } Toon;
+  } Test;
 };
 
 const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
@@ -89,13 +89,14 @@ struct render_data
   uint32_t ShaderTexturedQuad;
   uint32_t ShaderCubemap;
   uint32_t ShaderID;
+  uint32_t ShaderToon;
+  uint32_t ShaderTest;
 
   // Post-processing shaders
   uint32_t PostDefaultShader;
   uint32_t PostGrayscale;
   uint32_t PostBlurH;
   uint32_t PostBlurV;
-  uint32_t PostToon;
 
   int32_t PPEffects;
 

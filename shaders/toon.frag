@@ -48,41 +48,41 @@ out vec4 out_color;
 float
 CategorizeA(float A)
 {
-    if(A < 0.125f)
-    {
-        return 0.0f;
-    }
-    if(A < 0.375f)
-    {
-        return 0.25f;
-    }
-    if(A < 0.625f)
-    {
-        return 0.5f;
-    }
-    if(A < 0.875f)
-    {
-        return 0.75f;
-    }
-    return 1.0f;
+  if(A < 0.125f)
+  {
+    return 0.0f;
+  }
+  if(A < 0.375f)
+  {
+    return 0.25f;
+  }
+  if(A < 0.625f)
+  {
+    return 0.5f;
+  }
+  if(A < 0.875f)
+  {
+    return 0.75f;
+  }
+  return 1.0f;
 }
 
 float
 CategorizeB(float A)
 {
-    if(A < 0.25f)
-    {
-        return 0.125f;
-    }
-    if(A < 0.5f)
-    {
-        return 0.375f;
-    }
-    if(A < 0.75f)
-    {
-        return 0.625f;
-    }
-    return 0.875f;
+  if(A < 0.25f)
+  {
+    return 0.125f;
+  }
+  if(A < 0.5f)
+  {
+    return 0.375f;
+  }
+  if(A < 0.75f)
+  {
+    return 0.625f;
+  }
+  return 0.875f;
 }
 
 void
@@ -149,8 +149,8 @@ main()
     result = vec4((diffuse + specular + ambient), material.diffuseColor.a);
   }
 
-  result.r = CategorizeA(result.r);
-  result.g = CategorizeA(result.g);
-  result.b = CategorizeA(result.b);
+  result.r  = CategorizeA(result.r);
+  result.g  = CategorizeA(result.g);
+  result.b  = CategorizeA(result.b);
   out_color = result;
 }

@@ -354,10 +354,10 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
           break;
           default:
           {
-            struct shader_def*     ShaderDef      = NULL;
-            named_shader_param_def ShaderParamDef = {};
+            struct shader_def* ShaderDef = NULL;
             assert(GetShaderDef(&ShaderDef, CurrentMaterial->Common.ShaderType));
             {
+              named_shader_param_def ShaderParamDef = {};
               ResetShaderDefIterator(ShaderDef);
               while(GetNextShaderParam(&ShaderParamDef, ShaderDef))
               {

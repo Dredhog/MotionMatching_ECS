@@ -78,13 +78,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_textured_quad");
     GameState->R.ShaderID =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
+    GameState->R.ShaderToon =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
+    GameState->R.ShaderTest =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/test");
 
     GameState->R.PostDefaultShader =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/default");
-    // NOTE(rytis): Toon shader is currently written as a model shader,
-    // although it probably should be a post-processing effect.
-    GameState->R.PostToon =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
     GameState->R.PostGrayscale =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
     GameState->R.PostBlurH =
@@ -199,18 +199,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     SetUpCubeHull(&g_CubeHull);
 
-    struct shader_def* PhongShaderDef = AddShaderDef(SHADER_Toon, "toon");
-    AddParamDef(PhongShaderDef, "sth_int", { SHADER_PARAM_TYPE_Int, offsetof(material, Toon.Int) });
-    AddParamDef(PhongShaderDef, "sth_vec3",
-                { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.Vec3) });
-    AddParamDef(PhongShaderDef, "map_specular",
-                { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.SpecularID) });
-    AddParamDef(PhongShaderDef, "map_normal",
-                { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.NormalID) });
-    AddParamDef(PhongShaderDef, "sth_float",
-                { SHADER_PARAM_TYPE_Float, offsetof(material, Toon.Float) });
-    AddParamDef(PhongShaderDef, "map_diffuse",
-                { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.DiffuseID) });
+    struct shader_def* TestShaderDef = AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
+    AddParamDef(TestShaderDef, "sth_float", "float_uniform",
+                { SHADER_PARAM_TYPE_Float, offsetof(material, Test.Float) });
+    AddParamDef(TestShaderDef, "sth_int", "int_uniform",
+                { SHADER_PARAM_TYPE_Int, offsetof(material, Test.Int) });
+    AddParamDef(TestShaderDef, "sth_vec3", "vec3 uniform",
+                { SHADER_PARAM_TYPE_Vec3, offsetof(material, Test.Vec3) });
+    AddParamDef(TestShaderDef, "map_diffuse", NULL,
+                { SHADER_PARAM_TYPE_Map, offsetof(material, Test.DiffuseID) });
+    AddParamDef(TestShaderDef, "map_normal", NULL,
+                { SHADER_PARAM_TYPE_Map, offsetof(material, Test.NormalID) });
+    AddParamDef(TestShaderDef, "map_specular", NULL,
+                { SHADER_PARAM_TYPE_Map, offsetof(material, Test.SpecularID) });
   }
   //---------------------END INIT -------------------------
 
