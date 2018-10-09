@@ -3,7 +3,7 @@
 #include "basic_data_structures.h"
 
 const int RIGID_BODY_MAX_COUNT = 10;
-const int CONSTRAINT_MAX_COUNT = 100;
+const int CONSTRAINT_MAX_COUNT = 200;
 
 vec3  g_Force;
 vec3  g_ForceStart;
@@ -11,7 +11,8 @@ bool  g_ApplyingForce;
 bool  g_UseGravity;
 bool  g_ApplyingTorque;
 bool  g_VisualizeFc;
-bool  g_VisualizeFcComponents = true;
+bool  g_VisualizeFcComponents;
+bool  g_VisualizeFriction;
 float g_Bias;
 float g_Mu;
 hull  g_CubeHull;
@@ -487,8 +488,12 @@ SimulateDynamics(game_state* GameState)
               Constraint.BodyRb = (P - Manifold.Points[c].Penetration * Constraint.n) -
                                   g_RigidBodies[Constraint.IndB].X;
 
+#define VISUALIZE_CONCT_NORMAL 0
+#if 0
               Debug::PushLine({}, Constraint.n, { 1, 0, 1, 1 });
               Debug::PushWireframeSphere(Constraint.n, 0.05f, { 1, 0, 1, 1 });
+#endif
+#undef VISUALIZE_CONCT_NORMAL
 
               int32_t ContactIndex = g_Constraints.Count;
               g_Constraints.Push(Constraint);
@@ -506,14 +511,20 @@ SimulateDynamics(game_state* GameState)
                 Constraint.Tangent = U1;
                 g_Constraints.Push(Constraint);
 
-                Debug::PushLine(P, P + Constraint.Tangent, { 0, 0.7f, 0, 1 });
-                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 0.7f, 0, 1 });
+                if(g_VisualizeFriction)
+                {
+                  Debug::PushLine(P, P + Constraint.Tangent, { 0, 0.7f, 0, 1 });
+                  Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 0.7f, 0, 1 });
+                }
 
                 Constraint.Tangent = U2;
                 g_Constraints.Push(Constraint);
 
-                Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
-                Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 0.7f, 0, 1 });
+                if(g_VisualizeFriction)
+                {
+                  Debug::PushLine(P, P + Constraint.Tangent, { 0, 7, 0, 1 });
+                  Debug::PushWireframeSphere(P + Constraint.Tangent, 0.05f, { 0, 0.7f, 0, 1 });
+                }
               }
             }
           }

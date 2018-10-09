@@ -9,6 +9,9 @@
 
 #define MAX_CONTACT_POINTS 50
 
+bool g_VisualizeContactPoints;
+bool g_VisualizeContactManifold;
+
 vec3
 TransformVector(vec3 Vector, mat4 Matrix)
 {
@@ -658,8 +661,6 @@ struct edge_query
   float   Separation;
 };
 
-#define DEBUG_QUERIES 1
-
 void
 TransformedFaceParameters(vec3* Centroid, vec3* Normal, const face* Face, mat4 Transform)
 {
@@ -1044,25 +1045,26 @@ CreateFaceContact(sat_contact_manifold* Manifold, face_query QueryA, const mat4 
 
   half_edge* IncidentFaceEdge = HullB->Faces[Index].Edge;
 
-#if DEBUG_QUERIES
-  half_edge* a = ReferenceFaceEdge;
-
-  do
+  if(g_VisualizeContactManifold)
   {
-    Debug::PushLine(TransformVector(a->Tail->Position, TransformA),
-                    TransformVector(a->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
-    a = a->Next;
-  } while(a != ReferenceFaceEdge);
+    half_edge* a = ReferenceFaceEdge;
 
-  half_edge* b = IncidentFaceEdge;
+    do
+    {
+      Debug::PushLine(TransformVector(a->Tail->Position, TransformA),
+                      TransformVector(a->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
+      a = a->Next;
+    } while(a != ReferenceFaceEdge);
 
-  do
-  {
-    Debug::PushLine(TransformVector(b->Tail->Position, TransformB),
-                    TransformVector(b->Next->Tail->Position, TransformB), { 1, 0, 0, 1 });
-    b = b->Next;
-  } while(b != IncidentFaceEdge);
-#endif
+    half_edge* b = IncidentFaceEdge;
+
+    do
+    {
+      Debug::PushLine(TransformVector(b->Tail->Position, TransformB),
+                      TransformVector(b->Next->Tail->Position, TransformB), { 1, 0, 0, 1 });
+      b = b->Next;
+    } while(b != IncidentFaceEdge);
+  }
 
   vec3    Polygon[MAX_CONTACT_POINTS];
   int32_t PolygonPointCount = 0;
@@ -1213,11 +1215,16 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, mat4 Tra
     Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Manifold->Normal, 0))));
 
   Manifold->Points[0].Position = TransformVector(ClosestB, TransformB);
+#if 0
+#define DEBUG_QUEIRES 0
 #if DEBUG_QUERIES
-  Debug::PushLine(TransformVector(EdgeA->Tail->Position, TransformA),
-                  TransformVector(EdgeA->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
-  Debug::PushLine(TransformVector(EdgeB->Tail->Position, TransformB),
-                  TransformVector(EdgeB->Next->Tail->Position, TransformB), { 1, 0, 0, 1 });
+  {
+    Debug::PushLine(TransformVector(EdgeA->Tail->Position, TransformA),
+                    TransformVector(EdgeA->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
+    Debug::PushLine(TransformVector(EdgeB->Tail->Position, TransformB),
+                    TransformVector(EdgeB->Next->Tail->Position, TransformB), { 1, 0, 0, 1 });
+  }
+#endif
 #endif
 }
 
@@ -1226,7 +1233,7 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, const hull* HullA, co
     const hull* HullB)
 {
   const float EDGE_THRESHOLD = 0.0001f; // FLT_EPSILON;
-  const float FACE_THRESHOLD = 0.1f;  // FLT_EPSILON;
+  const float FACE_THRESHOLD = 0.1f;    // FLT_EPSILON;
 
   const face_query FaceQueryA = QueryFaceDirections(TransformA, HullA, TransformB, HullB);
   if(FaceQueryA.Separation > 0.0f)
@@ -1269,9 +1276,12 @@ SAT(sat_contact_manifold* Manifold, const mat4 TransformA, const hull* HullA, co
     Manifold->NormalFromA = true;
   }
 
-  for(int i = 0; i < Manifold->PointCount; ++i)
+  if(g_VisualizeContactPoints)
   {
-    Debug::PushWireframeSphere(Manifold->Points[i].Position, 0.05f, { 1, 1, 1, 1 });
+    for(int i = 0; i < Manifold->PointCount; ++i)
+    {
+      Debug::PushWireframeSphere(Manifold->Points[i].Position, 0.05f, { 1, 1, 1, 1 });
+    }
   }
 
   return true;

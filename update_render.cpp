@@ -219,17 +219,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->CurrentMaterialID       = { 0 };
       GameState->PlayerEntityIndex       = -1;
 
-      GameState->Restitution       = 0.5f;
-      GameState->Beta              = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
-      GameState->Slop              = 0.1f;
-      GameState->Mu                = 1.0f;
-      GameState->PGSIterationCount = 10;
-      GameState->UseGravity        = true;
-      GameState->VisualizeOmega    = true;
-      GameState->VisualizeV        = true;
-      GameState->VisualizeFc       = false;
-      GameState->SimulateDynamics  = false;
-      GameState->SimulateFriction  = false;
+      GameState->Restitution              = 0.5f;
+      GameState->Beta                     = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
+      GameState->Slop                     = 0.1f;
+      GameState->Mu                       = 1.0f;
+      GameState->PGSIterationCount        = 10;
+      GameState->UseGravity               = true;
+      GameState->VisualizeOmega           = false;
+      GameState->VisualizeV               = false;
+      GameState->VisualizeFriction        = false;
+      GameState->VisualizeFc              = false;
+      GameState->VisualizeContactPoints   = false;
+      GameState->VisualizeContactManifold = false;
+      GameState->SimulateDynamics         = false;
+      GameState->SimulateFriction         = false;
     }
 
     SetUpCubeHull(&g_CubeHull);
@@ -372,14 +375,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
 
-  g_Force          = GameState->Force;
-  g_ForceStart     = GameState->ForceStart;
-  g_ApplyingForce  = GameState->ApplyingForce;
-  g_ApplyingTorque = GameState->ApplyingTorque;
-  g_UseGravity     = GameState->UseGravity;
-  g_Bias           = GameState->Beta;
-  g_Mu             = GameState->Mu;
-  g_VisualizeFc    = GameState->VisualizeFc;
+  // Dynamics
+  g_Force                 = GameState->Force;
+  g_ForceStart            = GameState->ForceStart;
+  g_ApplyingForce         = GameState->ApplyingForce;
+  g_ApplyingTorque        = GameState->ApplyingTorque;
+  g_UseGravity            = GameState->UseGravity;
+  g_Bias                  = GameState->Beta;
+  g_Mu                    = GameState->Mu;
+  g_VisualizeFc           = GameState->VisualizeFc;
+  g_VisualizeFcComponents = GameState->VisualizeFcComponents;
+  g_VisualizeFriction     = GameState->VisualizeFriction;
+
+  // Colision
+  g_VisualizeContactPoints   = GameState->VisualizeContactPoints;
+  g_VisualizeContactManifold = GameState->VisualizeContactManifold;
 
   for(int i = 0; i < GameState->EntityCount; i++)
   {

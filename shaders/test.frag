@@ -45,5 +45,5 @@ main()
 
   float lightAmount = dot(frag.normal, reverseIncidence);
   vec4  diffuse     = lightAmount * texture(material.diffuseMap, frag.texCoord);
-  out_color         = diffuse;
+  out_color         = vec4(0.0, 0.0, 0.0, uniform_float);//diffuse;
 }
