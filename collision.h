@@ -1199,6 +1199,8 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, mat4 Tra
   ClosestPointsEdgeEdge(&ClosestA, &ClosestB, EdgeATail, EdgeAHead, EdgeB->Tail->Position,
                         EdgeB->Next->Tail->Position);
 
+  vec3 Midpoint = (ClosestA + ClosestB) / 2.0f;
+
   Manifold->PointCount            = 1;
   Manifold->Points[0].Penetration = EdgeQuery.Separation;
   Manifold->Normal                = Math::Normalized(
@@ -1214,13 +1216,13 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, mat4 Tra
   Manifold->Normal  = Math::Normalized(
     Math::Vec4ToVec3(Math::MulMat4Vec4(NormalMatrix, Math::Vec4(Manifold->Normal, 0))));
 
-  Manifold->Points[0].Position = TransformVector(ClosestB, TransformB);
+  Manifold->Points[0].Position = TransformVector(Midpoint, TransformB);
 #if 0
 #define DEBUG_QUEIRES 0
 #if DEBUG_QUERIES
 #endif
 #endif
-	if(g_VisualizeContactManifold)
+  if(g_VisualizeContactManifold)
   {
     Debug::PushLine(TransformVector(EdgeA->Tail->Position, TransformA),
                     TransformVector(EdgeA->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
