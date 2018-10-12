@@ -901,11 +901,13 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 {
   if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessing))
   {
-    bool Grayscale = GameState->R.PPEffects & POST_Grayscale;
-    bool Blur      = GameState->R.PPEffects & POST_Blur;
+    bool Blur        = GameState->R.PPEffects & POST_Blur;
+    bool Grayscale   = GameState->R.PPEffects & POST_Grayscale;
+    bool NightVision = GameState->R.PPEffects & POST_NightVision;
 
-    UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("Blur", &Blur);
+    UI::Checkbox("Grayscale", &Grayscale);
+    UI::Checkbox("NightVision", &NightVision);
 
     if(Grayscale)
     {
@@ -924,6 +926,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     else
     {
       GameState->R.PPEffects &= ~POST_Blur;
+    }
+
+    if(NightVision)
+    {
+      GameState->R.PPEffects |= POST_NightVision;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_NightVision;
     }
   }
 

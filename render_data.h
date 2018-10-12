@@ -21,9 +21,10 @@ enum shader_type
 
 enum pp_type
 {
-  POST_Default   = 0,
-  POST_Grayscale = 1 << 0,
-  POST_Blur      = 1 << 1,
+  POST_Default     = 0,
+  POST_Blur        = 1 << 0,
+  POST_Grayscale   = 1 << 1,
+  POST_NightVision = 1 << 2,
 
   POST_EnumCount,
 };
@@ -94,9 +95,10 @@ struct render_data
 
   // Post-processing shaders
   uint32_t PostDefaultShader;
-  uint32_t PostGrayscale;
   uint32_t PostBlurH;
   uint32_t PostBlurV;
+  uint32_t PostGrayscale;
+  uint32_t PostNightVision;
 
   int32_t PPEffects;
 

@@ -85,12 +85,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->R.PostDefaultShader =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/default");
-    GameState->R.PostGrayscale =
-      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
     GameState->R.PostBlurH =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_horizontal");
     GameState->R.PostBlurV =
       CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_vertical");
+    GameState->R.PostGrayscale =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
+    GameState->R.PostNightVision =
+      CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/night_vision");
 
     //------------LOAD TEXTURES-----------
     GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
@@ -784,6 +786,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
 
       glUseProgram(GameState->R.PostGrayscale);
+
+      glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+      glDisable(GL_DEPTH_TEST);
+
+      glBindVertexArray(GameState->ScreenQuadVAO);
+      glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
+    if(GameState->R.PPEffects & POST_NightVision)
+    {
+      assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+      assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+
+      glUseProgram(GameState->R.PostNightVision);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
       glDisable(GL_DEPTH_TEST);
