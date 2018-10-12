@@ -1218,14 +1218,15 @@ CreateEdgeContact(sat_contact_manifold* Manifold, edge_query EdgeQuery, mat4 Tra
 #if 0
 #define DEBUG_QUEIRES 0
 #if DEBUG_QUERIES
+#endif
+#endif
+	if(g_VisualizeContactManifold)
   {
     Debug::PushLine(TransformVector(EdgeA->Tail->Position, TransformA),
                     TransformVector(EdgeA->Next->Tail->Position, TransformA), { 0, 0, 1, 1 });
     Debug::PushLine(TransformVector(EdgeB->Tail->Position, TransformB),
                     TransformVector(EdgeB->Next->Tail->Position, TransformB), { 1, 0, 0, 1 });
   }
-#endif
-#endif
 }
 
 bool
