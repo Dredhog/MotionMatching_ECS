@@ -68,15 +68,10 @@ AddParamDef(shader_def* ShaderDefPtr, const char* ParamName, const char* Uniform
             shader_param_def ParamDef)
 {
   assert(ShaderDefPtr);
+  assert(ParamName);
+  assert(UniformName);
   SetFixedString(&ShaderDefPtr->Names[ShaderDefPtr->Count], ParamName);
-  if(UniformName)
-  {
-    SetFixedString(&ShaderDefPtr->UniformNames[ShaderDefPtr->Count], UniformName);
-  }
-  else
-  {
-    memset(&ShaderDefPtr->UniformNames[ShaderDefPtr->Count], 0, sizeof(fixed_string));
-  }
+  SetFixedString(&ShaderDefPtr->UniformNames[ShaderDefPtr->Count], UniformName);
   ShaderDefPtr->Params[ShaderDefPtr->Count++] = ParamDef;
 }
 
@@ -172,6 +167,7 @@ GetNextShaderParam(named_shader_param_def* Output, struct shader_def* ShaderDef)
   {
     named_shader_param_def Result = {};
     Result.Name                   = (char*)ShaderDef->Names[Index].Str;
+    Result.UniformName            = (char*)ShaderDef->UniformNames[Index].Str;
     Result.OffsetIntoMaterial     = ShaderDef->Params[Index].OffsetIntoMaterial;
     Result.Type                   = ShaderDef->Params[Index].Type;
     ShaderDef->CurrentIndex++;

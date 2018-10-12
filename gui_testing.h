@@ -113,16 +113,21 @@ namespace UI
         UI::Checkbox("Friction", &GameState->SimulateFriction);
         UI::SliderFloat("Mu", &GameState->Mu, 0.0f, 1.0f);
 
-        UI::Checkbox("Draw Omega (green)", &GameState->VisualizeOmega);
-        UI::Checkbox("Draw V     (yellow)", &GameState->VisualizeV);
-        UI::Checkbox("Draw Fc    (red)", &GameState->VisualizeFc);
+        UI::Checkbox("Draw Omega    (green)", &GameState->VisualizeOmega);
+        UI::Checkbox("Draw V        (yellow)", &GameState->VisualizeV);
+        UI::Checkbox("Draw Fc       (red)", &GameState->VisualizeFc);
+        UI::Checkbox("Draw Friction (green)", &GameState->VisualizeFriction);
+        UI::Checkbox("Draw Fc Comopnents     (Magenta)", &GameState->VisualizeFcComponents);
+        UI::Checkbox("Draw Contact Points    (while)", &GameState->VisualizeContactPoints);
+        UI::Checkbox("Draw Contact Manifolds (blue/red)", &GameState->VisualizeContactManifold);
         UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
         UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
         UI::Checkbox("Apply Force", &GameState->ApplyingForce);
         UI::Checkbox("Apply Torque", &GameState->ApplyingTorque);
-        Debug::PushLine(GameState->ForceStart, GameState->ForceStart + GameState->Force,
-                        { 1, 1, 0, 1 });
-        Debug::PushWireframeSphere(GameState->ForceStart + GameState->Force, 0.05f, { 1, 1, 0, 1 });
+        // Debug::PushLine(GameState->ForceStart, GameState->ForceStart + GameState->Force,
+        //{ 1, 1, 0, 1 });
+        // Debug::PushWireframeSphere(GameState->ForceStart + GameState->Force, 0.05f, { 1, 1, 0, 1
+        // });
       }
     }
     UI::EndWindow();
@@ -199,23 +204,21 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
 
         UI::Checkbox("Blending", &CurrentMaterial->Common.UseBlending);
         UI::SameLine();
-        {
-          bool SkeletalFlagValue = (CurrentMaterial->Phong.Flags & PHONG_UseSkeleton);
+        UI::Checkbox("Skeletel", &CurrentMaterial->Common.IsSkeletal);
+        UI::SameLine();
+        UI::NewLine();
 
-          UI::Checkbox("Skeletel", &SkeletalFlagValue);
-          if(SkeletalFlagValue)
+        if(CurrentMaterial->Common.ShaderType == SHADER_Phong)
+        {
+          if(CurrentMaterial->Common.IsSkeletal)
           {
             CurrentMaterial->Phong.Flags |= PHONG_UseSkeleton;
-            CurrentMaterial->Common.IsSkeletal = true;
           }
           else
           {
             CurrentMaterial->Phong.Flags &= ~PHONG_UseSkeleton;
-            CurrentMaterial->Common.IsSkeletal = false;
           }
         }
-        UI::SameLine();
-        UI::NewLine();
 
         switch(CurrentMaterial->Common.ShaderType)
         {
