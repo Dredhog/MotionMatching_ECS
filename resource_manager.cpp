@@ -1,15 +1,19 @@
 #include "resource_manager.h"
 #include "file_io.h"
 #include "material_io.h"
+#include "load_shader.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <fcntl.h>
+#include <cstring>
 
 namespace Resource
 {
   void
-  resource_manager::Create(uint8_t* MemoryStart, uint32_t TotalMemorySize)
+  resource_manager::Create(uint8_t* MemoryStart, uint32_t TotalMemorySize,
+                           Memory::stack_allocator* TemporaryStack)
   {
     *this                      = {};
     uint32_t ModelHeapSize     = (uint32_t)((float)TotalMemorySize * 0.9f);
@@ -28,6 +32,18 @@ namespace Resource
 
     this->MaterialStack.Create(MaterialStackStart, MaterialStackSize);
     this->MaterialStack.NullifyClear();
+
+    // TODO(Lukas) remove this dependency on the global transient stack
+    this->TemporaryStack = TemporaryStack;
+
+    this->DefaultShaderID = 0;
+  }
+
+  void
+  resource_manager::SetDefaultShaderID(GLuint ShaderID)
+  {
+    assert(DefaultShaderID == 0 && "Multiple DefaultShaderID assignemnts in resource manager");
+    this->DefaultShaderID = ShaderID;
   }
 
   bool
@@ -83,6 +99,25 @@ namespace Resource
   }
 
   bool
+  resource_manager::LoadShader(rid RID)
+  {
+    char* Path;
+    if(this->Shaders.Get(RID, 0, &Path))
+    {
+      GLuint ShaderID = Shader::CheckedLoadCompileFreeShader(this->TemporaryStack, Path);
+      // Logic for assigning a default shader on failed load
+      if(ShaderID == 0)
+      {
+        ShaderID = this->DefaultShaderID;
+        assert(ShaderID != 0);
+      }
+      this->Shaders.Set(RID, ShaderID, Path);
+      return true;
+    }
+    return false;
+  }
+
+  bool
   resource_manager::LoadAnimation(rid RID)
   {
     Anim::animation* Animation;
@@ -95,7 +130,8 @@ namespace Resource
       }
       else
       {
-        debug_read_file_result AssetReadResult = Platform::ReadEntireFile(&this->AnimationHeap, Path);
+        debug_read_file_result AssetReadResult =
+          Platform::ReadEntireFile(&this->AnimationHeap, Path);
 
         assert(AssetReadResult.Contents);
         if(AssetReadResult.ContentsSize <= 0)
@@ -177,6 +213,13 @@ namespace Resource
   }
 
   void
+  resource_manager::WipeAllShaderData()
+  {
+    // TODO(Lukas) Implement shader cleanup
+    assert(0 && "WileAllShaderData NOT IMPLEMENTED!");
+  }
+
+  void
   resource_manager::WipeAllModelData()
   {
     for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
@@ -207,6 +250,24 @@ namespace Resource
   }
 
   void
+  resource_manager::FreeShader(rid RID)
+  {
+    GLuint Shader;
+    char*  Path;
+    if(this->Shaders.Get(RID, &Shader, &Path))
+    {
+      if(Shader)
+      {
+        glDeleteShader(Shader);
+      }
+      else
+      {
+        assert(0 && "A shader with id 0 was attempted to be freed");
+      }
+    }
+  }
+
+  void
   resource_manager::FreeAnimation(rid RID)
   {
     Anim::animation* Animation;
@@ -216,7 +277,8 @@ namespace Resource
       if(Animation)
       {
         // TODO(LUKAS) TOTAL HACK will work if only one animation in anim file
-        this->AnimationHeap.Dealloc((uint8_t*)Animation - sizeof(Anim::animation_group) - sizeof(Anim::animation*));
+        this->AnimationHeap.Dealloc((uint8_t*)Animation - sizeof(Anim::animation_group) -
+                                    sizeof(Anim::animation*));
         this->Animations.SetAsset(RID, NULL);
       }
     }
@@ -239,16 +301,16 @@ namespace Resource
 
 #define _STRING(X) #X
 
-#define CREATE_ASSOCIATE_FUNCTION(STORED_TYPE, TYPE_NAME)                                                                                                                                              \
-  bool resource_manager::Associate##TYPE_NAME##IDToPath(rid RID, const char* Path)                                                                                                                     \
-  {                                                                                                                                                                                                    \
-    assert(0 < RID.Value && RID.Value <= RESOURCE_MAX_COUNT);                                                                                                                                          \
-    STORED_TYPE Old##TYPE_NAME;                                                                                                                                                                        \
-    char*       OldPath;                                                                                                                                                                               \
-    this->TYPE_NAME##s.Get(RID, &Old##TYPE_NAME, &OldPath);                                                                                                                                            \
-    assert(!Old##TYPE_NAME);                                                                                                                                                                           \
-    this->TYPE_NAME##s.Set(RID, 0, Path);                                                                                                                                                              \
-    return true;                                                                                                                                                                                       \
+#define CREATE_ASSOCIATE_FUNCTION(STORED_TYPE, TYPE_NAME)                                          \
+  bool resource_manager::Associate##TYPE_NAME##IDToPath(rid RID, const char* Path)                 \
+  {                                                                                                \
+    assert(0 < RID.Value && RID.Value <= RESOURCE_MAX_COUNT);                                      \
+    STORED_TYPE Old##TYPE_NAME;                                                                    \
+    char*       OldPath;                                                                           \
+    this->TYPE_NAME##s.Get(RID, &Old##TYPE_NAME, &OldPath);                                        \
+    assert(!Old##TYPE_NAME);                                                                       \
+    this->TYPE_NAME##s.Set(RID, 0, Path);                                                          \
+    return true;                                                                                   \
   }
 
   CREATE_ASSOCIATE_FUNCTION(Render::model*, Model);
@@ -256,97 +318,102 @@ namespace Resource
   CREATE_ASSOCIATE_FUNCTION(uint32_t, Texture);
   CREATE_ASSOCIATE_FUNCTION(material*, Material);
 
-#define CREATE_GET_PATH_ID_FUNCTION(TYPE_NAME)                                                                                                                                                         \
-  bool resource_manager::Get##TYPE_NAME##PathRID(rid* RID, const char* Path) { return this->TYPE_NAME##s.GetPathRID(RID, Path); }
+#define CREATE_GET_PATH_ID_FUNCTION(TYPE_NAME)                                                     \
+  bool resource_manager::Get##TYPE_NAME##PathRID(rid* RID, const char* Path)                       \
+  {                                                                                                \
+    return this->TYPE_NAME##s.GetPathRID(RID, Path);                                               \
+  }
 
   CREATE_GET_PATH_ID_FUNCTION(Model);
   CREATE_GET_PATH_ID_FUNCTION(Texture);
   CREATE_GET_PATH_ID_FUNCTION(Animation);
   CREATE_GET_PATH_ID_FUNCTION(Material);
 
-#define CREATE_REGISTER_FUNCTION(TYPE_NAME)                                                                                                                                                            \
-  rid resource_manager::Register##TYPE_NAME(const char* Path)                                                                                                                                          \
-  {                                                                                                                                                                                                    \
-    assert(Path);                                                                                                                                                                                      \
-    rid RID;                                                                                                                                                                                           \
-    assert(this->TYPE_NAME##s.NewRID(&RID));                                                                                                                                                           \
-    this->TYPE_NAME##s.Set(RID, 0, Path);                                                                                                                                                              \
-    printf("%-10s %-10s: rid %d, %s\n", "registered", _STRING(TYPE_NAME), RID.Value, Path);                                                                                                            \
-    return RID;                                                                                                                                                                                        \
+#define CREATE_REGISTER_FUNCTION(TYPE_NAME)                                                        \
+  rid resource_manager::Register##TYPE_NAME(const char* Path)                                      \
+  {                                                                                                \
+    assert(Path);                                                                                  \
+    rid RID;                                                                                       \
+    assert(this->TYPE_NAME##s.NewRID(&RID));                                                       \
+    this->TYPE_NAME##s.Set(RID, 0, Path);                                                          \
+    printf("%-10s %-10s: rid %d, %s\n", "registered", _STRING(TYPE_NAME), RID.Value, Path);        \
+    return RID;                                                                                    \
   }
 
   CREATE_REGISTER_FUNCTION(Model);
   CREATE_REGISTER_FUNCTION(Texture);
   CREATE_REGISTER_FUNCTION(Animation);
   CREATE_REGISTER_FUNCTION(Material);
+  CREATE_REGISTER_FUNCTION(Shader);
 
-#define CREATE_GET_FUNCTION(STORED_TYPE, TYPE_NAME)                                                                                                                                                    \
-  STORED_TYPE resource_manager::Get##TYPE_NAME(rid RID)                                                                                                                                                \
-  {                                                                                                                                                                                                    \
-    if(!(0 < RID.Value && RID.Value <= RESOURCE_MAX_COUNT))                                                                                                                                            \
-    {                                                                                                                                                                                                  \
-      printf("FOR RID: %d\n", RID.Value);                                                                                                                                                              \
-    }                                                                                                                                                                                                  \
-    assert(0 < RID.Value && RID.Value <= RESOURCE_MAX_COUNT);                                                                                                                                          \
-    STORED_TYPE TYPE_NAME;                                                                                                                                                                             \
-    char*       Path;                                                                                                                                                                                  \
-    if(this->TYPE_NAME##s.Get(RID, &TYPE_NAME, &Path))                                                                                                                                                 \
-    {                                                                                                                                                                                                  \
-      if(strcmp(Path, "") == 0)                                                                                                                                                                        \
-      {                                                                                                                                                                                                \
-        printf("failed to find path for " _STRING(TYPE_NAME) ": rid %d\n", RID.Value);                                                                                                                 \
-        assert(0 && "assert: No path associated with rid");                                                                                                                                            \
-      }                                                                                                                                                                                                \
-      else if(TYPE_NAME)                                                                                                                                                                               \
-      {                                                                                                                                                                                                \
-        return TYPE_NAME;                                                                                                                                                                              \
-      }                                                                                                                                                                                                \
-      else                                                                                                                                                                                             \
-      {                                                                                                                                                                                                \
-        /*printf("%-10s %-10s: rid %d, %s\n", "seeking", _STRING(TYPE_NAME), RID.Value, Path);*/                                                                                                       \
-        if(this->Load##TYPE_NAME(RID))                                                                                                                                                                 \
-        {                                                                                                                                                                                              \
-          this->TYPE_NAME##s.Get(RID, &TYPE_NAME, &Path);                                                                                                                                              \
-          printf("%-10s %-10s: rid %d, %s\n", "loaded", _STRING(TYPE_NAME), RID.Value, Path);                                                                                                          \
-          assert(TYPE_NAME);                                                                                                                                                                           \
-          return TYPE_NAME;                                                                                                                                                                            \
-        }                                                                                                                                                                                              \
-        else                                                                                                                                                                                           \
-        {                                                                                                                                                                                              \
-          printf("UNABLE TO LOAD: %s\n", Path);                                                                                                                                                        \
-          assert(0 && "failed to load" _STRING(TYPE_NAME));                                                                                                                                            \
-        }                                                                                                                                                                                              \
-      }                                                                                                                                                                                                \
-    }                                                                                                                                                                                                  \
-    else                                                                                                                                                                                               \
-    {                                                                                                                                                                                                  \
-      assert(0 && "assert: invalid rid");                                                                                                                                                              \
-    }                                                                                                                                                                                                  \
-    assert(0 && "assert: invalid codepath");                                                                                                                                                           \
-    return TYPE_NAME;                                                                                                                                                                                  \
+#define CREATE_GET_FUNCTION(STORED_TYPE, TYPE_NAME)                                                \
+  STORED_TYPE resource_manager::Get##TYPE_NAME(rid RID)                                            \
+  {                                                                                                \
+    if(!(0 < RID.Value && RID.Value <= RESOURCE_MAX_COUNT))                                        \
+    {                                                                                              \
+      printf("FOR RID: %d\n", RID.Value);                                                          \
+    }                                                                                              \
+    assert(0 < RID.Value && RID.Value <= RESOURCE_MAX_COUNT);                                      \
+    STORED_TYPE TYPE_NAME;                                                                         \
+    char*       Path;                                                                              \
+    if(this->TYPE_NAME##s.Get(RID, &TYPE_NAME, &Path))                                             \
+    {                                                                                              \
+      if(strcmp(Path, "") == 0)                                                                    \
+      {                                                                                            \
+        printf("failed to find path for " _STRING(TYPE_NAME) ": rid %d\n", RID.Value);             \
+        assert(0 && "assert: No path associated with rid");                                        \
+      }                                                                                            \
+      else if(TYPE_NAME)                                                                           \
+      {                                                                                            \
+        return TYPE_NAME;                                                                          \
+      }                                                                                            \
+      else                                                                                         \
+      {                                                                                            \
+        /*printf("%-10s %-10s: rid %d, %s\n", "seeking", _STRING(TYPE_NAME), RID.Value, Path);*/   \
+        if(this->Load##TYPE_NAME(RID))                                                             \
+        {                                                                                          \
+          this->TYPE_NAME##s.Get(RID, &TYPE_NAME, &Path);                                          \
+          printf("%-10s %-10s: rid %d, %s\n", "loaded", _STRING(TYPE_NAME), RID.Value, Path);      \
+          assert(TYPE_NAME);                                                                       \
+          return TYPE_NAME;                                                                        \
+        }                                                                                          \
+        else                                                                                       \
+        {                                                                                          \
+          printf("UNABLE TO LOAD: %s\n", Path);                                                    \
+          assert(0 && "failed to load" _STRING(TYPE_NAME));                                        \
+        }                                                                                          \
+      }                                                                                            \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      assert(0 && "assert: invalid rid");                                                          \
+    }                                                                                              \
+    assert(0 && "assert: invalid codepath");                                                       \
+    return TYPE_NAME;                                                                              \
   }
 
   CREATE_GET_FUNCTION(uint32_t, Texture);
+  CREATE_GET_FUNCTION(GLuint, Shader);
   CREATE_GET_FUNCTION(Render::model*, Model);
   CREATE_GET_FUNCTION(Anim::animation*, Animation);
   CREATE_GET_FUNCTION(material*, Material);
 
-#define CREATE_GET_PATH_INDEX_FUNCTION(TYPE_NAME)                                                                                                                                                      \
-  int32_t resource_manager::Get##TYPE_NAME##PathIndex(rid RID)                                                                                                                                         \
-  {                                                                                                                                                                                                    \
-    char* Path = {};                                                                                                                                                                                   \
-    this->TYPE_NAME##s.Get(RID, 0, &Path);                                                                                                                                                             \
-    assert(this->TYPE_NAME##s.GetPathRID(&RID, Path));                                                                                                                                                 \
-    for(int i = 0; i < this->TYPE_NAME##PathCount; i++)                                                                                                                                                \
-    {                                                                                                                                                                                                  \
-      if(strcmp(this->TYPE_NAME##Paths[i].Name, Path) == 0)                                                                                                                                            \
-      {                                                                                                                                                                                                \
-        return i;                                                                                                                                                                                      \
-      }                                                                                                                                                                                                \
-    }                                                                                                                                                                                                  \
-    printf("could not find " _STRING(TYPE_NAME) ": %s\n", Path);                                                                                                                                       \
-    assert(0 && _STRING(texture) " path not found");                                                                                                                                                   \
-    return -1;                                                                                                                                                                                         \
+#define CREATE_GET_PATH_INDEX_FUNCTION(TYPE_NAME)                                                  \
+  int32_t resource_manager::Get##TYPE_NAME##PathIndex(rid RID)                                     \
+  {                                                                                                \
+    char* Path = {};                                                                               \
+    this->TYPE_NAME##s.Get(RID, 0, &Path);                                                         \
+    assert(this->TYPE_NAME##s.GetPathRID(&RID, Path));                                             \
+    for(int i = 0; i < this->TYPE_NAME##PathCount; i++)                                            \
+    {                                                                                              \
+      if(strcmp(this->TYPE_NAME##Paths[i].Name, Path) == 0)                                        \
+      {                                                                                            \
+        return i;                                                                                  \
+      }                                                                                            \
+    }                                                                                              \
+    printf("could not find " _STRING(TYPE_NAME) ": %s\n", Path);                                   \
+    assert(0 && _STRING(texture) " path not found");                                               \
+    return -1;                                                                                     \
   }
 
   CREATE_GET_PATH_INDEX_FUNCTION(Texture);
@@ -358,15 +425,28 @@ namespace Resource
   resource_manager::UpdateHardDriveAssetPathLists()
   {
     // Update models paths
-    this->DiffedModelCount = Platform::ReadPaths(this->DiffedModels, this->ModelPaths, this->ModelStats, RESOURCE_MAX_COUNT, &this->ModelPathCount, "data/built", NULL);
+    this->DiffedModelCount =
+      Platform::ReadPaths(this->DiffedModels, this->ModelPaths, this->ModelStats,
+                          RESOURCE_MAX_COUNT, &this->ModelPathCount, "data/built", NULL);
     // Update texture paths
-    this->DiffedTextureCount = Platform::ReadPaths(this->DiffedTextures, this->TexturePaths, this->TextureStats, RESOURCE_MAX_COUNT, &this->TexturePathCount, "data/textures", NULL);
+    this->DiffedTextureCount =
+      Platform::ReadPaths(this->DiffedTextures, this->TexturePaths, this->TextureStats,
+                          RESOURCE_MAX_COUNT, &this->TexturePathCount, "data/textures", NULL);
     // Update animation paths
-    this->DiffedAnimationCount = Platform::ReadPaths(this->DiffedAnimations, this->AnimationPaths, this->AnimationStats, RESOURCE_MAX_COUNT, &this->AnimationPathCount, "data/animations", "anim");
+    this->DiffedAnimationCount =
+      Platform::ReadPaths(this->DiffedAnimations, this->AnimationPaths, this->AnimationStats,
+                          RESOURCE_MAX_COUNT, &this->AnimationPathCount, "data/animations", "anim");
     // Update scene paths
-    Platform::ReadPaths(this->DiffedMaterials, this->ScenePaths, this->SceneStats, RESOURCE_MAX_COUNT, &this->ScenePathCount, "data/scenes", "scene");
+    Platform::ReadPaths(this->DiffedMaterials, this->ScenePaths, this->SceneStats,
+                        RESOURCE_MAX_COUNT, &this->ScenePathCount, "data/scenes", "scene");
     // Update material paths
-    this->DiffedMaterialCount = Platform::ReadPaths(this->DiffedMaterials, this->MaterialPaths, this->MaterialStats, RESOURCE_MAX_COUNT, &this->MaterialPathCount, "data/materials", "mat");
+    this->DiffedMaterialCount =
+      Platform::ReadPaths(this->DiffedMaterials, this->MaterialPaths, this->MaterialStats,
+                          RESOURCE_MAX_COUNT, &this->MaterialPathCount, "data/materials", "mat");
+    // Update shader paths
+    this->DiffedShaderCount =
+      Platform::ReadPaths(this->DiffedShaders, this->ShaderPaths, this->ShaderStats,
+                          RESOURCE_MAX_COUNT, &this->ShaderPathCount, "shaders", NULL);
   }
 
   void
@@ -399,23 +479,55 @@ namespace Resource
 
     for(int i = 0; i < this->DiffedModelCount; i++)
     {
-      // printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
       if(this->DiffedModels[i].Type == DIFF_Modified)
       {
-        // printf("modified path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
         rid RID;
         if(this->Models.GetPathRID(&RID, DiffedModels[i].Path.Name))
         {
-          // printf("diffed modified registered path: %s\n", DiffedAnimations[i].Path.Name);
           Render::model* Model;
           char*          Path;
           if(this->Models.Get(RID, &Model, &Path))
           {
             if(Model)
             {
-              printf("Reloading model: %s\n", DiffedAnimations[i].Path.Name);
+              printf("Reloading model: %s\n", DiffedModels[i].Path.Name);
               FreeModel(RID);
               LoadModel(RID);
+            }
+          }
+        }
+      }
+    }
+
+    for(int i = 0; i < this->DiffedShaderCount; i++)
+    {
+      if(this->DiffedShaders[i].Type == DIFF_Modified)
+      {
+        rid  RID;
+        path ShaderPathWithoutExtension;
+        {
+          char* LastDotInString = strrchr(DiffedShaders[i].Path.Name, '.');
+          assert(LastDotInString && "Shader path is missing extension");
+          size_t PathLengthWithoutExtension = LastDotInString - DiffedShaders[i].Path.Name;
+
+          strncpy(ShaderPathWithoutExtension.Name, DiffedShaders[i].Path.Name,
+                  PathLengthWithoutExtension);
+          ShaderPathWithoutExtension.Name[PathLengthWithoutExtension] = '\0';
+        }
+        if(this->Shaders.GetPathRID(&RID, ShaderPathWithoutExtension.Name))
+        {
+          GLuint Shader;
+          char*  Path;
+          if(this->Shaders.Get(RID, &Shader, &Path))
+          {
+            if(Shader != 0)
+            {
+              printf("Reloading shader: %s\n", ShaderPathWithoutExtension.Name);
+              if(Shader != this->DefaultShaderID)
+              {
+                FreeShader(RID);
+              }
+              LoadShader(RID);
             }
           }
         }

@@ -27,7 +27,7 @@ struct shader_defs
   int32_t      Count;
   fixed_string Names[SHADER_DEF_MAX_COUNT];
   int32_t      Types[SHADER_DEF_MAX_COUNT];
-  uint32_t     IDs[SHADER_DEF_MAX_COUNT];
+  rid          RIDs[SHADER_DEF_MAX_COUNT];
   shader_def   Defs[SHADER_DEF_MAX_COUNT];
 } static g_ShaderDefs;
 
@@ -54,11 +54,11 @@ SetFixedString(fixed_string* Dest, const char* Source)
 //---------------------------------PUBLIC API IMPLEMENTATION-------------------------------
 
 shader_def*
-AddShaderDef(int32_t ShaderType, uint32_t ShaderID, const char* ShaderName)
+AddShaderDef(int32_t ShaderType, rid ShaderRID, const char* ShaderName)
 {
   SetFixedString(&g_ShaderDefs.Names[g_ShaderDefs.Count], ShaderName);
   g_ShaderDefs.Types[g_ShaderDefs.Count]      = ShaderType;
-  g_ShaderDefs.IDs[g_ShaderDefs.Count]        = ShaderID;
+  g_ShaderDefs.RIDs[g_ShaderDefs.Count]       = ShaderRID;
   g_ShaderDefs.Defs[g_ShaderDefs.Count].Count = 0;
   return &g_ShaderDefs.Defs[g_ShaderDefs.Count++];
 }
@@ -85,14 +85,14 @@ GetShaderType(const struct shader_def* ShaderDef)
   return g_ShaderDefs.Types[DefIndex];
 }
 
-uint32_t
-GetShaderID(const shader_def* ShaderDef)
+rid
+GetShaderRID(const shader_def* ShaderDef)
 {
   assert(ShaderDef);
   size_t DefIndex = ShaderDef - g_ShaderDefs.Defs;
   assert(DefIndex >= 0);
 
-  return g_ShaderDefs.IDs[DefIndex];
+  return g_ShaderDefs.RIDs[DefIndex];
 }
 
 const char*
