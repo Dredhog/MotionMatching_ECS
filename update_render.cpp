@@ -11,7 +11,6 @@
 #include "load_texture.h"
 #include "misc.h"
 #include "intersection_testing.h"
-#include "load_asset.h"
 #include "render_data.h"
 #include "material_upload.h"
 #include "material_io.h"
@@ -58,7 +57,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       GameState->PersistentMemStack =
         Memory::CreateStackAllocatorInPlace(PersistentStackStart, PersistentStackSize);
-      GameState->Resources.Create(ResouceMemoryStart, ResourceMemorySize);
+      GameState->Resources.Create(ResouceMemoryStart, ResourceMemorySize,
+                                  GameState->TemporaryMemStack);
     }
 
     // REGISTER DEBUG MODELS
@@ -82,35 +82,27 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // HAND LOAD SHADERS
     {
       // TODO(2-tuple) Make mesh shader loading management automatic
-      GameState->R.ShaderPhong =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/phong");
-      GameState->R.ShaderCubemap =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/cubemap");
-      GameState->R.ShaderGizmo =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/gizmo");
-      GameState->R.ShaderQuad =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_quad");
-      GameState->R.ShaderColor =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/color");
+      GameState->R.ShaderPhong   = GameState->Resources.RegisterShader("shaders/phong");
+      GameState->R.ShaderCubemap = GameState->Resources.RegisterShader("shaders/cubemap");
+      GameState->R.ShaderGizmo   = GameState->Resources.RegisterShader("shaders/gizmo");
+      GameState->R.ShaderQuad    = GameState->Resources.RegisterShader("shaders/debug_quad");
+      GameState->R.ShaderColor   = GameState->Resources.RegisterShader("shaders/color");
       GameState->R.ShaderTexturedQuad =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/debug_textured_quad");
-      GameState->R.ShaderID =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/id");
-      GameState->R.ShaderToon =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/toon");
-      GameState->R.ShaderTest =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/test");
+        GameState->Resources.RegisterShader("shaders/debug_textured_quad");
+      GameState->R.ShaderID   = GameState->Resources.RegisterShader("shaders/id");
+      GameState->R.ShaderToon = GameState->Resources.RegisterShader("shaders/toon");
+      GameState->R.ShaderTest = GameState->Resources.RegisterShader("shaders/test");
 
-      GameState->R.PostDefaultShader =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/default");
-      GameState->R.PostGrayscale =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/grayscale");
-      GameState->R.PostNightVision =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/night_vision");
-      GameState->R.PostBlurH =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_horizontal");
-      GameState->R.PostBlurV =
-        CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/blur_vertical");
+      GameState->R.PostDefaultShader = GameState->Resources.RegisterShader("shaders/default");
+      GameState->R.PostGrayscale     = GameState->Resources.RegisterShader("shaders/grayscale");
+      GameState->R.PostNightVision   = GameState->Resources.RegisterShader("shaders/night_vision");
+      GameState->R.PostBlurH = GameState->Resources.RegisterShader("shaders/blur_horizontal");
+      GameState->R.PostBlurV = GameState->Resources.RegisterShader("shaders/blur_vertical");
+
+      GLuint MissingShaderID =
+        Shader::CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/missing_default");
+      assert(MissingShaderID);
+      GameState->Resources.SetDefaultShaderID(MissingShaderID);
     }
 
     // SET UP SHADER PARAMETER DEFINITIONS (CAN BE MADE AUTOMATIC BY PARSING ASSOCIATED SHADER)
@@ -276,6 +268,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     */
 
+    // TODO(Lukas) Fix selection swapping bug,
+    // Recreation steps:
+    // Create sponza, enter mesh selection mode, create multimesh soldier, and two cubes,
+    // then select the fisrt cube and continue clicking on sponza
+    // Selection changes between first cube andsponza
     // Selection
     if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
     {
@@ -285,24 +282,25 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
       glClearColor(0.9f, 0.9f, 0.9f, 1);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      glUseProgram(GameState->R.ShaderID);
+      GLuint EntityIDShaderID = GameState->Resources.GetShader(GameState->R.ShaderID);
+      glUseProgram(EntityIDShaderID);
       for(int e = 0; e < GameState->EntityCount; e++)
       {
         entity* CurrentEntity;
         assert(GetEntityAtIndex(GameState, &CurrentEntity, e));
-        glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "mat_mvp"), 1, GL_FALSE,
+        glUniformMatrix4fv(glGetUniformLocation(EntityIDShaderID, "mat_mvp"), 1, GL_FALSE,
                            GetEntityMVPMatrix(GameState, e).e);
         if(CurrentEntity->AnimController)
         {
-          glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"),
+          glUniformMatrix4fv(glGetUniformLocation(EntityIDShaderID, "g_boneMatrices"),
                              CurrentEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
                              (float*)CurrentEntity->AnimController->HierarchicalModelSpaceMatrices);
         }
         else
         {
           mat4 Mat4Zeros = {};
-          glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderID, "g_boneMatrices"), 1,
-                             GL_FALSE, Mat4Zeros.e);
+          glUniformMatrix4fv(glGetUniformLocation(EntityIDShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                             Mat4Zeros.e);
         }
         if(GameState->SelectionMode == SELECT_Mesh)
         {
@@ -330,8 +328,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
           vec4 EntityColorID = { (float)R / 255.0f, (float)G / 255.0f, (float)B / 255.0f,
                                  (float)A / 255.0f };
-          glUniform4fv(glGetUniformLocation(GameState->R.ShaderID, "g_id"), 1,
-                       (float*)&EntityColorID);
+          glUniform4fv(glGetUniformLocation(EntityIDShaderID, "g_id"), 1, (float*)&EntityColorID);
           glDrawElements(GL_TRIANGLES, CurrentModel->Meshes[m]->IndiceCount, GL_UNSIGNED_INT, 0);
         }
       }
@@ -606,10 +603,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           LoadCubemap(&GameState->Resources, GameState->Cubemap.FaceIDs);
       }
       glDepthFunc(GL_LEQUAL);
-      glUseProgram(GameState->R.ShaderCubemap);
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_projection"), 1,
-                         GL_FALSE, GameState->Camera.ProjectionMatrix.e);
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderCubemap, "mat_view"), 1, GL_FALSE,
+      GLuint CubemapShaderID = GameState->Resources.GetShader(GameState->R.ShaderCubemap);
+      glUseProgram(CubemapShaderID);
+      glUniformMatrix4fv(glGetUniformLocation(CubemapShaderID, "mat_projection"), 1, GL_FALSE,
+                         GameState->Camera.ProjectionMatrix.e);
+      glUniformMatrix4fv(glGetUniformLocation(CubemapShaderID, "mat_view"), 1, GL_FALSE,
                          Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
       glBindVertexArray(GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0]->VAO);
       glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
@@ -639,7 +637,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         if(PreviousMaterial)
         {
           glBindTexture(GL_TEXTURE_2D, 0);
-          glBindVertexArray(0);
         }
         CurrentShaderID = SetMaterial(GameState, &GameState->Camera, CurrentMaterial);
 
@@ -682,22 +679,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // Highlight mesh
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDepthFunc(GL_LEQUAL);
-    vec4 ColorRed = vec4{ 1, 1, 0, 1 };
-    glUseProgram(GameState->R.ShaderColor);
-    glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1, (float*)&ColorRed);
-    glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "mat_mvp"), 1, GL_FALSE,
+    vec4   ColorRed      = vec4{ 1, 1, 0, 1 };
+    GLuint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
+    glUseProgram(ColorShaderID);
+    glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, (float*)&ColorRed);
+    glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "mat_mvp"), 1, GL_FALSE,
                        GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
     if(SelectedEntity->AnimController)
     {
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_boneMatrices"),
+      glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"),
                          SelectedEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
                          (float*)SelectedEntity->AnimController->HierarchicalModelSpaceMatrices);
     }
     else
     {
       mat4 Mat4Zeros = {};
-      glUniformMatrix4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_boneMatrices"), 1,
-                         GL_FALSE, Mat4Zeros.e);
+      glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                         Mat4Zeros.e);
     }
     if(GameState->SelectionMode == SELECT_Mesh)
     {
@@ -738,23 +736,24 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
     glClearColor(0.7f, 0.7f, 0.7f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    uint32_t ShaderID = SetMaterial(GameState, &GameState->PreviewCamera, PreviewMaterial);
+    uint32_t MaterialPreviewShaderID =
+      SetMaterial(GameState, &GameState->PreviewCamera, PreviewMaterial);
 
     if(PreviewMaterial->Common.IsSkeletal)
     {
       mat4 Mat4Zeros = {};
-      glUniformMatrix4fv(glGetUniformLocation(ShaderID, "g_boneMatrices"), 1, GL_FALSE,
-                         Mat4Zeros.e);
+      glUniformMatrix4fv(glGetUniformLocation(MaterialPreviewShaderID, "g_boneMatrices"), 1,
+                         GL_FALSE, Mat4Zeros.e);
     }
     glEnable(GL_BLEND);
     mat4           PreviewSphereMatrix = Math::Mat4Ident();
     Render::model* UVSphereModel       = GameState->Resources.GetModel(GameState->UVSphereModelID);
     glBindVertexArray(UVSphereModel->Meshes[0]->VAO);
-    glUniformMatrix4fv(glGetUniformLocation(ShaderID, "mat_mvp"), 1, GL_FALSE,
+    glUniformMatrix4fv(glGetUniformLocation(MaterialPreviewShaderID, "mat_mvp"), 1, GL_FALSE,
                        Math::MulMat4(GameState->PreviewCamera.VPMatrix, Math::Mat4Ident()).e);
-    glUniformMatrix4fv(glGetUniformLocation(ShaderID, "mat_model"), 1, GL_FALSE,
+    glUniformMatrix4fv(glGetUniformLocation(MaterialPreviewShaderID, "mat_model"), 1, GL_FALSE,
                        PreviewSphereMatrix.e);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "lightPosition"), 1,
+    glUniform3fv(glGetUniformLocation(MaterialPreviewShaderID, "lightPosition"), 1,
                  (float*)&GameState->R.PreviewLightPosition);
 
     glDrawElements(GL_TRIANGLES, UVSphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
@@ -791,23 +790,25 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                    GameState->R.PostBlurLastStdDev);
       }
 
-      glUseProgram(GameState->R.PostBlurH);
+      GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
+      glUseProgram(PostBlurHShaderID);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
       glDisable(GL_DEPTH_TEST);
 
-      glUniform1f(glGetUniformLocation(GameState->R.PostBlurH, "Offset"), 1.0f / SCREEN_WIDTH);
-      glUniform1fv(glGetUniformLocation(GameState->R.PostBlurH, "Kernel"), BLUR_KERNEL_SIZE,
+      glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
+      glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
                    GameState->R.PostBlurKernel);
 
       glBindVertexArray(GameState->ScreenQuadVAO);
       glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
       glDrawArrays(GL_TRIANGLES, 0, 6);
 
-      glUseProgram(GameState->R.PostBlurV);
+      GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
+      glUseProgram(PostBlurVShaderID);
 
-      glUniform1f(glGetUniformLocation(GameState->R.PostBlurV, "Offset"), 1.0f / SCREEN_HEIGHT);
-      glUniform1fv(glGetUniformLocation(GameState->R.PostBlurV, "Kernel"), BLUR_KERNEL_SIZE,
+      glUniform1f(glGetUniformLocation(PostBlurVShaderID, "Offset"), 1.0f / SCREEN_HEIGHT);
+      glUniform1fv(glGetUniformLocation(PostBlurVShaderID, "Kernel"), BLUR_KERNEL_SIZE,
                    GameState->R.PostBlurKernel);
     }
 
@@ -816,7 +817,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
       assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
 
-      glUseProgram(GameState->R.PostGrayscale);
+      GLuint PostGrayscaleShaderID = GameState->Resources.GetShader(GameState->R.PostGrayscale);
+      glUseProgram(PostGrayscaleShaderID);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
       glDisable(GL_DEPTH_TEST);
@@ -831,19 +833,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
       assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
 
-      glUseProgram(GameState->R.PostNightVision);
+      GLuint PostNightVisionShaderID = GameState->Resources.GetShader(GameState->R.PostNightVision);
+      glUseProgram(PostNightVisionShaderID);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
       glDisable(GL_DEPTH_TEST);
 
-      glBindVertexArray(GameState->ScreenQuadVAO);
+      glBindVertexArray(PostNightVisionShaderID);
       glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
       glDrawArrays(GL_TRIANGLES, 0, 6);
     }
   }
   else
   {
-    glUseProgram(GameState->R.PostDefaultShader);
+    GLuint PostDefaultShaderID = GameState->Resources.GetShader(GameState->R.PostDefaultShader);
+    glUseProgram(PostDefaultShaderID);
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);

@@ -40,10 +40,10 @@ out vec4 out_color;
 void
 main()
 {
-  // texture(material.diffuseMap, frag.texCoord) +
-  vec3 reverseIncidence = normalize(frag.lightPos - frag.position);
+  vec3  lightIncidence     = normalize(frag.position - frag.lightPos);
+  vec3  normal             = normalize(frag.normal);
+  float diffuseLightAmount = max(dot(normal, -lightIncidence), 0.0);
 
-  float lightAmount = dot(frag.normal, reverseIncidence);
-  vec4  diffuse     = lightAmount * texture(material.diffuseMap, frag.texCoord);
-  out_color         = vec4(0.0, 0.0, 0.0, uniform_float);//diffuse;
+  vec4 diffuse = diffuseLightAmount * texture(material.diffuseMap, frag.texCoord);
+  out_color    = vec4(diffuse.rgb, 1.0);
 }

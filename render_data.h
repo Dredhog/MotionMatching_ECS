@@ -83,22 +83,22 @@ struct render_data
   int32_t       MeshInstanceCount;
 
   // Shaders
-  uint32_t ShaderPhong;
-  uint32_t ShaderColor;
-  uint32_t ShaderGizmo;
-  uint32_t ShaderQuad;
-  uint32_t ShaderTexturedQuad;
-  uint32_t ShaderCubemap;
-  uint32_t ShaderID;
-  uint32_t ShaderToon;
-  uint32_t ShaderTest;
+  rid ShaderPhong;
+  rid ShaderColor;
+  rid ShaderGizmo;
+  rid ShaderQuad;
+  rid ShaderTexturedQuad;
+  rid ShaderCubemap;
+  rid ShaderID;
+  rid ShaderToon;
+  rid ShaderTest;
 
   // Post-processing shaders
-  uint32_t PostDefaultShader;
-  uint32_t PostBlurH;
-  uint32_t PostBlurV;
-  uint32_t PostGrayscale;
-  uint32_t PostNightVision;
+  rid PostDefaultShader;
+  rid PostBlurH;
+  rid PostBlurV;
+  rid PostGrayscale;
+  rid PostNightVision;
 
   int32_t PPEffects;
 

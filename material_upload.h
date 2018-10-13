@@ -11,8 +11,8 @@ UnsetMaterial(render_data* RenderData, int32_t MaterialIndex)
   glBindVertexArray(0);
 }
 
-uint32_t
-SetMaterial(game_state* GameState, camera* Camera, material* Material)
+GLuint
+SetMaterial(game_state* GameState, const camera* Camera, const material* Material)
 {
   if(Material->Common.UseBlending)
   {
@@ -26,28 +26,29 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
 
   if(Material->Common.ShaderType == SHADER_Phong)
   {
-    glUseProgram(GameState->R.ShaderPhong);
-    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "flags"), Material->Phong.Flags);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.ambientColor"), 1,
+    GLuint PhongShaderID = GameState->Resources.GetShader(GameState->R.ShaderPhong);
+    glUseProgram(PhongShaderID);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "flags"), Material->Phong.Flags);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "material.ambientColor"), 1,
                  (float*)&Material->Phong.AmbientColor);
-    glUniform4fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.diffuseColor"), 1,
+    glUniform4fv(glGetUniformLocation(PhongShaderID, "material.diffuseColor"), 1,
                  (float*)&Material->Phong.DiffuseColor);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "material.specularColor"), 1,
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "material.specularColor"), 1,
                  (float*)&Material->Phong.SpecularColor);
-    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.diffuseMap"), 0);
-    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.specularMap"), 1);
-    glUniform1i(glGetUniformLocation(GameState->R.ShaderPhong, "material.normalMap"), 2);
-    glUniform1f(glGetUniformLocation(GameState->R.ShaderPhong, "material.shininess"),
+    glUniform1i(glGetUniformLocation(PhongShaderID, "material.diffuseMap"), 0);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "material.specularMap"), 1);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "material.normalMap"), 2);
+    glUniform1f(glGetUniformLocation(PhongShaderID, "material.shininess"),
                 Material->Phong.Shininess);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "lightPosition"), 1,
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "lightPosition"), 1,
                  (float*)&GameState->R.LightPosition);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "light.ambient"), 1,
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.ambient"), 1,
                  (float*)&GameState->R.LightAmbientColor);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "light.diffuse"), 1,
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.diffuse"), 1,
                  (float*)&GameState->R.LightDiffuseColor);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "light.specular"), 1,
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.specular"), 1,
                  (float*)&GameState->R.LightSpecularColor);
-    glUniform3fv(glGetUniformLocation(GameState->R.ShaderPhong, "cameraPosition"), 1,
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
     assert(
       ((Material->Phong.Flags & PHONG_UseDiffuseMap) && Material->Phong.DiffuseMapID.Value > 0) ||
@@ -75,91 +76,106 @@ SetMaterial(game_state* GameState, camera* Camera, material* Material)
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, NormalTexture);
     glActiveTexture(GL_TEXTURE0);
-    return GameState->R.ShaderPhong;
+    return PhongShaderID;
   }
   else if(Material->Common.ShaderType == SHADER_Color)
   {
-    glUseProgram(GameState->R.ShaderColor);
-    glUniform4fv(glGetUniformLocation(GameState->R.ShaderColor, "g_color"), 1,
-                 (float*)&Material->Color.Color);
-    return GameState->R.ShaderColor;
+    GLuint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
+    glUseProgram(ColorShaderID);
+    glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, (float*)&Material->Color.Color);
+    return ColorShaderID;
   }
   else
   {
     struct shader_def* ShaderDef = NULL;
     assert(GetShaderDef(&ShaderDef, Material->Common.ShaderType));
+    int32_t CurrentGLTextureBindIndex  = GL_TEXTURE0;
+    int32_t MaximalBoundGLTextureCount = 0;
+
+    rid    CurrentShaderRID = GetShaderRID(ShaderDef);
+    GLuint CurrentShaderID  = GameState->Resources.GetShader(CurrentShaderRID);
+    glUseProgram(CurrentShaderID);
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &MaximalBoundGLTextureCount);
+
+    named_shader_param_def ParamDef = {};
+
+    ResetShaderDefIterator(ShaderDef);
+    // TODO(Lukas): Move all glGetUniformLocation calls to shader_def.cpp and return actual
+    // location variable inside of ParamDef
+    while(GetNextShaderParam(&ParamDef, ShaderDef))
     {
-
-      int32_t CurrentGLTextureBindIndex  = GL_TEXTURE0;
-      int32_t MaximalBoundGLTextureCount = 0;
-
-      uint32_t CurrentShaderID = GetShaderID(ShaderDef);
-      glUseProgram(CurrentShaderID);
-      glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &MaximalBoundGLTextureCount);
-
-      named_shader_param_def ParamDef = {};
-
-      ResetShaderDefIterator(ShaderDef);
-      // TODO(Lukas): Move all glGetUniformLocation calls to shader_def.cpp and return actual
-      // location variable inside of ParamDef
-      while(GetNextShaderParam(&ParamDef, ShaderDef))
+      uint8_t* ParamPtr = (((uint8_t*)Material) + ParamDef.OffsetIntoMaterial);
+      switch(ParamDef.Type)
       {
-        uint8_t* ParamPtr = (((uint8_t*)Material) + ParamDef.OffsetIntoMaterial);
-        switch(ParamDef.Type)
+        case SHADER_PARAM_TYPE_Int:
         {
-          case SHADER_PARAM_TYPE_Int:
-          {
-            int32_t Value = *((int32_t*)ParamPtr);
-            glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
-          }
-          break;
-          case SHADER_PARAM_TYPE_Bool:
-          {
-            bool    BoolValue = *((bool*)ParamPtr);
-            int32_t Value     = (int32_t)BoolValue;
-            glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
-          }
-          break;
-          case SHADER_PARAM_TYPE_Float:
-          {
-            float Value = *((float*)ParamPtr);
-            glUniform1f(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
-          }
-          break;
-          case SHADER_PARAM_TYPE_Vec3:
-          {
-            vec3 Value = *((vec3*)ParamPtr);
-            glUniform3fv(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), 1,
-                         (float*)ParamPtr);
-          }
-          break;
-          case SHADER_PARAM_TYPE_Vec4:
-          {
-            glUniform4fv(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), 1,
-                         (float*)ParamPtr);
-          }
-          break;
-          case SHADER_PARAM_TYPE_Map:
-          {
-            rid RIDValue = *((rid*)ParamPtr);
-
-            assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
-            glActiveTexture(CurrentGLTextureBindIndex);
-            glBindTexture(GL_TEXTURE_2D, GameState->Resources.GetTexture(RIDValue));
-            glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName),
-                        CurrentGLTextureBindIndex - GL_TEXTURE0);
-
-            glActiveTexture(GL_TEXTURE0);
-            CurrentGLTextureBindIndex++;
-          }
-          break;
+          int32_t Value = *((int32_t*)ParamPtr);
+          glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
         }
+        break;
+        case SHADER_PARAM_TYPE_Bool:
+        {
+          bool    BoolValue = *((bool*)ParamPtr);
+          int32_t Value     = (int32_t)BoolValue;
+          glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
+        }
+        break;
+        case SHADER_PARAM_TYPE_Float:
+        {
+          float Value = *((float*)ParamPtr);
+          glUniform1f(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), Value);
+        }
+        break;
+        case SHADER_PARAM_TYPE_Vec3:
+        {
+          vec3 Value = *((vec3*)ParamPtr);
+          glUniform3fv(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), 1,
+                       (float*)ParamPtr);
+        }
+        break;
+        case SHADER_PARAM_TYPE_Vec4:
+        {
+          glUniform4fv(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName), 1,
+                       (float*)ParamPtr);
+        }
+        break;
+        case SHADER_PARAM_TYPE_Map:
+        {
+          rid RIDValue = *((rid*)ParamPtr);
+
+          assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
+          glActiveTexture(CurrentGLTextureBindIndex);
+          glBindTexture(GL_TEXTURE_2D, GameState->Resources.GetTexture(RIDValue));
+          glUniform1i(glGetUniformLocation(CurrentShaderID, ParamDef.UniformName),
+                      CurrentGLTextureBindIndex - GL_TEXTURE0);
+
+          glActiveTexture(GL_TEXTURE0);
+          CurrentGLTextureBindIndex++;
+        }
+        break;
       }
-      return CurrentShaderID;
     }
+    {
+      //<TODO(Lukas) make constant things upload only on shader change>
+      // TODO(Lukas) Change dt for time uniform to a cumulative time
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "time"), 30.0f);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,
+                   (float*)&GameState->R.LightPosition);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.ambient"), 1,
+                   (float*)&GameState->R.LightAmbientColor);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.diffuse"), 1,
+                   (float*)&GameState->R.LightDiffuseColor);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.specular"), 1,
+                   (float*)&GameState->R.LightSpecularColor);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "cameraPosition"), 1,
+                   (float*)&Camera->Position);
+      //<\TODO>
+    }
+    return CurrentShaderID;
   }
   return -1;
 }
+
 #if 0
 void
 SetUpCubemapShader(render_data* RenderData)

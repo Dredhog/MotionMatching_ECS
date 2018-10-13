@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rid.h"
+
 #include <stdint.h>
 
 enum shader_param_type
@@ -28,13 +30,13 @@ struct named_shader_param_def
   int32_t OffsetIntoMaterial;
 };
 
-struct shader_def* AddShaderDef(int32_t ShaderType, uint32_t ShaderID, const char* ShaderName);
+struct shader_def* AddShaderDef(int32_t ShaderType, rid ShaderRID, const char* ShaderName);
 void AddParamDef(struct shader_def* ShaderDefPtr, const char* ParamName, const char* UniformName,
                  shader_param_def ParamDef);
 
 // asserts if if shader def is null
 int32_t     GetShaderType(const struct shader_def* ShaderDef);
-uint32_t    GetShaderID(const struct shader_def* ShaderDef);
+rid         GetShaderRID(const struct shader_def* ShaderDef);
 const char* GetShaderName(const struct shader_def* ShaderDef);
 void        ResetShaderDefIterator(struct shader_def* ShaderDef);
 
