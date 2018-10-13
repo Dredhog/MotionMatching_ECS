@@ -831,11 +831,15 @@ ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, ve
 
     HeadDistance = PointToPlaneDistance(Head, PlanePoint, PlaneNormal);
 
+    // TODO(rytis): Less-than-or-equal conditions for edge distances to plane might be
+    // triggering some edge cases of face-face collision manifold creation.
+    // Should probably try to change them to simple less-than conditions and
+    // play around, see how it goes.
     if(TailDistance <= 0.0f && HeadDistance <= 0.0f)
     {
       NewPolygon[VertexCount++] = Head;
     }
-    else if(TailDistance <= 0.0f && HeadDistance > 0.0f)
+    else if(TailDistance < 0.0f && HeadDistance > 0.0f)
     {
       vec3 IntersectionPoint;
       if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
@@ -845,7 +849,7 @@ ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, ve
       }
       NewPolygon[VertexCount++] = IntersectionPoint;
     }
-    else if(TailDistance > 0.0f && HeadDistance <= 0.0f)
+    else if(TailDistance > 0.0f && HeadDistance < 0.0f)
     {
       vec3 IntersectionPoint;
       if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
