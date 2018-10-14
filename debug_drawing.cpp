@@ -126,7 +126,7 @@ Debug::DrawGizmos(game_state* GameState)
 void
 Debug::DrawWireframeSpheres(game_state* GameState)
 {
-  GLint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderGizmo);
+  GLint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
   if(GameState->DrawDebugSpheres)
   {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

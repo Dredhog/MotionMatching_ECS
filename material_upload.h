@@ -28,6 +28,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
   {
     GLuint PhongShaderID = GameState->Resources.GetShader(GameState->R.ShaderPhong);
     glUseProgram(PhongShaderID);
+
     glUniform1i(glGetUniformLocation(PhongShaderID, "flags"), Material->Phong.Flags);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "material.ambientColor"), 1,
                  (float*)&Material->Phong.AmbientColor);
@@ -94,6 +95,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
 
     rid    CurrentShaderRID = GetShaderRID(ShaderDef);
     GLuint CurrentShaderID  = GameState->Resources.GetShader(CurrentShaderRID);
+
     glUseProgram(CurrentShaderID);
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &MaximalBoundGLTextureCount);
 

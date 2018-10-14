@@ -15,17 +15,15 @@ layout(location = 5) in vec4 a_boneWeights;
 uniform mat4 mat_mvp;
 uniform mat4 mat_model;
 uniform mat4 g_boneMatrices[20];
-uniform vec3 lightPosition;
-uniform vec3 cameraPosition;
 uniform int  flags;
+uniform vec3 cameraPosition;
+uniform vec3 lightPosition;
 
 out VertexOut
 {
   vec3 position;
   vec3 normal;
   vec2 texCoord;
-  vec3 lightPos;
-  vec3 cameraPos;
   vec3 tangentLightPos;
   vec3 tangentViewPos;
   vec3 tangentFragPos;
@@ -38,6 +36,7 @@ main()
   mat4 modelMatrix = mat_model;
   mat4 mvpMatrix   = mat_mvp;
 
+/*
   if((flags & SKELETAL) != 0 && (g_boneMatrices[0] != mat4(0.0f)) &&
      (a_boneWeights.x + a_boneWeights.y + a_boneWeights.z + a_boneWeights.w) > 0.99f)
   {
@@ -47,12 +46,10 @@ main()
                            g_boneMatrices[a_boneIndices.w] * a_boneWeights.w;
     modelMatrix *= finalPoseMatrix;
     mvpMatrix *= finalPoseMatrix;
-  }
+  }*/
 
   gl_Position    = mvpMatrix * vec4(a_position, 1.0f);
   frag.position  = vec3(modelMatrix * vec4(a_position, 1.0f));
-  frag.lightPos  = lightPosition;
-  frag.cameraPos = cameraPosition;
 
   mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
 
