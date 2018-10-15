@@ -835,11 +835,11 @@ ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, ve
     // triggering some edge cases of face-face collision manifold creation.
     // Should probably try to change them to simple less-than conditions and
     // play around, see how it goes.
-    if(TailDistance <= 0.0f && HeadDistance <= 0.0f)
+    if(TailDistance <= -FLT_EPSILON && HeadDistance <= -FLT_EPSILON)
     {
       NewPolygon[VertexCount++] = Head;
     }
-    else if(TailDistance < 0.0f && HeadDistance > 0.0f)
+    else if(TailDistance < -FLT_EPSILON && HeadDistance > FLT_EPSILON)
     {
       vec3 IntersectionPoint;
       if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
@@ -849,7 +849,7 @@ ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, ve
       }
       NewPolygon[VertexCount++] = IntersectionPoint;
     }
-    else if(TailDistance > 0.0f && HeadDistance < 0.0f)
+    else if(TailDistance > FLT_EPSILON && HeadDistance < -FLT_EPSILON)
     {
       vec3 IntersectionPoint;
       if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
