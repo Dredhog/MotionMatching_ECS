@@ -35,6 +35,8 @@ uniform int  uniform_int;
 
 uniform float uniform_float;
 
+uniform samplerCube cubemap;
+
 out vec4 out_color;
 
 void

@@ -10,9 +10,17 @@ enum phong_flags
   PHONG_UseSkeleton    = 8,
 };
 
+enum env_flags
+{
+    ENV_UseRefraction = 1 << 0,
+    ENV_UseNormalMap  = 1 << 1,
+    ENV_UseSkeleton   = 1 << 2,
+};
+
 enum shader_type
 {
   SHADER_Phong,
+  SHADER_Env,
   SHADER_Test,
   SHADER_Color,
 
@@ -52,6 +60,14 @@ union material {
 
   struct
   {
+      material_header Common;
+      uint32_t        Flags;
+      rid             NormalMapID;
+      float           RefractiveIndex;
+  } Env;
+
+  struct
+  {
     material_header Common;
     vec4            Color;
   } Color;
@@ -84,6 +100,7 @@ struct render_data
 
   // Shaders
   rid ShaderPhong;
+  rid ShaderEnv;
   rid ShaderColor;
   rid ShaderGizmo;
   rid ShaderQuad;
@@ -126,6 +143,15 @@ NewPhongMaterial()
   Material.Phong.DiffuseColor  = { 0.5f, 0.5f, 0.5f, 1.0f };
   Material.Phong.SpecularColor = { 1.0f, 1.0f, 1.0f };
   Material.Phong.Shininess     = 60.0f;
+  return Material;
+}
+
+inline material
+NewEnvMaterial()
+{
+  material Material            = {};
+  Material.Common.ShaderType   = SHADER_Env;
+  Material.Env.RefractiveIndex = 1.52f;
   return Material;
 }
 
