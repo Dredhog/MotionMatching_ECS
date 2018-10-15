@@ -372,7 +372,7 @@ ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int C
 void
 SimulateDynamics(game_state* GameState)
 {
-  if(2 <= GameState->EntityCount)
+  if(1 <= GameState->EntityCount)
   {
     assert(GameState->EntityCount <= RIGID_BODY_MAX_COUNT);
     const int BodyCount = GameState->EntityCount;
@@ -487,13 +487,6 @@ SimulateDynamics(game_state* GameState)
               Constraint.BodyRa = P - g_RigidBodies[Constraint.IndA].X;
               Constraint.BodyRb = (P - Manifold.Points[c].Penetration * Constraint.n) -
                                   g_RigidBodies[Constraint.IndB].X;
-
-#define VISUALIZE_CONCT_NORMAL 0
-#if 0
-              Debug::PushLine({}, Constraint.n, { 1, 0, 1, 1 });
-              Debug::PushWireframeSphere(Constraint.n, 0.05f, { 1, 0, 1, 1 });
-#endif
-#undef VISUALIZE_CONCT_NORMAL
 
               int32_t ContactIndex = g_Constraints.Count;
               g_Constraints.Push(Constraint);

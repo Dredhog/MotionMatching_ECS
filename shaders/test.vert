@@ -1,10 +1,5 @@
 #version 330 core
 
-#define DIFFUSE_MAP 1
-#define SPECULAR_MAP 2
-#define NORMAL_MAP 4
-#define SKELETAL 8
-
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
 layout(location = 2) in vec2 a_texCoord;

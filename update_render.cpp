@@ -89,9 +89,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.ShaderColor   = GameState->Resources.RegisterShader("shaders/color");
       GameState->R.ShaderTexturedQuad =
         GameState->Resources.RegisterShader("shaders/debug_textured_quad");
-      GameState->R.ShaderID   = GameState->Resources.RegisterShader("shaders/id");
-      GameState->R.ShaderToon = GameState->Resources.RegisterShader("shaders/toon");
-      GameState->R.ShaderTest = GameState->Resources.RegisterShader("shaders/test");
+      GameState->R.ShaderID       = GameState->Resources.RegisterShader("shaders/id");
+      GameState->R.ShaderToon     = GameState->Resources.RegisterShader("shaders/toon");
+      GameState->R.ShaderTest     = GameState->Resources.RegisterShader("shaders/test");
+      GameState->R.ShaderParallax = GameState->Resources.RegisterShader("shaders/parallax");
 
       GameState->R.PostDefaultShader = GameState->Resources.RegisterShader("shaders/default");
       GameState->R.PostGrayscale     = GameState->Resources.RegisterShader("shaders/grayscale");
@@ -99,8 +100,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.PostBlurH = GameState->Resources.RegisterShader("shaders/blur_horizontal");
       GameState->R.PostBlurV = GameState->Resources.RegisterShader("shaders/blur_vertical");
 
-      GLuint MissingShaderID =
-        Shader::CheckedLoadCompileFreeShader(GameState->TemporaryMemStack, "shaders/missing_default");
+      GLuint MissingShaderID = Shader::CheckedLoadCompileFreeShader(GameState->TemporaryMemStack,
+                                                                    "shaders/missing_default");
       assert(MissingShaderID);
       GameState->Resources.SetDefaultShaderID(MissingShaderID);
     }
@@ -120,6 +121,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                   { SHADER_PARAM_TYPE_Map, offsetof(material, Test.NormalID) });
       AddParamDef(TestShaderDef, "map_specular", "material.specularMap",
                   { SHADER_PARAM_TYPE_Map, offsetof(material, Test.SpecularID) });
+
+      struct shader_def* ParallaxShaderDef =
+        AddShaderDef(SHADER_Parallax, GameState->R.ShaderParallax, "parallax");
+      AddParamDef(ParallaxShaderDef, "height_scale", "height_scale",
+                  { SHADER_PARAM_TYPE_Float, offsetof(material, Parallax.HeightScale) });
+      AddParamDef(ParallaxShaderDef, "map_diffuse", "material.diffuseMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DiffuseID) });
+      AddParamDef(ParallaxShaderDef, "map_normal", "material.normalMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.NormalID) });
+      AddParamDef(ParallaxShaderDef, "map_depth", "material.depthMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
     }
 
     // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS

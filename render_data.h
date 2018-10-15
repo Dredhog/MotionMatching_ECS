@@ -14,6 +14,7 @@ enum shader_type
 {
   SHADER_Phong,
   SHADER_Test,
+  SHADER_Parallax,
   SHADER_Color,
 
   SHADER_EnumCount,
@@ -66,6 +67,15 @@ union material {
     rid             SpecularID;
     rid             DiffuseID;
   } Test;
+
+  struct
+  {
+    material_header Common;
+    float           HeightScale;
+    rid             DiffuseID;
+    rid             NormalID;
+    rid             DepthID;
+  } Parallax;
 };
 
 const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
@@ -92,6 +102,7 @@ struct render_data
   rid ShaderID;
   rid ShaderToon;
   rid ShaderTest;
+  rid ShaderParallax;
 
   // Post-processing shaders
   rid PostDefaultShader;

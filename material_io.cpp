@@ -386,75 +386,8 @@ ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* R
 }
 
 void
-ExportMaterial(Resource::resource_manager* ResourceManager, const material* Material,
-               const char* Path)
-{
-  assert(Path);
-  assert(strncmp("data/materials/", Path, strlen("data/materials/")) == 0);
-
-  struct shader_def* ShaderDef;
-  assert(GetShaderDef(&ShaderDef, Material->Common.ShaderType));
-
-  const char* ShaderName = GetShaderName(ShaderDef);
-
-  FILE* FilePointer = fopen(Path, "w");
-  fprintf(FilePointer, "type: %s\n", ShaderName);
-  ResetShaderDefIterator(ShaderDef);
-  named_shader_param_def ParamDef = {};
-  while(GetNextShaderParam(&ParamDef, ShaderDef))
-  {
-    fprintf(FilePointer, "%s: ", ParamDef.Name);
-
-    uint8_t* ParamLocation = (((uint8_t*)Material) + ParamDef.OffsetIntoMaterial);
-    switch(ParamDef.Type)
-    {
-      case SHADER_PARAM_TYPE_Int:
-      {
-        int32_t Value = *((int32_t*)ParamLocation);
-        fprintf(FilePointer, "%d\n", Value);
-      }
-      break;
-      case SHADER_PARAM_TYPE_Bool:
-      {
-        bool Value = *((bool*)ParamLocation);
-        fprintf(FilePointer, "%d\n", (int32_t)Value);
-      }
-      break;
-      case SHADER_PARAM_TYPE_Float:
-      {
-        float Value = *((float*)ParamLocation);
-        fprintf(FilePointer, "%.3f\n", Value);
-      }
-      break;
-      case SHADER_PARAM_TYPE_Vec3:
-      {
-        vec3 Value = *((vec3*)ParamLocation);
-        fprintf(FilePointer, "%.3f %.3f %.3f\n", Value.X, Value.Y, Value.Z);
-      }
-      break;
-      case SHADER_PARAM_TYPE_Vec4:
-      {
-        vec4 Value = *((vec4*)ParamLocation);
-        fprintf(FilePointer, "%.3f %.3f %.3f %.3f\n", Value.X, Value.Y, Value.Z, Value.W);
-      }
-      break;
-      case SHADER_PARAM_TYPE_Map:
-      {
-        rid RIDValue = *((rid*)ParamLocation);
-        fprintf(FilePointer, "%s\n",
-                ResourceManager->TexturePaths[ResourceManager->GetTexturePathIndex(RIDValue)].Name);
-      }
-      break;
-    }
-  }
-
-  fclose(FilePointer);
-}
-
-#if 0
-void
-ExportMaterial(Resource::resource_manager* ResourceManager, const material* Material,
-               const char* Path)
+ExportPhongMaterial(Resource::resource_manager* ResourceManager, const material* Material,
+                    const char* Path)
 {
   assert(Path);
   assert(strncmp("data/materials/", Path, strlen("data/materials/")) == 0);
@@ -519,4 +452,79 @@ ExportMaterial(Resource::resource_manager* ResourceManager, const material* Mate
 
   fclose(FilePointer);
 }
+
+void
+ExportMaterial(Resource::resource_manager* ResourceManager, const material* Material,
+               const char* Path)
+{
+  assert(Path);
+  assert(strncmp("data/materials/", Path, strlen("data/materials/")) == 0);
+
+#define PHONG_IS_SPECIAL_SNOWFLAKE 1
+#if PHONG_IS_SPECIAL_SNOWFLAKE
+  if(Material->Common.ShaderType == SHADER_Phong)
+  {
+    ExportPhongMaterial(ResourceManager, Material, Path);
+    return;
+  }
 #endif
+
+  struct shader_def* ShaderDef;
+  assert(GetShaderDef(&ShaderDef, Material->Common.ShaderType));
+
+  const char* ShaderName = GetShaderName(ShaderDef);
+
+  FILE* FilePointer = fopen(Path, "w");
+  fprintf(FilePointer, "type: %s\n", ShaderName);
+  ResetShaderDefIterator(ShaderDef);
+  named_shader_param_def ParamDef = {};
+  while(GetNextShaderParam(&ParamDef, ShaderDef))
+  {
+    fprintf(FilePointer, "%s: ", ParamDef.Name);
+
+    uint8_t* ParamLocation = (((uint8_t*)Material) + ParamDef.OffsetIntoMaterial);
+    switch(ParamDef.Type)
+    {
+      case SHADER_PARAM_TYPE_Int:
+      {
+        int32_t Value = *((int32_t*)ParamLocation);
+        fprintf(FilePointer, "%d\n", Value);
+      }
+      break;
+      case SHADER_PARAM_TYPE_Bool:
+      {
+        bool Value = *((bool*)ParamLocation);
+        fprintf(FilePointer, "%d\n", (int32_t)Value);
+      }
+      break;
+      case SHADER_PARAM_TYPE_Float:
+      {
+        float Value = *((float*)ParamLocation);
+        fprintf(FilePointer, "%.3f\n", Value);
+      }
+      break;
+      case SHADER_PARAM_TYPE_Vec3:
+      {
+        vec3 Value = *((vec3*)ParamLocation);
+        fprintf(FilePointer, "%.3f %.3f %.3f\n", Value.X, Value.Y, Value.Z);
+      }
+      break;
+      case SHADER_PARAM_TYPE_Vec4:
+      {
+        vec4 Value = *((vec4*)ParamLocation);
+        fprintf(FilePointer, "%.3f %.3f %.3f %.3f\n", Value.X, Value.Y, Value.Z, Value.W);
+      }
+      break;
+      case SHADER_PARAM_TYPE_Map:
+      {
+        rid RIDValue = *((rid*)ParamLocation);
+        fprintf(FilePointer, "%s\n",
+                ResourceManager->TexturePaths[ResourceManager->GetTexturePathIndex(RIDValue)].Name);
+      }
+      break;
+    }
+  }
+
+  fclose(FilePointer);
+}
+
