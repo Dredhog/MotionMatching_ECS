@@ -796,21 +796,27 @@ QueryEdgeDirections(mat4 TransformA, const hull* HullA, mat4 TransformB, const h
   return Result;
 }
 
-bool
-IntersectEdgePlane(vec3* IntersectionPoint, vec3 EdgeTail, vec3 EdgeHead, vec3 PlanePoint,
-                   vec3 PlaneNormal)
+vec3
+IntersectEdgePlane(vec3 EdgeTail, vec3 EdgeHead, vec3 PlanePoint, vec3 PlaneNormal)
 {
+  vec3  IntersectionPoint;
   vec3  Edge = EdgeHead - EdgeTail;
   float d    = Math::Dot(PlaneNormal, PlanePoint);
   float t    = (d - Math::Dot(PlaneNormal, EdgeTail)) / Math::Dot(PlaneNormal, Edge);
 
   if(t >= 0.0f && t <= 1.0f)
   {
-    *IntersectionPoint = EdgeTail + t * Edge;
-    return true;
+    IntersectionPoint = EdgeTail + t * Edge;
   }
-
-  return false;
+  else if(t < 0.0f)
+  {
+    IntersectionPoint = EdgeTail;
+  }
+  else
+  {
+    IntersectionPoint = EdgeHead;
+  }
+  return IntersectionPoint;
 }
 
 int32_t
@@ -831,33 +837,17 @@ ClipPolygonToPlane(vec3* Polygon, int32_t PolygonPointCount, vec3 PlanePoint, ve
 
     HeadDistance = PointToPlaneDistance(Head, PlanePoint, PlaneNormal);
 
-    // TODO(rytis): Less-than-or-equal conditions for edge distances to plane might be
-    // triggering some edge cases of face-face collision manifold creation.
-    // Should probably try to change them to simple less-than conditions and
-    // play around, see how it goes.
-    if(TailDistance <= -FLT_EPSILON && HeadDistance <= -FLT_EPSILON)
+    if(TailDistance <= 0.0f && HeadDistance <= 0.0f)
     {
       NewPolygon[VertexCount++] = Head;
     }
-    else if(TailDistance < -FLT_EPSILON && HeadDistance > FLT_EPSILON)
+    else if(TailDistance <= 0.0f && HeadDistance > 0.0f)
     {
-      vec3 IntersectionPoint;
-      if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
-      {
-        printf("Intersection could not be found!\n");
-        assert(0);
-      }
-      NewPolygon[VertexCount++] = IntersectionPoint;
+      NewPolygon[VertexCount++] = IntersectEdgePlane(Tail, Head, PlanePoint, PlaneNormal);
     }
-    else if(TailDistance > FLT_EPSILON && HeadDistance < -FLT_EPSILON)
+    else if(TailDistance > 0.0f && HeadDistance <= 0.0f)
     {
-      vec3 IntersectionPoint;
-      if(!IntersectEdgePlane(&IntersectionPoint, Tail, Head, PlanePoint, PlaneNormal))
-      {
-        printf("Intersection could not be found!\n");
-        assert(0);
-      }
-      NewPolygon[VertexCount++] = IntersectionPoint;
+      NewPolygon[VertexCount++] = IntersectEdgePlane(Tail, Head, PlanePoint, PlaneNormal);
       NewPolygon[VertexCount++] = Head;
     }
 
