@@ -79,6 +79,33 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glActiveTexture(GL_TEXTURE0);
     return PhongShaderID;
   }
+  else if(Material->Common.ShaderType == SHADER_Env)
+  {
+    GLuint EnvShaderID = GameState->Resources.GetShader(GameState->R.ShaderEnv);
+    glUseProgram(EnvShaderID);
+    glUniform1i(glGetUniformLocation(EnvShaderID, "flags"), Material->Env.Flags);
+    glUniform1i(glGetUniformLocation(EnvShaderID, "cubemap"), 0);
+    glUniform1i(glGetUniformLocation(EnvShaderID, "normalMap"), 1);
+    glUniform1f(glGetUniformLocation(EnvShaderID, "refractive_index"),
+                Material->Env.RefractiveIndex);
+    glUniform3fv(glGetUniformLocation(EnvShaderID, "cameraPosition"), 1,
+                 (float*)&Camera->Position);
+    assert(
+      ((Material->Env.Flags & ENV_UseNormalMap) && Material->Env.NormalMapID.Value > 0) ||
+      !(Material->Env.Flags & ENV_UseNormalMap));
+
+    uint32_t CubemapTexture = GameState->Cubemap.CubemapTexture;
+    uint32_t NormalTexture = (Material->Env.Flags & ENV_UseNormalMap)
+                               ? GameState->Resources.GetTexture(Material->Env.NormalMapID)
+                               : 0;
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, CubemapTexture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, NormalTexture);
+    glActiveTexture(GL_TEXTURE0);
+    return EnvShaderID;
+  }
   else if(Material->Common.ShaderType == SHADER_Color)
   {
     GLuint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
@@ -171,6 +198,17 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightSpecularColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "cameraPosition"), 1,
                    (float*)&Camera->Position);
+      // Cubemap
+      {
+          assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
+          glActiveTexture(CurrentGLTextureBindIndex);
+          glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
+          glUniform1i(glGetUniformLocation(CurrentShaderID, "cubemap"),
+                      CurrentGLTextureBindIndex - GL_TEXTURE0);
+
+          glActiveTexture(GL_TEXTURE0);
+          CurrentGLTextureBindIndex++;
+      }
       //<\TODO>
     }
     return CurrentShaderID;

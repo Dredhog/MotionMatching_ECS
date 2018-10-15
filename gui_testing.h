@@ -350,6 +350,60 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             UI::SliderFloat("Shininess", &CurrentMaterial->Phong.Shininess, 1.0f, 512.0f);
           }
           break;
+          case SHADER_Env:
+          {
+            bool Refraction = CurrentMaterial->Env.Flags & ENV_UseRefraction;
+            bool NormalMap = CurrentMaterial->Env.Flags & ENV_UseNormalMap;
+            UI::Checkbox("Refraction", &Refraction);
+            UI::Checkbox("Normal Map", &NormalMap);
+
+            if(Refraction)
+            {
+                CurrentMaterial->Env.Flags |= ENV_UseRefraction;
+            }
+            else
+            {
+                CurrentMaterial->Env.Flags &= ~ENV_UseRefraction;
+            }
+
+            if(NormalMap)
+            {
+              {
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Env.NormalMapID.Value > 0)
+                {
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Env.NormalMapID);
+                }
+                UI::Combo("Normal map", &ActivePathIndex, GameState->Resources.TexturePaths,
+                          GameState->Resources.TexturePathCount, PathArrayToString);
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Env.Flags |= ENV_UseNormalMap;
+
+                  rid NewRID;
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Env.NormalMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Env.NormalMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Env.NormalMapID.Value > 0);
+                }
+              }
+            }
+            else
+            {
+              CurrentMaterial->Env.Flags &= ~ENV_UseNormalMap;
+            }
+
+            UI::SliderFloat("Refractive Index", &CurrentMaterial->Env.RefractiveIndex, 1.0f, 3.0f);
+          } break;
           case SHADER_Color:
           {
             UI::DragFloat4("Color", &CurrentMaterial->Color.Color.X, 0, 1, 5);

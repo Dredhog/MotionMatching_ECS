@@ -83,6 +83,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       // TODO(2-tuple) Make mesh shader loading management automatic
       GameState->R.ShaderPhong   = GameState->Resources.RegisterShader("shaders/phong");
+      GameState->R.ShaderEnv     = GameState->Resources.RegisterShader("shaders/environment");
       GameState->R.ShaderCubemap = GameState->Resources.RegisterShader("shaders/cubemap");
       GameState->R.ShaderGizmo   = GameState->Resources.RegisterShader("shaders/gizmo");
       GameState->R.ShaderQuad    = GameState->Resources.RegisterShader("shaders/debug_quad");
@@ -107,6 +108,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     // SET UP SHADER PARAMETER DEFINITIONS (CAN BE MADE AUTOMATIC BY PARSING ASSOCIATED SHADER)
+    {
+        struct shader_def* EnvShaderDef = AddShaderDef(SHADER_Env, GameState->R.ShaderEnv, "environment");
+        AddParamDef(EnvShaderDef, "flags", "flags", { SHADER_PARAM_TYPE_Int, offsetof(material, Env.Flags) });
+        AddParamDef(EnvShaderDef, "map_normal", "normalMap", { SHADER_PARAM_TYPE_Map, offsetof(material, Env.NormalMapID) });
+        AddParamDef(EnvShaderDef, "refractive_index", "refractive_index", { SHADER_PARAM_TYPE_Float, offsetof(material, Env.RefractiveIndex) });
+    }
     {
       struct shader_def* TestShaderDef = AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
       AddParamDef(TestShaderDef, "sth_float", "uniform_float",
@@ -788,6 +795,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   uint32_t CurrentFramebuffer = GameState->CurrentFramebuffer;
   uint32_t CurrentTexture     = GameState->CurrentTexture;
 
+  glDisable(GL_DEPTH_TEST);
+
   if(GameState->R.PPEffects)
   {
     if(GameState->R.PPEffects & POST_Blur)
@@ -806,7 +815,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUseProgram(PostBlurHShaderID);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
-      glDisable(GL_DEPTH_TEST);
 
       glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
       glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
@@ -833,7 +841,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUseProgram(PostGrayscaleShaderID);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
-      glDisable(GL_DEPTH_TEST);
 
       glBindVertexArray(GameState->ScreenQuadVAO);
       glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
@@ -849,9 +856,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUseProgram(PostNightVisionShaderID);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
-      glDisable(GL_DEPTH_TEST);
 
-      glBindVertexArray(PostNightVisionShaderID);
+      glBindVertexArray(GameState->ScreenQuadVAO);
       glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
       glDrawArrays(GL_TRIANGLES, 0, 6);
     }
@@ -863,7 +869,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glDisable(GL_DEPTH_TEST);
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
 
