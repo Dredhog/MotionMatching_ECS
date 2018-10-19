@@ -353,17 +353,17 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
           case SHADER_Env:
           {
             bool Refraction = CurrentMaterial->Env.Flags & ENV_UseRefraction;
-            bool NormalMap = CurrentMaterial->Env.Flags & ENV_UseNormalMap;
+            bool NormalMap  = CurrentMaterial->Env.Flags & ENV_UseNormalMap;
             UI::Checkbox("Refraction", &Refraction);
             UI::Checkbox("Normal Map", &NormalMap);
 
             if(Refraction)
             {
-                CurrentMaterial->Env.Flags |= ENV_UseRefraction;
+              CurrentMaterial->Env.Flags |= ENV_UseRefraction;
             }
             else
             {
-                CurrentMaterial->Env.Flags &= ~ENV_UseRefraction;
+              CurrentMaterial->Env.Flags &= ~ENV_UseRefraction;
             }
 
             if(NormalMap)
@@ -403,7 +403,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             }
 
             UI::SliderFloat("Refractive Index", &CurrentMaterial->Env.RefractiveIndex, 1.0f, 3.0f);
-          } break;
+          }
+          break;
           case SHADER_Color:
           {
             UI::DragFloat4("Color", &CurrentMaterial->Color.Color.X, 0, 1, 5);
@@ -509,7 +510,7 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
           printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
         }
-				//Bad Idea, because texture RIDs cannot be 0
+          // Bad Idea, because texture RIDs cannot be 0
 #if 0
         UI::SameLine();
         if(UI::Button("Clear Material Fields"))
@@ -611,7 +612,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       // Rigid Body
       {
         rigid_body* RB = &SelectedEntity->RigidBody;
-        //UI::DragFloat3("X", &RB->X.X, -INFINITY, INFINITY, 10);
+        // UI::DragFloat3("X", &RB->X.X, -INFINITY, INFINITY, 10);
 
         if(FloatsEqualByThreshold(Math::Length(RB->q), 0.0f, 0.00001f))
         {

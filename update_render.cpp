@@ -23,13 +23,8 @@
 #include "player_controller.h"
 
 #include "gui_testing.h"
-#include <limits.h>
 #include "dynamics.h"
 #include "shader_def.h"
-
-void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform);
-mat4 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex);
-mat4 GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex);
 
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
@@ -100,6 +95,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.PostNightVision   = GameState->Resources.RegisterShader("shaders/night_vision");
       GameState->R.PostBlurH = GameState->Resources.RegisterShader("shaders/blur_horizontal");
       GameState->R.PostBlurV = GameState->Resources.RegisterShader("shaders/blur_vertical");
+      GameState->R.PostDepthOfField = GameState->Resources.RegisterShader("shaders/depth_of_field");
+
+      GameState->R.ShaderGeomPreePass =
+        GameState->Resources.RegisterShader("shaders/geom_pre_pass");
 
       GLuint MissingShaderID = Shader::CheckedLoadCompileFreeShader(GameState->TemporaryMemStack,
                                                                     "shaders/missing_default");
@@ -109,12 +108,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // SET UP SHADER PARAMETER DEFINITIONS (CAN BE MADE AUTOMATIC BY PARSING ASSOCIATED SHADER)
     {
-        struct shader_def* EnvShaderDef = AddShaderDef(SHADER_Env, GameState->R.ShaderEnv, "environment");
-        AddParamDef(EnvShaderDef, "flags", "flags", { SHADER_PARAM_TYPE_Int, offsetof(material, Env.Flags) });
-        AddParamDef(EnvShaderDef, "map_normal", "normalMap", { SHADER_PARAM_TYPE_Map, offsetof(material, Env.NormalMapID) });
-        AddParamDef(EnvShaderDef, "refractive_index", "refractive_index", { SHADER_PARAM_TYPE_Float, offsetof(material, Env.RefractiveIndex) });
-    }
-    {
+      struct shader_def* EnvShaderDef =
+        AddShaderDef(SHADER_Env, GameState->R.ShaderEnv, "environment");
+      AddParamDef(EnvShaderDef, "flags", "flags",
+                  { SHADER_PARAM_TYPE_Int, offsetof(material, Env.Flags) });
+      AddParamDef(EnvShaderDef, "map_normal", "normalMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Env.NormalMapID) });
+      AddParamDef(EnvShaderDef, "refractive_index", "refractive_index",
+                  { SHADER_PARAM_TYPE_Float, offsetof(material, Env.RefractiveIndex) });
+
       struct shader_def* TestShaderDef = AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
       AddParamDef(TestShaderDef, "sth_float", "uniform_float",
                   { SHADER_PARAM_TYPE_Float, offsetof(material, Test.Float) });
@@ -141,32 +143,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                   { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
     }
 
-    // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
-    {
-      GenerateScreenQuad(&GameState->ScreenQuadVAO, &GameState->ScreenQuadVBO);
-
-      for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
-      {
-        GenerateFramebuffer(&GameState->ScreenFBO[i], &GameState->ScreenRBO[i],
-                            &GameState->ScreenTexture[i]);
-      }
-
-      GameState->CurrentFramebuffer = 0;
-      GameState->CurrentTexture     = 0;
-
-      // Default blur parameters
-      GameState->R.PostBlurLastStdDev = 10.0f;
-      GameState->R.PostBlurStdDev     = GameState->R.PostBlurLastStdDev;
-      GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
-                                 GameState->R.PostBlurStdDev);
-    }
-
-    // ======Set GL state========
-    glEnable(GL_DEPTH_TEST);
-    glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
-    glEnable(GL_CULL_FACE);
-    glDepthFunc(GL_LEQUAL);
-
     // FRAME BUFFER CREATION FOR ENTITY SELECTION
     {
       glGenFramebuffers(1, &GameState->IndexFBO);
@@ -191,6 +167,40 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         assert(0 && "error: incomplete framebuffer!\n");
       }
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    // FRAME BUFFER CREATION FOR GEOMETRY/DEPTH PRE PASS
+    {
+      GenerateGeometryDepthFrameBuffer(&GameState->R.GBufferFBO, &GameState->R.GBufferColorTexID,
+                                       &GameState->R.GBufferDepthTexID);
+    }
+
+    // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
+    {
+      GenerateScreenQuad(&GameState->ScreenQuadVAO, &GameState->ScreenQuadVBO);
+
+      for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
+      {
+        GenerateFramebuffer(&GameState->ScreenFBO[i], &GameState->ScreenRBO[i],
+                            &GameState->ScreenTexture[i]);
+      }
+
+      GameState->CurrentFramebuffer = 0;
+      GameState->CurrentTexture     = 0;
+
+      // Default blur parameters
+      GameState->R.PostBlurLastStdDev = 10.0f;
+      GameState->R.PostBlurStdDev     = GameState->R.PostBlurLastStdDev;
+      GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
+                                 GameState->R.PostBlurStdDev);
+    }
+
+    // SET MISC GL STATE
+    {
+      glEnable(GL_DEPTH_TEST);
+      glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
+      glEnable(GL_CULL_FACE);
+      glDepthFunc(GL_LEQUAL);
     }
 
     // GAME STATE FIELD INITIALIZATION
@@ -443,6 +453,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
     Debug::PushGizmo(&GameState->Camera, &Mat4LightPosition);
   }
+
   // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)
   {
@@ -590,11 +601,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   //---------------------RENDERING----------------------------
 
-  glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[GameState->CurrentFramebuffer]);
-
+  // RENDER QUEUE SUBMISSION
   GameState->R.MeshInstanceCount = 0;
-  // Put entiry data to draw drawing queue every frame to avoid erroneous indirection due to
-  // sorting
   for(int e = 0; e < GameState->EntityCount; e++)
   {
     Render::model* CurrentModel = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
@@ -609,9 +617,50 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+  // GEOMETRY/DEPTH PRE-PASS
   {
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.GBufferFBO);
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // TODO(Lukas) SORT(MeshInstances,  ByMesh);
+    {
+      Render::mesh* PreviousMesh = nullptr;
+      uint32_t      GeomPrePassShaderID =
+        GameState->Resources.GetShader(GameState->R.ShaderGeomPreePass);
+      glUseProgram(GeomPrePassShaderID);
+      for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
+      {
+        Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
+        int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
+
+        if(CurrentMesh != PreviousMesh)
+        {
+          glBindVertexArray(CurrentMesh->VAO);
+          PreviousMesh = CurrentMesh;
+        }
+
+        // TODO(Lukas) Add logic for bone matrix submission
+
+        glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_mvp"), 1, GL_FALSE,
+                           GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
+        glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_model"), 1, GL_FALSE,
+                           GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+        glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_view"), 1, GL_FALSE,
+                           Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
+        glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
+      }
+      glBindVertexArray(0);
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+
+  {
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[GameState->CurrentFramebuffer]);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     // Draw Cubemap
     // TODO (rytis): Finish cubemap loading
     if(GameState->DrawCubemap)
@@ -626,133 +675,133 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUseProgram(CubemapShaderID);
       glUniformMatrix4fv(glGetUniformLocation(CubemapShaderID, "mat_projection"), 1, GL_FALSE,
                          GameState->Camera.ProjectionMatrix.e);
+      Render::mesh* CubemapMesh =
+        GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0];
       glUniformMatrix4fv(glGetUniformLocation(CubemapShaderID, "mat_view"), 1, GL_FALSE,
                          Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
-      glBindVertexArray(GameState->Resources.GetModel(GameState->CubemapModelID)->Meshes[0]->VAO);
+      glBindVertexArray(CubemapMesh->VAO);
       glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
-      glDrawElements(GL_TRIANGLES,
-                     GameState->Resources.GetModel(GameState->CubemapModelID)
-                       ->Meshes[0]
-                       ->IndiceCount,
-                     GL_UNSIGNED_INT, 0);
+      glDrawElements(GL_TRIANGLES, CubemapMesh->IndiceCount, GL_UNSIGNED_INT, 0);
 
       glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
       glBindVertexArray(0);
     }
 
+    // TODO(Lukas) SORT(MeshInstances, ByBlend, ByMaterial, ByMesh);
     // Draw scene to backbuffer
-    // SORT(MeshInstances, ByMaterial, MyMesh);
-
-    material*     PreviousMaterial = nullptr;
-    Render::mesh* PreviousMesh     = nullptr;
-    uint32_t      CurrentShaderID  = 0;
-    for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
     {
-      material*     CurrentMaterial    = GameState->R.MeshInstances[i].Material;
-      Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
-      int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
-      if(CurrentMaterial != PreviousMaterial)
+      material*     PreviousMaterial = nullptr;
+      Render::mesh* PreviousMesh     = nullptr;
+      uint32_t      CurrentShaderID  = 0;
+      for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
       {
-        if(PreviousMaterial)
+        material*     CurrentMaterial    = GameState->R.MeshInstances[i].Material;
+        Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
+        int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
+        if(CurrentMaterial != PreviousMaterial)
         {
-          glBindTexture(GL_TEXTURE_2D, 0);
-        }
-        CurrentShaderID = SetMaterial(GameState, &GameState->Camera, CurrentMaterial);
+          if(PreviousMaterial)
+          {
+            glBindTexture(GL_TEXTURE_2D, 0);
+          }
+          CurrentShaderID = SetMaterial(GameState, &GameState->Camera, CurrentMaterial);
 
-        PreviousMaterial = CurrentMaterial;
+          PreviousMaterial = CurrentMaterial;
+        }
+        if(CurrentMesh != PreviousMesh)
+        {
+          glBindVertexArray(CurrentMesh->VAO);
+          PreviousMesh = CurrentMesh;
+        }
+        if(CurrentMaterial->Common.IsSkeletal &&
+           GameState->Entities[CurrentEntityIndex].AnimController)
+        {
+          glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"),
+                             GameState->Entities[CurrentEntityIndex]
+                               .AnimController->Skeleton->BoneCount,
+                             GL_FALSE,
+                             (float*)GameState->Entities[CurrentEntityIndex]
+                               .AnimController->HierarchicalModelSpaceMatrices);
+        }
+        else
+        {
+          mat4 Mat4Zeros = {};
+          glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"), 1, GL_FALSE,
+                             Mat4Zeros.e);
+        }
+        glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_mvp"), 1, GL_FALSE,
+                           GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
+        glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
+                           GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+        glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
       }
-      if(CurrentMesh != PreviousMesh)
+      glBindVertexArray(0);
+    }
+
+    // SELECTION HIGLIGHTING
+    entity* SelectedEntity;
+    if(Input->IsMouseInEditorMode && GetSelectedEntity(GameState, &SelectedEntity))
+    {
+      // MESH SELECTION HIGHLIGHTING
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glDepthFunc(GL_LEQUAL);
+      vec4   ColorRed      = vec4{ 1, 1, 0, 1 };
+      GLuint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
+      glUseProgram(ColorShaderID);
+      glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, (float*)&ColorRed);
+      glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "mat_mvp"), 1, GL_FALSE,
+                         GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
+      if(SelectedEntity->AnimController)
       {
-        glBindVertexArray(CurrentMesh->VAO);
-        PreviousMesh = CurrentMesh;
-      }
-      if(CurrentMaterial->Common.IsSkeletal &&
-         GameState->Entities[CurrentEntityIndex].AnimController)
-      {
-        glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"),
-                           GameState->Entities[CurrentEntityIndex]
-                             .AnimController->Skeleton->BoneCount,
-                           GL_FALSE,
-                           (float*)GameState->Entities[CurrentEntityIndex]
-                             .AnimController->HierarchicalModelSpaceMatrices);
+        glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"),
+                           SelectedEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
+                           (float*)SelectedEntity->AnimController->HierarchicalModelSpaceMatrices);
       }
       else
       {
         mat4 Mat4Zeros = {};
-        glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"), 1, GL_FALSE,
+        glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"), 1, GL_FALSE,
                            Mat4Zeros.e);
       }
-      glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_mvp"), 1, GL_FALSE,
-                         GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
-      glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
-                         GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
-      glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
-    }
-    glBindVertexArray(0);
-  }
-
-  // Higlighting
-  entity* SelectedEntity;
-  if(Input->IsMouseInEditorMode && GetSelectedEntity(GameState, &SelectedEntity))
-  {
-    // Highlight mesh
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDepthFunc(GL_LEQUAL);
-    vec4   ColorRed      = vec4{ 1, 1, 0, 1 };
-    GLuint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
-    glUseProgram(ColorShaderID);
-    glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, (float*)&ColorRed);
-    glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "mat_mvp"), 1, GL_FALSE,
-                       GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
-    if(SelectedEntity->AnimController)
-    {
-      glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"),
-                         SelectedEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
-                         (float*)SelectedEntity->AnimController->HierarchicalModelSpaceMatrices);
-    }
-    else
-    {
-      mat4 Mat4Zeros = {};
-      glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"), 1, GL_FALSE,
-                         Mat4Zeros.e);
-    }
-    if(GameState->SelectionMode == SELECT_Mesh)
-    {
-      Render::mesh* SelectedMesh = {};
-      if(GetSelectedMesh(GameState, &SelectedMesh))
+      if(GameState->SelectionMode == SELECT_Mesh)
       {
-        glBindVertexArray(SelectedMesh->VAO);
-
-        glDrawElements(GL_TRIANGLES, SelectedMesh->IndiceCount, GL_UNSIGNED_INT, 0);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-      }
-    }
-    // Highlight Entity
-    else if(GameState->SelectionMode == SELECT_Entity)
-    {
-      entity* SelectedEntity = {};
-      if(GetSelectedEntity(GameState, &SelectedEntity))
-      {
-        mat4 Mat4EntityTransform = TransformToMat4(&SelectedEntity->Transform);
-        Debug::PushGizmo(&GameState->Camera, &Mat4EntityTransform, SelectedEntity->Transform.Scale);
-        Render::model* Model = GameState->Resources.GetModel(SelectedEntity->ModelID);
-        for(int m = 0; m < Model->MeshCount; m++)
+        Render::mesh* SelectedMesh = {};
+        if(GetSelectedMesh(GameState, &SelectedMesh))
         {
-          glBindVertexArray(Model->Meshes[m]->VAO);
-          glDrawElements(GL_TRIANGLES, Model->Meshes[m]->IndiceCount, GL_UNSIGNED_INT, 0);
+          glBindVertexArray(SelectedMesh->VAO);
+
+          glDrawElements(GL_TRIANGLES, SelectedMesh->IndiceCount, GL_UNSIGNED_INT, 0);
+          glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
       }
+      // MODEL SELECTION HIGHLIGHTING
+      else if(GameState->SelectionMode == SELECT_Entity)
+      {
+        entity* SelectedEntity = {};
+        if(GetSelectedEntity(GameState, &SelectedEntity))
+        {
+          mat4 Mat4EntityTransform = TransformToMat4(&SelectedEntity->Transform);
+          Debug::PushGizmo(&GameState->Camera, &Mat4EntityTransform,
+                           SelectedEntity->Transform.Scale);
+          Render::model* Model = GameState->Resources.GetModel(SelectedEntity->ModelID);
+          for(int m = 0; m < Model->MeshCount; m++)
+          {
+            glBindVertexArray(Model->Meshes[m]->VAO);
+            glDrawElements(GL_TRIANGLES, Model->Meshes[m]->IndiceCount, GL_UNSIGNED_INT, 0);
+          }
+        }
+      }
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  // Draw material preview to texture
+  // RENDERING MATERIAL PREVIEW TO TEXTURE
   if(GameState->CurrentMaterialID.Value > 0)
   {
-    material* PreviewMaterial = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
+
+    material* PreviewMaterial = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);
     glClearColor(0.7f, 0.7f, 0.7f, 1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     uint32_t MaterialPreviewShaderID =
@@ -779,6 +828,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
@@ -792,94 +842,133 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // Currently post-processing shaders only affect scene elements (entities, cubemap). GUI and debug
   // drawings *should* be untouched.
 
-  uint32_t CurrentFramebuffer = GameState->CurrentFramebuffer;
-  uint32_t CurrentTexture     = GameState->CurrentTexture;
-
-  glDisable(GL_DEPTH_TEST);
-
-  if(GameState->R.PPEffects)
   {
-    if(GameState->R.PPEffects & POST_Blur)
-    {
-      assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
-      assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+    uint32_t CurrentFramebuffer = GameState->CurrentFramebuffer;
+    uint32_t CurrentTexture     = GameState->CurrentTexture;
 
-      if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
+    glDisable(GL_DEPTH_TEST);
+
+    if(GameState->R.PPEffects)
+    {
+      if(GameState->R.PPEffects & POST_Blur)
       {
-        GameState->R.PostBlurLastStdDev = GameState->R.PostBlurStdDev;
-        GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
-                                   GameState->R.PostBlurLastStdDev);
+        assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+        assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+
+        if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
+        {
+          GameState->R.PostBlurLastStdDev = GameState->R.PostBlurStdDev;
+          GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
+                                     GameState->R.PostBlurLastStdDev);
+        }
+
+        GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
+        glUseProgram(PostBlurHShaderID);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+
+        glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
+        glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
+                     GameState->R.PostBlurKernel);
+
+        glBindVertexArray(GameState->ScreenQuadVAO);
+        glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
+        glUseProgram(PostBlurVShaderID);
+
+        glUniform1f(glGetUniformLocation(PostBlurVShaderID, "Offset"), 1.0f / SCREEN_HEIGHT);
+        glUniform1fv(glGetUniformLocation(PostBlurVShaderID, "Kernel"), BLUR_KERNEL_SIZE,
+                     GameState->R.PostBlurKernel);
+
+        // DepthOfField
+        {
+          assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+          assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+
+          glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+
+          GLuint ShaderDepthOfFieldID =
+            GameState->Resources.GetShader(GameState->R.PostDepthOfField);
+          glUseProgram(ShaderDepthOfFieldID);
+
+          {
+            int tex_index = 0;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[0]);
+            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_ColorMap"), tex_index);
+          }
+          {
+            int tex_index = 1;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_BlurrMap"), tex_index);
+          }
+          {
+            int tex_index = 2;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferDepthTexID);
+            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_DepthMap"), tex_index);
+          }
+
+          glBindVertexArray(GameState->ScreenQuadVAO);
+          glDrawArrays(GL_TRIANGLES, 0, 6);
+
+          glActiveTexture(GL_TEXTURE0);
+        }
       }
 
-      GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
-      glUseProgram(PostBlurHShaderID);
+      if(GameState->R.PPEffects & POST_Grayscale)
+      {
+        assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+        assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
 
-      glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+        GLuint PostGrayscaleShaderID = GameState->Resources.GetShader(GameState->R.PostGrayscale);
+        glUseProgram(PostGrayscaleShaderID);
 
-      glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
-      glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
-                   GameState->R.PostBlurKernel);
+        glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
 
-      glBindVertexArray(GameState->ScreenQuadVAO);
-      glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(GameState->ScreenQuadVAO);
+        glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+      }
 
-      GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
-      glUseProgram(PostBlurVShaderID);
+      if(GameState->R.PPEffects & POST_NightVision)
+      {
+        assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
+        assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
 
-      glUniform1f(glGetUniformLocation(PostBlurVShaderID, "Offset"), 1.0f / SCREEN_HEIGHT);
-      glUniform1fv(glGetUniformLocation(PostBlurVShaderID, "Kernel"), BLUR_KERNEL_SIZE,
-                   GameState->R.PostBlurKernel);
+        GLuint PostNightVisionShaderID =
+          GameState->Resources.GetShader(GameState->R.PostNightVision);
+        glUseProgram(PostNightVisionShaderID);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+
+        glBindVertexArray(GameState->ScreenQuadVAO);
+        glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+      }
     }
-
-    if(GameState->R.PPEffects & POST_Grayscale)
+    else
     {
-      assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
-      assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
-
-      GLuint PostGrayscaleShaderID = GameState->Resources.GetShader(GameState->R.PostGrayscale);
-      glUseProgram(PostGrayscaleShaderID);
-
-      glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
-
-      glBindVertexArray(GameState->ScreenQuadVAO);
-      glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
+      GLuint PostDefaultShaderID = GameState->Resources.GetShader(GameState->R.PostDefaultShader);
+      glUseProgram(PostDefaultShaderID);
     }
 
-    if(GameState->R.PPEffects & POST_NightVision)
-    {
-      assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
-      assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-      GLuint PostNightVisionShaderID = GameState->Resources.GetShader(GameState->R.PostNightVision);
-      glUseProgram(PostNightVisionShaderID);
+    glBindVertexArray(GameState->ScreenQuadVAO);
+    glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture]);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
-      glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+    glEnable(GL_DEPTH_TEST);
 
-      glBindVertexArray(GameState->ScreenQuadVAO);
-      glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
+    GameState->CurrentFramebuffer = CurrentFramebuffer;
+    GameState->CurrentTexture     = CurrentTexture;
   }
-  else
-  {
-    GLuint PostDefaultShaderID = GameState->Resources.GetShader(GameState->R.PostDefaultShader);
-    glUseProgram(PostDefaultShaderID);
-  }
-
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
-  glBindVertexArray(GameState->ScreenQuadVAO);
-  glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture]);
-  glDrawArrays(GL_TRIANGLES, 0, 6);
-
-  glEnable(GL_DEPTH_TEST);
-
-  GameState->CurrentFramebuffer = CurrentFramebuffer;
-  GameState->CurrentTexture     = CurrentTexture;
 
   // ------------------DEBUG------------------
   Debug::DrawWireframeSpheres(GameState);
@@ -893,33 +982,4 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   Debug::DrawQuads(GameState);
   Debug::ClearDrawArrays();
   Text::ClearTextRequestCounts();
-}
-
-void
-AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform)
-{
-  assert(0 <= GameState->EntityCount && GameState->EntityCount < ENTITY_MAX_COUNT);
-
-  entity NewEntity      = {};
-  NewEntity.ModelID     = ModelID;
-  NewEntity.MaterialIDs = MaterialIDs;
-  NewEntity.Transform   = Transform;
-  GameState->Resources.Models.AddReference(ModelID);
-
-  GameState->Entities[GameState->EntityCount++] = NewEntity;
-}
-
-mat4
-GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
-{
-  mat4 ModelMatrix = TransformToMat4(&GameState->Entities[EntityIndex].Transform);
-  return ModelMatrix;
-}
-
-mat4
-GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
-{
-  mat4 ModelMatrix = GetEntityModelMatrix(GameState, EntityIndex);
-  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
-  return MVPMatrix;
 }

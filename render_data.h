@@ -12,9 +12,9 @@ enum phong_flags
 
 enum env_flags
 {
-    ENV_UseRefraction = 1 << 0,
-    ENV_UseNormalMap  = 1 << 1,
-    ENV_UseSkeleton   = 1 << 2,
+  ENV_UseRefraction = 1 << 0,
+  ENV_UseNormalMap  = 1 << 1,
+  ENV_UseSkeleton   = 1 << 2,
 };
 
 enum shader_type
@@ -61,10 +61,10 @@ union material {
 
   struct
   {
-      material_header Common;
-      uint32_t        Flags;
-      rid             NormalMapID;
-      float           RefractiveIndex;
+    material_header Common;
+    uint32_t        Flags;
+    rid             NormalMapID;
+    float           RefractiveIndex;
   } Env;
 
   struct
@@ -108,6 +108,9 @@ struct render_data
   mesh_instance MeshInstances[MESH_INSTANCE_MAX_COUNT]; // Filled every frame
   int32_t       MeshInstanceCount;
 
+  // Pre-Pass shader
+  rid ShaderGeomPreePass;
+
   // Shaders
   rid ShaderPhong;
   rid ShaderEnv;
@@ -127,12 +130,18 @@ struct render_data
   rid PostBlurV;
   rid PostGrayscale;
   rid PostNightVision;
+  rid PostDepthOfField;
 
   int32_t PPEffects;
 
   float PostBlurLastStdDev;
   float PostBlurStdDev;
   float PostBlurKernel[BLUR_KERNEL_SIZE];
+
+  // Geometry/Depth FrameBuffer
+  uint32_t GBufferFBO;
+  uint32_t GBufferColorTexID;
+  uint32_t GBufferDepthTexID;
 
   // Light
   vec3 LightPosition;

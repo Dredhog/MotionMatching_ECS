@@ -61,8 +61,6 @@ struct game_state
 
   Resource::resource_manager Resources;
 
-  // material EditableMaterial;
-
   camera Camera;
   camera PreviewCamera;
 
@@ -140,45 +138,6 @@ struct game_state
   bool VisualizeContactManifold;
 };
 
-inline bool
-GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex)
-{
-  if(GameState->EntityCount > 0)
-  {
-    if(0 <= EntityIndex && EntityIndex < GameState->EntityCount)
-    {
-      *OutputEntity = &GameState->Entities[EntityIndex];
-      return true;
-    }
-    return false;
-  }
-  return false;
-}
-
-inline bool
-GetSelectedEntity(game_state* GameState, entity** OutputEntity)
-{
-  return GetEntityAtIndex(GameState, OutputEntity, GameState->SelectedEntityIndex);
-}
-
-inline bool
-GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
-{
-  entity* Entity = NULL;
-  if(GetSelectedEntity(GameState, &Entity))
-  {
-    Render::model* Model = GameState->Resources.GetModel(Entity->ModelID);
-    if(Model->MeshCount > 0)
-    {
-      if(0 <= GameState->SelectedMeshIndex && GameState->SelectedMeshIndex < Model->MeshCount)
-      {
-        *OutputMesh = Model->Meshes[GameState->SelectedMeshIndex];
-        return true;
-      }
-    }
-  }
-  return false;
-}
 
 inline mat4
 TransformToMat4(const Anim::transform* Transform)
@@ -187,47 +146,6 @@ TransformToMat4(const Anim::transform* Transform)
                               Math::MulMat4(Math::Mat4Rotate(Transform->Rotation),
                                             Math::Mat4Scale(Transform->Scale)));
   return Result;
-}
-
-inline bool
-DeleteEntity(game_state* GameState, int32_t Index)
-{
-  if(0 <= Index && GameState->EntityCount)
-  {
-    GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
-    GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
-    --GameState->EntityCount;
-    if(GameState->PlayerEntityIndex == Index)
-    {
-      GameState->PlayerEntityIndex = -1;
-    }
-    return true;
-  }
-  return false;
-}
-
-inline void
-AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
-                         int32_t EntityIndex)
-{
-  entity* AddedEntity = {};
-  if(GetEntityAtIndex(GameState, &AddedEntity, EntityIndex))
-  {
-    Render::model* Model = GameState->Resources.GetModel(AddedEntity->ModelID);
-    assert(Model->Skeleton);
-    *Editor             = {};
-    Editor->Skeleton    = Model->Skeleton;
-    Editor->Transform   = &AddedEntity->Transform;
-    Editor->EntityIndex = EntityIndex;
-  }
-}
-
-inline void
-DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animation_editor* Editor)
-{
-  assert(GameState->Entities[Editor->EntityIndex].AnimController);
-  assert(Editor->Skeleton);
-  *Editor = {};
 }
 
 inline void
@@ -294,7 +212,6 @@ RegisterDebugModels(game_state* GameState)
   GameState->Resources.Models.AddReference(GameState->CubemapModelID);
   GameState->Resources.Models.AddReference(GameState->SphereModelID);
   GameState->Resources.Models.AddReference(GameState->UVSphereModelID);
-
   strcpy(GameState->Cubemap.Name, "data/textures/skybox/morning");
   strcpy(GameState->Cubemap.Format, "tga");
   GetCubemapRIDs(GameState->Cubemap.FaceIDs, &GameState->Resources, GameState->TemporaryMemStack,
@@ -388,4 +305,152 @@ GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
     assert(0 && "error: incomplete framebuffer!\n");
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+inline void
+GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ColorTextureID, uint32_t* DepthTextureID)
+{
+  glGenFramebuffers(1, FBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
+
+  // Color
+  {
+    glGenTextures(1, ColorTextureID);
+    glBindTexture(GL_TEXTURE_2D, *ColorTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
+                 GL_UNSIGNED_INT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *ColorTextureID, 0);
+  }
+  // Depth
+  {
+    glGenTextures(1, DepthTextureID);
+    glBindTexture(GL_TEXTURE_2D, *DepthTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT, 0,
+                 GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,
+                           *DepthTextureID, 0);
+  }
+  glBindTexture(GL_TEXTURE_2D, 0);
+  if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+  {
+    assert(0 && "error: incomplete framebuffer!\n");
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+//-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------
+
+inline void
+AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform)
+{
+  assert(0 <= GameState->EntityCount && GameState->EntityCount < ENTITY_MAX_COUNT);
+
+  entity NewEntity      = {};
+  NewEntity.ModelID     = ModelID;
+  NewEntity.MaterialIDs = MaterialIDs;
+  NewEntity.Transform   = Transform;
+  GameState->Resources.Models.AddReference(ModelID);
+
+  GameState->Entities[GameState->EntityCount++] = NewEntity;
+}
+
+inline bool
+DeleteEntity(game_state* GameState, int32_t Index)
+{
+  if(0 <= Index && GameState->EntityCount)
+  {
+    GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
+    GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
+    --GameState->EntityCount;
+    if(GameState->PlayerEntityIndex == Index)
+    {
+      GameState->PlayerEntityIndex = -1;
+    }
+    return true;
+  }
+  return false;
+}
+
+inline bool
+GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex)
+{
+  if(GameState->EntityCount > 0)
+  {
+    if(0 <= EntityIndex && EntityIndex < GameState->EntityCount)
+    {
+      *OutputEntity = &GameState->Entities[EntityIndex];
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+inline void
+AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
+                         int32_t EntityIndex)
+{
+  entity* AddedEntity = {};
+  if(GetEntityAtIndex(GameState, &AddedEntity, EntityIndex))
+  {
+    Render::model* Model = GameState->Resources.GetModel(AddedEntity->ModelID);
+    assert(Model->Skeleton);
+    *Editor             = {};
+    Editor->Skeleton    = Model->Skeleton;
+    Editor->Transform   = &AddedEntity->Transform;
+    Editor->EntityIndex = EntityIndex;
+  }
+}
+
+inline void
+DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animation_editor* Editor)
+{
+  assert(GameState->Entities[Editor->EntityIndex].AnimController);
+  assert(Editor->Skeleton);
+  *Editor = {};
+}
+
+inline bool
+GetSelectedEntity(game_state* GameState, entity** OutputEntity)
+{
+  return GetEntityAtIndex(GameState, OutputEntity, GameState->SelectedEntityIndex);
+}
+
+inline bool
+GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
+{
+  entity* Entity = NULL;
+  if(GetSelectedEntity(GameState, &Entity))
+  {
+    Render::model* Model = GameState->Resources.GetModel(Entity->ModelID);
+    if(Model->MeshCount > 0)
+    {
+      if(0 <= GameState->SelectedMeshIndex && GameState->SelectedMeshIndex < Model->MeshCount)
+      {
+        *OutputMesh = Model->Meshes[GameState->SelectedMeshIndex];
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+inline mat4
+GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
+{
+  mat4 ModelMatrix = TransformToMat4(&GameState->Entities[EntityIndex].Transform);
+  return ModelMatrix;
+}
+
+inline mat4
+GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
+{
+  mat4 ModelMatrix = GetEntityModelMatrix(GameState, EntityIndex);
+  mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
+  return MVPMatrix;
 }
