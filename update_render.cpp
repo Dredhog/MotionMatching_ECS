@@ -177,16 +177,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
     {
-      GenerateScreenQuad(&GameState->ScreenQuadVAO, &GameState->ScreenQuadVBO);
+      GenerateScreenQuad(&GameState->R.ScreenQuadVAO, &GameState->R.ScreenQuadVBO);
 
       for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
       {
-        GenerateFramebuffer(&GameState->ScreenFBO[i], &GameState->ScreenRBO[i],
-                            &GameState->ScreenTexture[i]);
+        GenerateFramebuffer(&GameState->R.ScreenFBO[i], &GameState->R.ScreenRBO[i],
+                            &GameState->R.ScreenTexture[i]);
       }
 
-      GameState->CurrentFramebuffer = 0;
-      GameState->CurrentTexture     = 0;
+      GameState->R.CurrentFramebuffer = 0;
+      GameState->R.CurrentTexture     = 0;
 
       // Default blur parameters
       GameState->R.PostBlurLastStdDev = 10.0f;
@@ -657,7 +657,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   {
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[GameState->CurrentFramebuffer]);
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBO[GameState->R.CurrentFramebuffer]);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -665,10 +665,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // TODO (rytis): Finish cubemap loading
     if(GameState->DrawCubemap)
     {
-      if(GameState->Cubemap.CubemapTexture == -1)
+      if(GameState->R.Cubemap.CubemapTexture == -1)
       {
-        GameState->Cubemap.CubemapTexture =
-          LoadCubemap(&GameState->Resources, GameState->Cubemap.FaceIDs);
+        GameState->R.Cubemap.CubemapTexture =
+          LoadCubemap(&GameState->Resources, GameState->R.Cubemap.FaceIDs);
       }
       glDepthFunc(GL_LEQUAL);
       GLuint CubemapShaderID = GameState->Resources.GetShader(GameState->R.ShaderCubemap);
@@ -680,7 +680,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUniformMatrix4fv(glGetUniformLocation(CubemapShaderID, "mat_view"), 1, GL_FALSE,
                          Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
       glBindVertexArray(CubemapMesh->VAO);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
       glDrawElements(GL_TRIANGLES, CubemapMesh->IndiceCount, GL_UNSIGNED_INT, 0);
 
       glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -843,8 +843,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // drawings *should* be untouched.
 
   {
-    uint32_t CurrentFramebuffer = GameState->CurrentFramebuffer;
-    uint32_t CurrentTexture     = GameState->CurrentTexture;
+    uint32_t CurrentFramebuffer = GameState->R.CurrentFramebuffer;
+    uint32_t CurrentTexture     = GameState->R.CurrentTexture;
 
     glDisable(GL_DEPTH_TEST);
 
@@ -852,9 +852,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       if(GameState->R.PPEffects & POST_Blur)
       {
-        assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
-        assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
-
         if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
         {
           GameState->R.PostBlurLastStdDev = GameState->R.PostBlurStdDev;
@@ -865,15 +862,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
         glUseProgram(PostBlurHShaderID);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
 
         glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
         glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
                      GameState->R.PostBlurKernel);
 
-        glBindVertexArray(GameState->ScreenQuadVAO);
-        glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
         GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
         glUseProgram(PostBlurVShaderID);
@@ -884,10 +880,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         // DepthOfField
         {
-          assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
-          assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
-
-          glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
+          BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
 
           GLuint ShaderDepthOfFieldID =
             GameState->Resources.GetShader(GameState->R.PostDepthOfField);
@@ -896,13 +889,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           {
             int tex_index = 0;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[0]);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTexture[0]);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_ColorMap"), tex_index);
           }
           {
             int tex_index = 1;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+            BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_BlurrMap"), tex_index);
           }
           {
@@ -912,42 +905,30 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_DepthMap"), tex_index);
           }
 
-          glBindVertexArray(GameState->ScreenQuadVAO);
-          glDrawArrays(GL_TRIANGLES, 0, 6);
-
+          DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
           glActiveTexture(GL_TEXTURE0);
         }
       }
 
       if(GameState->R.PPEffects & POST_Grayscale)
       {
-        assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
-        assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
-
         GLuint PostGrayscaleShaderID = GameState->Resources.GetShader(GameState->R.PostGrayscale);
         glUseProgram(PostGrayscaleShaderID);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
-
-        glBindVertexArray(GameState->ScreenQuadVAO);
-        glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
 
       if(GameState->R.PPEffects & POST_NightVision)
       {
-        assert(GameState->CurrentFramebuffer + 1 < FRAMEBUFFER_MAX_COUNT);
-        assert(GameState->CurrentTexture + 1 < FRAMEBUFFER_MAX_COUNT);
-
         GLuint PostNightVisionShaderID =
           GameState->Resources.GetShader(GameState->R.PostNightVision);
         glUseProgram(PostNightVisionShaderID);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, GameState->ScreenFBO[++GameState->CurrentFramebuffer]);
-
-        glBindVertexArray(GameState->ScreenQuadVAO);
-        glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
     }
     else
@@ -960,14 +941,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBindVertexArray(GameState->ScreenQuadVAO);
-    glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture]);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTexture[GameState->R.CurrentTexture]);
+    DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
     glEnable(GL_DEPTH_TEST);
 
-    GameState->CurrentFramebuffer = CurrentFramebuffer;
-    GameState->CurrentTexture     = CurrentTexture;
+    GameState->R.CurrentFramebuffer = CurrentFramebuffer;
+    GameState->R.CurrentTexture     = CurrentTexture;
   }
 
   // ------------------DEBUG------------------

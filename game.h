@@ -19,16 +19,6 @@
 #include "edit_animation.h"
 #include "resource_manager.h"
 
-#define FRAMEBUFFER_MAX_COUNT 5
-
-struct cubemap
-{
-  char     Name[TEXT_LINE_MAX_LENGTH];
-  char     Format[TEXT_LINE_MAX_LENGTH];
-  rid      FaceIDs[6];
-  uint32_t CubemapTexture;
-};
-
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
 const int32_t MESH_SELECTION_MAX_COUNT   = 400;
@@ -74,7 +64,6 @@ struct game_state
   // Temp textures (not their place)
   int32_t CollapsedTextureID;
   int32_t ExpandedTextureID;
-  cubemap Cubemap;
 
   // Entities
   entity  Entities[ENTITY_MAX_COUNT];
@@ -85,15 +74,6 @@ struct game_state
 
   // Fonts/text
   Text::font Font;
-
-  // Temporary stuff for post-processing
-  uint32_t ScreenQuadVAO;
-  uint32_t ScreenQuadVBO;
-  uint32_t ScreenFBO[FRAMEBUFFER_MAX_COUNT];
-  uint32_t ScreenRBO[FRAMEBUFFER_MAX_COUNT];
-  uint32_t ScreenTexture[FRAMEBUFFER_MAX_COUNT];
-  uint32_t CurrentFramebuffer;
-  uint32_t CurrentTexture;
 
   // Switches/Flags
   bool  DrawCubemap;
@@ -212,14 +192,14 @@ RegisterDebugModels(game_state* GameState)
   GameState->Resources.Models.AddReference(GameState->CubemapModelID);
   GameState->Resources.Models.AddReference(GameState->SphereModelID);
   GameState->Resources.Models.AddReference(GameState->UVSphereModelID);
-  strcpy(GameState->Cubemap.Name, "data/textures/skybox/morning");
-  strcpy(GameState->Cubemap.Format, "tga");
-  GetCubemapRIDs(GameState->Cubemap.FaceIDs, &GameState->Resources, GameState->TemporaryMemStack,
-                 GameState->Cubemap.Name, GameState->Cubemap.Format);
-  GameState->Cubemap.CubemapTexture = -1;
+  strcpy(GameState->R.Cubemap.Name, "data/textures/skybox/morning");
+  strcpy(GameState->R.Cubemap.Format, "tga");
+  GetCubemapRIDs(GameState->R.Cubemap.FaceIDs, &GameState->Resources, GameState->TemporaryMemStack,
+                 GameState->R.Cubemap.Name, GameState->R.Cubemap.Format);
+  GameState->R.Cubemap.CubemapTexture = -1;
   for(int i = 0; i < 6; i++)
   {
-    GameState->Resources.Textures.AddReference(GameState->Cubemap.FaceIDs[i]);
+    GameState->Resources.Textures.AddReference(GameState->R.Cubemap.FaceIDs[i]);
   }
 }
 
@@ -341,6 +321,27 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ColorTextureID, uint32
     assert(0 && "error: incomplete framebuffer!\n");
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+inline void
+BindNextFramebuffer(uint32_t* FBOs, uint32_t* CurrentFramebuffer)
+{
+    *CurrentFramebuffer = (*CurrentFramebuffer + 1) % FRAMEBUFFER_MAX_COUNT;
+    glBindFramebuffer(GL_FRAMEBUFFER, FBOs[*CurrentFramebuffer]);
+}
+
+inline void
+BindTextureAndSetNext(uint32_t* Textures, uint32_t* CurrentTexture)
+{
+    glBindTexture(GL_TEXTURE_2D, Textures[*CurrentTexture]);
+    *CurrentTexture = (*CurrentTexture + 1) % FRAMEBUFFER_MAX_COUNT;
+}
+
+inline void
+DrawTextureToFramebuffer(uint32_t VAO)
+{
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 //-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------
