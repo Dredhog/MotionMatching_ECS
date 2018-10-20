@@ -14,11 +14,25 @@ main()
   vec3 regular_color = vec3(texture(u_InputMap, TexCoord));
   vec3 blurred_color = vec3(texture(u_BlurredMap, TexCoord));
   vec3 position      = texture(u_PositionMap, TexCoord).xyz;
-  float depth = position.z;
 
-  const float clear_interval = 5;
-  const float focus_depth    = 8;
-  const float fade_distance  = 2;
+  const float clear_interval = 5f;
+  const float fade_distance  = 2f;
 
-  FragColor = vec4(position, 1.0);
+  float focus_depth = texture(u_PositionMap, vec2(0.5f, 0.5f)).z;
+
+  vec3 temp_color = regular_color;
+
+  float blur_delta = abs(position.z - focus_depth);
+  float blur_amount = 1f;
+  if(blur_delta < 0.5*clear_interval)
+  {
+    temp_color = vec3(1f, 0f, 0f);
+    blur_amount = 0f;
+  }
+  else if(blur_delta < 0.5*clear_interval + fade_distance)
+  {
+    blur_amount = 1f-(0.5*clear_interval+fade_distance - blur_delta)/ fade_distance;
+  }
+  
+  FragColor = vec4(mix(regular_color, blured_color, blur_amount), 1.0);
 }

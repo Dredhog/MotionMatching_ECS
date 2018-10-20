@@ -1,5 +1,5 @@
 #version 330 core
-out vec4 FragColor;
+out vec3 GradDepth;
 
 in vertex_out
 {
@@ -15,5 +15,5 @@ frag;
 void
 main()
 {
-  FragColor = vec4(frag.position, 1.0);
+  GradDepth = frag.position;
 }
