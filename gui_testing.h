@@ -7,7 +7,7 @@ void EntityGUI(game_state* GameState, bool& g_ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
              bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
-             bool& g_ShowPostProcessing);
+             bool& g_ShowPostProcessingSettings);
 
 namespace UI
 {
@@ -21,21 +21,21 @@ namespace UI
       UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings,
                 SELECT_EnumCount, UI::StringArrayToString);
 
-      static bool g_ShowMaterialEditor  = false;
-      static bool g_ShowEntityTools     = false;
-      static bool g_ShowAnimationEditor = false;
-      static bool g_ShowLightSettings   = false;
-      static bool g_ShowDisplaySet      = false;
-      static bool g_DrawMemoryMaps      = false;
-      static bool g_ShowCameraSettings  = false;
-      static bool g_ShowSceneSettings   = false;
-      static bool g_ShowPostProcessing  = true;
+      static bool g_ShowMaterialEditor         = false;
+      static bool g_ShowEntityTools            = false;
+      static bool g_ShowAnimationEditor        = false;
+      static bool g_ShowLightSettings          = false;
+      static bool g_ShowDisplaySet             = false;
+      static bool g_DrawMemoryMaps             = false;
+      static bool g_ShowCameraSettings         = false;
+      static bool g_ShowSceneSettings          = false;
+      static bool g_ShowPostProcessingSettings = true;
 
       EntityGUI(GameState, g_ShowEntityTools);
       MaterialGUI(GameState, g_ShowMaterialEditor);
       AnimationGUI(GameState, g_ShowAnimationEditor, g_ShowEntityTools);
       MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps,
-              g_ShowCameraSettings, g_ShowSceneSettings, g_ShowPostProcessing);
+              g_ShowCameraSettings, g_ShowSceneSettings, g_ShowPostProcessingSettings);
     }
     UI::EndWindow();
 
@@ -79,6 +79,8 @@ namespace UI
         UI::Text(TempBuff);
         snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
                  Input->NormMouseY);
+        UI::Text(TempBuff);
+        snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
         UI::Text(TempBuff);
 
         UI::Checkbox("Show Image", &s_Checkbox0);
@@ -957,15 +959,17 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
 void
 MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
         bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
-        bool& g_ShowPostProcessing)
+        bool& g_ShowPostProcessingSettings)
 {
-  if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessing))
+  if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessingSettings))
   {
     bool Blur        = GameState->R.PPEffects & POST_Blur;
     bool Grayscale   = GameState->R.PPEffects & POST_Grayscale;
     bool NightVision = GameState->R.PPEffects & POST_NightVision;
+    bool MotionBlur  = GameState->R.PPEffects & POST_MotionBlur;
 
     UI::Checkbox("Blur", &Blur);
+    UI::Checkbox("MotionBlur", &MotionBlur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
 
@@ -986,6 +990,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     else
     {
       GameState->R.PPEffects &= ~POST_Blur;
+    }
+
+    if(MotionBlur)
+    {
+      GameState->R.PPEffects |= POST_MotionBlur;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_MotionBlur;
     }
 
     if(NightVision)

@@ -6,9 +6,11 @@ layout(location = 3) in vec3 a_tangent;
 layout(location = 4) in ivec4 a_boneIndices;
 layout(location = 5) in vec4 a_boneWeights;
 
+uniform mat4 mat_prev_mvp;
 uniform mat4 mat_mvp;
 uniform mat4 mat_view;
 uniform mat4 mat_model;
+
 
 out vertex_out
 {
@@ -18,6 +20,8 @@ out vertex_out
   vec3 tangentLightPos;
   vec3 tangentViewPos;
   vec3 tangentFragPos;
+  vec4 position0;
+  vec4 position1;
 }
 frag;
 
@@ -28,4 +32,7 @@ main()
   frag.normal   = mat3(mat_model) * a_normal;
   frag.position = vec3(mat_view	* mat_model* vec4(a_position, 1.0));
   frag.texCoord = a_texCoord;
+
+  frag.position0 = mat_prev_mvp * vec4(a_position, 1f);
+  frag.position1 = mat_mvp * vec4(a_position, 1f);
 }

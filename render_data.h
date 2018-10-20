@@ -40,6 +40,7 @@ enum pp_type
   POST_Blur        = 1 << 0,
   POST_Grayscale   = 1 << 1,
   POST_NightVision = 1 << 2,
+  POST_MotionBlur  = 1 << 3,
 
   POST_EnumCount,
 };
@@ -160,6 +161,7 @@ struct render_data
   rid PostGrayscale;
   rid PostNightVision;
   rid PostDepthOfField;
+  rid PostMotionBlur;
 
   cubemap Cubemap;
 
@@ -171,6 +173,7 @@ struct render_data
 
   // Geometry/Depth FrameBuffer
   uint32_t GBufferFBO;
+  uint32_t GBufferVelocityTexID;
   uint32_t GBufferPositionTexID;
   uint32_t GBufferDepthTexID;
 

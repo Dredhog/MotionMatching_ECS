@@ -91,12 +91,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.ShaderParallax = GameState->Resources.RegisterShader("shaders/parallax");
 
       GameState->R.PostDefaultShader = GameState->Resources.RegisterShader("shaders/post_default");
-      GameState->R.PostGrayscale     = GameState->Resources.RegisterShader("shaders/post_grayscale");
-      GameState->R.PostNightVision   = GameState->Resources.RegisterShader("shaders/post_night_vision");
+      GameState->R.PostGrayscale = GameState->Resources.RegisterShader("shaders/post_grayscale");
+      GameState->R.PostNightVision =
+        GameState->Resources.RegisterShader("shaders/post_night_vision");
       GameState->R.PostBlurH = GameState->Resources.RegisterShader("shaders/post_blur_horizontal");
       GameState->R.PostBlurV = GameState->Resources.RegisterShader("shaders/post_blur_vertical");
       GameState->R.RenderDepthMap = GameState->Resources.RegisterShader("shaders/render_depth_map");
       GameState->R.PostDepthOfField = GameState->Resources.RegisterShader("shaders/depth_of_field");
+      GameState->R.PostMotionBlur   = GameState->Resources.RegisterShader("shaders/motion_blur");
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
@@ -174,6 +176,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // FRAME BUFFER CREATION FOR GEOMETRY/DEPTH PRE PASS
     {
       GenerateGeometryDepthFrameBuffer(&GameState->R.GBufferFBO, &GameState->R.GBufferPositionTexID,
+                                       &GameState->R.GBufferVelocityTexID,
                                        &GameState->R.GBufferDepthTexID);
     }
 
@@ -677,6 +680,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_mvp"), 1, GL_FALSE,
                            GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
+        glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_prev_mvp"), 1, GL_FALSE,
+                           GameState->PrevFrameMVPMatrices[CurrentEntityIndex].e);
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_model"), 1, GL_FALSE,
                            GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_view"), 1, GL_FALSE,
@@ -687,6 +692,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+
+  // Saving previous frame entity MVP matrix (USED ONLY FOR MOTION BLUR)
+  {
+    for(int e = 0; e < GameState->EntityCount; e++)
+    {
+      GameState->PrevFrameMVPMatrices[e] = GetEntityMVPMatrix(GameState, e);
+    }
   }
 
   // DEPTH MAP PASS
@@ -924,11 +937,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // NOTE(rytis): Post-processing was done pretty sloppily, so it will most likely require some
   // kind of rewrite/reintegration in the future.
   //
-  // For now, though, it should be good enough?? Might still want to improve some parts (like the
-  // hard-coded screen quad vertices).
+  // For now, though, it should be good enough?? Might still want to improve some parts (like
+  // the hard-coded screen quad vertices).
   //
-  // Currently post-processing shaders only affect scene elements (entities, cubemap). GUI and debug
-  // drawings *should* be untouched.
+  // Currently post-processing shaders only affect scene elements (entities, cubemap). GUI and
+  // debug drawings *should* be untouched.
 
   {
     uint32_t CurrentFramebuffer = GameState->R.CurrentFramebuffer;
@@ -951,7 +964,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glUseProgram(PostBlurHShaderID);
 
         BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
-    		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
         glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
@@ -970,13 +983,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // DepthOfField
         {
           BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
-    			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
           GLuint ShaderDepthOfFieldID =
             GameState->Resources.GetShader(GameState->R.PostDepthOfField);
 
           glUseProgram(ShaderDepthOfFieldID);
-#if 1
           {
             int tex_index = 1;
             glActiveTexture(GL_TEXTURE0 + tex_index);
@@ -995,11 +1007,35 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_BlurredMap"), tex_index);
           }
-#endif
 
           DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
           glActiveTexture(GL_TEXTURE0);
         }
+      }
+
+      if(GameState->R.PPEffects & POST_MotionBlur)
+      {
+        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        GLuint ShaderMotionBlurID = GameState->Resources.GetShader(GameState->R.PostMotionBlur);
+
+        glUseProgram(ShaderMotionBlurID);
+        {
+          int tex_index = 1;
+          glActiveTexture(GL_TEXTURE0 + tex_index);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferVelocityTexID);
+          glUniform1i(glGetUniformLocation(ShaderMotionBlurID, "u_VelocityMap"), tex_index);
+        }
+        {
+          int tex_index = 2;
+          glActiveTexture(GL_TEXTURE0 + tex_index);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTexture[CurrentTexture]);
+          glUniform1i(glGetUniformLocation(ShaderMotionBlurID, "u_InputMap"), tex_index);
+        }
+
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+        glActiveTexture(GL_TEXTURE0);
       }
 
       if(GameState->R.PPEffects & POST_Grayscale)
