@@ -182,8 +182,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // FRAMEBUFFER CREATION FOR SHADOW MAPPING
     {
-        GameState->R.DrawDepthMap = false;
-        GenerateDepthFramebuffer(&GameState->R.DepthMapFBO, &GameState->R.DepthMapTexture);
+      GameState->R.DrawDepthMap = false;
+      GenerateDepthFramebuffer(&GameState->R.DepthMapFBO, &GameState->R.DepthMapTexture);
     }
 
     // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
@@ -237,17 +237,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // SHADOW MAPPING INITIALIZATION
       {
-          GameState->R.RealTimeDirectionalShadows = true;
-          GameState->R.RecomputeDirectionalShadows = false;
-          GameState->R.ClearDirectionalShadows = false;
+        GameState->R.RealTimeDirectionalShadows  = true;
+        GameState->R.RecomputeDirectionalShadows = false;
+        GameState->R.ClearDirectionalShadows     = false;
 
-          GameState->R.SunPosition = { 0.0f, 10.0f, -10.0f };
-          GameState->R.SunDirection = -GameState->R.SunPosition;
-          GameState->R.SunNearClipPlane = 0.01f;
-          GameState->R.SunFarClipPlane = 50.0f;
-          UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
-                    GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
-          GameState->R.ShowSun = false;
+        GameState->R.SunPosition      = { 0.0f, 10.0f, -10.0f };
+        GameState->R.SunDirection     = -GameState->R.SunPosition;
+        GameState->R.SunNearClipPlane = 0.01f;
+        GameState->R.SunFarClipPlane  = 50.0f;
+        UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
+                  GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
+        GameState->R.ShowSun = false;
       }
 
       GameState->R.LightPosition        = { 0.7f, 1, 1 };
@@ -745,7 +745,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #endif
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     GameState->R.RecomputeDirectionalShadows = false;
   }
 
@@ -951,7 +950,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     if(GameState->R.PPEffects)
     {
-      if(GameState->R.PPEffects & POST_Blur)
+      if(GameState->R.PPEffects & (POST_Blur | POST_DepthOfField))
       {
         if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
         {
@@ -980,7 +979,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glUniform1fv(glGetUniformLocation(PostBlurVShaderID, "Kernel"), BLUR_KERNEL_SIZE,
                      GameState->R.PostBlurKernel);
 
-        // DepthOfField
+        if(GameState->R.PPEffects & POST_DepthOfField)
         {
           BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
           glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1030,7 +1029,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         {
           int tex_index = 2;
           glActiveTexture(GL_TEXTURE0 + tex_index);
-          glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTexture[CurrentTexture]);
+          BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
           glUniform1i(glGetUniformLocation(ShaderMotionBlurID, "u_InputMap"), tex_index);
         }
 
@@ -1067,17 +1066,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     if(GameState->R.DrawDepthMap)
     {
-        GLuint RenderDepthMapShaderID = GameState->Resources.GetShader(GameState->R.RenderDepthMap);
-        glUseProgram(RenderDepthMapShaderID);
-        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+      GLuint RenderDepthMapShaderID = GameState->Resources.GetShader(GameState->R.RenderDepthMap);
+      glUseProgram(RenderDepthMapShaderID);
+      BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
 
-        int TexIndex = 1;
+      int TexIndex = 1;
 
-        glActiveTexture(GL_TEXTURE0 + TexIndex);
-        glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
-        glUniform1i(glGetUniformLocation(RenderDepthMapShaderID, "DepthMap"), TexIndex);
-        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
-        glActiveTexture(GL_TEXTURE0);
+      glActiveTexture(GL_TEXTURE0 + TexIndex);
+      glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
+      glUniform1i(glGetUniformLocation(RenderDepthMapShaderID, "DepthMap"), TexIndex);
+      DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+      glActiveTexture(GL_TEXTURE0);
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

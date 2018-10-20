@@ -274,6 +274,8 @@ GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
                NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glBindTexture(GL_TEXTURE_2D, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *Texture, 0);
   glGenRenderbuffers(1, RBO);
@@ -349,8 +351,8 @@ GenerateDepthFramebuffer(uint32_t* FBO, uint32_t* Texture)
                GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   float BorderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
   glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, BorderColor);
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -386,10 +388,10 @@ DrawTextureToFramebuffer(uint32_t VAO)
 inline void
 UpdateSun(mat4* VPMatrix, vec3* SunDirection, vec3 SunPosition, float Near, float Far)
 {
-    *SunDirection = Math::Normalized(*SunDirection);
-    mat4 ProjectionMatrix = Math::Mat4Orthogonal(-10.0f, 10.0f, -10.0f, 10.0f, Near, Far);
-    mat4 ViewMatrix = Math::Mat4Camera(SunPosition, *SunDirection, vec3{ 0.0f, 1.0f, 0.0f });
-    *VPMatrix = Math::MulMat4(ProjectionMatrix, ViewMatrix);
+  *SunDirection         = Math::Normalized(*SunDirection);
+  mat4 ProjectionMatrix = Math::Mat4Orthogonal(-10.0f, 10.0f, -10.0f, 10.0f, Near, Far);
+  mat4 ViewMatrix       = Math::Mat4Camera(SunPosition, *SunDirection, vec3{ 0.0f, 1.0f, 0.0f });
+  *VPMatrix             = Math::MulMat4(ProjectionMatrix, ViewMatrix);
 }
 
 //-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------

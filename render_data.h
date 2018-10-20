@@ -23,24 +23,27 @@ enum env_flags
   ENV_UseSkeleton   = 1 << 2,
 };
 
+#define FOR_ALL_NAMES(DO_FUNC) DO_FUNC(Phong) DO_FUNC(Env) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color)
+#define GENERATE_ENUM(Name) SHADER_##Name,
+#define GENERATE_STRING(Name) #Name,
 enum shader_type
 {
-  SHADER_Phong,
-  SHADER_Env,
-  SHADER_Test,
-  SHADER_Parallax,
-  SHADER_Color,
-
-  SHADER_EnumCount,
+  FOR_ALL_NAMES(GENERATE_ENUM) SHADER_EnumCount
 };
+
+static const char* g_ShaderTypeEnumStrings[SHADER_EnumCount] = { FOR_ALL_NAMES(GENERATE_STRING) };
+#undef FOR_ALL_NAMES
+#undef GENERATE_ENUM
+#undef GENERATE_STRING
 
 enum pp_type
 {
-  POST_Default     = 0,
-  POST_Blur        = 1 << 0,
-  POST_Grayscale   = 1 << 1,
-  POST_NightVision = 1 << 2,
-  POST_MotionBlur  = 1 << 3,
+  POST_Default      = 0,
+  POST_Blur         = 1 << 0,
+  POST_DepthOfField = 1 << 1,
+  POST_Grayscale    = 1 << 2,
+  POST_NightVision  = 1 << 3,
+  POST_MotionBlur   = 1 << 4,
 
   POST_EnumCount,
 };
@@ -178,8 +181,8 @@ struct render_data
   uint32_t GBufferDepthTexID;
 
   // Depth Framebuffer for shadow mapping
-  rid RenderDepthMap;
-  bool DrawDepthMap;
+  rid      RenderDepthMap;
+  bool     DrawDepthMap;
   uint32_t DepthMapFBO;
   uint32_t DepthMapTexture;
 
@@ -199,12 +202,12 @@ struct render_data
   bool ClearDirectionalShadows;
 
   // Sun
-  vec3 SunPosition;
-  vec3 SunDirection;
+  vec3  SunPosition;
+  vec3  SunDirection;
   float SunNearClipPlane;
   float SunFarClipPlane;
-  mat4 SunVPMatrix;
-  bool ShowSun;
+  mat4  SunVPMatrix;
+  bool  ShowSun;
 
   // Light
   vec3 LightPosition;

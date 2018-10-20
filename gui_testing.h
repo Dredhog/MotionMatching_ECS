@@ -179,9 +179,22 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
       if(0 < GameState->CurrentMaterialID.Value)
       {
         // Draw material preview to texture
-        UI::Image("Material preview", GameState->IDTexture, { 360, 200 });
+        UI::Image("Material preview", GameState->IDTexture, { 500, 300 });
 
         material* CurrentMaterial = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);
+
+        // Select shader type
+        {
+          int32_t NewShaderType = CurrentMaterial->Common.ShaderType;
+          UI::Combo("Shader Type", (int32_t*)&NewShaderType, g_ShaderTypeEnumStrings,
+                    SHADER_EnumCount, UI::StringArrayToString, 6, 200);
+          if(CurrentMaterial->Common.ShaderType != NewShaderType)
+          {
+            *CurrentMaterial                   = {};
+            CurrentMaterial->Common.ShaderType = NewShaderType;
+          }
+        }
+        /*
         if(UI::Button("Previous shader"))
         {
           if(CurrentMaterial->Common.ShaderType > 0)
@@ -203,6 +216,7 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         }
         UI::SameLine();
         UI::NewLine();
+        */
 
         UI::Checkbox("Blending", &CurrentMaterial->Common.UseBlending);
         UI::SameLine();
@@ -963,12 +977,14 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 {
   if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessingSettings))
   {
-    bool Blur        = GameState->R.PPEffects & POST_Blur;
-    bool Grayscale   = GameState->R.PPEffects & POST_Grayscale;
-    bool NightVision = GameState->R.PPEffects & POST_NightVision;
-    bool MotionBlur  = GameState->R.PPEffects & POST_MotionBlur;
+    bool Blur         = GameState->R.PPEffects & POST_Blur;
+    bool DepthOfField = GameState->R.PPEffects & POST_DepthOfField;
+    bool Grayscale    = GameState->R.PPEffects & POST_Grayscale;
+    bool NightVision  = GameState->R.PPEffects & POST_NightVision;
+    bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
 
     UI::Checkbox("Blur", &Blur);
+    UI::Checkbox("DepthOfField", &DepthOfField);
     UI::Checkbox("MotionBlur", &MotionBlur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
@@ -990,6 +1006,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     else
     {
       GameState->R.PPEffects &= ~POST_Blur;
+    }
+
+    if(DepthOfField)
+    {
+      GameState->R.PPEffects |= POST_DepthOfField;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_DepthOfField;
     }
 
     if(MotionBlur)
@@ -1030,12 +1055,12 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
     if(UI::Button("Recompute Directional Shadows"))
     {
-        GameState->R.RecomputeDirectionalShadows = true;
+      GameState->R.RecomputeDirectionalShadows = true;
     }
 
     if(UI::Button("Clear Directional Shadows"))
     {
-        GameState->R.ClearDirectionalShadows = true;
+      GameState->R.ClearDirectionalShadows = true;
     }
   }
 

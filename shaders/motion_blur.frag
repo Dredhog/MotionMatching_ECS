@@ -16,7 +16,7 @@ main()
   vec2 texel_size = 1.0f / vec2(textureSize(u_InputMap, 0));
   vec2 velocity      = vec2(texture(u_VelocityMap, TexCoord));
 
-  float u_VelocityScale = 4.0f; //Set locally for now
+  float u_VelocityScale = 3.0f; //Set locally for now
   
   velocity *= u_VelocityScale;
 
