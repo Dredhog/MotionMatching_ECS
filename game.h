@@ -329,13 +329,36 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextu
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,
                            *DepthTextureID, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
   }
   glBindTexture(GL_TEXTURE_2D, 0);
   if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
   {
     assert(0 && "error: incomplete framebuffer!\n");
   }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+inline void
+GenerateDepthFramebuffer(uint32_t* FBO, uint32_t* Texture)
+{
+  glGenFramebuffers(1, FBO);
+
+  glGenTextures(1, Texture);
+  glBindTexture(GL_TEXTURE_2D, *Texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0,
+               GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+  float BorderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, BorderColor);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, *Texture, 0);
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -358,6 +381,17 @@ DrawTextureToFramebuffer(uint32_t VAO)
 {
   glBindVertexArray(VAO);
   glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+inline void
+UpdateLightVPMatrix(mat4* VPMatrix, vec3 LightPosition)
+{
+  float Near = 1.0f;
+  float Far  = 30.0f;
+
+  mat4 ProjectionMatrix = Math::Mat4Orthogonal(-10.0f, 10.0f, -10.0f, 10.0f, Near, Far);
+  mat4 ViewMatrix       = Math::Mat4Camera(LightPosition, -LightPosition, vec3{ 0.0f, 1.0f, 0.0f });
+  *VPMatrix             = Math::MulMat4(ProjectionMatrix, ViewMatrix);
 }
 
 //-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------

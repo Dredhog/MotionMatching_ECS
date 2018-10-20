@@ -37,13 +37,47 @@ in VertexOut
   vec3 tangentLightPos;
   vec3 tangentViewPos;
   vec3 tangentFragPos;
+  vec4 lightFragPos;
 }
 frag;
 
 uniform Material material;
 uniform Light light;
 
+uniform sampler2D shadowMap;
+
 out vec4 out_color;
+
+float
+ShadowCalculation(vec4 lightFragPos, vec3 normal, vec3 lightDir)
+{
+  vec3 projCoords = lightFragPos.xyz / lightFragPos.w;
+  projCoords = projCoords * 0.5f + 0.5f;
+
+  float closestDepth = texture(shadowMap, projCoords.xy).r;
+  float currentDepth = projCoords.z;
+
+  float shadow = 0.0f;
+  if(currentDepth <= 1.0f)
+  {
+    //float bias = max(0.005f * (1.0f - dot(normal, lightDir)), 0.005f);
+    float bias = 0.005f;
+    //shadow = currentDepth - bias > closestDepth ? 1.0f : 0.0f;
+
+    vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+      for(int y = -1; y <= 1; ++y)
+      {
+        float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+        shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
+      }
+    }
+    shadow /= 9.0f;
+  }
+
+  return shadow;
+}
 
 void
 main()
@@ -98,16 +132,21 @@ main()
     specular *= material.specularColor;
   }
 
+  // --------SHADOW--------
+  float shadow = ShadowCalculation(frag.lightFragPos, normal, lightDir);
+  float lighting = 1.0f - shadow;
+
   // --------FINAL----------
   vec4 result = vec4(0.0f);
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
-    result = vec4((diffuse + specular + ambient), 1.0f);
+    result = vec4((lighting * (diffuse + specular) + ambient), 1.0f);
   }
   else
   {
-    result = vec4((diffuse + specular + ambient), material.diffuseColor.a);
+    result = vec4((lighting * (diffuse + specular) + ambient), material.diffuseColor.a);
   }
 
+  //out_color = vec4(vec3(lighting), 1.0f);
   out_color = result;
 }
