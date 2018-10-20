@@ -269,7 +269,7 @@ GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
 
   glGenTextures(1, Texture);
   glBindTexture(GL_TEXTURE_2D, *Texture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_INT,
                NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -297,7 +297,7 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextu
   {
     glGenTextures(1, ViewSpacePositionTextureID);
     glBindTexture(GL_TEXTURE_2D, *ViewSpacePositionTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_INT,
                  NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -355,22 +355,22 @@ GenerateDepthFramebuffer(uint32_t* FBO, uint32_t* Texture)
 inline void
 BindNextFramebuffer(uint32_t* FBOs, uint32_t* CurrentFramebuffer)
 {
-    *CurrentFramebuffer = (*CurrentFramebuffer + 1) % FRAMEBUFFER_MAX_COUNT;
-    glBindFramebuffer(GL_FRAMEBUFFER, FBOs[*CurrentFramebuffer]);
+  *CurrentFramebuffer = (*CurrentFramebuffer + 1) % FRAMEBUFFER_MAX_COUNT;
+  glBindFramebuffer(GL_FRAMEBUFFER, FBOs[*CurrentFramebuffer]);
 }
 
 inline void
 BindTextureAndSetNext(uint32_t* Textures, uint32_t* CurrentTexture)
 {
-    glBindTexture(GL_TEXTURE_2D, Textures[*CurrentTexture]);
-    *CurrentTexture = (*CurrentTexture + 1) % FRAMEBUFFER_MAX_COUNT;
+  glBindTexture(GL_TEXTURE_2D, Textures[*CurrentTexture]);
+  *CurrentTexture = (*CurrentTexture + 1) % FRAMEBUFFER_MAX_COUNT;
 }
 
 inline void
 DrawTextureToFramebuffer(uint32_t VAO)
 {
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+  glBindVertexArray(VAO);
+  glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 inline void
