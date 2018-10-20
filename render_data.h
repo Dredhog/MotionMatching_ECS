@@ -1,5 +1,7 @@
 #pragma once
 
+#define FRAMEBUFFER_MAX_COUNT 3
+
 #define BLUR_KERNEL_SIZE 11
 
 enum phong_flags
@@ -94,6 +96,28 @@ union material {
   } Parallax;
 };
 
+struct cubemap
+{
+  char     Name[64];
+  char     Format[64];
+  rid      FaceIDs[6];
+  uint32_t CubemapTexture;
+};
+
+#if 0
+// TODO(rytis): Should we rather use this???
+struct framebuffers
+{
+  uint32_t VAO;
+  uint32_t VBO;
+  uint32_t FBOs[FRAMEBUFFER_MAX_COUNT];
+  uint32_t RBOs[FRAMEBUFFER_MAX_COUNT];
+  uint32_t Textures[FRAMEBUFFER_MAX_COUNT];
+  uint32_t CurrentFBO;
+  uint32_t CurrentTexture;
+};
+#endif
+
 const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
 
 struct mesh_instance
@@ -132,6 +156,8 @@ struct render_data
   rid PostNightVision;
   rid PostDepthOfField;
 
+  cubemap Cubemap;
+
   int32_t PPEffects;
 
   float PostBlurLastStdDev;
@@ -142,6 +168,16 @@ struct render_data
   uint32_t GBufferFBO;
   uint32_t GBufferPositionTexID;
   uint32_t GBufferDepthTexID;
+
+  // Temporary stuff for post-processing
+  // framebuffers Screen;
+  uint32_t ScreenQuadVAO;
+  uint32_t ScreenQuadVBO;
+  uint32_t ScreenFBO[FRAMEBUFFER_MAX_COUNT];
+  uint32_t ScreenRBO[FRAMEBUFFER_MAX_COUNT];
+  uint32_t ScreenTexture[FRAMEBUFFER_MAX_COUNT];
+  uint32_t CurrentFramebuffer;
+  uint32_t CurrentTexture;
 
   // Light
   vec3 LightPosition;

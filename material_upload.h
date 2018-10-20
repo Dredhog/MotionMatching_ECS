@@ -94,7 +94,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       ((Material->Env.Flags & ENV_UseNormalMap) && Material->Env.NormalMapID.Value > 0) ||
       !(Material->Env.Flags & ENV_UseNormalMap));
 
-    uint32_t CubemapTexture = GameState->Cubemap.CubemapTexture;
+    uint32_t CubemapTexture = GameState->R.Cubemap.CubemapTexture;
     uint32_t NormalTexture = (Material->Env.Flags & ENV_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Env.NormalMapID)
                                : 0;
@@ -202,7 +202,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       {
           assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
           glActiveTexture(CurrentGLTextureBindIndex);
-          glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->Cubemap.CubemapTexture);
+          glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
           glUniform1i(glGetUniformLocation(CurrentShaderID, "cubemap"),
                       CurrentGLTextureBindIndex - GL_TEXTURE0);
 
