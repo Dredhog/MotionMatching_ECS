@@ -15,5 +15,5 @@ frag;
 void
 main()
 {
-  FragColor = vec4(frag.normal, 1.0);
+  FragColor = vec4(frag.position, 1.0);
 }

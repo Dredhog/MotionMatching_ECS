@@ -171,7 +171,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // FRAME BUFFER CREATION FOR GEOMETRY/DEPTH PRE PASS
     {
-      GenerateGeometryDepthFrameBuffer(&GameState->R.GBufferFBO, &GameState->R.GBufferColorTexID,
+      GenerateGeometryDepthFrameBuffer(&GameState->R.GBufferFBO, &GameState->R.GBufferPositionTexID,
                                        &GameState->R.GBufferDepthTexID);
     }
 
@@ -647,7 +647,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_model"), 1, GL_FALSE,
                            GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_view"), 1, GL_FALSE,
-                           Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
+                           GameState->Camera.ViewMatrix.e);
         glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
       }
       glBindVertexArray(0);
@@ -891,26 +891,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
           GLuint ShaderDepthOfFieldID =
             GameState->Resources.GetShader(GameState->R.PostDepthOfField);
-          glUseProgram(ShaderDepthOfFieldID);
 
+          glUseProgram(ShaderDepthOfFieldID);
+#if 1
           {
             int tex_index = 0;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[0]);
-            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_ColorMap"), tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferPositionTexID);
+            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_PositionMap"), tex_index);
           }
           {
             int tex_index = 1;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
-            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_BlurrMap"), tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[CurrentTexture]);
+            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_InputMap"), tex_index);
           }
           {
             int tex_index = 2;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferDepthTexID);
-            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "g_DepthMap"), tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->ScreenTexture[GameState->CurrentTexture++]);
+            glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_BlurredMap"), tex_index);
           }
+#endif
 
           glBindVertexArray(GameState->ScreenQuadVAO);
           glDrawArrays(GL_TRIANGLES, 0, 6);

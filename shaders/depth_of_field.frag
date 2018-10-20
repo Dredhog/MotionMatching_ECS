@@ -4,30 +4,21 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 
-uniform float g_FocusDepth;
-
-uniform sampler2D g_ColorMap;
-uniform sampler2D g_BlurrMap;
-uniform sampler2D g_DepthMap;
+uniform sampler2D u_BlurredMap;
+uniform sampler2D u_InputMap;
+uniform sampler2D u_PositionMap;
 
 void
 main()
 {
-  vec3 color  = vec3(texture(g_ColorMap, TexCoord));
-  vec3 blurr  = vec3(texture(g_BlurrMap, TexCoord));
-  float depth = texture(g_DepthMap, TexCoord).x;
+  vec3 regular_color = vec3(texture(u_InputMap, TexCoord));
+  vec3 blurred_color = vec3(texture(u_BlurredMap, TexCoord));
+  vec3 position      = texture(u_PositionMap, TexCoord).xyz;
+  float depth = position.z;
 
-  const float clear_interval = 0.;
-  const float focus_depth    = 0.3;
-  const float fade_distance = 2;
+  const float clear_interval = 5;
+  const float focus_depth    = 8;
+  const float fade_distance  = 2;
 
-  float distance_from_focus = abs(focus_depth - depth);
-  float blurr_amount = 1;
-  if(distance_from_focus < 0.5*clear_interval)
-  {
-    blurr_amount = 0;
-  }
-
-  //FragColor = vec4(mix(color, blurr, blurr_amount), 1.0);
-  FragColor = vec4(blurr, 1.0);
+  FragColor = vec4(position, 1.0);
 }

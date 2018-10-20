@@ -22,14 +22,14 @@ namespace UI
                 SELECT_EnumCount, UI::StringArrayToString);
 
       static bool g_ShowMaterialEditor  = false;
-      static bool g_ShowEntityTools     = true;
+      static bool g_ShowEntityTools     = false;
       static bool g_ShowAnimationEditor = false;
       static bool g_ShowLightSettings   = false;
       static bool g_ShowDisplaySet      = false;
       static bool g_DrawMemoryMaps      = false;
       static bool g_ShowCameraSettings  = false;
       static bool g_ShowSceneSettings   = false;
-      static bool g_ShowPostProcessing  = false;
+      static bool g_ShowPostProcessing  = true;
 
       EntityGUI(GameState, g_ShowEntityTools);
       MaterialGUI(GameState, g_ShowMaterialEditor);

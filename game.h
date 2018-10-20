@@ -138,7 +138,6 @@ struct game_state
   bool VisualizeContactManifold;
 };
 
-
 inline mat4
 TransformToMat4(const Anim::transform* Transform)
 {
@@ -308,32 +307,38 @@ GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
 }
 
 inline void
-GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ColorTextureID, uint32_t* DepthTextureID)
+GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextureID,
+                                 uint32_t* DepthTextureID)
 {
   glGenFramebuffers(1, FBO);
   glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
 
-  // Color
+  // View Space Position
   {
-    glGenTextures(1, ColorTextureID);
-    glBindTexture(GL_TEXTURE_2D, *ColorTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
-                 GL_UNSIGNED_INT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *ColorTextureID, 0);
+    glGenTextures(1, ViewSpacePositionTextureID);
+    glBindTexture(GL_TEXTURE_2D, *ViewSpacePositionTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT,
+                 NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           *ViewSpacePositionTextureID, 0);
   }
+
+  // uint32_t attachments[1] = { GL_COLOR_ATTACHMENT0 };
+  // glDrawBuffers(1, attachments);
+
   // Depth
   {
     glGenTextures(1, DepthTextureID);
     glBindTexture(GL_TEXTURE_2D, *DepthTextureID);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT, 0,
                  GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D,
                            *DepthTextureID, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
   }
   glBindTexture(GL_TEXTURE_2D, 0);
   if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
