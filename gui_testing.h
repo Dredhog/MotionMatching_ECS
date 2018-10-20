@@ -1049,7 +1049,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::DragFloat3("Sun Directon", &GameState->R.SunDirection.X, -INFINITY, INFINITY, 5);
     UI::SliderFloat("Sun Near Clip Plane", &GameState->R.SunNearClipPlane, 0.01f, 500);
     UI::SliderFloat("Sun Far Clip Plane", &GameState->R.SunFarClipPlane,
-                    GameState->R.SunNearClipPlane, 500);
+                    GameState->R.SunNearClipPlane, 100);
 
     UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawDepthMap);
     UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
