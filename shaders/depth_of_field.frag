@@ -34,5 +34,5 @@ main()
     blur_amount = 1f-(0.5*clear_interval+fade_distance - blur_delta)/ fade_distance;
   }
   
-  FragColor = vec4(mix(regular_color, blured_color, blur_amount), 1.0);
+  FragColor = vec4(mix(regular_color, blurred_color, blur_amount), 1.0);
 }
