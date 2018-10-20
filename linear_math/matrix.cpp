@@ -302,6 +302,24 @@ namespace Math
     return Result;
   }
 
+  mat4
+  Mat4Orthogonal(float Left, float Right, float Bottom, float Top, float Near, float Far)
+  {
+    assert(Near > 0.0f && Far > 0.0f);
+    assert(Right > Left);
+    assert(Top > Bottom);
+
+    mat4 Result = {};
+    Result._11  = 2.0f / (Right - Left);
+    Result._22  = 2.0f / (Top - Bottom);
+    Result._33  = -2.0f / (Far - Near);
+    Result._44  = 1.0f;
+    Result._14  = -(Right + Left) / (Right - Left);
+    Result._24  = -(Top + Bottom) / (Top - Bottom);
+    Result._34  = -(Far + Near) / (Far - Near);
+    return Result;
+  }
+
   mat3
   Transposed3(const mat3& Mat)
   {

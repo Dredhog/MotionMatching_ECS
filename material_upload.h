@@ -39,6 +39,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.diffuseMap"), 0);
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.specularMap"), 1);
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.normalMap"), 2);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap"), 3);
     glUniform1f(glGetUniformLocation(PhongShaderID, "material.shininess"),
                 Material->Phong.Shininess);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "lightPosition"), 1,
@@ -51,6 +52,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                  (float*)&GameState->R.LightSpecularColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
+    glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_light_vp"), 1, GL_FALSE,
+                       GameState->R.LightVPMatrix.e);
     assert(
       ((Material->Phong.Flags & PHONG_UseDiffuseMap) && Material->Phong.DiffuseMapID.Value > 0) ||
       !(Material->Phong.Flags & PHONG_UseDiffuseMap));
@@ -70,12 +73,16 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     uint32_t NormalTexture = (Material->Phong.Flags & PHONG_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Phong.NormalMapID)
                                : 0;
+    uint32_t ShadowTexture = GameState->R.DepthMapTexture;
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, DiffuseTexture);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, SpecularTexture);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, NormalTexture);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, ShadowTexture);
     glActiveTexture(GL_TEXTURE0);
     return PhongShaderID;
   }
@@ -198,12 +205,25 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightSpecularColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "cameraPosition"), 1,
                    (float*)&Camera->Position);
+      glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_light_vp"), 1, GL_FALSE,
+                         GameState->R.LightVPMatrix.e);
       // Cubemap
       {
           assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
           glActiveTexture(CurrentGLTextureBindIndex);
           glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
           glUniform1i(glGetUniformLocation(CurrentShaderID, "cubemap"),
+                      CurrentGLTextureBindIndex - GL_TEXTURE0);
+
+          glActiveTexture(GL_TEXTURE0);
+          CurrentGLTextureBindIndex++;
+      }
+      // Shadow Map
+      {
+          assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
+          glActiveTexture(CurrentGLTextureBindIndex);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
+          glUniform1i(glGetUniformLocation(CurrentShaderID, "shadowMap"),
                       CurrentGLTextureBindIndex - GL_TEXTURE0);
 
           glActiveTexture(GL_TEXTURE0);

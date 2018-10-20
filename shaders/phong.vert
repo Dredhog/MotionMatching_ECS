@@ -14,6 +14,7 @@ layout(location = 5) in vec4 a_boneWeights;
 
 uniform mat4 mat_mvp;
 uniform mat4 mat_model;
+uniform mat4 mat_light_vp;
 uniform mat4 g_boneMatrices[20];
 uniform vec3 lightPosition;
 uniform vec3 cameraPosition;
@@ -31,6 +32,7 @@ out VertexOut
   vec3 tangentLightPos;
   vec3 tangentViewPos;
   vec3 tangentFragPos;
+  vec4 lightFragPos;
 }
 frag;
 
@@ -72,4 +74,6 @@ main()
   frag.tangentLightPos = mat_tbn * lightPosition;
   frag.tangentViewPos  = mat_tbn * cameraPosition;
   frag.tangentFragPos  = mat_tbn * frag.position;
+
+  frag.lightFragPos = mat_light_vp * vec4(frag.position, 1.0f);
 }

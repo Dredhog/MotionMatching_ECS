@@ -964,10 +964,12 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool Blur        = GameState->R.PPEffects & POST_Blur;
     bool Grayscale   = GameState->R.PPEffects & POST_Grayscale;
     bool NightVision = GameState->R.PPEffects & POST_NightVision;
+    bool DepthMap    = GameState->R.PPEffects & POST_DepthMap;
 
     UI::Checkbox("Blur", &Blur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
+    UI::Checkbox("LightPerspectiveDepthMap", &DepthMap);
 
     if(Grayscale)
     {
@@ -995,6 +997,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     else
     {
       GameState->R.PPEffects &= ~POST_NightVision;
+    }
+
+    if(DepthMap)
+    {
+      GameState->R.PPEffects |= POST_DepthMap;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_DepthMap;
     }
   }
 
