@@ -80,6 +80,8 @@ namespace UI
         snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
                  Input->NormMouseY);
         UI::Text(TempBuff);
+        snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
+        UI::Text(TempBuff);
 
         UI::Checkbox("Show Image", &s_Checkbox0);
         if(s_Checkbox0)

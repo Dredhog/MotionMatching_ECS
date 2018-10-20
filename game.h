@@ -71,6 +71,7 @@ struct game_state
   int32_t SelectedEntityIndex;
   int32_t SelectedMeshIndex;
   int32_t PlayerEntityIndex;
+  mat4    PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
 
   // Fonts/text
   Text::font Font;
@@ -288,7 +289,7 @@ GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
 
 inline void
 GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextureID,
-                                 uint32_t* DepthTextureID)
+                                 uint32_t* VelocityTextureID, uint32_t* DepthTextureID)
 {
   glGenFramebuffers(1, FBO);
   glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
@@ -297,16 +298,26 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextu
   {
     glGenTextures(1, ViewSpacePositionTextureID);
     glBindTexture(GL_TEXTURE_2D, *ViewSpacePositionTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_INT,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT,
                  NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            *ViewSpacePositionTextureID, 0);
   }
+  // VelocityBuffer
+  {
+    glGenTextures(1, VelocityTextureID);
+    glBindTexture(GL_TEXTURE_2D, *VelocityTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RG, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, *VelocityTextureID,
+                           0);
+  }
 
-  // uint32_t attachments[1] = { GL_COLOR_ATTACHMENT0 };
-  // glDrawBuffers(1, attachments);
+  uint32_t attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+  glDrawBuffers(2, attachments);
 
   // Depth
   {

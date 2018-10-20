@@ -172,6 +172,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // FRAME BUFFER CREATION FOR GEOMETRY/DEPTH PRE PASS
     {
       GenerateGeometryDepthFrameBuffer(&GameState->R.GBufferFBO, &GameState->R.GBufferPositionTexID,
+                                       &GameState->R.GBufferVelocityTexID,
                                        &GameState->R.GBufferDepthTexID);
     }
 
@@ -644,6 +645,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_mvp"), 1, GL_FALSE,
                            GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
+        glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_prev_mvp"), 1, GL_FALSE,
+                           GameState->PrevFrameMVPMatrices[CurrentEntityIndex].e);
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_model"), 1, GL_FALSE,
                            GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
         glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_view"), 1, GL_FALSE,
@@ -654,6 +657,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+
+  // Saving previous frame entity MVP matrix (USED ONLY FOR MOTION BLUR)
+  {
+    for(int e = 0; e < GameState->EntityCount; e++)
+    {
+      GameState->PrevFrameMVPMatrices[e] = GetEntityMVPMatrix(GameState, e);
+    }
   }
 
   {
@@ -863,7 +874,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glUseProgram(PostBlurHShaderID);
 
         BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
-    		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
         glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
@@ -882,7 +893,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // DepthOfField
         {
           BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
-    			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
           GLuint ShaderDepthOfFieldID =
             GameState->Resources.GetShader(GameState->R.PostDepthOfField);

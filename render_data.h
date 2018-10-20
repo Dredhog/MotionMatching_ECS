@@ -166,6 +166,7 @@ struct render_data
 
   // Geometry/Depth FrameBuffer
   uint32_t GBufferFBO;
+  uint32_t GBufferVelocityTexID;
   uint32_t GBufferPositionTexID;
   uint32_t GBufferDepthTexID;
 
