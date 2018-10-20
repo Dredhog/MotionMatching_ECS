@@ -52,8 +52,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                  (float*)&GameState->R.LightSpecularColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
-    glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_light_vp"), 1, GL_FALSE,
-                       GameState->R.LightVPMatrix.e);
+    glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), 1, GL_FALSE,
+                       GameState->R.SunVPMatrix.e);
     assert(
       ((Material->Phong.Flags & PHONG_UseDiffuseMap) && Material->Phong.DiffuseMapID.Value > 0) ||
       !(Material->Phong.Flags & PHONG_UseDiffuseMap));
@@ -205,8 +205,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightSpecularColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "cameraPosition"), 1,
                    (float*)&Camera->Position);
-      glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_light_vp"), 1, GL_FALSE,
-                         GameState->R.LightVPMatrix.e);
+      glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_sun_vp"), 1, GL_FALSE,
+                         GameState->R.SunVPMatrix.e);
       // Cubemap
       {
           assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));

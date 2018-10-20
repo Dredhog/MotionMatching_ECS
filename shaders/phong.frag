@@ -147,6 +147,5 @@ main()
     result = vec4((lighting * (diffuse + specular) + ambient), material.diffuseColor.a);
   }
 
-  //out_color = vec4(vec3(lighting), 1.0f);
   out_color = result;
 }

@@ -40,7 +40,6 @@ enum pp_type
   POST_Blur        = 1 << 0,
   POST_Grayscale   = 1 << 1,
   POST_NightVision = 1 << 2,
-  POST_DepthMap    = 1 << 3,
 
   POST_EnumCount,
 };
@@ -160,7 +159,6 @@ struct render_data
   rid PostBlurV;
   rid PostGrayscale;
   rid PostNightVision;
-  rid PostDepthMap;
   rid PostDepthOfField;
 
   cubemap Cubemap;
@@ -177,6 +175,8 @@ struct render_data
   uint32_t GBufferDepthTexID;
 
   // Depth Framebuffer for shadow mapping
+  rid RenderDepthMap;
+  bool DrawDepthMap;
   uint32_t DepthMapFBO;
   uint32_t DepthMapTexture;
 
@@ -190,11 +190,22 @@ struct render_data
   uint32_t CurrentFramebuffer;
   uint32_t CurrentTexture;
 
+  // Directional shadow mapping
+  bool RealTimeDirectionalShadows;
+  bool RecomputeDirectionalShadows;
+  bool ClearDirectionalShadows;
+
+  // Sun
+  vec3 SunPosition;
+  vec3 SunDirection;
+  float SunNearClipPlane;
+  float SunFarClipPlane;
+  mat4 SunVPMatrix;
+  bool ShowSun;
+
   // Light
   vec3 LightPosition;
   bool ShowLightPosition;
-
-  mat4 LightVPMatrix;
 
   vec3 PreviewLightPosition;
 

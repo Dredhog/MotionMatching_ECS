@@ -964,12 +964,10 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool Blur        = GameState->R.PPEffects & POST_Blur;
     bool Grayscale   = GameState->R.PPEffects & POST_Grayscale;
     bool NightVision = GameState->R.PPEffects & POST_NightVision;
-    bool DepthMap    = GameState->R.PPEffects & POST_DepthMap;
 
     UI::Checkbox("Blur", &Blur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
-    UI::Checkbox("LightPerspectiveDepthMap", &DepthMap);
 
     if(Grayscale)
     {
@@ -998,15 +996,6 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     {
       GameState->R.PPEffects &= ~POST_NightVision;
     }
-
-    if(DepthMap)
-    {
-      GameState->R.PPEffects |= POST_DepthMap;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_DepthMap;
-    }
   }
 
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
@@ -1016,6 +1005,25 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 1, 5);
     UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
     UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
+
+    UI::Checkbox("Show Sun", &GameState->R.ShowSun);
+    UI::DragFloat3("Sun Position", &GameState->R.SunPosition.X, -INFINITY, INFINITY, 5);
+    UI::DragFloat3("Sun Directon", &GameState->R.SunDirection.X, -INFINITY, INFINITY, 5);
+    UI::SliderFloat("Sun Near Clip Plane", &GameState->R.SunNearClipPlane, 0.01f, 500);
+    UI::SliderFloat("Sun Far Clip Plane", &GameState->R.SunFarClipPlane,
+                    GameState->R.SunNearClipPlane, 500);
+
+    UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawDepthMap);
+    UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
+    if(UI::Button("Recompute Directional Shadows"))
+    {
+        GameState->R.RecomputeDirectionalShadows = true;
+    }
+
+    if(UI::Button("Clear Directional Shadows"))
+    {
+        GameState->R.ClearDirectionalShadows = true;
+    }
   }
 
   if(UI::CollapsingHeader("Render Switches", &g_ShowDisplaySet))
