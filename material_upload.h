@@ -50,6 +50,14 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                  (float*)&GameState->R.LightDiffuseColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "light.specular"), 1,
                  (float*)&GameState->R.LightSpecularColor);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "sunPosition"), 1,
+                 (float*)&GameState->R.SunPosition);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.ambient"), 1,
+                 (float*)&GameState->R.SunAmbientColor);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.diffuse"), 1,
+                 (float*)&GameState->R.SunDiffuseColor);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.specular"), 1,
+                 (float*)&GameState->R.SunSpecularColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
     glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), 1, GL_FALSE,
@@ -203,6 +211,14 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightDiffuseColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.specular"), 1,
                    (float*)&GameState->R.LightSpecularColor);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sunPosition"), 1,
+                   (float*)&GameState->R.SunPosition);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.ambient"), 1,
+                   (float*)&GameState->R.SunAmbientColor);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.diffuse"), 1,
+                   (float*)&GameState->R.SunDiffuseColor);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.specular"), 1,
+                   (float*)&GameState->R.SunSpecularColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "cameraPosition"), 1,
                    (float*)&Camera->Position);
       glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_sun_vp"), 1, GL_FALSE,

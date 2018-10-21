@@ -1045,6 +1045,9 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
 
     UI::Checkbox("Show Sun", &GameState->R.ShowSun);
+    UI::DragFloat3("Diffuse", &GameState->R.SunDiffuseColor.X, 0, 1, 5);
+    UI::DragFloat3("Specular", &GameState->R.SunSpecularColor.X, 0, 1, 5);
+    UI::DragFloat3("Ambient", &GameState->R.SunAmbientColor.X, 0, 1, 5);
     UI::DragFloat3("Sun Position", &GameState->R.SunPosition.X, -INFINITY, INFINITY, 5);
     UI::DragFloat3("Sun Directon", &GameState->R.SunDirection.X, -INFINITY, INFINITY, 5);
     UI::SliderFloat("Sun Near Clip Plane", &GameState->R.SunNearClipPlane, 0.01f, 500);

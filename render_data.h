@@ -209,6 +209,10 @@ struct render_data
   mat4  SunVPMatrix;
   bool  ShowSun;
 
+  vec3 SunAmbientColor;
+  vec3 SunDiffuseColor;
+  vec3 SunSpecularColor;
+
   // Light
   vec3 LightPosition;
   bool ShowLightPosition;

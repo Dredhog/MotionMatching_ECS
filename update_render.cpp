@@ -248,6 +248,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
                   GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
         GameState->R.ShowSun = false;
+
+        GameState->R.SunAmbientColor = { 0.3f, 0.3f, 0.3f };
+        GameState->R.SunDiffuseColor = { 0.0f, 0.0f, 0.0f };
+        GameState->R.SunSpecularColor = { 0.0f, 0.0f, 0.0f };
       }
 
       GameState->R.LightPosition        = { 0.7f, 1, 1 };

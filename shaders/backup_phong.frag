@@ -25,13 +25,6 @@ struct Light
   vec3 specular;
 };
 
-struct Sun
-{
-  vec3 ambient;
-  vec3 diffuse;
-  vec3 specular;
-};
-
 in VertexOut
 {
   flat int flags;
@@ -40,7 +33,6 @@ in VertexOut
   vec3 normal;
   vec2 texCoord;
   vec3 lightPos;
-  vec3 sunPos;
   vec3 cameraPos;
   vec3 tangentLightPos;
   vec3 tangentViewPos;
@@ -51,7 +43,6 @@ frag;
 
 uniform Material material;
 uniform Light light;
-uniform Sun sun;
 
 uniform sampler2D shadowMap;
 
@@ -109,26 +100,18 @@ main()
     viewDir  = normalize(frag.cameraPos - frag.position);
   }
 
-  vec3 sunDir = normalize(frag.sunPos - frag.position);
-
   // --------SHADOW--------
-  float shadow = ShadowCalculation(frag.sunFragPos, normal, sunDir);
+  float shadow = ShadowCalculation(frag.sunFragPos, normal, lightDir);
   float lighting = 1.0f - shadow;
 
   vec3 half_vector = normalize(lightDir + viewDir);
-  vec3 sun_half_vector = normalize(sunDir + viewDir);
 
   // --------AMBIENT--------
-  vec3 ambient = light.ambient;
-  ambient += sun.ambient * lighting;
+  vec3 ambient = light.ambient * lighting;
 
   // --------DIFFUSE------
   float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
   vec3  diffuse           = diffuse_intensity * light.diffuse;
-
-  float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
-  diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
-
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
     ambient *= vec3(texture(material.diffuseMap, frag.texCoord));
@@ -144,10 +127,6 @@ main()
   float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
   specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
   vec3 specular = specular_intensity * light.specular;
-
-  float sun_specular_intensity = pow(max(dot(normal, sun_half_vector), 0.0f), material.shininess);
-  sun_specular_intensity *= (sun_diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
-  specular += sun_specular_intensity * sun.specular * lighting;
   if((frag.flags & SPECULAR_MAP) != 0)
   {
     specular *= vec3(texture(material.specularMap, frag.texCoord));
@@ -161,10 +140,12 @@ main()
   vec4 result = vec4(0.0f);
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
+    //result = vec4((lighting * (diffuse + specular) + ambient), 1.0f);
     result = vec4(diffuse + specular + ambient, 1.0f);
   }
   else
   {
+    //result = vec4((lighting * (diffuse + specular) + ambient), material.diffuseColor.a);
     result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
   }
 
