@@ -1,10 +1,5 @@
 #version 330 core
 
-#define DIFFUSE_MAP 1
-#define SPECULAR_MAP 2
-#define NORMAL_MAP 4
-#define SKELETAL 8
-
 layout(location = 0) in vec3 a_position;
 layout(location = 1) in vec3 a_normal;
 layout(location = 2) in vec2 a_texCoord;
@@ -19,21 +14,15 @@ uniform mat4 g_boneMatrices[20];
 uniform vec3 lightPosition;
 uniform vec3 sunPosition;
 uniform vec3 cameraPosition;
-uniform int  flags;
 
 out VertexOut
 {
-  flat int flags;
-
   vec3 position;
   vec3 normal;
   vec2 texCoord;
   vec3 lightPos;
   vec3 sunPos;
   vec3 cameraPos;
-  vec3 tangentLightPos;
-  vec3 tangentViewPos;
-  vec3 tangentFragPos;
   vec4 sunFragPos;
 }
 frag;
@@ -44,6 +33,7 @@ main()
   mat4 modelMatrix = mat_model;
   mat4 mvpMatrix   = mat_mvp;
 
+#if 0
   if((flags & SKELETAL) != 0 && (g_boneMatrices[0] != mat4(0.0f)) &&
      (a_boneWeights.x + a_boneWeights.y + a_boneWeights.z + a_boneWeights.w) > 0.99f)
   {
@@ -54,29 +44,17 @@ main()
     modelMatrix *= finalPoseMatrix;
     mvpMatrix *= finalPoseMatrix;
   }
+#endif
 
   gl_Position    = mvpMatrix * vec4(a_position, 1.0f);
   frag.position  = vec3(modelMatrix * vec4(a_position, 1.0f));
   frag.lightPos  = lightPosition;
   frag.sunPos    = sunPosition;
   frag.cameraPos = cameraPosition;
-  frag.flags     = flags;
 
   mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
-
-  frag.texCoord = a_texCoord;
-
   frag.normal = normalMatrix * a_normal;
 
-  vec3 normal    = normalize(normalMatrix * a_normal);
-  vec3 tangent   = normalize(normalMatrix * a_tangent);
-  tangent        = normalize(tangent - dot(tangent, normal) * normal);
-  vec3 bitangent = cross(normal, tangent);
-
-  mat3 mat_tbn         = transpose(mat3(tangent, bitangent, normal));
-  frag.tangentLightPos = mat_tbn * lightPosition;
-  frag.tangentViewPos  = mat_tbn * cameraPosition;
-  frag.tangentFragPos  = mat_tbn * frag.position;
-
+  frag.texCoord = a_texCoord;
   frag.sunFragPos = mat_sun_vp * vec4(frag.position, 1.0f);
 }

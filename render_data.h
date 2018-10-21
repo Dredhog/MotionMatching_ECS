@@ -23,14 +23,6 @@ enum env_flags
   ENV_UseSkeleton   = 1 << 2,
 };
 
-enum toon_flags
-{
-  TOON_UseDiffuseMap  = 1,
-  TOON_UseSpecularMap = 2,
-  TOON_UseNormalMap   = 4,
-  TOON_UseSkeleton    = 8,
-};
-
 #define FOR_ALL_NAMES(DO_FUNC)                                                                     \
   DO_FUNC(Phong) DO_FUNC(Env) DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color)
 #define GENERATE_ENUM(Name) SHADER_##Name,
@@ -89,13 +81,9 @@ union material {
   struct
   {
     material_header Common;
-    uint32_t        Flags;
     vec3            AmbientColor;
     vec4            DiffuseColor;
     vec3            SpecularColor;
-    rid             DiffuseMapID;
-    rid             SpecularMapID;
-    rid             NormalMapID;
     float           Shininess;
     int             LevelCount;
   } Toon;
@@ -241,6 +229,7 @@ struct render_data
   vec3  SunDirection;
   float SunNearClipPlane;
   float SunFarClipPlane;
+  float SunPlaneSize;
   mat4  SunVPMatrix;
   bool  ShowSun;
 
