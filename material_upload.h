@@ -51,8 +51,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                  (float*)&GameState->R.LightDiffuseColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "light.specular"), 1,
                  (float*)&GameState->R.LightSpecularColor);
-    glUniform3fv(glGetUniformLocation(PhongShaderID, "sunPosition"), 1,
-                 (float*)&GameState->R.SunPosition);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "sunDirection"), 1,
+                 (float*)&GameState->R.SunDirection);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.ambient"), 1,
                  (float*)&GameState->R.SunAmbientColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.diffuse"), 1,
@@ -203,7 +203,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     {
       //<TODO(Lukas) make constant things upload only on shader change>
       // TODO(Lukas) Change dt for time uniform to a cumulative time
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "u_time"), GameState->R.CumulativeTime);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "u_Time"), GameState->R.CumulativeTime);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,
                    (float*)&GameState->R.LightPosition);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.ambient"), 1,
@@ -212,6 +212,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightDiffuseColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.specular"), 1,
                    (float*)&GameState->R.LightSpecularColor);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.direction"), 1,
+                   (float*)&GameState->R.SunDirection);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.ambient"), 1,
                    (float*)&GameState->R.SunAmbientColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.diffuse"), 1,

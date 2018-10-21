@@ -118,6 +118,9 @@ union material {
   {
     material_header Common;
     float           HeightScale;
+    float           TimeFrequency;
+    vec3            Phase;
+    vec3            Frequency;
     vec3            AlbedoColor;
     rid             NormalID;
   } Wavy;

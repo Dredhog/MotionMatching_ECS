@@ -432,7 +432,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
 
             UI::SliderFloat("Shininess", &CurrentMaterial->Toon.Shininess, 1.0f, 512.0f);
             UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 3, 10);
-          } break;
+          }
+          break;
           case SHADER_Color:
           {
             UI::DragFloat4("Color", &CurrentMaterial->Color.Color.X, 0, 1, 5);
@@ -1003,10 +1004,13 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("NightVision", &NightVision);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
     UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.001f, 0.1f);
+
+#if 0
     if(GameState->R.RenderSSAO)
     {
       UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
     }
+#endif
 
     if(Grayscale)
     {

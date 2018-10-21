@@ -165,8 +165,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         struct shader_def* WavyShaderDef =
           AddShaderDef(SHADER_Wavy, GameState->R.ShaderWavy, "Wavy");
-        AddParamDef(WavyShaderDef, "height_scale", "height_scale",
+        AddParamDef(WavyShaderDef, "height_scale", "u_HeightScale",
                     { SHADER_PARAM_TYPE_Float, offsetof(material, Wavy.HeightScale) });
+        AddParamDef(WavyShaderDef, "time_frequency", "u_TimeFrequency",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, Wavy.TimeFrequency) });
+        AddParamDef(WavyShaderDef, "Frequency", "u_Frequency",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, Wavy.Frequency) });
+        AddParamDef(WavyShaderDef, "Phase", "u_Phase",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, Wavy.Phase) });
         AddParamDef(WavyShaderDef, "albedo_color", "u_AlbedoColor",
                     { SHADER_PARAM_TYPE_Vec3, offsetof(material, Wavy.AlbedoColor) });
         AddParamDef(WavyShaderDef, "map_normal", "u_NormalMap",
@@ -293,16 +299,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->R.ShowSun = false;
 
           GameState->R.SunAmbientColor  = { 0.3f, 0.3f, 0.3f };
-          GameState->R.SunDiffuseColor  = { 0.0f, 0.0f, 0.0f };
-          GameState->R.SunSpecularColor = { 0.0f, 0.0f, 0.0f };
+          GameState->R.SunDiffuseColor  = { 0.7f, 0.7f, 0.7f };
+          GameState->R.SunSpecularColor = { 0.7f, 0.7f, 0.7f };
         }
 
         GameState->R.LightPosition        = { 0.7f, 1, 1 };
         GameState->R.PreviewLightPosition = { 0.7f, 0, 2 };
 
-        GameState->R.LightSpecularColor = { 1, 1, 1 };
-        GameState->R.LightDiffuseColor  = { 1, 1, 1 };
-        GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
+        GameState->R.LightSpecularColor = { 0.5f, 0.5f, 0.5f };
+        GameState->R.LightDiffuseColor  = { 0.5f, 0.5f, 0.5f };
+        GameState->R.LightAmbientColor  = { 0.2f, 0.2f, 0.2f };
         GameState->R.ShowLightPosition  = false;
 
         // SSAO

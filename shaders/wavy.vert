@@ -7,6 +7,11 @@ layout(location = 3) in vec3 a_tangent;
 layout(location = 4) in ivec4 a_boneIndices;
 layout(location = 5) in vec4 a_boneWeights;
 
+uniform float u_Time;
+uniform float u_HeightScale;
+uniform vec3 u_Frequency;
+uniform float u_TimeFrequency;
+uniform vec3 u_Phase;
 uniform mat4 mat_mvp;
 uniform mat4 mat_model;
 uniform vec3 cameraPosition;
@@ -29,5 +34,5 @@ main()
   frag.tangent  = normalize(mat3(mat_model) * a_tangent);
   frag.texCoord = a_texCoord;
 
-  gl_Position   = mat_mvp * vec4(a_position, 1.0f);
+  gl_Position   = mat_mvp * vec4(a_position + frag.normal * u_HeightScale*cos(dot(u_Phase, frag.position) + length(frag.position)*u_Time*u_TimeFrequency), 1.0f);
 }

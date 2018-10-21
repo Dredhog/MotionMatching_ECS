@@ -1,16 +1,19 @@
 #version 330 core
 
-uniform sampler2D u_AlbedoMap;
+uniform vec3 u_AlbedoColor;
 uniform sampler2D u_NormalMap;
 
 uniform vec3 cameraPosition;
 
-dir_light
+struct dir_light
 {
   vec3 specular;
   vec3 diffuse;
   vec3 ambient;
-} uniform sun;
+  vec3 direction;
+};
+
+uniform dir_light sun;
 
 in VertexOut
 {
@@ -19,9 +22,6 @@ in VertexOut
   vec3 tangent;
   vec2 texCoord;
 } frag;
-
-uniform Material material;
-uniform Light light;
 
 uniform float u_height_scale;
 
@@ -38,20 +38,20 @@ main()
 
   mat3 uv_to_world = mat3(tangent, -bitangent, normal);
   vec2 texCoord    = frag.texCoord;
-  vec3 uv_normal   = normalize(vec3(texture(material.normalMap, texCoord)*2-1));
+  vec3 uv_normal   = normalize(vec3(texture(u_NormalMap, texCoord)*2-1));
   vec3 worldNormal = uv_to_world * uv_normal;
   
-  float diffuseAmount = max(dot(lightDir, worldNormal), 0);
-  diffuseAmount *= max(dot(lightDir, frag.normal), 0);
-  vec3 diffuse   = diffuseAmount*vec3(texture(material.diffuseMap, texCoord));
+  float diffuseAmount = max(dot(sun.direction, worldNormal), 0);
+  diffuseAmount *= max(dot(sun.direction, frag.normal), 0);
+  vec3 diffuse   = diffuseAmount*u_AlbedoColor;
   
-  vec3 reflectedDir    = reflect(-lightDir, worldNormal);
+  vec3 reflectedDir    = reflect(-sun.direction, worldNormal);
   float specularAmount = pow(max(dot(reflectedDir, cameraDir), 0), 20);
-  specularAmount      *=  max(dot(lightDir, frag.normal), 0);
+  specularAmount      *=  max(dot(sun.direction, frag.normal), 0);
   vec3 specular        = specularAmount*vec3(1,1,1);
 
   float ambientAmount = 0.2;
-  vec3 ambient = ambientAmount*vec3(texture(material.diffuseMap, texCoord));
+  vec3 ambient = ambientAmount*u_AlbedoColor;
   
   out_color     = vec4(ambient+diffuse+specular, 1.0);
 }

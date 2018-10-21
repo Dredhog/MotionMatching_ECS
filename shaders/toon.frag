@@ -29,7 +29,7 @@ in VertexOut
   vec3 normal;
   vec2 texCoord;
   vec3 lightPos;
-  vec3 sunPos;
+  vec3 sunDir;
   vec3 cameraPos;
   vec4 sunFragPos;
 }
@@ -89,14 +89,13 @@ main()
   vec3 lightDir = normalize(frag.lightPos - frag.position);
   vec3 viewDir  = normalize(frag.cameraPos - frag.position);
 
-  vec3 sunDir = normalize(frag.sunPos - frag.position);
-
   // --------SHADOW--------
-  float shadow = ShadowCalculation(frag.sunFragPos, normal, sunDir);
+  float shadow = ShadowCalculation(frag.sunFragPos, normal, frag.sunDir);
   float lighting = 1.0f - shadow;
 
+  vec3 sunDir = normalize(-frag.sunDir);
   vec3 half_vector = normalize(lightDir + viewDir);
-  vec3 sun_half_vector = normalize(sunDir + viewDir);
+  vec3 reflectDir = reflect(-sunDir, normal);
 
   // --------AMBIENT--------
   vec3 ambient = light.ambient;
@@ -104,9 +103,10 @@ main()
 
   // --------DIFFUSE------
   float diffuse_intensity = Categorize(max(dot(normal, lightDir), 0.0f), levelCount);
-  float sun_diffuse_intensity = Categorize(max(dot(normal, sunDir), 0.0f), levelCount);
+  float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
+  sun_diffuse_intensity = Categorize(sun_diffuse_intensity, levelCount);
 
-  vec3  diffuse = diffuse_intensity * light.diffuse;
+  vec3 diffuse = diffuse_intensity * light.diffuse;
   diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
 
   ambient *= material.ambientColor;
@@ -117,8 +117,7 @@ main()
   specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
   specular_intensity = Categorize(specular_intensity, levelCount);
 
-  float sun_specular_intensity = pow(max(dot(normal, sun_half_vector), 0.0f), material.shininess);
-  sun_specular_intensity *= (sun_diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
+  float sun_specular_intensity = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
   sun_specular_intensity = Categorize(sun_specular_intensity, levelCount);
 
   vec3 specular = specular_intensity * light.specular;
