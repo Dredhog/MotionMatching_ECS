@@ -1,6 +1,7 @@
 #version 330 core
 layout (location = 0) out vec3 o_ViewPos;
 layout (location = 1) out vec2 o_Velocity;
+layout (location = 2) out vec3 o_Normal;
 
 in vertex_out
 {
@@ -19,8 +20,11 @@ void
 main()
 {
   o_ViewPos = frag.position;
+
   //Computing frament position this and last frame in x right y up both rangin from 0 to 1
   vec2 current_screen_pos = (frag.position1.xy / frag.position1.w) * 0.5 + 0.5;
   vec2 prev_screen_pos = (frag.position0.xy / frag.position0.w) * 0.5 + 0.5;
   o_Velocity = (current_screen_pos - prev_screen_pos);
+
+  o_Normal = frag.normal;
 }

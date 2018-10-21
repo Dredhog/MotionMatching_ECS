@@ -29,7 +29,7 @@ void
 main()
 {
   gl_Position   = mat_mvp * vec4(a_position, 1.0f);
-  frag.normal   = mat3(mat_model) * a_normal;
+  frag.normal   = mat3(mat_view) * mat3(mat_model) * a_normal;
   frag.position = vec3(mat_view	* mat_model* vec4(a_position, 1.0));
   frag.texCoord = a_texCoord;
 

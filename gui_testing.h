@@ -970,6 +970,7 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
   }
 }
 
+// TODO(Lukas) Add bit mask checkbox to the UI API
 void
 MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
         bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
@@ -988,6 +989,12 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("MotionBlur", &MotionBlur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
+    UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
+    UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.001f, 0.1f);
+    if(GameState->R.RenderSSAO)
+    {
+      UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
+    }
 
     if(Grayscale)
     {
