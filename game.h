@@ -425,10 +425,10 @@ DrawTextureToFramebuffer(uint32_t VAO)
 }
 
 inline void
-UpdateSun(mat4* VPMatrix, vec3* SunDirection, vec3 SunPosition, float Near, float Far)
+UpdateSun(mat4* VPMatrix, vec3* SunDirection, vec3 SunPosition, float Near, float Far, float Size)
 {
   *SunDirection         = Math::Normalized(*SunDirection);
-  mat4 ProjectionMatrix = Math::Mat4Orthogonal(-10.0f, 10.0f, -10.0f, 10.0f, Near, Far);
+  mat4 ProjectionMatrix = Math::Mat4Orthogonal(-Size, Size, -Size, Size, Near, Far);
   mat4 ViewMatrix       = Math::Mat4Camera(SunPosition, *SunDirection, vec3{ 0.0f, 1.0f, 0.0f });
   *VPMatrix             = Math::MulMat4(ProjectionMatrix, ViewMatrix);
 }

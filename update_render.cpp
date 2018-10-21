@@ -126,20 +126,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       struct shader_def* ToonShaderDef =
         AddShaderDef(SHADER_Toon, GameState->R.ShaderToon, "toon");
-      AddParamDef(ToonShaderDef, "flags", "flags",
-                  { SHADER_PARAM_TYPE_Int, offsetof(material, Toon.Flags) });
       AddParamDef(ToonShaderDef, "vec3_ambient", "material.ambientColor",
                   { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.AmbientColor) });
       AddParamDef(ToonShaderDef, "vec4_diffuse", "material.diffuseColor",
                   { SHADER_PARAM_TYPE_Vec4, offsetof(material, Toon.DiffuseColor) });
       AddParamDef(ToonShaderDef, "vec3_specular", "material.specularColor",
                   { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.SpecularColor) });
-      AddParamDef(ToonShaderDef, "map_diffuse", "material.diffuseMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.DiffuseMapID) });
-      AddParamDef(ToonShaderDef, "map_specular", "material.specularMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.SpecularMapID) });
-      AddParamDef(ToonShaderDef, "map_normal", "material.normalMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.NormalMapID) });
       AddParamDef(ToonShaderDef, "shininess", "material.shininess",
                   { SHADER_PARAM_TYPE_Float, offsetof(material, Toon.Shininess) });
       AddParamDef(ToonShaderDef, "level_count", "levelCount",
@@ -273,7 +265,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // render_data miscellaneous POD field init
       {
-				//SHADOW MAP DATA 
+          // SUN DATA
         {
           GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
@@ -283,8 +275,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->R.SunDirection     = -GameState->R.SunPosition;
           GameState->R.SunNearClipPlane = 0.01f;
           GameState->R.SunFarClipPlane  = 50.0f;
+          GameState->R.SunPlaneSize     = 10.0f;
           UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
-                    GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
+                    GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane,
+                    GameState->R.SunPlaneSize);
           GameState->R.ShowSun = false;
 
           GameState->R.SunAmbientColor  = { 0.3f, 0.3f, 0.3f };
@@ -502,7 +496,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
   UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
-            GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
+            GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane,
+            GameState->R.SunPlaneSize);
 
   // Dynamics
   g_Force                 = GameState->Force;
