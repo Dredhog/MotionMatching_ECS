@@ -110,7 +110,7 @@ main()
   diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
 
   ambient *= material.ambientColor;
-  diffuse *= material.diffuseColor.rgb;
+  //diffuse *= material.diffuseColor.rgb;
 
   // --------SPECULAR------
   float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
@@ -123,10 +123,11 @@ main()
   vec3 specular = specular_intensity * light.specular;
   specular += sun_specular_intensity * sun.specular * lighting;
 
-  specular *= material.specularColor;
+  //specular *= material.specularColor;
 
   // --------FINAL----------
-  vec4 result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
+  //vec4 result = vec4((diffuse + specular) * (material.diffuseColor.rgb + material.specularColor) + ambient, material.diffuseColor.a);
+  vec4 result = vec4(diffuse * (material.diffuseColor.rgb + material.specularColor) + ambient, material.diffuseColor.a);
 
   out_color = result;
 }

@@ -137,6 +137,25 @@ struct framebuffers
 };
 #endif
 
+struct sun
+{
+  vec3  Rotation;
+  float Radius;
+  vec3  Position;
+  vec3  Center;
+  vec3  Direction;
+  float NearClipPlane;
+  float FarClipPlane;
+  float PlaneSize;
+  mat4  VPMatrix;
+  bool  Show;
+  bool  CenterOffsetFromCamera;
+
+  vec3 AmbientColor;
+  vec3 DiffuseColor;
+  vec3 SpecularColor;
+};
+
 const int32_t MESH_INSTANCE_MAX_COUNT  = 10000;
 const int32_t SSAO_SAMPLE_VECTOR_COUNT = 9;
 
@@ -220,22 +239,13 @@ struct render_data
   uint32_t CurrentTexture;
 
   // Directional shadow mapping
+  float ShadowCenterOffset;
   bool RealTimeDirectionalShadows;
   bool RecomputeDirectionalShadows;
   bool ClearDirectionalShadows;
 
   // Sun
-  vec3  SunPosition;
-  vec3  SunDirection;
-  float SunNearClipPlane;
-  float SunFarClipPlane;
-  float SunPlaneSize;
-  mat4  SunVPMatrix;
-  bool  ShowSun;
-
-  vec3 SunAmbientColor;
-  vec3 SunDiffuseColor;
-  vec3 SunSpecularColor;
+  sun Sun;
 
   // Light
   vec3 LightPosition;
