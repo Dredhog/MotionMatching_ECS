@@ -252,7 +252,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // render_data miscellaneous POD field init
       {
-        // SHADOW MAPPING INITIALIZATION
+				//SHADOW MAP DATA 
         {
           GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
@@ -265,6 +265,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
                     GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
           GameState->R.ShowSun = false;
+
+          GameState->R.SunAmbientColor  = { 0.3f, 0.3f, 0.3f };
+          GameState->R.SunDiffuseColor  = { 0.0f, 0.0f, 0.0f };
+          GameState->R.SunSpecularColor = { 0.0f, 0.0f, 0.0f };
         }
 
         GameState->R.LightPosition        = { 0.7f, 1, 1 };
@@ -274,10 +278,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GameState->R.LightDiffuseColor  = { 1, 1, 1 };
         GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
         GameState->R.ShowLightPosition  = false;
+
         // SSAO
         {
-          GameState->R.RenderSSAO = true;
-					GameState->R.SSAOSamplingRadius = 0.05f;
+          GameState->R.RenderSSAO         = true;
+          GameState->R.SSAOSamplingRadius = 0.05f;
 #if 0
           // hemispherical vector kernel initialization
           /*

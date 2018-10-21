@@ -246,9 +246,13 @@ inline void
 GenerateScreenQuad(uint32_t* VAO, uint32_t* VBO)
 {
   // Create VAO and VBO for screen quad
-  float QuadVertices[] = { -1.0f, 1.0f,  0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
-                           1.0f,  -1.0f, 1.0f, 0.0f, -1.0f, 1.0f,  0.0f, 1.0f,
-                           1.0f,  -1.0f, 1.0f, 0.0f, 1.0f,  1.0f,  1.0f, 1.0f };
+                            // Position   // TexCoord
+  float QuadVertices[] = { -1.0f,  1.0f,  0.0f, 1.0f,
+                           -1.0f, -1.0f,  0.0f, 0.0f,
+                            1.0f, -1.0f,  1.0f, 0.0f,
+                           -1.0f,  1.0f,  0.0f, 1.0f,
+                            1.0f, -1.0f,  1.0f, 0.0f,
+                            1.0f,  1.0f,  1.0f, 1.0f };
 
   glGenVertexArrays(1, VAO);
   glGenBuffers(1, VBO);
