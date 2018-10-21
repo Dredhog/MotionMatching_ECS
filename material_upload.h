@@ -40,6 +40,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.specularMap"), 1);
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.normalMap"), 2);
     glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap"), 3);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "u_AmbientOcclusion"), 4);
     glUniform1f(glGetUniformLocation(PhongShaderID, "material.shininess"),
                 Material->Phong.Shininess);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "lightPosition"), 1,
@@ -91,6 +92,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glBindTexture(GL_TEXTURE_2D, NormalTexture);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, ShadowTexture);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, GameState->R.SSAOTexID);
     glActiveTexture(GL_TEXTURE0);
     return PhongShaderID;
   }
@@ -200,7 +203,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     {
       //<TODO(Lukas) make constant things upload only on shader change>
       // TODO(Lukas) Change dt for time uniform to a cumulative time
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "time"), 30.0f);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "u_time"), GameState->R.CumulativeTime);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,
                    (float*)&GameState->R.LightPosition);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.ambient"), 1,
@@ -209,8 +212,6 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightDiffuseColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.specular"), 1,
                    (float*)&GameState->R.LightSpecularColor);
-      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sunPosition"), 1,
-                   (float*)&GameState->R.SunPosition);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.ambient"), 1,
                    (float*)&GameState->R.SunAmbientColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.diffuse"), 1,

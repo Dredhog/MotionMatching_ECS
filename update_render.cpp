@@ -90,6 +90,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.ShaderTest     = GameState->Resources.RegisterShader("shaders/test");
       GameState->R.ShaderParallax = GameState->Resources.RegisterShader("shaders/parallax");
       GameState->R.ShaderSSAO     = GameState->Resources.RegisterShader("shaders/ssao");
+      GameState->R.ShaderWavy     = GameState->Resources.RegisterShader("shaders/wavy");
 
       GameState->R.PostDefaultShader = GameState->Resources.RegisterShader("shaders/post_default");
       GameState->R.PostGrayscale = GameState->Resources.RegisterShader("shaders/post_grayscale");
@@ -124,8 +125,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       AddParamDef(EnvShaderDef, "refractive_index", "refractive_index",
                   { SHADER_PARAM_TYPE_Float, offsetof(material, Env.RefractiveIndex) });
 
-      struct shader_def* ToonShaderDef =
-        AddShaderDef(SHADER_Toon, GameState->R.ShaderToon, "toon");
+      struct shader_def* ToonShaderDef = AddShaderDef(SHADER_Toon, GameState->R.ShaderToon, "toon");
       AddParamDef(ToonShaderDef, "vec3_ambient", "material.ambientColor",
                   { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.AmbientColor) });
       AddParamDef(ToonShaderDef, "vec4_diffuse", "material.diffuseColor",
@@ -161,6 +161,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                   { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.NormalID) });
       AddParamDef(ParallaxShaderDef, "map_depth", "material.depthMap",
                   { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
+
+      {
+        struct shader_def* WavyShaderDef =
+          AddShaderDef(SHADER_Wavy, GameState->R.ShaderWavy, "Wavy");
+        AddParamDef(WavyShaderDef, "height_scale", "height_scale",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, Wavy.HeightScale) });
+        AddParamDef(WavyShaderDef, "albedo_color", "u_AlbedoColor",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, Wavy.AlbedoColor) });
+        AddParamDef(WavyShaderDef, "map_normal", "u_NormalMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Wavy.NormalID) });
+      }
     }
 
     // TODO(2-tuple) Move all buffer creation code to the same place. Reuse buffers more effectively
@@ -265,7 +276,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // render_data miscellaneous POD field init
       {
-          // SUN DATA
+        // SUN DATA
         {
           GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
@@ -496,8 +507,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
   UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
-            GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane,
-            GameState->R.SunPlaneSize);
+            GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane, GameState->R.SunPlaneSize);
 
   // Dynamics
   g_Force                 = GameState->Force;
@@ -557,6 +567,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Debug::PushLine(GameState->R.SunPosition, GameState->R.SunPosition + GameState->R.SunDirection);
     Debug::PushWireframeSphere(GameState->R.SunPosition + GameState->R.SunDirection, 0.05f);
   }
+
+  GameState->R.CumulativeTime += Input->dt;
 
   // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)

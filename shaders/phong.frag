@@ -18,6 +18,8 @@ struct Material
   float shininess;
 };
 
+uniform sampler2D u_AmbientOcclusion;
+
 struct Light
 {
   vec3 ambient;
@@ -25,7 +27,7 @@ struct Light
   vec3 specular;
 };
 
-struct Sun
+struct Sun	
 {
   vec3 ambient;
   vec3 diffuse;
@@ -120,14 +122,14 @@ main()
 
   // --------AMBIENT--------
   vec3 ambient = light.ambient;
-  ambient += sun.ambient * lighting;
+  ambient += sun.ambient * lighting ;
 
   // --------DIFFUSE------
   float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
   vec3  diffuse           = diffuse_intensity * light.diffuse;
 
   float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
-  diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
+  diffuse += sun_diffuse_intensity * sun.diffuse;
 
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
@@ -139,6 +141,11 @@ main()
     ambient *= material.ambientColor;
     diffuse *= material.diffuseColor.rgb;
   }
+
+  
+  vec2 screen_tex_coords = gl_FragCoord.xy/textureSize(u_AmbientOcclusion, 0).xy; 
+  float ambient_occlusion = texture(u_AmbientOcclusion, screen_tex_coords).r;
+  ambient *= ambient_occlusion;
 
   // --------SPECULAR------
   float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);

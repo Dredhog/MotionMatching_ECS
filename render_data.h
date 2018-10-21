@@ -24,7 +24,8 @@ enum env_flags
 };
 
 #define FOR_ALL_NAMES(DO_FUNC)                                                                     \
-  DO_FUNC(Phong) DO_FUNC(Env) DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color)
+  DO_FUNC(Phong)                                                                                   \
+  DO_FUNC(Env) DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color) DO_FUNC(Wavy)
 #define GENERATE_ENUM(Name) SHADER_##Name,
 #define GENERATE_STRING(Name) #Name,
 enum shader_type
@@ -113,6 +114,13 @@ union material {
     rid             NormalID;
     rid             DepthID;
   } Parallax;
+  struct
+  {
+    material_header Common;
+    float           HeightScale;
+    vec3            AlbedoColor;
+    rid             NormalID;
+  } Wavy;
 };
 
 struct cubemap
@@ -170,6 +178,7 @@ struct render_data
   rid ShaderParallax;
   rid ShaderSimpleDepth;
   rid ShaderSSAO;
+  rid ShaderWavy;
 
   // Post-processing shaders
   rid PostDefaultShader;
@@ -194,6 +203,8 @@ struct render_data
   uint32_t GBufferPositionTexID;
   uint32_t GBufferNormalTexID;
   uint32_t GBufferDepthTexID;
+
+  float CumulativeTime;
 
   // SSAO
   uint32_t SSAOFBO;
