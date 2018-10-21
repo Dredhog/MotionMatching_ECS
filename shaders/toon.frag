@@ -25,6 +25,13 @@ struct Light
   vec3 specular;
 };
 
+struct Sun
+{
+  vec3 ambient;
+  vec3 diffuse;
+  vec3 specular;
+};
+
 in VertexOut
 {
   flat int flags;
@@ -33,56 +40,53 @@ in VertexOut
   vec3 normal;
   vec2 texCoord;
   vec3 lightPos;
+  vec3 sunPos;
   vec3 cameraPos;
   vec3 tangentLightPos;
   vec3 tangentViewPos;
   vec3 tangentFragPos;
+  vec4 sunFragPos;
 }
 frag;
 
 uniform Material material;
 uniform Light light;
+uniform Sun sun;
+uniform int levelCount;
+
+uniform sampler2D shadowMap;
 
 out vec4 out_color;
 
 float
-CategorizeA(float A)
+ShadowCalculation(vec4 sunFragPos, vec3 normal, vec3 lightDir)
 {
-  if(A < 0.125f)
-  {
-    return 0.0f;
-  }
-  if(A < 0.375f)
-  {
-    return 0.25f;
-  }
-  if(A < 0.625f)
-  {
-    return 0.5f;
-  }
-  if(A < 0.875f)
-  {
-    return 0.75f;
-  }
-  return 1.0f;
-}
+  vec3 projCoords = sunFragPos.xyz / sunFragPos.w;
+  projCoords = projCoords * 0.5f + 0.5f;
 
-float
-CategorizeB(float A)
-{
-  if(A < 0.25f)
+  float closestDepth = texture(shadowMap, projCoords.xy).r;
+  float currentDepth = projCoords.z;
+
+  float shadow = 0.0f;
+  if(currentDepth <= 1.0f)
   {
-    return 0.125f;
+    //float bias = max(0.005f * (1.0f - dot(normal, lightDir)), 0.005f);
+    float bias = 0.005f;
+    //shadow = currentDepth - bias > closestDepth ? 1.0f : 0.0f;
+
+    vec2 texelSize = 1.0f / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+      for(int y = -1; y <= 1; ++y)
+      {
+        float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+        shadow += currentDepth - bias > pcfDepth ? 1.0f : 0.0f;
+      }
+    }
+    shadow /= 9.0f;
   }
-  if(A < 0.5f)
-  {
-    return 0.375f;
-  }
-  if(A < 0.75f)
-  {
-    return 0.625f;
-  }
-  return 0.875f;
+
+  return shadow;
 }
 
 void
@@ -106,14 +110,32 @@ main()
     viewDir  = normalize(frag.cameraPos - frag.position);
   }
 
+  vec3 sunDir = normalize(frag.sunPos - frag.position);
+
+  // --------SHADOW--------
+  float shadow = ShadowCalculation(frag.sunFragPos, normal, sunDir);
+  float lighting = 1.0f - shadow;
+
   vec3 half_vector = normalize(lightDir + viewDir);
+  vec3 sun_half_vector = normalize(sunDir + viewDir);
 
   // --------AMBIENT--------
   vec3 ambient = light.ambient;
+  ambient += sun.ambient * lighting;
 
   // --------DIFFUSE------
   float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
+  float diffuse_level = floor(diffuse_intensity * levelCount);
+  diffuse_intensity = diffuse_level / levelCount;
+
   vec3  diffuse           = diffuse_intensity * light.diffuse;
+
+  float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
+  float sun_diffuse_level = floor(sun_diffuse_intensity * levelCount);
+  sun_diffuse_intensity = sun_diffuse_level / levelCount;
+
+  diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
+
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
     ambient *= vec3(texture(material.diffuseMap, frag.texCoord));
@@ -128,7 +150,18 @@ main()
   // --------SPECULAR------
   float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
   specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
+  float specular_level = floor(specular_intensity * levelCount);
+  specular_intensity = specular_level / levelCount;
+
   vec3 specular = specular_intensity * light.specular;
+
+  float sun_specular_intensity = pow(max(dot(normal, sun_half_vector), 0.0f), material.shininess);
+  sun_specular_intensity *= (sun_diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
+  float sun_specular_level = floor(sun_specular_intensity * levelCount);
+  sun_specular_intensity = sun_specular_level / levelCount;
+
+  specular += sun_specular_intensity * sun.specular * lighting;
+
   if((frag.flags & SPECULAR_MAP) != 0)
   {
     specular *= vec3(texture(material.specularMap, frag.texCoord));
@@ -142,15 +175,12 @@ main()
   vec4 result = vec4(0.0f);
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
-    result = vec4((diffuse + specular + ambient), 1.0f);
+    result = vec4(diffuse + specular + ambient, 1.0f);
   }
   else
   {
-    result = vec4((diffuse + specular + ambient), material.diffuseColor.a);
+    result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
   }
 
-  result.r  = CategorizeA(result.r);
-  result.g  = CategorizeA(result.g);
-  result.b  = CategorizeA(result.b);
   out_color = result;
 }

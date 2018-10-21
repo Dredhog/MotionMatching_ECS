@@ -421,6 +421,134 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             UI::SliderFloat("Refractive Index", &CurrentMaterial->Env.RefractiveIndex, 1.0f, 3.0f);
           }
           break;
+          case SHADER_Toon:
+          {
+            bool UseDiffuseMap  = CurrentMaterial->Toon.Flags & TOON_UseDiffuseMap;
+            bool UseSpecularMap = CurrentMaterial->Toon.Flags & TOON_UseSpecularMap;
+            bool UseNormalMap   = CurrentMaterial->Toon.Flags & TOON_UseNormalMap;
+            UI::Checkbox("Diffuse Map", &UseDiffuseMap);
+            UI::Checkbox("Specular Map", &UseSpecularMap);
+            UI::Checkbox("Normal Map", &UseNormalMap);
+
+            UI::DragFloat3("Ambient Color", &CurrentMaterial->Toon.AmbientColor.X, 0.0f, 1.0f,
+                           5.0f);
+
+            if(UseDiffuseMap)
+            {
+              {
+
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Toon.DiffuseMapID.Value > 0)
+                {
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Toon.DiffuseMapID);
+                }
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Toon.Flags |= TOON_UseDiffuseMap;
+
+                  UI::Combo("Diffuse Map", &ActivePathIndex, GameState->Resources.TexturePaths,
+                            GameState->Resources.TexturePathCount, PathArrayToString);
+                  rid NewRID;
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Toon.DiffuseMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Toon.DiffuseMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Toon.DiffuseMapID.Value > 0);
+                }
+              }
+            }
+            else
+            {
+              CurrentMaterial->Toon.Flags &= ~TOON_UseDiffuseMap;
+              UI::DragFloat4("Diffuse Color", &CurrentMaterial->Toon.DiffuseColor.X, 0.0f, 1.0f,
+                             5.0f);
+            }
+
+            if(UseSpecularMap)
+            {
+              {
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Toon.SpecularMapID.Value > 0)
+                {
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Toon.SpecularMapID);
+                }
+                UI::Combo("Specular Map", &ActivePathIndex, GameState->Resources.TexturePaths,
+                          GameState->Resources.TexturePathCount, PathArrayToString);
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Toon.Flags |= TOON_UseSpecularMap;
+
+                  rid NewRID;
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Toon.SpecularMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Toon.SpecularMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Toon.SpecularMapID.Value > 0);
+                }
+              }
+            }
+            else
+            {
+              CurrentMaterial->Toon.Flags &= ~TOON_UseSpecularMap;
+              UI::DragFloat3("Specular Color", &CurrentMaterial->Toon.SpecularColor.X, 0.0f, 1.0f,
+                             5.0f);
+            }
+
+            if(UseNormalMap)
+            {
+              {
+                int32_t ActivePathIndex = 0;
+                if(CurrentMaterial->Toon.NormalMapID.Value > 0)
+                {
+                  ActivePathIndex =
+                    GameState->Resources.GetTexturePathIndex(CurrentMaterial->Toon.NormalMapID);
+                }
+                UI::Combo("Normal map", &ActivePathIndex, GameState->Resources.TexturePaths,
+                          GameState->Resources.TexturePathCount, PathArrayToString);
+                if(GameState->Resources.TexturePathCount > 0)
+                {
+                  CurrentMaterial->Toon.Flags |= TOON_UseNormalMap;
+
+                  rid NewRID;
+                  if(GameState->Resources
+                       .GetTexturePathRID(&NewRID,
+                                          GameState->Resources.TexturePaths[ActivePathIndex].Name))
+                  {
+                    CurrentMaterial->Toon.NormalMapID = NewRID;
+                  }
+                  else
+                  {
+                    CurrentMaterial->Toon.NormalMapID = GameState->Resources.RegisterTexture(
+                      GameState->Resources.TexturePaths[ActivePathIndex].Name);
+                  }
+                  assert(CurrentMaterial->Toon.NormalMapID.Value > 0);
+                }
+              }
+            }
+            else
+            {
+              CurrentMaterial->Toon.Flags &= ~TOON_UseNormalMap;
+            }
+
+            UI::SliderFloat("Shininess", &CurrentMaterial->Toon.Shininess, 1.0f, 512.0f);
+            UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 1, 10);
+          } break;
           case SHADER_Color:
           {
             UI::DragFloat4("Color", &CurrentMaterial->Color.Color.X, 0, 1, 5);
