@@ -31,7 +31,8 @@ enum toon_flags
   TOON_UseSkeleton    = 8,
 };
 
-#define FOR_ALL_NAMES(DO_FUNC) DO_FUNC(Phong) DO_FUNC(Env) DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color)
+#define FOR_ALL_NAMES(DO_FUNC)                                                                     \
+  DO_FUNC(Phong) DO_FUNC(Env) DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color)
 #define GENERATE_ENUM(Name) SHADER_##Name,
 #define GENERATE_STRING(Name) #Name,
 enum shader_type
@@ -148,7 +149,8 @@ struct framebuffers
 };
 #endif
 
-const int32_t MESH_INSTANCE_MAX_COUNT = 10000;
+const int32_t MESH_INSTANCE_MAX_COUNT  = 10000;
+const int32_t SSAO_SAMPLE_VECTOR_COUNT = 9;
 
 struct mesh_instance
 {
@@ -165,6 +167,7 @@ struct render_data
   // Pre-Pass shader
   rid ShaderGeomPreePass;
 
+  // TODO(2-tuple) rename shader variables in a way that signifies them being resource handles
   // Shaders
   rid ShaderPhong;
   rid ShaderEnv;
@@ -178,6 +181,7 @@ struct render_data
   rid ShaderTest;
   rid ShaderParallax;
   rid ShaderSimpleDepth;
+  rid ShaderSSAO;
 
   // Post-processing shaders
   rid PostDefaultShader;
@@ -200,7 +204,15 @@ struct render_data
   uint32_t GBufferFBO;
   uint32_t GBufferVelocityTexID;
   uint32_t GBufferPositionTexID;
+  uint32_t GBufferNormalTexID;
   uint32_t GBufferDepthTexID;
+
+  // SSAO
+  uint32_t SSAOFBO;
+  uint32_t SSAOTexID;
+  bool     RenderSSAO;
+  vec3     SSAOSampleVectors[SSAO_SAMPLE_VECTOR_COUNT];
+  float    SSAOSamplingRadius;
 
   // Depth Framebuffer for shadow mapping
   rid      RenderDepthMap;
@@ -208,6 +220,7 @@ struct render_data
   uint32_t DepthMapFBO;
   uint32_t DepthMapTexture;
 
+  // TODO(Rytis by Lukas' recommendation :D) make array names plural
   // Temporary stuff for post-processing
   // framebuffers Screen;
   uint32_t ScreenQuadVAO;

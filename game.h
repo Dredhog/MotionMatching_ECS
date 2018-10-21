@@ -294,8 +294,32 @@ GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
 }
 
 inline void
+GenerateSSAOFrameBuffer(uint32_t* FBO, uint32_t* SSAOTextureID)
+{
+  glGenFramebuffers(1, FBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
+
+  // SSAO Texture
+  {
+    glGenTextures(1, SSAOTextureID);
+    glBindTexture(GL_TEXTURE_2D, *SSAOTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_INT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *SSAOTextureID, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
+  if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+  {
+    assert(0 && "error: incomplete framebuffer!\n");
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+inline void
 GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextureID,
-                                 uint32_t* VelocityTextureID, uint32_t* DepthTextureID)
+                                 uint32_t* VelocityTextureID, uint32_t* NormalTextureID,
+                                 uint32_t* DepthTextureID)
 {
   glGenFramebuffers(1, FBO);
   glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
@@ -304,14 +328,14 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextu
   {
     glGenTextures(1, ViewSpacePositionTextureID);
     glBindTexture(GL_TEXTURE_2D, *ViewSpacePositionTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT,
                  NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            *ViewSpacePositionTextureID, 0);
   }
-  // VelocityBuffer
+  // Velocity
   {
     glGenTextures(1, VelocityTextureID);
     glBindTexture(GL_TEXTURE_2D, *VelocityTextureID);
@@ -321,9 +345,20 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextu
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, *VelocityTextureID,
                            0);
   }
+  // Normal
+  {
+    glGenTextures(1, NormalTextureID);
+    glBindTexture(GL_TEXTURE_2D, *NormalTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT,
+                 NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, *NormalTextureID,
+                           0);
+  }
 
-  uint32_t attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-  glDrawBuffers(2, attachments);
+  uint32_t attachments[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+  glDrawBuffers(ARRAY_SIZE(attachments), attachments);
 
   // Depth
   {

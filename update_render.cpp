@@ -89,6 +89,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.ShaderToon     = GameState->Resources.RegisterShader("shaders/toon");
       GameState->R.ShaderTest     = GameState->Resources.RegisterShader("shaders/test");
       GameState->R.ShaderParallax = GameState->Resources.RegisterShader("shaders/parallax");
+      GameState->R.ShaderSSAO     = GameState->Resources.RegisterShader("shaders/ssao");
 
       GameState->R.PostDefaultShader = GameState->Resources.RegisterShader("shaders/post_default");
       GameState->R.PostGrayscale = GameState->Resources.RegisterShader("shaders/post_grayscale");
@@ -112,6 +113,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // SET UP SHADER PARAMETER DEFINITIONS (CAN BE MADE AUTOMATIC BY PARSING ASSOCIATED SHADER)
     {
+      // TODO(2-tuple) adhere to a common, more appropriate shader variable naming standard
+      // TODO(Lukas) rename all variables with "coord" to "coords"
       struct shader_def* EnvShaderDef =
         AddShaderDef(SHADER_Env, GameState->R.ShaderEnv, "environment");
       AddParamDef(EnvShaderDef, "flags", "flags",
@@ -168,63 +171,75 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                   { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
     }
 
-    // FRAME BUFFER CREATION FOR ENTITY SELECTION
+    // TODO(2-tuple) Move all buffer creation code to the same place. Reuse buffers more effectively
+    // TODO(Lukas) Make a designated helper function for versitile and safe frame buffer creation
+    if(true) // Conditional used to preserve clang format indentation when using nested scopes
     {
-      glGenFramebuffers(1, &GameState->IndexFBO);
-      glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
-      glGenTextures(1, &GameState->IDTexture);
-      glBindTexture(GL_TEXTURE_2D, GameState->IDTexture);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
-                   GL_UNSIGNED_INT, NULL);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glBindTexture(GL_TEXTURE_2D, 0);
-      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                             GameState->IDTexture, 0);
-      glGenRenderbuffers(1, &GameState->DepthRBO);
-      glBindRenderbuffer(GL_RENDERBUFFER, GameState->DepthRBO);
-      glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT);
-      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-                                GameState->DepthRBO);
-      glBindRenderbuffer(GL_RENDERBUFFER, 0);
-      if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+      // FRAME BUFFER CREATION FOR ENTITY SELECTION
       {
-        assert(0 && "error: incomplete framebuffer!\n");
-      }
-      glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-
-    // FRAME BUFFER CREATION FOR GEOMETRY/DEPTH PRE PASS
-    {
-      GenerateGeometryDepthFrameBuffer(&GameState->R.GBufferFBO, &GameState->R.GBufferPositionTexID,
-                                       &GameState->R.GBufferVelocityTexID,
-                                       &GameState->R.GBufferDepthTexID);
-    }
-
-    // FRAMEBUFFER CREATION FOR SHADOW MAPPING
-    {
-      GameState->R.DrawDepthMap = false;
-      GenerateDepthFramebuffer(&GameState->R.DepthMapFBO, &GameState->R.DepthMapTexture);
-    }
-
-    // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
-    {
-      GenerateScreenQuad(&GameState->R.ScreenQuadVAO, &GameState->R.ScreenQuadVBO);
-
-      for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
-      {
-        GenerateFramebuffer(&GameState->R.ScreenFBO[i], &GameState->R.ScreenRBO[i],
-                            &GameState->R.ScreenTexture[i]);
+        glGenFramebuffers(1, &GameState->IndexFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
+        glGenTextures(1, &GameState->IDTexture);
+        glBindTexture(GL_TEXTURE_2D, GameState->IDTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA,
+                     GL_UNSIGNED_INT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                               GameState->IDTexture, 0);
+        glGenRenderbuffers(1, &GameState->DepthRBO);
+        glBindRenderbuffer(GL_RENDERBUFFER, GameState->DepthRBO);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
+                                  GameState->DepthRBO);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+          assert(0 && "error: incomplete framebuffer!\n");
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
       }
 
-      GameState->R.CurrentFramebuffer = 0;
-      GameState->R.CurrentTexture     = 0;
+      // FRAME BUFFER CREATION FOR GEOMETRY/DEPTH PRE PASS
+      {
+        GenerateGeometryDepthFrameBuffer(&GameState->R.GBufferFBO,
+                                         &GameState->R.GBufferPositionTexID,
+                                         &GameState->R.GBufferVelocityTexID,
+                                         &GameState->R.GBufferNormalTexID,
+                                         &GameState->R.GBufferDepthTexID);
+      }
 
-      // Default blur parameters
-      GameState->R.PostBlurLastStdDev = 10.0f;
-      GameState->R.PostBlurStdDev     = GameState->R.PostBlurLastStdDev;
-      GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
-                                 GameState->R.PostBlurStdDev);
+      // FRAME BUFFER CREATION FOR SSAO
+      {
+        GenerateSSAOFrameBuffer(&GameState->R.SSAOFBO, &GameState->R.SSAOTexID);
+      }
+
+      // FRAMEBUFFER CREATION FOR SHADOW MAPPING
+      {
+        GameState->R.DrawDepthMap = false;
+        GenerateDepthFramebuffer(&GameState->R.DepthMapFBO, &GameState->R.DepthMapTexture);
+      }
+
+      // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
+      {
+        GenerateScreenQuad(&GameState->R.ScreenQuadVAO, &GameState->R.ScreenQuadVBO);
+
+        for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
+        {
+          GenerateFramebuffer(&GameState->R.ScreenFBO[i], &GameState->R.ScreenRBO[i],
+                              &GameState->R.ScreenTexture[i]);
+        }
+
+        GameState->R.CurrentFramebuffer = 0;
+        GameState->R.CurrentTexture     = 0;
+
+        // Default blur parameters
+        GameState->R.PostBlurLastStdDev = 10.0f;
+        GameState->R.PostBlurStdDev     = GameState->R.PostBlurLastStdDev;
+        GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
+                                   GameState->R.PostBlurStdDev);
+      }
     }
 
     // SET MISC GL STATE
@@ -256,32 +271,65 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->PreviewCamera.Rotation = {};
       UpdateCamera(&GameState->PreviewCamera, Input);
 
-      // SHADOW MAPPING INITIALIZATION
+      // render_data miscellaneous POD field init
       {
-        GameState->R.RealTimeDirectionalShadows  = true;
-        GameState->R.RecomputeDirectionalShadows = false;
-        GameState->R.ClearDirectionalShadows     = false;
+				//SHADOW MAP DATA 
+        {
+          GameState->R.RealTimeDirectionalShadows  = true;
+          GameState->R.RecomputeDirectionalShadows = false;
+          GameState->R.ClearDirectionalShadows     = false;
 
-        GameState->R.SunPosition      = { 0.0f, 10.0f, -10.0f };
-        GameState->R.SunDirection     = -GameState->R.SunPosition;
-        GameState->R.SunNearClipPlane = 0.01f;
-        GameState->R.SunFarClipPlane  = 50.0f;
-        UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
-                  GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
-        GameState->R.ShowSun = false;
+          GameState->R.SunPosition      = { 0.0f, 10.0f, -10.0f };
+          GameState->R.SunDirection     = -GameState->R.SunPosition;
+          GameState->R.SunNearClipPlane = 0.01f;
+          GameState->R.SunFarClipPlane  = 50.0f;
+          UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
+                    GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane);
+          GameState->R.ShowSun = false;
 
-        GameState->R.SunAmbientColor = { 0.3f, 0.3f, 0.3f };
-        GameState->R.SunDiffuseColor = { 0.0f, 0.0f, 0.0f };
-        GameState->R.SunSpecularColor = { 0.0f, 0.0f, 0.0f };
+          GameState->R.SunAmbientColor  = { 0.3f, 0.3f, 0.3f };
+          GameState->R.SunDiffuseColor  = { 0.0f, 0.0f, 0.0f };
+          GameState->R.SunSpecularColor = { 0.0f, 0.0f, 0.0f };
+        }
+
+        GameState->R.LightPosition        = { 0.7f, 1, 1 };
+        GameState->R.PreviewLightPosition = { 0.7f, 0, 2 };
+
+        GameState->R.LightSpecularColor = { 1, 1, 1 };
+        GameState->R.LightDiffuseColor  = { 1, 1, 1 };
+        GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
+        GameState->R.ShowLightPosition  = false;
+
+        // SSAO
+        {
+          GameState->R.RenderSSAO         = true;
+          GameState->R.SSAOSamplingRadius = 0.05f;
+#if 0
+          // hemispherical vector kernel initialization
+          /*
+          for(int i = 0; i < SSAO_SAMPLE_VECTOR_COUNT; i++)
+          {
+            GameState->R.SSAOSampleVectors[i] = vec3{()};
+          }
+          */
+#else
+          assert(SSAO_SAMPLE_VECTOR_COUNT == 9);
+          GameState->R.SSAOSampleVectors[0] = vec3{ 0, 0, 1 };
+          GameState->R.SSAOSampleVectors[1] = vec3{ -1, 0, 1 };
+          GameState->R.SSAOSampleVectors[2] = vec3{ 1, 0, 1 };
+          GameState->R.SSAOSampleVectors[3] = vec3{ 0, 1, 1 };
+          GameState->R.SSAOSampleVectors[4] = vec3{ 0, -1, 1 };
+          GameState->R.SSAOSampleVectors[5] = vec3{ 1, 1, 1 };
+          GameState->R.SSAOSampleVectors[6] = vec3{ 1, -1, 1 };
+          GameState->R.SSAOSampleVectors[7] = vec3{ -1, 1, 1 };
+          GameState->R.SSAOSampleVectors[8] = vec3{ -1, -1, 1 };
+          for(int i = 0; i < SSAO_SAMPLE_VECTOR_COUNT; i++)
+          {
+            GameState->R.SSAOSampleVectors[i] = Math::Normalized(GameState->R.SSAOSampleVectors[i]);
+          }
+#endif
+        }
       }
-
-      GameState->R.LightPosition        = { 0.7f, 1, 1 };
-      GameState->R.PreviewLightPosition = { 0.7f, 0, 2 };
-
-      GameState->R.LightSpecularColor = { 1, 1, 1 };
-      GameState->R.LightDiffuseColor  = { 1, 1, 1 };
-      GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
-      GameState->R.ShowLightPosition  = false;
 
       GameState->DrawCubemap      = true;
       GameState->DrawDebugSpheres = true;
@@ -727,6 +775,76 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+  // Render SSAO to designated texture
+  {
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.SSAOFBO);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    if(GameState->R.RenderSSAO)
+    {
+      {
+        uint32_t SSAOShaderID = GameState->Resources.GetShader(GameState->R.ShaderSSAO);
+        glUseProgram(SSAOShaderID);
+        {
+          glUniform3fv(glGetUniformLocation(SSAOShaderID, "u_SampleVectors"),
+                       SSAO_SAMPLE_VECTOR_COUNT, (float*)&GameState->R.SSAOSampleVectors);
+        }
+        {
+          glUniformMatrix4fv(glGetUniformLocation(SSAOShaderID, "u_mat_projection"), 1, GL_FALSE,
+                             GameState->Camera.ProjectionMatrix.e);
+        }
+        {
+          glUniform1f(glGetUniformLocation(SSAOShaderID, "u_SamplingRadius"),
+                      GameState->R.SSAOSamplingRadius);
+        }
+        {
+          int tex_index = 1;
+          glActiveTexture(GL_TEXTURE0 + tex_index);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferNormalTexID);
+          glUniform1i(glGetUniformLocation(SSAOShaderID, "u_NormalMap"), tex_index);
+        }
+        {
+          int tex_index = 2;
+          glActiveTexture(GL_TEXTURE0 + tex_index);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferPositionTexID);
+          glUniform1i(glGetUniformLocation(SSAOShaderID, "u_PositionMap"), tex_index);
+        }
+        glActiveTexture(GL_TEXTURE0);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+      }
+      if(false)
+      {
+        if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
+        {
+          GameState->R.PostBlurLastStdDev = GameState->R.PostBlurStdDev;
+          GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
+                                     GameState->R.PostBlurLastStdDev);
+        }
+
+        GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
+        glUseProgram(PostBlurHShaderID);
+
+        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
+        glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
+                     GameState->R.PostBlurKernel);
+
+        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+
+        GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
+        glUseProgram(PostBlurVShaderID);
+
+        glUniform1f(glGetUniformLocation(PostBlurVShaderID, "Offset"), 1.0f / SCREEN_HEIGHT);
+        glUniform1fv(glGetUniformLocation(PostBlurVShaderID, "Kernel"), BLUR_KERNEL_SIZE,
+                     GameState->R.PostBlurKernel);
+      }
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+
   // DEPTH MAP PASS
   if(GameState->R.RealTimeDirectionalShadows || GameState->R.RecomputeDirectionalShadows)
   {
@@ -1098,7 +1216,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       int TexIndex = 1;
 
       glActiveTexture(GL_TEXTURE0 + TexIndex);
+#if 0
       glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
+#else
+      glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
+#endif
       glUniform1i(glGetUniformLocation(RenderDepthMapShaderID, "DepthMap"), TexIndex);
       DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       glActiveTexture(GL_TEXTURE0);
