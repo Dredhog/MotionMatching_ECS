@@ -40,7 +40,7 @@ in VertexOut
   vec3 normal;
   vec2 texCoord;
   vec3 lightPos;
-  vec3 sunPos;
+  vec3 sunDir;
   vec3 cameraPos;
   vec3 tangentLightPos;
   vec3 tangentViewPos;
@@ -109,14 +109,13 @@ main()
     viewDir  = normalize(frag.cameraPos - frag.position);
   }
 
-  vec3 sunDir = normalize(frag.sunPos - frag.position);
-
   // --------SHADOW--------
-  float shadow = ShadowCalculation(frag.sunFragPos, normal, sunDir);
+  float shadow = ShadowCalculation(frag.sunFragPos, normal, frag.sunDir);
   float lighting = 1.0f - shadow;
 
+  vec3 sunDir = normalize(-frag.sunDir);
   vec3 half_vector = normalize(lightDir + viewDir);
-  vec3 sun_half_vector = normalize(sunDir + viewDir);
+  vec3 reflectDir = reflect(-sunDir, normal);
 
   // --------AMBIENT--------
   vec3 ambient = light.ambient;
@@ -145,8 +144,7 @@ main()
   specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
   vec3 specular = specular_intensity * light.specular;
 
-  float sun_specular_intensity = pow(max(dot(normal, sun_half_vector), 0.0f), material.shininess);
-  sun_specular_intensity *= (sun_diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
+  float sun_specular_intensity = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
   specular += sun_specular_intensity * sun.specular * lighting;
   if((frag.flags & SPECULAR_MAP) != 0)
   {

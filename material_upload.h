@@ -50,8 +50,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                  (float*)&GameState->R.LightDiffuseColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "light.specular"), 1,
                  (float*)&GameState->R.LightSpecularColor);
-    glUniform3fv(glGetUniformLocation(PhongShaderID, "sunPosition"), 1,
-                 (float*)&GameState->R.SunPosition);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "sunDirection"), 1,
+                 (float*)&GameState->R.SunDirection);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.ambient"), 1,
                  (float*)&GameState->R.SunAmbientColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.diffuse"), 1,
@@ -211,8 +211,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightDiffuseColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.specular"), 1,
                    (float*)&GameState->R.LightSpecularColor);
-      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sunPosition"), 1,
-                   (float*)&GameState->R.SunPosition);
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sunDirection"), 1,
+                   (float*)&GameState->R.SunDirection);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.ambient"), 1,
                    (float*)&GameState->R.SunAmbientColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.diffuse"), 1,

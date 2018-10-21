@@ -282,16 +282,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->R.ShowSun = false;
 
           GameState->R.SunAmbientColor  = { 0.3f, 0.3f, 0.3f };
-          GameState->R.SunDiffuseColor  = { 0.0f, 0.0f, 0.0f };
-          GameState->R.SunSpecularColor = { 0.0f, 0.0f, 0.0f };
+          GameState->R.SunDiffuseColor  = { 0.7f, 0.7f, 0.7f };
+          GameState->R.SunSpecularColor = { 0.7f, 0.7f, 0.7f };
         }
 
         GameState->R.LightPosition        = { 0.7f, 1, 1 };
         GameState->R.PreviewLightPosition = { 0.7f, 0, 2 };
 
-        GameState->R.LightSpecularColor = { 1, 1, 1 };
-        GameState->R.LightDiffuseColor  = { 1, 1, 1 };
-        GameState->R.LightAmbientColor  = { 0.3f, 0.3f, 0.3f };
+        GameState->R.LightSpecularColor = { 0.5f, 0.5f, 0.5f };
+        GameState->R.LightDiffuseColor  = { 0.5f, 0.5f, 0.5f };
+        GameState->R.LightAmbientColor  = { 0.2f, 0.2f, 0.2f };
         GameState->R.ShowLightPosition  = false;
 
         // SSAO
