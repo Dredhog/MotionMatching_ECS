@@ -121,6 +121,27 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       AddParamDef(EnvShaderDef, "refractive_index", "refractive_index",
                   { SHADER_PARAM_TYPE_Float, offsetof(material, Env.RefractiveIndex) });
 
+      struct shader_def* ToonShaderDef =
+        AddShaderDef(SHADER_Toon, GameState->R.ShaderToon, "toon");
+      AddParamDef(ToonShaderDef, "flags", "flags",
+                  { SHADER_PARAM_TYPE_Int, offsetof(material, Toon.Flags) });
+      AddParamDef(ToonShaderDef, "vec3_ambient", "material.ambientColor",
+                  { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.AmbientColor) });
+      AddParamDef(ToonShaderDef, "vec4_diffuse", "material.diffuseColor",
+                  { SHADER_PARAM_TYPE_Vec4, offsetof(material, Toon.DiffuseColor) });
+      AddParamDef(ToonShaderDef, "vec3_specular", "material.specularColor",
+                  { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.SpecularColor) });
+      AddParamDef(ToonShaderDef, "map_diffuse", "material.diffuseMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.DiffuseMapID) });
+      AddParamDef(ToonShaderDef, "map_specular", "material.specularMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.SpecularMapID) });
+      AddParamDef(ToonShaderDef, "map_normal", "material.normalMap",
+                  { SHADER_PARAM_TYPE_Map, offsetof(material, Toon.NormalMapID) });
+      AddParamDef(ToonShaderDef, "shininess", "material.shininess",
+                  { SHADER_PARAM_TYPE_Float, offsetof(material, Toon.Shininess) });
+      AddParamDef(ToonShaderDef, "level_count", "levelCount",
+                  { SHADER_PARAM_TYPE_Int, offsetof(material, Toon.LevelCount) });
+
       struct shader_def* TestShaderDef = AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
       AddParamDef(TestShaderDef, "sth_float", "uniform_float",
                   { SHADER_PARAM_TYPE_Float, offsetof(material, Test.Float) });
