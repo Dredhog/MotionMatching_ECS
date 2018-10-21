@@ -103,14 +103,12 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glUniform1i(glGetUniformLocation(EnvShaderID, "normalMap"), 1);
     glUniform1f(glGetUniformLocation(EnvShaderID, "refractive_index"),
                 Material->Env.RefractiveIndex);
-    glUniform3fv(glGetUniformLocation(EnvShaderID, "cameraPosition"), 1,
-                 (float*)&Camera->Position);
-    assert(
-      ((Material->Env.Flags & ENV_UseNormalMap) && Material->Env.NormalMapID.Value > 0) ||
-      !(Material->Env.Flags & ENV_UseNormalMap));
+    glUniform3fv(glGetUniformLocation(EnvShaderID, "cameraPosition"), 1, (float*)&Camera->Position);
+    assert(((Material->Env.Flags & ENV_UseNormalMap) && Material->Env.NormalMapID.Value > 0) ||
+           !(Material->Env.Flags & ENV_UseNormalMap));
 
     uint32_t CubemapTexture = GameState->R.Cubemap.CubemapTexture;
-    uint32_t NormalTexture = (Material->Env.Flags & ENV_UseNormalMap)
+    uint32_t NormalTexture  = (Material->Env.Flags & ENV_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Env.NormalMapID)
                                : 0;
 
@@ -225,25 +223,36 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                          GameState->R.SunVPMatrix.e);
       // Cubemap
       {
-          assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
-          glActiveTexture(CurrentGLTextureBindIndex);
-          glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
-          glUniform1i(glGetUniformLocation(CurrentShaderID, "cubemap"),
-                      CurrentGLTextureBindIndex - GL_TEXTURE0);
+        assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
+        glActiveTexture(CurrentGLTextureBindIndex);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
+        glUniform1i(glGetUniformLocation(CurrentShaderID, "cubemap"),
+                    CurrentGLTextureBindIndex - GL_TEXTURE0);
 
-          glActiveTexture(GL_TEXTURE0);
-          CurrentGLTextureBindIndex++;
+        glActiveTexture(GL_TEXTURE0);
+        CurrentGLTextureBindIndex++;
       }
       // Shadow Map
       {
-          assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
-          glActiveTexture(CurrentGLTextureBindIndex);
-          glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
-          glUniform1i(glGetUniformLocation(CurrentShaderID, "shadowMap"),
-                      CurrentGLTextureBindIndex - GL_TEXTURE0);
+        assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
+        glActiveTexture(CurrentGLTextureBindIndex);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
+        glUniform1i(glGetUniformLocation(CurrentShaderID, "shadowMap"),
+                    CurrentGLTextureBindIndex - GL_TEXTURE0);
 
-          glActiveTexture(GL_TEXTURE0);
-          CurrentGLTextureBindIndex++;
+        glActiveTexture(GL_TEXTURE0);
+        CurrentGLTextureBindIndex++;
+      }
+      // AO map
+      {
+        assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
+        glActiveTexture(CurrentGLTextureBindIndex);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.SSAOTexID);
+        glUniform1i(glGetUniformLocation(CurrentShaderID, "u_AmbientOcclusionMap"),
+                    CurrentGLTextureBindIndex - GL_TEXTURE0);
+
+        glActiveTexture(GL_TEXTURE0);
+        CurrentGLTextureBindIndex++;
       }
       //<\TODO>
     }

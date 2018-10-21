@@ -1195,11 +1195,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       int TexIndex = 1;
 
       glActiveTexture(GL_TEXTURE0 + TexIndex);
-#if 0
       glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
-#else
-      glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
-#endif
       glUniform1i(glGetUniformLocation(RenderDepthMapShaderID, "DepthMap"), TexIndex);
       DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       glActiveTexture(GL_TEXTURE0);
