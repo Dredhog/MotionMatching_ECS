@@ -1003,12 +1003,12 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
-    UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.001f, 0.1f);
+    UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.01f, 0.2f);
 
-#if 0
+#if 1
+    UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
     if(GameState->R.RenderSSAO)
     {
-      UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
     }
 #endif
 

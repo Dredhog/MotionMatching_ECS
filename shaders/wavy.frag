@@ -1,9 +1,5 @@
 #version 330 core
 
-uniform vec3 u_AlbedoColor;
-uniform sampler2D u_NormalMap;
-
-uniform vec3 cameraPosition;
 
 struct dir_light
 {
@@ -14,6 +10,10 @@ struct dir_light
 };
 
 uniform dir_light sun;
+uniform vec3      cameraPosition;
+uniform vec3      u_AlbedoColor;
+uniform sampler2D u_NormalMap;
+uniform vec3 sunDirection;
 
 in VertexOut
 {
@@ -23,7 +23,6 @@ in VertexOut
   vec2 texCoord;
 } frag;
 
-uniform float u_height_scale;
 
 out vec4 out_color;
 
@@ -53,5 +52,6 @@ main()
   float ambientAmount = 0.2;
   vec3 ambient = ambientAmount*u_AlbedoColor;
   
-  out_color     = vec4(ambient+diffuse+specular, 1.0);
+  //out_color     = vec4(ambient+diffuse+specular, 1.0);
+  out_color = vec4(normalize(sunDirection), 1.0);
 }

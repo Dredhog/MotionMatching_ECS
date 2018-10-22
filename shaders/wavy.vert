@@ -34,5 +34,7 @@ main()
   frag.tangent  = normalize(mat3(mat_model) * a_tangent);
   frag.texCoord = a_texCoord;
 
-  gl_Position   = mat_mvp * vec4(a_position + frag.normal * u_HeightScale*cos(dot(u_Phase, frag.position) + length(frag.position)*u_Time*u_TimeFrequency), 1.0f);
+  float inst_amplitude = u_HeightScale * cos(dot(u_Phase, frag.position) +
+                                             length(frag.position)*u_Time*u_TimeFrequency);
+  gl_Position   = mat_mvp * vec4(a_position + frag.normal * inst_amplitude, 1.0f);
 }

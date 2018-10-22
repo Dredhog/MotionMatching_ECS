@@ -116,51 +116,61 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       // TODO(2-tuple) adhere to a common, more appropriate shader variable naming standard
       // TODO(Lukas) rename all variables with "coord" to "coords"
-      struct shader_def* EnvShaderDef =
-        AddShaderDef(SHADER_Env, GameState->R.ShaderEnv, "environment");
-      AddParamDef(EnvShaderDef, "flags", "flags",
-                  { SHADER_PARAM_TYPE_Int, offsetof(material, Env.Flags) });
-      AddParamDef(EnvShaderDef, "map_normal", "normalMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Env.NormalMapID) });
-      AddParamDef(EnvShaderDef, "refractive_index", "refractive_index",
-                  { SHADER_PARAM_TYPE_Float, offsetof(material, Env.RefractiveIndex) });
+      {
+        struct shader_def* EnvShaderDef =
+          AddShaderDef(SHADER_Env, GameState->R.ShaderEnv, "environment");
+        AddParamDef(EnvShaderDef, "flags", "flags",
+                    { SHADER_PARAM_TYPE_Int, offsetof(material, Env.Flags) });
+        AddParamDef(EnvShaderDef, "map_normal", "normalMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Env.NormalMapID) });
+        AddParamDef(EnvShaderDef, "refractive_index", "refractive_index",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, Env.RefractiveIndex) });
+      }
 
-      struct shader_def* ToonShaderDef = AddShaderDef(SHADER_Toon, GameState->R.ShaderToon, "toon");
-      AddParamDef(ToonShaderDef, "vec3_ambient", "material.ambientColor",
-                  { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.AmbientColor) });
-      AddParamDef(ToonShaderDef, "vec4_diffuse", "material.diffuseColor",
-                  { SHADER_PARAM_TYPE_Vec4, offsetof(material, Toon.DiffuseColor) });
-      AddParamDef(ToonShaderDef, "vec3_specular", "material.specularColor",
-                  { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.SpecularColor) });
-      AddParamDef(ToonShaderDef, "shininess", "material.shininess",
-                  { SHADER_PARAM_TYPE_Float, offsetof(material, Toon.Shininess) });
-      AddParamDef(ToonShaderDef, "level_count", "levelCount",
-                  { SHADER_PARAM_TYPE_Int, offsetof(material, Toon.LevelCount) });
+      {
+        struct shader_def* ToonShaderDef =
+          AddShaderDef(SHADER_Toon, GameState->R.ShaderToon, "toon");
+        AddParamDef(ToonShaderDef, "vec3_ambient", "material.ambientColor",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.AmbientColor) });
+        AddParamDef(ToonShaderDef, "vec4_diffuse", "material.diffuseColor",
+                    { SHADER_PARAM_TYPE_Vec4, offsetof(material, Toon.DiffuseColor) });
+        AddParamDef(ToonShaderDef, "vec3_specular", "material.specularColor",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, Toon.SpecularColor) });
+        AddParamDef(ToonShaderDef, "shininess", "material.shininess",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, Toon.Shininess) });
+        AddParamDef(ToonShaderDef, "level_count", "levelCount",
+                    { SHADER_PARAM_TYPE_Int, offsetof(material, Toon.LevelCount) });
+      }
 
-      struct shader_def* TestShaderDef = AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
-      AddParamDef(TestShaderDef, "sth_float", "uniform_float",
-                  { SHADER_PARAM_TYPE_Float, offsetof(material, Test.Float) });
-      AddParamDef(TestShaderDef, "sth_int", "uniform_int",
-                  { SHADER_PARAM_TYPE_Int, offsetof(material, Test.Int) });
-      AddParamDef(TestShaderDef, "sth_vec3", "uniform_vec3",
-                  { SHADER_PARAM_TYPE_Vec3, offsetof(material, Test.Vec3) });
-      AddParamDef(TestShaderDef, "map_diffuse", "material.diffuseMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Test.DiffuseID) });
-      AddParamDef(TestShaderDef, "map_normal", "material.normalMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Test.NormalID) });
-      AddParamDef(TestShaderDef, "map_specular", "material.specularMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Test.SpecularID) });
+      {
+        struct shader_def* TestShaderDef =
+          AddShaderDef(SHADER_Test, GameState->R.ShaderTest, "test");
+        AddParamDef(TestShaderDef, "sth_float", "uniform_float",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, Test.Float) });
+        AddParamDef(TestShaderDef, "sth_int", "uniform_int",
+                    { SHADER_PARAM_TYPE_Int, offsetof(material, Test.Int) });
+        AddParamDef(TestShaderDef, "sth_vec3", "uniform_vec3",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, Test.Vec3) });
+        AddParamDef(TestShaderDef, "map_diffuse", "material.diffuseMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Test.DiffuseID) });
+        AddParamDef(TestShaderDef, "map_normal", "material.normalMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Test.NormalID) });
+        AddParamDef(TestShaderDef, "map_specular", "material.specularMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Test.SpecularID) });
+      }
 
-      struct shader_def* ParallaxShaderDef =
-        AddShaderDef(SHADER_Parallax, GameState->R.ShaderParallax, "parallax");
-      AddParamDef(ParallaxShaderDef, "height_scale", "height_scale",
-                  { SHADER_PARAM_TYPE_Float, offsetof(material, Parallax.HeightScale) });
-      AddParamDef(ParallaxShaderDef, "map_diffuse", "material.diffuseMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DiffuseID) });
-      AddParamDef(ParallaxShaderDef, "map_normal", "material.normalMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.NormalID) });
-      AddParamDef(ParallaxShaderDef, "map_depth", "material.depthMap",
-                  { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
+      {
+        struct shader_def* ParallaxShaderDef =
+          AddShaderDef(SHADER_Parallax, GameState->R.ShaderParallax, "parallax");
+        AddParamDef(ParallaxShaderDef, "height_scale", "height_scale",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, Parallax.HeightScale) });
+        AddParamDef(ParallaxShaderDef, "map_diffuse", "material.diffuseMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DiffuseID) });
+        AddParamDef(ParallaxShaderDef, "map_normal", "material.normalMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.NormalID) });
+        AddParamDef(ParallaxShaderDef, "map_depth", "material.depthMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
+      }
 
       {
         struct shader_def* WavyShaderDef =
@@ -797,7 +807,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // Render SSAO to designated texture
   {
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.SSAOFBO);
-    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClearColor(1.f, 1.f, 1.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
     if(GameState->R.RenderSSAO)
     {

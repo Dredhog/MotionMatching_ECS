@@ -212,7 +212,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                    (float*)&GameState->R.LightDiffuseColor);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.specular"), 1,
                    (float*)&GameState->R.LightSpecularColor);
-      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.direction"), 1,
+      glUniform3fv(glGetUniformLocation(CurrentShaderID, "sunDirection"), 1,
                    (float*)&GameState->R.Sun.Direction);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "sun.ambient"), 1,
                    (float*)&GameState->R.Sun.AmbientColor);
