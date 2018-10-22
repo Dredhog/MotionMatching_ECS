@@ -284,23 +284,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         // SUN DATA
         {
+          GameState->R.ShadowCenterOffset          = 5.0f;
           GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
           GameState->R.ClearDirectionalShadows     = false;
 
-          GameState->R.SunPosition      = { 0.0f, 10.0f, -10.0f };
-          GameState->R.SunDirection     = -GameState->R.SunPosition;
-          GameState->R.SunNearClipPlane = 0.01f;
-          GameState->R.SunFarClipPlane  = 50.0f;
-          GameState->R.SunPlaneSize     = 10.0f;
-          UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
-                    GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane,
-                    GameState->R.SunPlaneSize);
-          GameState->R.ShowSun = false;
+          GameState->R.Sun.Rotation      = { 0.0f, 0.0f, 0.0f };
+          GameState->R.Sun.Radius        = 10.0f;
+          GameState->R.Sun.Position      = { 0.0f, 0.0f, 0.0f };
+          GameState->R.Sun.Center        = { 0.0f, 0.0f, 0.0f };
+          GameState->R.Sun.Direction     = { 0.0f, 0.0f, 0.0f };
+          GameState->R.Sun.NearClipPlane = 0.01f;
+          GameState->R.Sun.FarClipPlane  = 50.0f;
+          GameState->R.Sun.PlaneSize     = 10.0f;
+          GameState->R.Sun.Show          = false;
 
-          GameState->R.SunAmbientColor  = { 0.3f, 0.3f, 0.3f };
-          GameState->R.SunDiffuseColor  = { 0.7f, 0.7f, 0.7f };
-          GameState->R.SunSpecularColor = { 0.7f, 0.7f, 0.7f };
+          GameState->R.Sun.CenterOffsetFromCamera = false;
+
+          GameState->R.Sun.AmbientColor  = { 0.3f, 0.3f, 0.3f };
+          GameState->R.Sun.DiffuseColor  = { 0.7f, 0.7f, 0.7f };
+          GameState->R.Sun.SpecularColor = { 0.7f, 0.7f, 0.7f };
+          UpdateSun(&GameState->R.Sun, GameState->R.ShadowCenterOffset * GameState->Camera.Forward,
+                    GameState->Camera.ViewMatrix);
         }
 
         GameState->R.LightPosition        = { 0.7f, 1, 1 };
@@ -512,8 +517,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
-  UpdateSun(&GameState->R.SunVPMatrix, &GameState->R.SunDirection, GameState->R.SunPosition,
-            GameState->R.SunNearClipPlane, GameState->R.SunFarClipPlane, GameState->R.SunPlaneSize);
+  UpdateSun(&GameState->R.Sun, GameState->R.ShadowCenterOffset * GameState->Camera.Forward,
+            GameState->Camera.ViewMatrix);
 
   // Dynamics
   g_Force                 = GameState->Force;
@@ -566,12 +571,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Debug::PushGizmo(&GameState->Camera, &Mat4LightPosition);
   }
 
-  if(GameState->R.ShowSun)
+  if(GameState->R.Sun.Show)
   {
-    mat4 Mat4SunPosition = Math::Mat4Translate(GameState->R.SunPosition);
+    mat4 Mat4SunPosition = Math::Mat4Translate(GameState->R.Sun.Position);
     Debug::PushGizmo(&GameState->Camera, &Mat4SunPosition);
-    Debug::PushLine(GameState->R.SunPosition, GameState->R.SunPosition + GameState->R.SunDirection);
-    Debug::PushWireframeSphere(GameState->R.SunPosition + GameState->R.SunDirection, 0.05f);
+    Debug::PushLine(GameState->R.Sun.Position,
+                    GameState->R.Sun.Position + GameState->R.Sun.Direction);
+    Debug::PushWireframeSphere(GameState->R.Sun.Position + GameState->R.Sun.Direction, 0.05f);
   }
 
   GameState->R.CumulativeTime += Input->dt;
@@ -864,7 +870,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     uint32_t SimpleDepthShaderID = GameState->Resources.GetShader(GameState->R.ShaderSimpleDepth);
     glUseProgram(SimpleDepthShaderID);
     glUniformMatrix4fv(glGetUniformLocation(SimpleDepthShaderID, "mat_sun_vp"), 1, GL_FALSE,
-                       GameState->R.SunVPMatrix.e);
+                       GameState->R.Sun.VPMatrix.e);
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.DepthMapFBO);
     glClear(GL_DEPTH_BUFFER_BIT);

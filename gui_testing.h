@@ -431,7 +431,7 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
                            5.0f);
 
             UI::SliderFloat("Shininess", &CurrentMaterial->Toon.Shininess, 1.0f, 512.0f);
-            UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 3, 10);
+            UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 2, 10);
           }
           break;
           case SHADER_Color:
@@ -1067,22 +1067,24 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
     UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
 
-    UI::Checkbox("Show Sun", &GameState->R.ShowSun);
-    UI::DragFloat3("Diffuse", &GameState->R.SunDiffuseColor.X, 0, 1, 5);
-    UI::DragFloat3("Specular", &GameState->R.SunSpecularColor.X, 0, 1, 5);
-    UI::DragFloat3("Ambient", &GameState->R.SunAmbientColor.X, 0, 1, 5);
-    UI::DragFloat3("Sun Position", &GameState->R.SunPosition.X, -INFINITY, INFINITY, 5);
-    UI::DragFloat3("Sun Directon", &GameState->R.SunDirection.X, -INFINITY, INFINITY, 5);
+    UI::Checkbox("Show Sun", &GameState->R.Sun.Show);
+    UI::DragFloat3("Diffuse", &GameState->R.Sun.DiffuseColor.X, 0, 1, 5);
+    UI::DragFloat3("Specular", &GameState->R.Sun.SpecularColor.X, 0, 1, 5);
+    UI::DragFloat3("Ambient", &GameState->R.Sun.AmbientColor.X, 0, 1, 5);
 
-    if(UI::Button("Reset Sun Direction"))
+    UI::SliderFloat("Sun X Angle", &GameState->R.Sun.Rotation.Y, -180.0f, 180.0f);
+    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.Rotation.X, -180.0f, 180.0f);
+    UI::SliderFloat("Sun Radius", &GameState->R.Sun.Radius, 0.01f, 100.0f);
+    UI::Checkbox("Center Offset From Camera", &GameState->R.Sun.CenterOffsetFromCamera);
+    if(GameState->R.Sun.CenterOffsetFromCamera)
     {
-      GameState->R.SunDirection = -GameState->R.SunPosition;
+      UI::SliderFloat("Shadow Center Offset", &GameState->R.ShadowCenterOffset, 1.0f, 100.0f);
     }
 
-    UI::SliderFloat("Sun Near Clip Plane", &GameState->R.SunNearClipPlane, 0.01f, 500);
-    UI::SliderFloat("Sun Far Clip Plane", &GameState->R.SunFarClipPlane,
-                    GameState->R.SunNearClipPlane, 100);
-    UI::SliderFloat("Sun Plane Size", &GameState->R.SunPlaneSize, 1.0f, 100.0f);
+    UI::SliderFloat("Sun Near Clip Plane", &GameState->R.Sun.NearClipPlane, 0.01f, 500);
+    UI::SliderFloat("Sun Far Clip Plane", &GameState->R.Sun.FarClipPlane,
+                    GameState->R.Sun.NearClipPlane, 100);
+    UI::SliderFloat("Sun Plane Size", &GameState->R.Sun.PlaneSize, 1.0f, 100.0f);
 
     UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawDepthMap);
     UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
