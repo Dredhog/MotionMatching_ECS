@@ -46,6 +46,7 @@ enum pp_type
   POST_Grayscale    = 1 << 2,
   POST_NightVision  = 1 << 3,
   POST_MotionBlur   = 1 << 4,
+  POST_EdgeOutline  = 1 << 5,
 
   POST_EnumCount,
 };
@@ -199,6 +200,7 @@ struct render_data
   rid ShaderTest;
   rid ShaderParallax;
   rid ShaderSimpleDepth;
+  rid ShaderSunDepth;
   rid ShaderSSAO;
   rid ShaderWavy;
 
@@ -210,6 +212,7 @@ struct render_data
   rid PostNightVision;
   rid PostDepthOfField;
   rid PostMotionBlur;
+  rid PostEdgeOutline;
 
   cubemap Cubemap;
 
@@ -235,11 +238,18 @@ struct render_data
   vec3     SSAOSampleVectors[SSAO_SAMPLE_VECTOR_COUNT];
   float    SSAOSamplingRadius;
 
-  // Depth Framebuffer for shadow mapping
   rid      RenderDepthMap;
-  bool     DrawDepthMap;
-  uint32_t DepthMapFBO;
-  uint32_t DepthMapTexture;
+  rid      RenderShadowMap;
+
+  // Screen space depth buffer
+  bool DrawDepthBuffer;
+  uint32_t DepthBufferFBO;
+  uint32_t DepthBuffer;
+
+  // Depth Framebuffer for shadow mapping
+  bool     DrawShadowMap;
+  uint32_t ShadowMapFBO;
+  uint32_t ShadowMapTexture;
 
   // TODO(Rytis by Lukas' recommendation :D) make array names plural
   // Temporary stuff for post-processing

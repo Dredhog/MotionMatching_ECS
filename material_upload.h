@@ -82,7 +82,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     uint32_t NormalTexture = (Material->Phong.Flags & PHONG_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Phong.NormalMapID)
                                : 0;
-    uint32_t ShadowTexture = GameState->R.DepthMapTexture;
+    uint32_t ShadowTexture = GameState->R.ShadowMapTexture;
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, DiffuseTexture);
@@ -204,6 +204,10 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       //<TODO(Lukas) make constant things upload only on shader change>
       // TODO(Lukas) Change dt for time uniform to a cumulative time
       glUniform1f(glGetUniformLocation(CurrentShaderID, "u_Time"), GameState->R.CumulativeTime);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraNearPlane"), Camera->NearClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraFarPlane"), Camera->FarClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunNearPlane"), GameState->R.Sun.NearClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunFarPlane"), GameState->R.Sun.FarClipPlane);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,
                    (float*)&GameState->R.LightPosition);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.ambient"), 1,
@@ -239,7 +243,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       {
         assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
         glActiveTexture(CurrentGLTextureBindIndex);
-        glBindTexture(GL_TEXTURE_2D, GameState->R.DepthMapTexture);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTexture);
         glUniform1i(glGetUniformLocation(CurrentShaderID, "shadowMap"),
                     CurrentGLTextureBindIndex - GL_TEXTURE0);
 

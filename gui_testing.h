@@ -996,14 +996,17 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool Grayscale    = GameState->R.PPEffects & POST_Grayscale;
     bool NightVision  = GameState->R.PPEffects & POST_NightVision;
     bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
+    bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
 
     UI::Checkbox("Blur", &Blur);
     UI::Checkbox("DepthOfField", &DepthOfField);
     UI::Checkbox("MotionBlur", &MotionBlur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
+    UI::Checkbox("EdgeOutline", &EdgeOutline);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
     UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.001f, 0.1f);
+    UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
 
 #if 0
     if(GameState->R.RenderSSAO)
@@ -1057,6 +1060,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     {
       GameState->R.PPEffects &= ~POST_NightVision;
     }
+
+    if(EdgeOutline)
+    {
+      GameState->R.PPEffects |= POST_EdgeOutline;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_EdgeOutline;
+    }
   }
 
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
@@ -1086,7 +1098,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
                     GameState->R.Sun.NearClipPlane, 100);
     UI::SliderFloat("Sun Plane Size", &GameState->R.Sun.PlaneSize, 1.0f, 100.0f);
 
-    UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawDepthMap);
+    UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawShadowMap);
     UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
     if(UI::Button("Recompute Directional Shadows"))
     {
