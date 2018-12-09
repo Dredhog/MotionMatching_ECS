@@ -213,6 +213,7 @@ struct render_data
   rid PostDepthOfField;
   rid PostMotionBlur;
   rid PostEdgeOutline;
+  rid PostEdgeBlend;
 
   cubemap Cubemap;
 
@@ -245,6 +246,12 @@ struct render_data
   bool DrawDepthBuffer;
   uint32_t DepthBufferFBO;
   uint32_t DepthBuffer;
+  uint32_t DepthTextureFBO;
+  uint32_t DepthTextureRBO;
+  uint32_t DepthTexture;
+  uint32_t EdgeOutlineFBO;
+  uint32_t EdgeOutlineRBO;
+  uint32_t EdgeOutlineTexture;
 
   // Depth Framebuffer for shadow mapping
   bool     DrawShadowMap;
