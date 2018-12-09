@@ -1118,9 +1118,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // debug drawings *should* be untouched.
 
   {
-    uint32_t CurrentFramebuffer = GameState->R.CurrentFramebuffer;
-    uint32_t CurrentTexture     = GameState->R.CurrentTexture;
-
     glDisable(GL_DEPTH_TEST);
 
     if(GameState->R.PPEffects)
@@ -1138,6 +1135,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glActiveTexture(GL_TEXTURE0);
       }*/
 
+			//TODO(Lukas) Make FXAA more efficient by using fewer more spaced-out luminance samples and
+			//a seperate precomputed luminance texture for input
       if(GameState->R.PPEffects & POST_FXAA)
       {
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
@@ -1147,6 +1146,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         glUseProgram(ShaderFXAAID);
 
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
         glActiveTexture(GL_TEXTURE0);
       }
@@ -1198,7 +1198,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           {
             int tex_index = 2;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTextures[CurrentTexture]);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTextures[GameState->R.CurrentTexture]);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_InputMap"), tex_index);
           }
           {
@@ -1288,9 +1288,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
     glEnable(GL_DEPTH_TEST);
-
-    GameState->R.CurrentFramebuffer = CurrentFramebuffer;
-    GameState->R.CurrentTexture     = CurrentTexture;
   }
 
   // ------------------DEBUG------------------
