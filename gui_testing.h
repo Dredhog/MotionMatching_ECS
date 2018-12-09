@@ -991,6 +991,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 {
   if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessingSettings))
   {
+    bool HDRTonemap   = GameState->R.PPEffects & POST_HDRTonemap;
+    bool Bloom        = GameState->R.PPEffects & POST_Bloom;
     bool FXAA         = GameState->R.PPEffects & POST_FXAA;
     bool Blur         = GameState->R.PPEffects & POST_Blur;
     bool DepthOfField = GameState->R.PPEffects & POST_DepthOfField;
@@ -998,6 +1000,18 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool NightVision  = GameState->R.PPEffects & POST_NightVision;
     bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
 
+    UI::Checkbox("HDRTonemap", &HDRTonemap);
+    if(HDRTonemap)
+    {
+      UI::SameLine();
+      UI::Checkbox("Bloom", &Bloom);
+      UI::SameLine();
+      UI::NewLine();
+    }
+    else
+    {
+      Bloom = false;
+    }
     UI::Checkbox("FXAA", &FXAA);
     UI::Checkbox("Blur", &Blur);
     UI::Checkbox("DepthOfField", &DepthOfField);
@@ -1006,6 +1020,24 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("NightVision", &NightVision);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
 
+    if(HDRTonemap)
+    {
+      GameState->R.PPEffects |= POST_HDRTonemap;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_HDRTonemap;
+    }
+
+    if(Bloom)
+    {
+      GameState->R.PPEffects |= POST_Bloom;
+      UI::SliderFloat("Bloom Threshold", &GameState->R.BloomLuminanceThreshold, 0.01f, 5.0f);
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_Bloom;
+    }
 
     if(FXAA)
     {

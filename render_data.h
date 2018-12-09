@@ -1,6 +1,7 @@
 #pragma once
 
 #define FRAMEBUFFER_MAX_COUNT 3
+#define HDR_FRAMEBUFFER_MAX_COUNT 3
 
 #define BLUR_KERNEL_SIZE 11
 
@@ -47,6 +48,8 @@ enum pp_type
   POST_NightVision  = 1 << 3,
   POST_MotionBlur   = 1 << 4,
   POST_FXAA         = 1 << 5,
+  POST_HDRTonemap   = 1 << 6,
+  POST_Bloom        = 1 << 7,
 
   POST_EnumCount,
 };
@@ -211,6 +214,9 @@ struct render_data
   rid PostNightVision;
   rid PostDepthOfField;
   rid PostMotionBlur;
+  rid PostBrightRegion;
+  rid PostBloomBlur;
+  rid PostBloomTonemap;
   rid PostFXAA;
 
   cubemap Cubemap;
@@ -230,6 +236,9 @@ struct render_data
 
   float CumulativeTime;
 
+  // Bloom
+  float BloomLuminanceThreshold;
+
   // SSAO
   uint32_t SSAOFBO;
   uint32_t SSAOTexID;
@@ -243,7 +252,6 @@ struct render_data
   uint32_t DepthMapFBO;
   uint32_t DepthMapTexture;
 
-  // TODO(Rytis by Lukas' recommendation :D) make array names plural
   // Temporary stuff for post-processing
   // framebuffers Screen;
   uint32_t ScreenQuadVAO;
@@ -253,6 +261,11 @@ struct render_data
   uint32_t ScreenTextures[FRAMEBUFFER_MAX_COUNT];
   uint32_t CurrentFramebuffer;
   uint32_t CurrentTexture;
+
+  // HDR framebuffers
+  uint32_t HdrFBOs[HDR_FRAMEBUFFER_MAX_COUNT];
+  uint32_t HdrTextures[HDR_FRAMEBUFFER_MAX_COUNT];
+  uint32_t HdrRBOs[HDR_FRAMEBUFFER_MAX_COUNT];
 
   // Directional shadow mapping
   float ShadowCenterOffset;

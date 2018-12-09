@@ -102,6 +102,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.PostDepthOfField = GameState->Resources.RegisterShader("shaders/depth_of_field");
       GameState->R.PostMotionBlur   = GameState->Resources.RegisterShader("shaders/motion_blur");
       GameState->R.PostFXAA         = GameState->Resources.RegisterShader("shaders/fxaa");
+      GameState->R.PostBrightRegion = GameState->Resources.RegisterShader("shaders/bright_region");
+      GameState->R.PostBloomBlur    = GameState->Resources.RegisterShader("shaders/bloom_blur");
+      GameState->R.PostBloomTonemap =
+        GameState->Resources.RegisterShader("shaders/bloom_combine_tonemap");
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
@@ -239,6 +243,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         GameState->R.DrawDepthMap = false;
         GenerateDepthFramebuffer(&GameState->R.DepthMapFBO, &GameState->R.DepthMapTexture);
+      }
+
+      // FRAMEBUFFERS FOR HDF/BLOOM
+      {
+
+        GenerateFloatingPointFBO(&GameState->R.HdrFBOs[0], &GameState->R.HdrTextures[0],
+                                 &GameState->R.HdrRBOs[0]);
+        GenerateFloatingPointFBO(&GameState->R.HdrFBOs[1], &GameState->R.HdrTextures[1],
+                                 &GameState->R.HdrRBOs[1]);
+        GenerateFloatingPointFBO(&GameState->R.HdrFBOs[2], &GameState->R.HdrTextures[2],
+                                 &GameState->R.HdrRBOs[2]);
       }
 
       // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
@@ -930,8 +945,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   {
-		//TODO(Lukas): Change this fbo to one with a 16 bit floating point texture for HDR rendering
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
+    // TODO(Lukas): Change this fbo to one with a 16 bit floating point texture for HDR rendering
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[0]);
+    // glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1071,7 +1087,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   // RENDERING MATERIAL PREVIEW TO TEXTURE
-	//TODO(Lukas) only render preview if material uses time or parameters were changed
+  // TODO(Lukas) only render preview if material uses time or parameters were changed
   if(GameState->CurrentMaterialID.Value > 0)
   {
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
@@ -1120,23 +1136,130 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     glDisable(GL_DEPTH_TEST);
 
-    if(GameState->R.PPEffects)
+    // NOTE(Lukas): HDR tonemapping and bloom use HDR buffers which are floating point unlike the
+    // remaining post effect stack
+    if(GameState->R.PPEffects & POST_HDRTonemap)
     {
-      /*if(GameState->R.PPEffects & (POST_HDR | POST_Bloom))
+      if(GameState->R.PPEffects & POST_Bloom)
       {
-        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        // Outputting Bright regions to HDR texture
+        {
+          // Reading from HdrFBO index 0 and writing to index 1
+          glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[1]);
+          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+          GLuint ShaderBrighRegionFilterID =
+            GameState->Resources.GetShader(GameState->R.PostBrightRegion);
+
+          glUseProgram(ShaderBrighRegionFilterID);
+          glUniform1f(glGetUniformLocation(ShaderBrighRegionFilterID, "u_BloomLuminanceThreshold"),
+                      GameState->R.BloomLuminanceThreshold);
+          {
+            int tex_index = 0;
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[0]); // HDR scene
+            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "ScreenTex"), tex_index);
+            DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+          }
+
+          glActiveTexture(GL_TEXTURE0);
+          glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        for(int i = 0; i < 1; i++)
+        {
+          // Horizontal blur bright regions
+          {
+            // Reading from HdrFBO index 1 and writing to index 2
+            glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[2]);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            GLuint ShaderBrighRegionFilterID =
+              GameState->Resources.GetShader(GameState->R.PostBloomBlur);
+            glUseProgram(ShaderBrighRegionFilterID);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[1]); // HDR scene
+            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "u_Horizontal"), 1);
+            DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+          }
+          // Vertical blur bright regions
+          {
+            // Reading from HdrFBO index 2 and writing to index 1
+            glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[1]);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            GLuint ShaderBrighRegionFilterID =
+              GameState->Resources.GetShader(GameState->R.PostBloomBlur);
+            glUseProgram(ShaderBrighRegionFilterID);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[2]);
+            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "u_Horizontal"), 0);
+            DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+          }
+        }
+      }
+
+      // Applying bloom and tonemapping (This writes to the LDR CurrentFrameBuffer FBO)
+      {
+        glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        GLuint ShaderHDRID = GameState->Resources.GetShader(GameState->R.PostHdrBloom);
+        GLuint ShaderBloomTonemapID = GameState->Resources.GetShader(GameState->R.PostBloomTonemap);
+        glUseProgram(ShaderBloomTonemapID);
 
-        glUseProgram(ShaderHdrBloomID);
+        {
+          int tex_index = 0;
+          glActiveTexture(GL_TEXTURE0 + tex_index);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[0]); // HDR screen input
+          glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ScreenTex"), tex_index);
+        }
+
+        if(GameState->R.PPEffects & POST_Bloom)
+        {
+          {
+            int tex_index = 3;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[1]); // HDR Bloom
+            glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_BloomTex"), tex_index);
+          }
+          glUniform1f(glGetUniformLocation((ShaderBloomTonemapID), "u_ApplyBloom"), 1.0f);
+        }
+        else
+        {
+          glUniform1f(glGetUniformLocation((ShaderBloomTonemapID), "u_ApplyBloom"), 0.0f);
+        }
 
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
-        glActiveTexture(GL_TEXTURE0);
-      }*/
 
-			//TODO(Lukas) Make FXAA more efficient by using fewer more spaced-out luminance samples and
-			//a seperate precomputed luminance texture for input
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+      }
+    }
+    else // Transitions bufferst to LDR when HDR Tonemapping is off
+    {
+      glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      GLuint PostDefaultShaderID = GameState->Resources.GetShader(GameState->R.PostDefaultShader);
+      glUseProgram(PostDefaultShaderID);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[0]);
+
+      DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+      glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    if(GameState->R.PPEffects)
+    {
+
+      // TODO(Lukas) Make FXAA more efficient by using fewer more spaced-out luminance samples and
+      // a seperate precomputed luminance texture for input
       if(GameState->R.PPEffects & POST_FXAA)
       {
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
@@ -1148,7 +1271,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
-        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
       }
 
       if(GameState->R.PPEffects & (POST_Blur | POST_DepthOfField))
@@ -1258,11 +1381,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
-    }
-    else
-    {
-      GLuint PostDefaultShaderID = GameState->Resources.GetShader(GameState->R.PostDefaultShader);
-      glUseProgram(PostDefaultShaderID);
     }
 
     if(GameState->R.DrawDepthMap)
