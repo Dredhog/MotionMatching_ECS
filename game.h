@@ -246,13 +246,10 @@ inline void
 GenerateScreenQuad(uint32_t* VAO, uint32_t* VBO)
 {
   // Create VAO and VBO for screen quad
-                            // Position   // TexCoord
-  float QuadVertices[] = { -1.0f,  1.0f,  0.0f, 1.0f,
-                           -1.0f, -1.0f,  0.0f, 0.0f,
-                            1.0f, -1.0f,  1.0f, 0.0f,
-                           -1.0f,  1.0f,  0.0f, 1.0f,
-                            1.0f, -1.0f,  1.0f, 0.0f,
-                            1.0f,  1.0f,  1.0f, 1.0f };
+  // Position   // TexCoord
+  float QuadVertices[] = { -1.0f, 1.0f,  0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+                           1.0f,  -1.0f, 1.0f, 0.0f, -1.0f, 1.0f,  0.0f, 1.0f,
+                           1.0f,  -1.0f, 1.0f, 0.0f, 1.0f,  1.0f,  1.0f, 1.0f };
 
   glGenVertexArrays(1, VAO);
   glGenBuffers(1, VBO);
@@ -342,6 +339,8 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextu
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RG, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, *VelocityTextureID,
                            0);
   }
@@ -429,24 +428,27 @@ UpdateSun(sun* Sun, vec3 Center, mat4 CameraViewMatrix)
 {
   if(Sun->CenterOffsetFromCamera)
   {
-      mat4 InvViewMat = Math::InvMat4(CameraViewMatrix);
-      Sun->Center = Math::Vec4ToVec3(Math::MulMat4Vec4(InvViewMat, Math::Vec4(Center, 1.0f)));
+    mat4 InvViewMat = Math::InvMat4(CameraViewMatrix);
+    Sun->Center     = Math::Vec4ToVec3(Math::MulMat4Vec4(InvViewMat, Math::Vec4(Center, 1.0f)));
   }
   else
   {
-      Sun->Center = { 0.0f, 0.0f, 0.0f };
+    Sun->Center = { 0.0f, 0.0f, 0.0f };
   }
 
   Sun->Rotation.X = ClampFloat(-180.0f, Sun->Rotation.X, 180.0f);
   Sun->Rotation.Y = ClampFloat(-180.0f, Sun->Rotation.Y, 180.0f);
   Sun->Rotation.Z = 0.0f;
 
-  Sun->Direction = Math::Normalized(Math::MulMat3Vec3(Math::Mat4ToMat3(Math::Mat4Rotate(Sun->Rotation)), { 0.0f, 0.0f, -1.0f }));
+  Sun->Direction = Math::Normalized(
+    Math::MulMat3Vec3(Math::Mat4ToMat3(Math::Mat4Rotate(Sun->Rotation)), { 0.0f, 0.0f, -1.0f }));
   Sun->Position = Sun->Center - Sun->Direction * Sun->Radius;
 
-  mat4 ProjectionMatrix = Math::Mat4Orthogonal(-Sun->PlaneSize, Sun->PlaneSize, -Sun->PlaneSize, Sun->PlaneSize, Sun->NearClipPlane, Sun->FarClipPlane);
-  mat4 ViewMatrix       = Math::Mat4Camera(Sun->Position, Sun->Direction, vec3{ 0.0f, 1.0f, 0.0f });
-  Sun->VPMatrix         = Math::MulMat4(ProjectionMatrix, ViewMatrix);
+  mat4 ProjectionMatrix =
+    Math::Mat4Orthogonal(-Sun->PlaneSize, Sun->PlaneSize, -Sun->PlaneSize, Sun->PlaneSize,
+                         Sun->NearClipPlane, Sun->FarClipPlane);
+  mat4 ViewMatrix = Math::Mat4Camera(Sun->Position, Sun->Direction, vec3{ 0.0f, 1.0f, 0.0f });
+  Sun->VPMatrix   = Math::MulMat4(ProjectionMatrix, ViewMatrix);
 }
 
 //-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------

@@ -179,7 +179,7 @@ struct gui_window
   vec3 ScrollNorm;
   vec3 ScrollRange;
 
-  fixed_array<quad_instance, 100> DrawArray;
+  fixed_array<quad_instance, 200> DrawArray;
 
   ui_id
   GetID(const char* Label) const

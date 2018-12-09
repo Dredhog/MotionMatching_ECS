@@ -101,6 +101,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.RenderDepthMap = GameState->Resources.RegisterShader("shaders/render_depth_map");
       GameState->R.PostDepthOfField = GameState->Resources.RegisterShader("shaders/depth_of_field");
       GameState->R.PostMotionBlur   = GameState->Resources.RegisterShader("shaders/motion_blur");
+      GameState->R.PostFXAA         = GameState->Resources.RegisterShader("shaders/fxaa");
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
@@ -246,8 +247,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         for(uint32_t i = 0; i < FRAMEBUFFER_MAX_COUNT; ++i)
         {
-          GenerateFramebuffer(&GameState->R.ScreenFBO[i], &GameState->R.ScreenRBO[i],
-                              &GameState->R.ScreenTexture[i]);
+          GenerateFramebuffer(&GameState->R.ScreenFBOs[i], &GameState->R.ScreenRBOs[i],
+                              &GameState->R.ScreenTextures[i]);
         }
 
         GameState->R.CurrentFramebuffer = 0;
@@ -295,7 +296,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // SUN DATA
         {
           GameState->R.ShadowCenterOffset          = 5.0f;
-          GameState->R.RealTimeDirectionalShadows  = true;
+          GameState->R.RealTimeDirectionalShadows  = false;
           GameState->R.RecomputeDirectionalShadows = false;
           GameState->R.ClearDirectionalShadows     = false;
 
@@ -328,7 +329,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         // SSAO
         {
-          GameState->R.RenderSSAO         = true;
+          GameState->R.RenderSSAO         = false;
           GameState->R.SSAOSamplingRadius = 0.05f;
 #if 0
           // hemispherical vector kernel initialization
@@ -853,14 +854,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
         glUseProgram(PostBlurHShaderID);
 
-        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
         glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
                      GameState->R.PostBlurKernel);
 
-        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
         GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
@@ -929,7 +930,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   {
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBO[GameState->R.CurrentFramebuffer]);
+		//TODO(Lukas): Change this fbo to one with a 16 bit floating point texture for HDR rendering
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1069,6 +1071,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   // RENDERING MATERIAL PREVIEW TO TEXTURE
+	//TODO(Lukas) only render preview if material uses time or parameters were changed
   if(GameState->CurrentMaterialID.Value > 0)
   {
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
@@ -1122,6 +1125,32 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     if(GameState->R.PPEffects)
     {
+      /*if(GameState->R.PPEffects & (POST_HDR | POST_Bloom))
+      {
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        GLuint ShaderHDRID = GameState->Resources.GetShader(GameState->R.PostHdrBloom);
+
+        glUseProgram(ShaderHdrBloomID);
+
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+        glActiveTexture(GL_TEXTURE0);
+      }*/
+
+      if(GameState->R.PPEffects & POST_FXAA)
+      {
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        GLuint ShaderFXAAID = GameState->Resources.GetShader(GameState->R.PostFXAA);
+
+        glUseProgram(ShaderFXAAID);
+
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+        glActiveTexture(GL_TEXTURE0);
+      }
+
       if(GameState->R.PPEffects & (POST_Blur | POST_DepthOfField))
       {
         if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
@@ -1134,14 +1163,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
         glUseProgram(PostBlurHShaderID);
 
-        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
         glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
                      GameState->R.PostBlurKernel);
 
-        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
         GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
@@ -1153,7 +1182,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         if(GameState->R.PPEffects & POST_DepthOfField)
         {
-          BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+          BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
           glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
           GLuint ShaderDepthOfFieldID =
@@ -1169,13 +1198,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           {
             int tex_index = 2;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTexture[CurrentTexture]);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTextures[CurrentTexture]);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_InputMap"), tex_index);
           }
           {
             int tex_index = 3;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+            BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_BlurredMap"), tex_index);
           }
 
@@ -1186,7 +1215,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       if(GameState->R.PPEffects & POST_MotionBlur)
       {
-        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         GLuint ShaderMotionBlurID = GameState->Resources.GetShader(GameState->R.PostMotionBlur);
@@ -1201,7 +1230,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         {
           int tex_index = 2;
           glActiveTexture(GL_TEXTURE0 + tex_index);
-          BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+          BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
           glUniform1i(glGetUniformLocation(ShaderMotionBlurID, "u_InputMap"), tex_index);
         }
 
@@ -1214,8 +1243,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostGrayscaleShaderID = GameState->Resources.GetShader(GameState->R.PostGrayscale);
         glUseProgram(PostGrayscaleShaderID);
 
-        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
-        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
 
@@ -1225,8 +1254,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->Resources.GetShader(GameState->R.PostNightVision);
         glUseProgram(PostNightVisionShaderID);
 
-        BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
-        BindTextureAndSetNext(GameState->R.ScreenTexture, &GameState->R.CurrentTexture);
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
     }
@@ -1240,7 +1269,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       GLuint RenderDepthMapShaderID = GameState->Resources.GetShader(GameState->R.RenderDepthMap);
       glUseProgram(RenderDepthMapShaderID);
-      BindNextFramebuffer(GameState->R.ScreenFBO, &GameState->R.CurrentFramebuffer);
+      BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
 
       int TexIndex = 1;
 
@@ -1255,7 +1284,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTexture[GameState->R.CurrentTexture]);
+    glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTextures[GameState->R.CurrentTexture]);
     DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
     glEnable(GL_DEPTH_TEST);

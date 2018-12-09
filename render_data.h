@@ -46,6 +46,7 @@ enum pp_type
   POST_Grayscale    = 1 << 2,
   POST_NightVision  = 1 << 3,
   POST_MotionBlur   = 1 << 4,
+  POST_FXAA         = 1 << 5,
 
   POST_EnumCount,
 };
@@ -210,6 +211,7 @@ struct render_data
   rid PostNightVision;
   rid PostDepthOfField;
   rid PostMotionBlur;
+  rid PostFXAA;
 
   cubemap Cubemap;
 
@@ -246,17 +248,17 @@ struct render_data
   // framebuffers Screen;
   uint32_t ScreenQuadVAO;
   uint32_t ScreenQuadVBO;
-  uint32_t ScreenFBO[FRAMEBUFFER_MAX_COUNT];
-  uint32_t ScreenRBO[FRAMEBUFFER_MAX_COUNT];
-  uint32_t ScreenTexture[FRAMEBUFFER_MAX_COUNT];
+  uint32_t ScreenFBOs[FRAMEBUFFER_MAX_COUNT];
+  uint32_t ScreenRBOs[FRAMEBUFFER_MAX_COUNT];
+  uint32_t ScreenTextures[FRAMEBUFFER_MAX_COUNT];
   uint32_t CurrentFramebuffer;
   uint32_t CurrentTexture;
 
   // Directional shadow mapping
   float ShadowCenterOffset;
-  bool RealTimeDirectionalShadows;
-  bool RecomputeDirectionalShadows;
-  bool ClearDirectionalShadows;
+  bool  RealTimeDirectionalShadows;
+  bool  RecomputeDirectionalShadows;
+  bool  ClearDirectionalShadows;
 
   // Sun
   sun Sun;
