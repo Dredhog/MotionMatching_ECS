@@ -108,7 +108,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
-      GameState->R.ShaderSimpleDepth = GameState->Resources.RegisterShader("shaders/simple_depth");
       GameState->R.ShaderSunDepth = GameState->Resources.RegisterShader("shaders/sun_depth");
 
       GLuint MissingShaderID = Shader::CheckedLoadCompileFreeShader(GameState->TemporaryMemStack,
@@ -239,10 +238,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GenerateSSAOFrameBuffer(&GameState->R.SSAOFBO, &GameState->R.SSAOTexID);
       }
 
-      // FRAMEBUFFER CREATION FOR DEPTH BUFFER AND EDGE OUTLINE
+      // FRAMEBUFFER CREATION FOR DEPTH BUFFER RENDERING AND EDGE OUTLINE
       {
         GameState->R.DrawDepthBuffer = false;
-        GenerateDepthFramebuffer(&GameState->R.DepthBufferFBO, &GameState->R.DepthBuffer);
         GenerateFramebuffer(&GameState->R.DepthTextureFBO, &GameState->R.DepthTextureRBO, &GameState->R.DepthTexture);
         GenerateFramebuffer(&GameState->R.EdgeOutlineFBO, &GameState->R.EdgeOutlineRBO, &GameState->R.EdgeOutlineTexture);
       }
@@ -807,6 +805,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // RENDER DEPTH INFORMATION TO TEXTURE
+    {
+      GLuint RenderDepthMapShaderID = GameState->Resources.GetShader(GameState->R.RenderDepthMap);
+      glUseProgram(RenderDepthMapShaderID);
+      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
+      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
+
+      glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.DepthTextureFBO);
+      glClear(GL_DEPTH_BUFFER_BIT);
+
+      {
+        int TexIndex = 1;
+
+        glActiveTexture(GL_TEXTURE0 + TexIndex);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferDepthTexID);
+        glUniform1i(glGetUniformLocation(RenderDepthMapShaderID, "DepthMap"), TexIndex);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+        glActiveTexture(GL_TEXTURE0);
+      }
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
   }
 
   // Saving previous frame entity MVP matrix (USED ONLY FOR MOTION BLUR)
@@ -884,41 +904,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                      GameState->R.PostBlurKernel);
       }
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  }
-
-  // DEPTH PASS
-  {
-    uint32_t DepthPassShaderID = GameState->Resources.GetShader(GameState->R.ShaderSimpleDepth);
-    glUseProgram(DepthPassShaderID);
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.DepthBufferFBO);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glDepthFunc(GL_LESS);
-
-    // TODO(Lukas) SORT(MeshInstances,  ByMesh);
-    {
-      Render::mesh* PreviousMesh = nullptr;
-      for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
-      {
-        Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
-        int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
-
-        if(CurrentMesh != PreviousMesh)
-        {
-          glBindVertexArray(CurrentMesh->VAO);
-          PreviousMesh = CurrentMesh;
-        }
-
-        // TODO(Lukas) Add logic for bone matrix submission
-
-        glUniformMatrix4fv(glGetUniformLocation(DepthPassShaderID, "mat_mvp"), 1, GL_FALSE,
-                           GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
-        glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
-      }
-      glBindVertexArray(0);
-    }
-
-    glDepthFunc(GL_LEQUAL);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
@@ -1171,24 +1156,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       if(GameState->R.PPEffects & POST_EdgeOutline)
       {
-        GLuint RenderDepthMapShaderID = GameState->Resources.GetShader(GameState->R.RenderDepthMap);
-        glUseProgram(RenderDepthMapShaderID);
-        glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
-        glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.DepthTextureFBO);
-        glClear(GL_DEPTH_BUFFER_BIT);
-
-        {
-          int TexIndex = 1;
-
-          glActiveTexture(GL_TEXTURE0 + TexIndex);
-          glBindTexture(GL_TEXTURE_2D, GameState->R.DepthBuffer);
-          glUniform1i(glGetUniformLocation(RenderDepthMapShaderID, "DepthMap"), TexIndex);
-          DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
-          glActiveTexture(GL_TEXTURE0);
-        }
-
         GLuint PostEdgeOutlineShaderID = GameState->Resources.GetShader(GameState->R.PostEdgeOutline);
         glUseProgram(PostEdgeOutlineShaderID);
         glUniform1f(glGetUniformLocation(PostEdgeOutlineShaderID, "OffsetX"), 1.0 / SCREEN_WIDTH);
@@ -1405,6 +1372,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
     glEnable(GL_DEPTH_TEST);
+
+    GameState->R.CurrentTexture = 0;
+    GameState->R.CurrentFramebuffer = 0;
   }
 
   // ------------------DEBUG------------------

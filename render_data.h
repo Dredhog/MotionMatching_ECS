@@ -200,7 +200,6 @@ struct render_data
   rid ShaderToon;
   rid ShaderTest;
   rid ShaderParallax;
-  rid ShaderSimpleDepth;
   rid ShaderSunDepth;
   rid ShaderSSAO;
   rid ShaderWavy;
@@ -246,8 +245,6 @@ struct render_data
 
   // Screen space depth buffer
   bool DrawDepthBuffer;
-  uint32_t DepthBufferFBO;
-  uint32_t DepthBuffer;
   uint32_t DepthTextureFBO;
   uint32_t DepthTextureRBO;
   uint32_t DepthTexture;
