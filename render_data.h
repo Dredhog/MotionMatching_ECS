@@ -48,6 +48,7 @@ enum pp_type
   POST_MotionBlur   = 1 << 4,
   POST_FXAA         = 1 << 5,
   POST_EdgeOutline  = 1 << 6,
+  POST_SimpleFog    = 1 << 7,
 
   POST_EnumCount,
 };
@@ -215,6 +216,7 @@ struct render_data
   rid PostEdgeOutline;
   rid PostEdgeBlend;
   rid PostFXAA;
+  rid PostSimpleFog;
 
   cubemap Cubemap;
 
@@ -223,6 +225,11 @@ struct render_data
   float PostBlurLastStdDev;
   float PostBlurStdDev;
   float PostBlurKernel[BLUR_KERNEL_SIZE];
+
+  float FogFarDistance;
+  float FogDensity;
+  float FogGradient;
+  vec3 FogColor;
 
   // Geometry/Depth FrameBuffer
   uint32_t GBufferFBO;

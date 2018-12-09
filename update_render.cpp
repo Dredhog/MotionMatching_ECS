@@ -105,6 +105,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.PostEdgeOutline = GameState->Resources.RegisterShader("shaders/edge_outline");
       GameState->R.PostEdgeBlend = GameState->Resources.RegisterShader("shaders/edge_blend");
       GameState->R.PostFXAA         = GameState->Resources.RegisterShader("shaders/fxaa");
+      GameState->R.PostSimpleFog = GameState->Resources.RegisterShader("shaders/post_simple_fog");
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
@@ -1323,6 +1324,39 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
         BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+      }
+
+      if(GameState->R.PPEffects & POST_SimpleFog)
+      {
+        GLuint PostSimpleFogShaderID = GameState->Resources.GetShader(GameState->R.PostSimpleFog);
+        glUseProgram(PostSimpleFogShaderID);
+
+        // glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogFarDistance"), GameState->R.FogFarDistance);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "density"), GameState->R.FogDensity);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "gradient"), GameState->R.FogGradient);
+        glUniform3fv(glGetUniformLocation(PostSimpleFogShaderID, "fogColor"), 1, (float*)&GameState->R.FogColor);
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+
+        {
+          int TexIndex = 1;
+
+          glActiveTexture(GL_TEXTURE0 + TexIndex);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.DepthTexture);
+          glUniform1i(glGetUniformLocation(PostSimpleFogShaderID, "DepthTex"), TexIndex);
+          glActiveTexture(GL_TEXTURE0);
+        }
+        {
+          int TexIndex = 2;
+
+          glActiveTexture(GL_TEXTURE0 + TexIndex);
+          BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+          glUniform1i(glGetUniformLocation(PostSimpleFogShaderID, "ScreenTex"), TexIndex);
+          glActiveTexture(GL_TEXTURE0);
+        }
+
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
     }

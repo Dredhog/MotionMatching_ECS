@@ -998,6 +998,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool NightVision  = GameState->R.PPEffects & POST_NightVision;
     bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
     bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
+    bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
 
     UI::Checkbox("FXAA", &FXAA);
     UI::Checkbox("Blur", &Blur);
@@ -1008,6 +1009,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("EdgeOutline", &EdgeOutline);
     UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
+    UI::Checkbox("SimpleFog", &SimpleFog);
 
     if(FXAA)
     {
@@ -1079,6 +1081,19 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 #if 0
     	UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
 #endif
+    }
+
+    if(SimpleFog)
+    {
+      GameState->R.PPEffects |= POST_SimpleFog;
+      UI::SliderFloat("FogFarDistance", &GameState->R.FogFarDistance, 1.0f, 500.0f);
+      UI::SliderFloat("FogDensity", &GameState->R.FogDensity, 0.01f, 0.3f);
+      UI::SliderFloat("FogGradient", &GameState->R.FogGradient, 1.5f, 10.0f);
+      UI::DragFloat3("FogColor", &GameState->R.FogColor.X, 0.0f, 1.0f, 5);
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_SimpleFog;
     }
   }
 
