@@ -204,8 +204,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       //<TODO(Lukas) make constant things upload only on shader change>
       // TODO(Lukas) Change dt for time uniform to a cumulative time
       glUniform1f(glGetUniformLocation(CurrentShaderID, "u_Time"), GameState->R.CumulativeTime);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraNearPlane"), Camera->NearClipPlane);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraFarPlane"), Camera->FarClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
       glUniform1f(glGetUniformLocation(CurrentShaderID, "sunNearPlane"), GameState->R.Sun.NearClipPlane);
       glUniform1f(glGetUniformLocation(CurrentShaderID, "sunFarPlane"), GameState->R.Sun.FarClipPlane);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,

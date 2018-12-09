@@ -6,7 +6,7 @@ in vec2 TexCoords;
 uniform float OffsetX;
 uniform float OffsetY;
 
-uniform sampler2D DepthMap;
+uniform sampler2D ScreenTex;
 
 void main()
 {
@@ -34,17 +34,17 @@ void main()
         -1, -2, -1
     );
 
-    float SumX = 0;
-    float SumY = 0;
+    float SumX = 0.0;
+    float SumY = 0.0;
 
     for(int i = 0; i < 9; ++i)
     {
-        float Sample = texture(DepthMap, TexCoords.st * Offsets[i]).r;
+        float Sample = texture(ScreenTex, TexCoords.st + Offsets[i]).r;
         SumX += Sample * Gx[i];
         SumY += Sample * Gy[i];
     }
 
     float Magnitude = sqrt(SumX * SumX + SumY * SumY);
 
-    FragColor = vec4(vec3(Magnitude), 1.0);
+    FragColor = vec4(vec3(1.0 - Magnitude), 1.0);
 }
