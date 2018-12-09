@@ -30,6 +30,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glUseProgram(PhongShaderID);
 
     glUniform1i(glGetUniformLocation(PhongShaderID, "flags"), Material->Phong.Flags);
+    glUniform1f(glGetUniformLocation(PhongShaderID, "u_Time"), GameState->R.CumulativeTime);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "material.ambientColor"), 1,
                  (float*)&Material->Phong.AmbientColor);
     glUniform4fv(glGetUniformLocation(PhongShaderID, "material.diffuseColor"), 1,

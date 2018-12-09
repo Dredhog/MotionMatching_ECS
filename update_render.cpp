@@ -367,6 +367,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           }
 #endif
         }
+
+        // INITIAL FOG VALUES
+        {
+          GameState->R.FogDensity = 0.1f;
+          GameState->R.FogGradient = 3.0f;
+          GameState->R.FogColor = 0.5f;
+        }
       }
 
       GameState->DrawCubemap      = true;
@@ -1332,12 +1339,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostSimpleFogShaderID = GameState->Resources.GetShader(GameState->R.PostSimpleFog);
         glUseProgram(PostSimpleFogShaderID);
 
-        // glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogFarDistance"), GameState->R.FogFarDistance);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogFarDistance"), GameState->R.FogFarDistance);
         glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
         glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
         glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "density"), GameState->R.FogDensity);
         glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "gradient"), GameState->R.FogGradient);
-        glUniform3fv(glGetUniformLocation(PostSimpleFogShaderID, "fogColor"), 1, (float*)&GameState->R.FogColor);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogColor"), GameState->R.FogColor);
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
 
         {

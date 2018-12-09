@@ -229,7 +229,7 @@ struct render_data
   float FogFarDistance;
   float FogDensity;
   float FogGradient;
-  vec3 FogColor;
+  float FogColor;
 
   // Geometry/Depth FrameBuffer
   uint32_t GBufferFBO;
