@@ -991,6 +991,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 {
   if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessingSettings))
   {
+    bool FXAA         = GameState->R.PPEffects & POST_FXAA;
     bool Blur         = GameState->R.PPEffects & POST_Blur;
     bool DepthOfField = GameState->R.PPEffects & POST_DepthOfField;
     bool Grayscale    = GameState->R.PPEffects & POST_Grayscale;
@@ -998,30 +999,23 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
     bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
 
+    UI::Checkbox("FXAA", &FXAA);
     UI::Checkbox("Blur", &Blur);
     UI::Checkbox("DepthOfField", &DepthOfField);
     UI::Checkbox("MotionBlur", &MotionBlur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
     UI::Checkbox("EdgeOutline", &EdgeOutline);
-    UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
-    UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.001f, 0.1f);
     UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
+    UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
 
-#if 0
-    if(GameState->R.RenderSSAO)
+    if(FXAA)
     {
-      UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
-    }
-#endif
-
-    if(Grayscale)
-    {
-      GameState->R.PPEffects |= POST_Grayscale;
+      GameState->R.PPEffects |= POST_FXAA;
     }
     else
     {
-      GameState->R.PPEffects &= ~POST_Grayscale;
+      GameState->R.PPEffects &= ~POST_FXAA;
     }
 
     if(Blur)
@@ -1052,6 +1046,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
       GameState->R.PPEffects &= ~POST_MotionBlur;
     }
 
+    if(Grayscale)
+    {
+      GameState->R.PPEffects |= POST_Grayscale;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_Grayscale;
+    }
+
     if(NightVision)
     {
       GameState->R.PPEffects |= POST_NightVision;
@@ -1068,6 +1071,14 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     else
     {
       GameState->R.PPEffects &= ~POST_EdgeOutline;
+    }
+
+    if(GameState->R.RenderSSAO)
+    {
+      UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.02f, 0.2f);
+#if 0
+    	UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
+#endif
     }
   }
 

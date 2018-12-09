@@ -132,8 +132,15 @@ main()
 
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
-    ambient *= vec3(texture(material.diffuseMap, frag.texCoord));
-    diffuse *= vec3(texture(material.diffuseMap, frag.texCoord));
+    float offset_delta = 0.005f;
+#if 0	
+    vec3 diffuse_sample = texture(material.diffuseMap, frag.texCoord + vec2(offset_delta, offset_delta)).xyz + texture(material.diffuseMap, frag.texCoord+vec2(-offset_delta, offset_delta)).xyz + texture(material.diffuseMap, frag.texCoord+vec2(offset_delta, -offset_delta)).xyz + texture(material.diffuseMap, frag.texCoord+vec2(-offset_delta, -offset_delta)).xyz;
+    diffuse_sample /= 4;
+#else
+    vec3 diffuse_sample = texture(material.diffuseMap, frag.texCoord).xyz;
+#endif
+    ambient *= diffuse_sample;			
+    diffuse *= diffuse_sample;
   }
   else
   {

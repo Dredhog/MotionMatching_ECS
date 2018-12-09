@@ -36,11 +36,13 @@ main()
     vec4 test_point_uv_space = u_mat_projection * vec4(test_point_view_space, 1.0f);
     test_point_uv_space.xy = (test_point_uv_space.xy / test_point_uv_space.w) * 0.5 + 0.5;
     		
-    float sample_depth = texture(u_PositionMap, test_point_uv_space.xy).z;
-    float range_check = (abs(sample_depth - test_point_view_space.z) < SecondaryRadius) ? 1f : 0f;
-    occlusion += ((test_point_view_space.z < sample_depth) ? 1.0f : 0.0f) * range_check;
+    if(0f <= test_point_uv_space.x && test_point_uv_space.x <= 1f &&
+      0f <= test_point_uv_space.y && test_point_uv_space.y <= 1f){
+      float sample_depth = texture(u_PositionMap, test_point_uv_space.xy).z;
+      float range_check = (abs(sample_depth - test_point_view_space.z) < SecondaryRadius) ? 1f : 0f;
+      occlusion += ((test_point_view_space.z < sample_depth) ? 1.0f : 0.0f) * range_check;
+    }
   }
   occlusion = 1.0f - (occlusion/SAMPLE_VECTOR_COUNT);
-  //o_FragColor = vec4(vec3(tbn * u_SampleVectors[SAMPLE_VECTOR_COUNT-1]), 1f);
   o_FragColor = vec4(vec3(occlusion), 1f);
 }

@@ -77,8 +77,8 @@ main()
 
   mat3 uv_to_world = mat3(tangent, -bitangent, normal);
   vec2 texCoord = ComputeParallaxMappedCoordV2(frag.texCoord, inverse(uv_to_world)*cameraDir);
-  //if(texCoord.x < 0 || 1 < texCoord.x || texCoord.y < 0 || 1 < texCoord.y)
-    //discard;
+  /*if(texCoord.x < 0 || 1 < texCoord.x || texCoord.y < 0 || 1 < texCoord.y)
+    discard;*/
   vec3 uv_normal   = normalize(vec3(texture(material.normalMap, texCoord)*2-1));
   vec3 worldNormal = uv_to_world * uv_normal;
   
