@@ -431,7 +431,7 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
                            5.0f);
 
             UI::SliderFloat("Shininess", &CurrentMaterial->Toon.Shininess, 1.0f, 512.0f);
-            UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 2, 10);
+            UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 1, 10);
           }
           break;
           case SHADER_Color:

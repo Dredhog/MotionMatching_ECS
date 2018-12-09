@@ -97,39 +97,24 @@ main()
   vec3 half_vector = normalize(lightDir + viewDir);
   vec3 reflectDir = reflect(-sunDir, normal);
 
-  // --------AMBIENT--------
-  vec3 ambient = light.ambient;
-  ambient += sun.ambient * lighting;
-
   // --------DIFFUSE------
   float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
-  vec3  diffuse           = diffuse_intensity * light.diffuse;
 
   float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
-  diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
 
   // --------SPECULAR------
   float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
-  // specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
+  specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
 
   float sun_specular_intensity = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
 
-  vec3 specular = specular_intensity * light.specular;
-  specular += sun_specular_intensity * sun.specular * lighting;
-
-  float DiffuseLight = diffuse_intensity + sun_diffuse_intensity * lighting;
-  float SpecularLight = specular_intensity + sun_specular_intensity * lighting;
-  float TotalLight = SpecularLight;
-  TotalLight *= (DiffuseLight > 0.0f) ? 1.0f : 0.0f;
-  TotalLight = Categorize(TotalLight, levelCount);
-
-  ambient *= material.ambientColor;
-  diffuse *= material.diffuseColor.rgb;
-  specular *= material.specularColor;
+  float DiffuseLight = diffuse_intensity + sun_diffuse_intensity;
+  float SpecularLight = specular_intensity + sun_specular_intensity;
+  float TotalLight = (DiffuseLight + SpecularLight) / 2.0;
+  TotalLight = Categorize(TotalLight, levelCount) - 0.5 * Categorize(shadow, levelCount);
 
   vec3 Color = TotalLight * material.diffuseColor.rgb;
 
   // --------FINAL----------
-  // result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
   out_color  = vec4(Color, material.diffuseColor.a);
 }
