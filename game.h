@@ -295,7 +295,8 @@ GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture, int Width =
 }
 
 inline void
-GenerateSSAOFrameBuffer(uint32_t* FBO, uint32_t* SSAOTextureID)
+GenerateSSAOFrameBuffer(uint32_t* FBO, uint32_t* SSAOTextureID, int Width = SCREEN_WIDTH,
+                        int Height = SCREEN_HEIGHT)
 {
   glGenFramebuffers(1, FBO);
   glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
@@ -304,9 +305,9 @@ GenerateSSAOFrameBuffer(uint32_t* FBO, uint32_t* SSAOTextureID)
   {
     glGenTextures(1, SSAOTextureID);
     glBindTexture(GL_TEXTURE_2D, *SSAOTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_INT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, Width, Height, 0, GL_RGB, GL_INT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *SSAOTextureID, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
   }

@@ -249,8 +249,8 @@ struct render_data
 
   // Volumetric Light Scattering framebuffer
   bool     RenderVolumetricScattering;
-  uint32_t LightScatterFBO;
-  uint32_t LightScatterTexture;
+  uint32_t LightScatterFBOs[2];
+  uint32_t LightScatterTextures[2];
 
   // HDR tonemapping
   float ExposureHDR;

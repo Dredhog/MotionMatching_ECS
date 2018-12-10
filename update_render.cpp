@@ -263,8 +263,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // FRAMEBUFFER FOR VOLUMETRIC LIGHT SCATTERING
       {
-        GenerateFloatingPointFBO(&GameState->R.LightScatterFBO, &GameState->R.LightScatterTexture,
-                                 NULL);
+        GenerateSSAOFrameBuffer(&GameState->R.LightScatterFBOs[0],
+                                &GameState->R.LightScatterTextures[0], SCREEN_WIDTH, SCREEN_HEIGHT);
+        GenerateSSAOFrameBuffer(&GameState->R.LightScatterFBOs[1],
+                                &GameState->R.LightScatterTextures[1], SCREEN_WIDTH, SCREEN_HEIGHT);
       }
 
       // FRAMEBUFFERS FOR HDF/BLOOM
@@ -333,12 +335,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // SUN DATA
         {
           GameState->R.ShadowCenterOffset          = 5.0f;
-          GameState->R.RealTimeDirectionalShadows  = false;
+          GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
           GameState->R.ClearDirectionalShadows     = false;
 
-          GameState->R.Sun.Rotation      = { 0.0f, 0.0f, 0.0f };
-          GameState->R.Sun.Radius        = 10.0f;
+          GameState->R.Sun.Rotation      = { -60.0f, -105.0f, 0.0f };
+          GameState->R.Sun.Radius        = 30.0f;
           GameState->R.Sun.Position      = { 0.0f, 0.0f, 0.0f };
           GameState->R.Sun.Center        = { 0.0f, 0.0f, 0.0f };
           GameState->R.Sun.Direction     = { 0.0f, 0.0f, 0.0f };
@@ -393,7 +395,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           }
 #endif
         }
-        GameState->R.ExposureHDR = 1.2f;
+        GameState->R.ExposureHDR             = 1.84f;
+        GameState->R.BloomLuminanceThreshold = 1.2f;
       }
 
       GameState->DrawCubemap      = true;
@@ -965,10 +968,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   // RENDER VOLUMETRIC LIGHT SCATTERING TO TEXTURE
-  if(false)
+  if(true)
   {
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.LightScatterFBO);
 
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.LightScatterFBOs[0]);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     {
       GLuint ShaderVolumetricScatteringID =
         GameState->Resources.GetShader(GameState->R.ShaderVolumetricScattering);
@@ -977,9 +981,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       glUniformMatrix4fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_mat_sun_vp"), 1,
                          GL_FALSE, GameState->R.Sun.VPMatrix.e);
-
-      glActiveTexture(GL_TEXTURE0);
-
+      glUniformMatrix4fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_mat_inv_v"), 1,
+                         GL_FALSE, Math::InvMat4(GameState->Camera.ViewMatrix).e);
+      glUniform3fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_CameraPosition"), 1,
+                   (float*)&GameState->Camera.Position);
       {
         int tex_index = 0;
         glActiveTexture(GL_TEXTURE0 + tex_index);
@@ -991,9 +996,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glActiveTexture(GL_TEXTURE0 + tex_index);
         glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTexture);
         glUniform1i(glGetUniformLocation(ShaderVolumetricScatteringID, "u_ShadowMap"), tex_index);
+#if 0
+#endif
       }
+      DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
     }
-    DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
     glBindTexture(GL_TEXTURE_2D, 0);
   }
 
@@ -1023,6 +1030,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUniformMatrix4fv(glGetUniformLocation(CubemapShaderID, "mat_view"), 1, GL_FALSE,
                          Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
       glBindVertexArray(CubemapMesh->VAO);
+
+      glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
       glDrawElements(GL_TRIANGLES, CubemapMesh->IndiceCount, GL_UNSIGNED_INT, 0);
 
@@ -1274,16 +1283,30 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         if(GameState->R.PPEffects & POST_Bloom)
         {
           {
-            int tex_index = 3;
+            int tex_index = 1;
             glActiveTexture(GL_TEXTURE0 + tex_index);
             glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[1]); // HDR Bloom
             glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_BloomTex"), tex_index);
           }
-          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 1.0f);
+          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 1);
         }
         else
         {
-          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 0.0f);
+          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 0);
+        }
+
+        glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyVolumetricScattering"),
+                    GameState->R.RenderVolumetricScattering);
+        if(GameState->R.RenderVolumetricScattering)
+        {
+          {
+            int tex_index = 2;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
+            glBindTexture(GL_TEXTURE_2D,
+                          GameState->R.LightScatterTextures[0]); // Volumetric Scattering
+            glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ScatteredLightMap"),
+                        tex_index);
+          }
         }
 
         glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_Exposure"),

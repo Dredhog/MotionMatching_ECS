@@ -1120,7 +1120,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     }
 
     // Draw material preview to texture
-    UI::Image("ScenePreview", GameState->R.HdrFBOs[0], { 500, 300 });
+    UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
 
     if(SimpleFog)
     {
@@ -1138,9 +1138,9 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
   {
-    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 1, 5);
-    UI::DragFloat3("Specular", &GameState->R.LightSpecularColor.X, 0, 1, 5);
-    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 1, 5);
+    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
+    UI::DragFloat3("Specular", &GameState->R.LightSpecularColor.X, 0, 10, 5);
+    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 10, 5);
     UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
     UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
 
@@ -1149,8 +1149,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::DragFloat3("Specular", &GameState->R.Sun.SpecularColor.X, 0, 1, 5);
     UI::DragFloat3("Ambient", &GameState->R.Sun.AmbientColor.X, 0, 1, 5);
 
-    UI::SliderFloat("Sun X Angle", &GameState->R.Sun.Rotation.Y, -180.0f, 180.0f);
-    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.Rotation.X, -180.0f, 180.0f);
+    UI::SliderFloat("Sun X Angle", &GameState->R.Sun.Rotation.X, -180.0f, 180.0f);
+    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.Rotation.Y, -180.0f, 180.0f);
     UI::SliderFloat("Sun Radius", &GameState->R.Sun.Radius, 0.01f, 100.0f);
     UI::Checkbox("Center Offset From Camera", &GameState->R.Sun.CenterOffsetFromCamera);
     if(GameState->R.Sun.CenterOffsetFromCamera)
