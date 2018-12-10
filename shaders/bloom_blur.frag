@@ -5,7 +5,7 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 #define KERNEL_SIZE 11
-const float Kernel[KERNEL_SIZE] = float[]( 0.07, 0.1, 0.2, 0.3, 0.5, 0.7, 0.5, 0.3, 0.2, 0.1, 0.07);
+const float Kernel[KERNEL_SIZE] = float[]( 0.1, 0.15, 0.3, 0.5, 0.75, 0.9, 0.75, 0.5, 0.3, 0.15, 0.1);
 
 uniform bool u_Horizontal;
 
@@ -27,7 +27,7 @@ main()
 
   vec3 final_color = vec3(0);
   float kernel_sum = 0.0f;
-  for(int i = -5; i <= KERNEL_SIZE/2; ++i)
+  for(int i = -5; i <= 5; ++i)
   {
     final_color += Kernel[i] * texture(ScreenTex, TexCoords + float(i) * tex_delta).rgb;
     kernel_sum += Kernel[i];

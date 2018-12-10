@@ -431,7 +431,7 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
                            5.0f);
 
             UI::SliderFloat("Shininess", &CurrentMaterial->Toon.Shininess, 1.0f, 512.0f);
-            UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 2, 10);
+            UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 1, 10);
           }
           break;
           case SHADER_Color:
@@ -999,6 +999,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool Grayscale    = GameState->R.PPEffects & POST_Grayscale;
     bool NightVision  = GameState->R.PPEffects & POST_NightVision;
     bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
+    bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
+    bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
 
     UI::Checkbox("HDRTonemap", &HDRTonemap);
     if(HDRTonemap)
@@ -1012,17 +1014,23 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     {
       Bloom = false;
     }
+
     UI::Checkbox("FXAA", &FXAA);
     UI::Checkbox("Blur", &Blur);
     UI::Checkbox("DepthOfField", &DepthOfField);
     UI::Checkbox("MotionBlur", &MotionBlur);
     UI::Checkbox("Grayscale", &Grayscale);
     UI::Checkbox("NightVision", &NightVision);
+    UI::Checkbox("EdgeOutline", &EdgeOutline);
+    UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
+    UI::Checkbox("SimpleFog", &SimpleFog);
+    UI::Checkbox("VolumetricScattering", &GameState->R.RenderVolumetricScattering);
 
     if(HDRTonemap)
     {
       GameState->R.PPEffects |= POST_HDRTonemap;
+      UI::SliderFloat("HDR Exposure", &GameState->R.ExposureHDR, 0.01f, 8.0f);
     }
     else
     {
@@ -1094,12 +1102,37 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
       GameState->R.PPEffects &= ~POST_NightVision;
     }
 
+    if(EdgeOutline)
+    {
+      GameState->R.PPEffects |= POST_EdgeOutline;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_EdgeOutline;
+    }
+
     if(GameState->R.RenderSSAO)
     {
       UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.02f, 0.2f);
 #if 0
     	UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
 #endif
+    }
+
+    // Draw material preview to texture
+    UI::Image("ScenePreview", GameState->R.HdrFBOs[0], { 500, 300 });
+
+    if(SimpleFog)
+    {
+      GameState->R.PPEffects |= POST_SimpleFog;
+      UI::SliderFloat("FogFarDistance", &GameState->R.FogFarDistance, 1.0f, 500.0f);
+      UI::SliderFloat("FogDensity", &GameState->R.FogDensity, 0.01f, 0.3f);
+      UI::SliderFloat("FogGradient", &GameState->R.FogGradient, 1.5f, 10.0f);
+      UI::DragFloat3("FogColor", &GameState->R.FogColor.X, 0.0f, 1.0f, 5);
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_SimpleFog;
     }
   }
 
@@ -1130,7 +1163,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
                     GameState->R.Sun.NearClipPlane, 100);
     UI::SliderFloat("Sun Plane Size", &GameState->R.Sun.PlaneSize, 1.0f, 100.0f);
 
-    UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawDepthMap);
+    UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawShadowMap);
     UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
     if(UI::Button("Recompute Directional Shadows"))
     {

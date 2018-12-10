@@ -128,7 +128,7 @@ main()
   vec3  diffuse           = diffuse_intensity * light.diffuse;
 
   float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
-  diffuse += sun_diffuse_intensity * sun.diffuse;
+  diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
 
   if((frag.flags & DIFFUSE_MAP) != 0)
   {
@@ -147,7 +147,6 @@ main()
     ambient *= material.ambientColor;
     diffuse *= material.diffuseColor.rgb;
   }
-
   
   vec2 screen_tex_coords = gl_FragCoord.xy/textureSize(u_AmbientOcclusion, 0).xy; 
   float ambient_occlusion = texture(u_AmbientOcclusion, screen_tex_coords).r;

@@ -97,37 +97,24 @@ main()
   vec3 half_vector = normalize(lightDir + viewDir);
   vec3 reflectDir = reflect(-sunDir, normal);
 
-  // --------AMBIENT--------
-  vec3 ambient = light.ambient;
-  ambient += sun.ambient * lighting;
-
   // --------DIFFUSE------
-  float diffuse_intensity = Categorize(max(dot(normal, lightDir), 0.0f), levelCount);
+  float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
+
   float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
-  sun_diffuse_intensity = Categorize(sun_diffuse_intensity, levelCount);
-
-  vec3 diffuse = diffuse_intensity * light.diffuse;
-  diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
-
-  ambient *= material.ambientColor;
-  //diffuse *= material.diffuseColor.rgb;
 
   // --------SPECULAR------
   float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
   specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
-  specular_intensity = Categorize(specular_intensity, levelCount);
 
   float sun_specular_intensity = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
-  sun_specular_intensity = Categorize(sun_specular_intensity, levelCount);
 
-  vec3 specular = specular_intensity * light.specular;
-  specular += sun_specular_intensity * sun.specular * lighting;
+  float DiffuseLight = diffuse_intensity + sun_diffuse_intensity;
+  float SpecularLight = specular_intensity + sun_specular_intensity;
+  float TotalLight = (DiffuseLight + SpecularLight) / 2.0;
+  TotalLight = Categorize(TotalLight, levelCount) - 0.5 * Categorize(shadow, levelCount);
 
-  //specular *= material.specularColor;
+  vec3 Color = TotalLight * material.diffuseColor.rgb;
 
   // --------FINAL----------
-  //vec4 result = vec4((diffuse + specular) * (material.diffuseColor.rgb + material.specularColor) + ambient, material.diffuseColor.a);
-  vec4 result = vec4(diffuse * (material.diffuseColor.rgb + material.specularColor) + ambient, material.diffuseColor.a);
-
-  out_color = result;
+  out_color  = vec4(Color, material.diffuseColor.a);
 }

@@ -8,7 +8,7 @@
 #define Mibibytes(Count) (1024 * Kibibytes(Count))
 #define Gibibytes(Count) (1024 * Mibibytes(Count))
 
-#define FRAME_TIME_MS 8
+#define FRAME_TIME_MS 2
 #define SLOW_MOTION_COEFFICIENT 0.2f
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080

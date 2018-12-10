@@ -50,6 +50,8 @@ enum pp_type
   POST_FXAA         = 1 << 5,
   POST_HDRTonemap   = 1 << 6,
   POST_Bloom        = 1 << 7,
+  POST_EdgeOutline  = 1 << 8,
+  POST_SimpleFog    = 1 << 9,
 
   POST_EnumCount,
 };
@@ -202,9 +204,10 @@ struct render_data
   rid ShaderToon;
   rid ShaderTest;
   rid ShaderParallax;
-  rid ShaderSimpleDepth;
+  rid ShaderSunDepth;
   rid ShaderSSAO;
   rid ShaderWavy;
+  rid ShaderVolumetricScattering;
 
   // Post-processing shaders
   rid PostDefaultShader;
@@ -214,10 +217,13 @@ struct render_data
   rid PostNightVision;
   rid PostDepthOfField;
   rid PostMotionBlur;
+  rid PostEdgeOutline;
+  rid PostEdgeBlend;
   rid PostBrightRegion;
   rid PostBloomBlur;
   rid PostBloomTonemap;
   rid PostFXAA;
+  rid PostSimpleFog;
 
   cubemap Cubemap;
 
@@ -227,6 +233,11 @@ struct render_data
   float PostBlurStdDev;
   float PostBlurKernel[BLUR_KERNEL_SIZE];
 
+  float FogFarDistance;
+  float FogDensity;
+  float FogGradient;
+  vec3  FogColor;
+
   // Geometry/Depth FrameBuffer
   uint32_t GBufferFBO;
   uint32_t GBufferVelocityTexID;
@@ -235,6 +246,14 @@ struct render_data
   uint32_t GBufferDepthTexID;
 
   float CumulativeTime;
+
+  // Volumetric Light Scattering framebuffer
+  bool     RenderVolumetricScattering;
+  uint32_t LightScatterFBO;
+  uint32_t LightScatterTexture;
+
+  // HDR tonemapping
+  float ExposureHDR;
 
   // Bloom
   float BloomLuminanceThreshold;
@@ -246,11 +265,22 @@ struct render_data
   vec3     SSAOSampleVectors[SSAO_SAMPLE_VECTOR_COUNT];
   float    SSAOSamplingRadius;
 
+  rid RenderDepthMap;
+  rid RenderShadowMap;
+
+  // Screen space depth buffer
+  bool     DrawDepthBuffer;
+  uint32_t DepthTextureFBO;
+  uint32_t DepthTextureRBO;
+  uint32_t DepthTexture;
+  uint32_t EdgeOutlineFBO;
+  uint32_t EdgeOutlineRBO;
+  uint32_t EdgeOutlineTexture;
+
   // Depth Framebuffer for shadow mapping
-  rid      RenderDepthMap;
-  bool     DrawDepthMap;
-  uint32_t DepthMapFBO;
-  uint32_t DepthMapTexture;
+  bool     DrawShadowMap;
+  uint32_t ShadowMapFBO;
+  uint32_t ShadowMapTexture;
 
   // Temporary stuff for post-processing
   // framebuffers Screen;

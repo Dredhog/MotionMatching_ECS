@@ -263,7 +263,8 @@ GenerateScreenQuad(uint32_t* VAO, uint32_t* VBO)
 }
 
 inline void
-GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture)
+GenerateFramebuffer(uint32_t* FBO, uint32_t* RBO, uint32_t* Texture, int Width = SCREEN_WIDTH,
+                    int Hieght = SCREEN_HEIGHT)
 {
   // Screen framebuffer, renderbuffer and texture setup
   glGenFramebuffers(1, FBO);
@@ -317,7 +318,8 @@ GenerateSSAOFrameBuffer(uint32_t* FBO, uint32_t* SSAOTextureID)
 }
 
 inline void
-GenerateFloatingPointFBO(uint32_t* FBO, uint32_t* ColorTextureID, uint32_t* DepthStencilRBO)
+GenerateFloatingPointFBO(uint32_t* FBO, uint32_t* ColorTextureID, uint32_t* DepthStencilRBO,
+                         int Width = SCREEN_WIDTH, int Height = SCREEN_HEIGHT)
 {
   assert(FBO);
   assert(ColorTextureID);
@@ -328,7 +330,7 @@ GenerateFloatingPointFBO(uint32_t* FBO, uint32_t* ColorTextureID, uint32_t* Dept
   glGenTextures(1, ColorTextureID);
 
   glBindTexture(GL_TEXTURE_2D, *ColorTextureID);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, Width, Height, 0, GL_RGB, GL_FLOAT, NULL);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -339,7 +341,7 @@ GenerateFloatingPointFBO(uint32_t* FBO, uint32_t* ColorTextureID, uint32_t* Dept
   {
     glGenRenderbuffers(1, DepthStencilRBO);
     glBindRenderbuffer(GL_RENDERBUFFER, *DepthStencilRBO);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, Width, Height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
                               *DepthStencilRBO);
   }
@@ -416,6 +418,30 @@ GenerateGeometryDepthFrameBuffer(uint32_t* FBO, uint32_t* ViewSpacePositionTextu
 
 inline void
 GenerateDepthFramebuffer(uint32_t* FBO, uint32_t* Texture)
+{
+  glGenFramebuffers(1, FBO);
+
+  glGenTextures(1, Texture);
+  glBindTexture(GL_TEXTURE_2D, *Texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT, 0,
+               GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  float BorderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, BorderColor);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, *FBO);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, *Texture, 0);
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+inline void
+GenerateShadowFramebuffer(uint32_t* FBO, uint32_t* Texture)
 {
   glGenFramebuffers(1, FBO);
 
