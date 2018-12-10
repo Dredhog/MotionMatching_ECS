@@ -193,10 +193,12 @@ main()
     result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
   }
 
+#if 0
   float PeriodicWaveBrightness = 0.5 * cubicPulse(0.0, 0.5, 10.0 * sin(u_Time + 0.05 * frag.position.x * frag.position.y * frag.position.z * PI));
   float ColorValue = 0.5 * (1.0 + sin(u_Time + PI));
   vec3 PeriodicWaveColor = vec3(ColorValue, ColorValue, 0.0);
   result += vec4(PeriodicWaveBrightness * PeriodicWaveColor, 1.0);
+#endif
 
   out_color = result;
 }

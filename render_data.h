@@ -49,6 +49,7 @@ enum pp_type
   POST_FXAA         = 1 << 5,
   POST_EdgeOutline  = 1 << 6,
   POST_SimpleFog    = 1 << 7,
+  POST_Noise        = 1 << 8,
 
   POST_EnumCount,
 };
@@ -217,6 +218,7 @@ struct render_data
   rid PostEdgeBlend;
   rid PostFXAA;
   rid PostSimpleFog;
+  rid PostNoise;
 
   cubemap Cubemap;
 

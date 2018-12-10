@@ -999,6 +999,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
     bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
     bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
+    bool Noise        = GameState->R.PPEffects & POST_Noise;
 
     UI::Checkbox("FXAA", &FXAA);
     UI::Checkbox("Blur", &Blur);
@@ -1010,6 +1011,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
     UI::Checkbox("SimpleFog", &SimpleFog);
+    UI::Checkbox("Noise", &Noise);
 
     if(FXAA)
     {
@@ -1094,6 +1096,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     else
     {
       GameState->R.PPEffects &= ~POST_SimpleFog;
+    }
+
+    if(Noise)
+    {
+      GameState->R.PPEffects |= POST_Noise;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_Noise;
     }
   }
 

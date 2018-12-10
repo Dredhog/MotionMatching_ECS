@@ -106,6 +106,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.PostEdgeBlend = GameState->Resources.RegisterShader("shaders/edge_blend");
       GameState->R.PostFXAA         = GameState->Resources.RegisterShader("shaders/fxaa");
       GameState->R.PostSimpleFog = GameState->Resources.RegisterShader("shaders/post_simple_fog");
+      GameState->R.PostNoise = GameState->Resources.RegisterShader("shaders/post_noise");
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
@@ -1366,6 +1367,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
+
+      if(GameState->R.PPEffects & POST_Noise)
+      {
+        GLuint PostNoiseShaderID =
+          GameState->Resources.GetShader(GameState->R.PostNoise);
+        glUseProgram(PostNoiseShaderID);
+        glUniform1f(glGetUniformLocation(PostNoiseShaderID, "u_Time"), GameState->R.CumulativeTime);
+
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+      }
+
     }
     else
     {
