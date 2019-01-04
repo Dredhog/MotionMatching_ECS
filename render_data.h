@@ -26,7 +26,8 @@ enum env_flags
 
 #define FOR_ALL_NAMES(DO_FUNC)                                                                     \
   DO_FUNC(Phong)                                                                                   \
-  DO_FUNC(Env) DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color) DO_FUNC(Wavy)
+  DO_FUNC(Env)                                                                                     \
+  DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color) DO_FUNC(Wavy) DO_FUNC(RimLight)
 #define GENERATE_ENUM(Name) SHADER_##Name,
 #define GENERATE_STRING(Name) #Name,
 enum shader_type
@@ -120,6 +121,18 @@ union material {
     rid             NormalID;
     rid             DepthID;
   } Parallax;
+
+  struct
+  {
+    material_header Common;
+    vec3            RimColor;
+    float           RimStrength;
+    float           HeightScale;
+    rid             DiffuseID;
+    rid             NormalID;
+    rid             DepthID;
+  } RimLight;
+
   struct
   {
     material_header Common;
@@ -204,6 +217,7 @@ struct render_data
   rid ShaderToon;
   rid ShaderTest;
   rid ShaderParallax;
+  rid ShaderRimLight;
   rid ShaderSunDepth;
   rid ShaderSSAO;
   rid ShaderWavy;

@@ -1119,8 +1119,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 #endif
     }
 
-    // Draw material preview to texture
-    UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
+    //UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
 
     if(SimpleFog)
     {

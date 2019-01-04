@@ -10,7 +10,7 @@ uniform sampler2D u_PositionMap;
 uniform sampler2D u_ShadowMap;
 uniform vec3 u_CameraPosition;
 
-#define ITERATION_COUNT 40
+#define ITERATION_COUNT 20
 
 void
 main()

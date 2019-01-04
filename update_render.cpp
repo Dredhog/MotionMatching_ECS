@@ -89,6 +89,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.ShaderToon     = GameState->Resources.RegisterShader("shaders/toon");
       GameState->R.ShaderTest     = GameState->Resources.RegisterShader("shaders/test");
       GameState->R.ShaderParallax = GameState->Resources.RegisterShader("shaders/parallax");
+      GameState->R.ShaderRimLight = GameState->Resources.RegisterShader("shaders/rim_lit_parallax");
       GameState->R.ShaderSSAO     = GameState->Resources.RegisterShader("shaders/ssao");
       GameState->R.ShaderVolumetricScattering =
         GameState->Resources.RegisterShader("shaders/volumetric_scattering");
@@ -182,6 +183,22 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.NormalID) });
         AddParamDef(ParallaxShaderDef, "map_depth", "material.depthMap",
                     { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
+      }
+      {
+        struct shader_def* RimShaderDef =
+          AddShaderDef(SHADER_RimLight, GameState->R.ShaderRimLight, "rim_light");
+        AddParamDef(RimShaderDef, "rim_strength", "material.rimStrength",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, RimLight.RimStrength) });
+        AddParamDef(RimShaderDef, "rim_color", "material.rimColor",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, RimLight.RimColor) });
+        AddParamDef(RimShaderDef, "height_scale", "height_scale",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, RimLight.HeightScale) });
+        AddParamDef(RimShaderDef, "map_diffuse", "material.diffuseMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, RimLight.DiffuseID) });
+        AddParamDef(RimShaderDef, "map_normal", "material.normalMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, RimLight.NormalID) });
+        AddParamDef(RimShaderDef, "map_depth", "material.depthMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, RimLight.DepthID) });
       }
 
       {
@@ -968,7 +985,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   // RENDER VOLUMETRIC LIGHT SCATTERING TO TEXTURE
-  if(true)
+  if(GameState->R.RenderVolumetricScattering)
   {
 
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.LightScatterFBOs[0]);
@@ -1373,6 +1390,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       // TODO(Lukas) Make FXAA more efficient by using fewer more spaced-out luminance samples and
       // a seperate precomputed luminance texture for input
+			// TODO(Lukas) Expose FXAA sensitivity parameters to UI
       if(GameState->R.PPEffects & POST_FXAA)
       {
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
