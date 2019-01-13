@@ -1422,8 +1422,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                      GameState->R.PostBlurLastStdDev);
         }
 
+				int32_t UnblurredInputTextureIndex = GameState->R.CurrentTexture;
+
         GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
         glUseProgram(PostBlurHShaderID);
+
 
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1435,12 +1438,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
+
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
         glUseProgram(PostBlurVShaderID);
 
         glUniform1f(glGetUniformLocation(PostBlurVShaderID, "Offset"), 1.0f / SCREEN_HEIGHT);
         glUniform1fv(glGetUniformLocation(PostBlurVShaderID, "Kernel"), BLUR_KERNEL_SIZE,
                      GameState->R.PostBlurKernel);
+
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
         if(GameState->R.PPEffects & POST_DepthOfField)
         {
@@ -1460,13 +1470,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           {
             int tex_index = 2;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTextures[GameState->R.CurrentTexture]);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.ScreenTextures[UnblurredInputTextureIndex]);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_InputMap"), tex_index);
           }
           {
             int tex_index = 3;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.ScreenTextures[GameState->R.CurrentTexture]);
+            BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_BlurredMap"), tex_index);
           }
 
