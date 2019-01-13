@@ -5,6 +5,10 @@
 #define NORMAL_MAP 4
 #define SKELETAL 8
 
+#define PI 3.14159265359
+
+uniform float u_Time;
+
 struct Material
 {
   vec3 ambientColor;
@@ -88,6 +92,16 @@ ShadowCalculation(vec4 sunFragPos, vec3 normal, vec3 lightDir)
   }
 
   return shadow;
+}
+
+float cubicPulse(float c, float w, float x){
+    x = abs(x - c);
+    if(x > w)
+    {
+      return 0.0;
+    }
+    x /= w;
+    return 1.0 - x * x * (3.0 - 2.0 * x);
 }
 
 void
@@ -178,6 +192,13 @@ main()
   {
     result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
   }
+
+#if 0
+  float PeriodicWaveBrightness = 0.5 * cubicPulse(0.0, 0.5, 10.0 * sin(u_Time + 0.05 * frag.position.x * frag.position.y * frag.position.z * PI));
+  float ColorValue = 0.5 * (1.0 + sin(u_Time + PI));
+  vec3 PeriodicWaveColor = vec3(ColorValue, ColorValue, 0.0);
+  result += vec4(PeriodicWaveBrightness * PeriodicWaveColor, 1.0);
+#endif
 
   out_color = result;
 }

@@ -114,6 +114,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GameState->Resources.RegisterShader("shaders/bloom_combine_tonemap");
       GameState->R.PostFXAA      = GameState->Resources.RegisterShader("shaders/fxaa");
       GameState->R.PostSimpleFog = GameState->Resources.RegisterShader("shaders/post_simple_fog");
+      GameState->R.PostNoise = GameState->Resources.RegisterShader("shaders/post_noise");
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
@@ -414,6 +415,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
         GameState->R.ExposureHDR             = 1.84f;
         GameState->R.BloomLuminanceThreshold = 1.2f;
+
+        // INITIAL FOG VALUES
+        {
+          GameState->R.FogDensity = 0.1f;
+          GameState->R.FogGradient = 3.0f;
+          GameState->R.FogColor = 0.5f;
+        }
       }
 
       GameState->DrawCubemap      = true;
@@ -1458,7 +1466,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           {
             int tex_index = 3;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+            BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.ScreenTextures[GameState->R.CurrentTexture]);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_BlurredMap"), tex_index);
           }
 
@@ -1518,18 +1526,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostSimpleFogShaderID = GameState->Resources.GetShader(GameState->R.PostSimpleFog);
         glUseProgram(PostSimpleFogShaderID);
 
-        // glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogFarDistance"),
-        // GameState->R.FogFarDistance);
-        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraNearPlane"),
-                    GameState->Camera.NearClipPlane);
-        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraFarPlane"),
-                    GameState->Camera.FarClipPlane);
-        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "density"),
-                    GameState->R.FogDensity);
-        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "gradient"),
-                    GameState->R.FogGradient);
-        glUniform3fv(glGetUniformLocation(PostSimpleFogShaderID, "fogColor"), 1,
-                     (float*)&GameState->R.FogColor);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogFarDistance"), GameState->R.FogFarDistance);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "density"), GameState->R.FogDensity);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "gradient"), GameState->R.FogGradient);
+        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogColor"), GameState->R.FogColor);
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
 
         {
@@ -1551,6 +1553,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
+
+      if(GameState->R.PPEffects & POST_Noise)
+      {
+        GLuint PostNoiseShaderID =
+          GameState->Resources.GetShader(GameState->R.PostNoise);
+        glUseProgram(PostNoiseShaderID);
+        glUniform1f(glGetUniformLocation(PostNoiseShaderID, "u_Time"), GameState->R.CumulativeTime);
+
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+      }
+
     }
 
     if(GameState->R.DrawDepthBuffer)

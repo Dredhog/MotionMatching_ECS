@@ -1001,6 +1001,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
     bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
     bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
+    bool Noise        = GameState->R.PPEffects & POST_Noise;
 
     UI::Checkbox("HDRTonemap", &HDRTonemap);
     if(HDRTonemap)
@@ -1026,6 +1027,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
     UI::Checkbox("SimpleFog", &SimpleFog);
     UI::Checkbox("VolumetricScattering", &GameState->R.RenderVolumetricScattering);
+    UI::Checkbox("Noise", &Noise);
 
     if(HDRTonemap)
     {
@@ -1124,14 +1126,23 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     if(SimpleFog)
     {
       GameState->R.PPEffects |= POST_SimpleFog;
-      UI::SliderFloat("FogFarDistance", &GameState->R.FogFarDistance, 1.0f, 500.0f);
-      UI::SliderFloat("FogDensity", &GameState->R.FogDensity, 0.01f, 0.3f);
-      UI::SliderFloat("FogGradient", &GameState->R.FogGradient, 1.5f, 10.0f);
-      UI::DragFloat3("FogColor", &GameState->R.FogColor.X, 0.0f, 1.0f, 5);
+      UI::SliderFloat("CameraFarClipPlane", &GameState->Camera.FarClipPlane, GameState->Camera.NearClipPlane, 500.0f);
+      UI::SliderFloat("FogDensity", &GameState->R.FogDensity, 0.01f, 0.5f);
+      UI::SliderFloat("FogGradient", &GameState->R.FogGradient, 1.0f, 10.0f);
+      UI::SliderFloat("FogColor", &GameState->R.FogColor, 0.0f, 1.0f);
     }
     else
     {
       GameState->R.PPEffects &= ~POST_SimpleFog;
+    }
+
+    if(Noise)
+    {
+      GameState->R.PPEffects |= POST_Noise;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_Noise;
     }
   }
 

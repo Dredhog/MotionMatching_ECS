@@ -53,6 +53,7 @@ enum pp_type
   POST_Bloom        = 1 << 7,
   POST_EdgeOutline  = 1 << 8,
   POST_SimpleFog    = 1 << 9,
+  POST_Noise        = 1 << 10,
 
   POST_EnumCount,
 };
@@ -238,6 +239,7 @@ struct render_data
   rid PostBloomTonemap;
   rid PostFXAA;
   rid PostSimpleFog;
+  rid PostNoise;
 
   cubemap Cubemap;
 
@@ -250,7 +252,7 @@ struct render_data
   float FogFarDistance;
   float FogDensity;
   float FogGradient;
-  vec3  FogColor;
+  float FogColor;
 
   // Geometry/Depth FrameBuffer
   uint32_t GBufferFBO;

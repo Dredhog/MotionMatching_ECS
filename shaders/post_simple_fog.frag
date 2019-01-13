@@ -6,12 +6,11 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
-// uniform float fogFarDistance;
 uniform float cameraNearPlane;
 uniform float cameraFarPlane;
 uniform float density;
 uniform float gradient;
-uniform vec3 fogColor;
+uniform float fogColor;
 
 uniform sampler2D DepthTex;
 uniform sampler2D ScreenTex;
@@ -26,5 +25,5 @@ main()
     Visibility = clamp(Visibility, 0.0, 1.0);
 
     FragColor = texture(ScreenTex, TexCoords);
-    FragColor = mix(vec4(fogColor, 1.0), FragColor, Visibility);
+    FragColor = mix(vec4(vec3(fogColor), 1.0), FragColor, Visibility);
 }
