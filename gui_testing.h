@@ -1016,18 +1016,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool Noise        = GameState->R.PPEffects & POST_Noise;
 
     UI::Checkbox("HDRTonemap", &HDRTonemap);
-    if(HDRTonemap)
-    {
-      UI::SameLine();
-      UI::Checkbox("Bloom", &Bloom);
-      UI::SameLine();
-      UI::NewLine();
-    }
-    else
-    {
-      Bloom = false;
-    }
-
+    UI::Checkbox("Bloom", &Bloom);
     UI::Checkbox("FXAA", &FXAA);
     UI::Checkbox("Blur", &Blur);
     UI::Checkbox("DepthOfField", &DepthOfField);
