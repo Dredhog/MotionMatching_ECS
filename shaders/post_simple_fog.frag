@@ -12,14 +12,13 @@ uniform float density;
 uniform float gradient;
 uniform float fogColor;
 
-uniform sampler2D DepthTex;
+uniform sampler2D PositionTex;
 uniform sampler2D ScreenTex;
 
 void
 main()
 {
-    float Distance = 1.0 - texture(DepthTex, TexCoords).r;
-    Distance = mix(cameraNearPlane, cameraFarPlane, Distance);
+    float Distance = length(texture(PositionTex, TexCoords).xyz);
 
     float Visibility = exp(-pow((Distance * density), gradient));
     Visibility = clamp(Visibility, 0.0, 1.0);

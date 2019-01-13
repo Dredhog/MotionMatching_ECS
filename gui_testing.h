@@ -1127,7 +1127,6 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     if(SimpleFog)
     {
       GameState->R.PPEffects |= POST_SimpleFog;
-      UI::SliderFloat("CameraFarClipPlane", &GameState->Camera.FarClipPlane, GameState->Camera.NearClipPlane, 500.0f);
       UI::SliderFloat("FogDensity", &GameState->R.FogDensity, 0.01f, 0.5f);
       UI::SliderFloat("FogGradient", &GameState->R.FogGradient, 1.0f, 10.0f);
       UI::SliderFloat("FogColor", &GameState->R.FogColor, 0.0f, 1.0f);

@@ -839,7 +839,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // GEOMETRY/DEPTH PRE-PASS
   {
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.GBufferFBO);
-    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, -GameState->Camera.FarClipPlane, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // TODO(Lukas) SORT(MeshInstances,  ByMesh);
@@ -1562,8 +1562,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           int TexIndex = 1;
 
           glActiveTexture(GL_TEXTURE0 + TexIndex);
-          glBindTexture(GL_TEXTURE_2D, GameState->R.DepthTexture);
-          glUniform1i(glGetUniformLocation(PostSimpleFogShaderID, "DepthTex"), TexIndex);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferPositionTexID);
+          glUniform1i(glGetUniformLocation(PostSimpleFogShaderID, "PositionTex"), TexIndex);
           glActiveTexture(GL_TEXTURE0);
         }
         {
