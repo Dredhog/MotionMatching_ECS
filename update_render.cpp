@@ -1234,6 +1234,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // debug drawings *should* be untouched.
 
   {
+    glDisable(GL_DEPTH_TEST);
     // NOTE(Lukas): HDR tonemapping and bloom use HDR buffers which are floating point unlike the
     // remaining post effect stack
     if(GameState->R.PPEffects & (POST_HDRTonemap | POST_Bloom) || GameState->R.RenderVolumetricScattering)
@@ -1379,12 +1380,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostEdgeOutlineShaderID =
           GameState->Resources.GetShader(GameState->R.PostEdgeOutline);
         glUseProgram(PostEdgeOutlineShaderID);
+        glUniform1f(glGetUniformLocation(PostEdgeOutlineShaderID, "cameraFarClipPlane"), GameState->Camera.FarClipPlane);
         glUniform1f(glGetUniformLocation(PostEdgeOutlineShaderID, "OffsetX"), 1.0 / SCREEN_WIDTH);
         glUniform1f(glGetUniformLocation(PostEdgeOutlineShaderID, "OffsetY"), 1.0 / SCREEN_HEIGHT);
 
         glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.EdgeOutlineFBO);
         {
-          glBindTexture(GL_TEXTURE_2D, GameState->R.DepthTexture);
+          int TexIndex = 1;
+
+          glActiveTexture(GL_TEXTURE0 + TexIndex);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferPositionTexID);
+          glUniform1i(glGetUniformLocation(PostEdgeOutlineShaderID, "PositionTex"), TexIndex);
+          glActiveTexture(GL_TEXTURE0);
+
           DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
         }
 
@@ -1437,7 +1445,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                      GameState->R.PostBlurLastStdDev);
         }
 
-				int32_t UnblurredInputTextureIndex = GameState->R.CurrentTexture;
+        int32_t UnblurredInputTextureIndex = GameState->R.CurrentTexture;
 
         GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
         glUseProgram(PostBlurHShaderID);
@@ -1531,12 +1539,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glUseProgram(PostGrayscaleShaderID);
 
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+        // glClear(GL_DEPTH_BUFFER_BIT);
+        glActiveTexture(GL_TEXTURE0);
         BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
 
       if(GameState->R.PPEffects & POST_NightVision)
       {
+        glActiveTexture(GL_TEXTURE0);
         GLuint PostNightVisionShaderID =
           GameState->Resources.GetShader(GameState->R.PostNightVision);
         glUseProgram(PostNightVisionShaderID);

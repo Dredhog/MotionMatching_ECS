@@ -31,8 +31,6 @@ struct Sun
 
 in VertexOut
 {
-  flat int flags;
-
   vec3 position;
   vec3 normal;
   vec2 texCoord;

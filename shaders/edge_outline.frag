@@ -3,10 +3,11 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
+uniform float cameraFarClipPlane;
 uniform float OffsetX;
 uniform float OffsetY;
 
-uniform sampler2D ScreenTex;
+uniform sampler2D PositionTex;
 
 void main()
 {
@@ -39,7 +40,7 @@ void main()
 
     for(int i = 0; i < 9; ++i)
     {
-        float Sample = texture(ScreenTex, TexCoords.st + Offsets[i]).r;
+        float Sample = length(texture(PositionTex, TexCoords.st + Offsets[i]).xyz) / cameraFarClipPlane;
         SumX += Sample * Gx[i];
         SumY += Sample * Gy[i];
     }
