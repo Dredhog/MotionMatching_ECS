@@ -1533,10 +1533,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glActiveTexture(GL_TEXTURE0);
       }
 
+
       if(GameState->R.PPEffects & POST_Grayscale)
       {
         GLuint PostGrayscaleShaderID = GameState->Resources.GetShader(GameState->R.PostGrayscale);
         glUseProgram(PostGrayscaleShaderID);
+
 
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
         // glClear(GL_DEPTH_BUFFER_BIT);
@@ -1613,8 +1615,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                   GameState->Camera.FarClipPlane);
       BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
 
+			//Just to skip
+			BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+			
       int TexIndex = 1;
-
       glActiveTexture(GL_TEXTURE0 + TexIndex);
       glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferDepthTexID);
       glUniform1i(glGetUniformLocation(RenderDepthMapShaderID, "DepthMap"), TexIndex);
@@ -1636,6 +1640,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       glActiveTexture(GL_TEXTURE0);
     }
+
+		assert(GameState->R.CurrentTexture == GameState->R.CurrentFramebuffer);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
