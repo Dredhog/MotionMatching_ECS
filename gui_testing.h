@@ -1003,6 +1003,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 {
   if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessingSettings))
   {
+    bool HDRTonemap   = GameState->R.PPEffects & POST_HDRTonemap;
+    bool Bloom        = GameState->R.PPEffects & POST_Bloom;
     bool FXAA         = GameState->R.PPEffects & POST_FXAA;
     bool Blur         = GameState->R.PPEffects & POST_Blur;
     bool DepthOfField = GameState->R.PPEffects & POST_DepthOfField;
@@ -1012,6 +1014,19 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
     bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
     bool Noise        = GameState->R.PPEffects & POST_Noise;
+
+    UI::Checkbox("HDRTonemap", &HDRTonemap);
+    if(HDRTonemap)
+    {
+      UI::SameLine();
+      UI::Checkbox("Bloom", &Bloom);
+      UI::SameLine();
+      UI::NewLine();
+    }
+    else
+    {
+      Bloom = false;
+    }
 
     UI::Checkbox("FXAA", &FXAA);
     UI::Checkbox("Blur", &Blur);
@@ -1023,7 +1038,28 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
     UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
     UI::Checkbox("SimpleFog", &SimpleFog);
+    UI::Checkbox("VolumetricScattering", &GameState->R.RenderVolumetricScattering);
     UI::Checkbox("Noise", &Noise);
+
+    if(HDRTonemap)
+    {
+      GameState->R.PPEffects |= POST_HDRTonemap;
+      UI::SliderFloat("HDR Exposure", &GameState->R.ExposureHDR, 0.01f, 8.0f);
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_HDRTonemap;
+    }
+
+    if(Bloom)
+    {
+      GameState->R.PPEffects |= POST_Bloom;
+      UI::SliderFloat("Bloom Threshold", &GameState->R.BloomLuminanceThreshold, 0.01f, 5.0f);
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_Bloom;
+    }
 
     if(FXAA)
     {
@@ -1097,6 +1133,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 #endif
     }
 
+    //UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
+
     if(SimpleFog)
     {
       GameState->R.PPEffects |= POST_SimpleFog;
@@ -1122,9 +1160,9 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
 
   if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
   {
-    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 1, 5);
-    UI::DragFloat3("Specular", &GameState->R.LightSpecularColor.X, 0, 1, 5);
-    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 1, 5);
+    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
+    UI::DragFloat3("Specular", &GameState->R.LightSpecularColor.X, 0, 10, 5);
+    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 10, 5);
     UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
     UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
 
@@ -1133,8 +1171,8 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::DragFloat3("Specular", &GameState->R.Sun.SpecularColor.X, 0, 1, 5);
     UI::DragFloat3("Ambient", &GameState->R.Sun.AmbientColor.X, 0, 1, 5);
 
-    UI::SliderFloat("Sun X Angle", &GameState->R.Sun.Rotation.Y, -180.0f, 180.0f);
-    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.Rotation.X, -180.0f, 180.0f);
+    UI::SliderFloat("Sun X Angle", &GameState->R.Sun.Rotation.X, -180.0f, 180.0f);
+    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.Rotation.Y, -180.0f, 180.0f);
     UI::SliderFloat("Sun Radius", &GameState->R.Sun.Radius, 0.01f, 100.0f);
     UI::Checkbox("Center Offset From Camera", &GameState->R.Sun.CenterOffsetFromCamera);
     if(GameState->R.Sun.CenterOffsetFromCamera)

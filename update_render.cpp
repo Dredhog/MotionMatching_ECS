@@ -89,8 +89,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.ShaderToon     = GameState->Resources.RegisterShader("shaders/toon");
       GameState->R.ShaderTest     = GameState->Resources.RegisterShader("shaders/test");
       GameState->R.ShaderParallax = GameState->Resources.RegisterShader("shaders/parallax");
+      GameState->R.ShaderRimLight = GameState->Resources.RegisterShader("shaders/rim_lit_parallax");
       GameState->R.ShaderSSAO     = GameState->Resources.RegisterShader("shaders/ssao");
       GameState->R.ShaderWavy     = GameState->Resources.RegisterShader("shaders/wavy");
+      GameState->R.ShaderVolumetricScattering =
+        GameState->Resources.RegisterShader("shaders/volumetric_scattering");
       GameState->R.ShaderLightWave = GameState->Resources.RegisterShader("shaders/light_wave");
 
       GameState->R.PostDefaultShader = GameState->Resources.RegisterShader("shaders/post_default");
@@ -100,12 +103,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.PostBlurH = GameState->Resources.RegisterShader("shaders/post_blur_horizontal");
       GameState->R.PostBlurV = GameState->Resources.RegisterShader("shaders/post_blur_vertical");
       GameState->R.RenderDepthMap = GameState->Resources.RegisterShader("shaders/render_depth_map");
-      GameState->R.RenderShadowMap = GameState->Resources.RegisterShader("shaders/render_shadow_map");
+      GameState->R.RenderShadowMap =
+        GameState->Resources.RegisterShader("shaders/render_shadow_map");
       GameState->R.PostDepthOfField = GameState->Resources.RegisterShader("shaders/depth_of_field");
-      GameState->R.PostMotionBlur = GameState->Resources.RegisterShader("shaders/motion_blur");
-      GameState->R.PostEdgeOutline = GameState->Resources.RegisterShader("shaders/edge_outline");
-      GameState->R.PostEdgeBlend = GameState->Resources.RegisterShader("shaders/edge_blend");
-      GameState->R.PostFXAA         = GameState->Resources.RegisterShader("shaders/fxaa");
+      GameState->R.PostMotionBlur   = GameState->Resources.RegisterShader("shaders/motion_blur");
+      GameState->R.PostEdgeOutline  = GameState->Resources.RegisterShader("shaders/edge_outline");
+      GameState->R.PostEdgeBlend    = GameState->Resources.RegisterShader("shaders/edge_blend");
+      GameState->R.PostBrightRegion = GameState->Resources.RegisterShader("shaders/bright_region");
+      GameState->R.PostBloomBlur    = GameState->Resources.RegisterShader("shaders/bloom_blur");
+      GameState->R.PostBloomTonemap =
+        GameState->Resources.RegisterShader("shaders/bloom_combine_tonemap");
+      GameState->R.PostFXAA      = GameState->Resources.RegisterShader("shaders/fxaa");
       GameState->R.PostSimpleFog = GameState->Resources.RegisterShader("shaders/post_simple_fog");
       GameState->R.PostNoise = GameState->Resources.RegisterShader("shaders/post_noise");
 
@@ -177,6 +185,22 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.NormalID) });
         AddParamDef(ParallaxShaderDef, "map_depth", "material.depthMap",
                     { SHADER_PARAM_TYPE_Map, offsetof(material, Parallax.DepthID) });
+      }
+      {
+        struct shader_def* RimShaderDef =
+          AddShaderDef(SHADER_RimLight, GameState->R.ShaderRimLight, "rim_light");
+        AddParamDef(RimShaderDef, "rim_strength", "material.rimStrength",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, RimLight.RimStrength) });
+        AddParamDef(RimShaderDef, "rim_color", "material.rimColor",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, RimLight.RimColor) });
+        AddParamDef(RimShaderDef, "height_scale", "height_scale",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, RimLight.HeightScale) });
+        AddParamDef(RimShaderDef, "map_diffuse", "material.diffuseMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, RimLight.DiffuseID) });
+        AddParamDef(RimShaderDef, "map_normal", "material.normalMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, RimLight.NormalID) });
+        AddParamDef(RimShaderDef, "map_depth", "material.depthMap",
+                    { SHADER_PARAM_TYPE_Map, offsetof(material, RimLight.DepthID) });
       }
 
       {
@@ -257,14 +281,35 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       // FRAMEBUFFER CREATION FOR DEPTH BUFFER RENDERING AND EDGE OUTLINE
       {
         GameState->R.DrawDepthBuffer = false;
-        GenerateFramebuffer(&GameState->R.DepthTextureFBO, &GameState->R.DepthTextureRBO, &GameState->R.DepthTexture);
-        GenerateFramebuffer(&GameState->R.EdgeOutlineFBO, &GameState->R.EdgeOutlineRBO, &GameState->R.EdgeOutlineTexture);
+        GenerateFramebuffer(&GameState->R.DepthTextureFBO, &GameState->R.DepthTextureRBO,
+                            &GameState->R.DepthTexture, 2 * SCREEN_WIDTH, 2 * SCREEN_HEIGHT);
+        GenerateFramebuffer(&GameState->R.EdgeOutlineFBO, &GameState->R.EdgeOutlineRBO,
+                            &GameState->R.EdgeOutlineTexture);
       }
 
       // FRAMEBUFFER CREATION FOR SHADOW MAPPING
       {
         GameState->R.DrawShadowMap = false;
         GenerateShadowFramebuffer(&GameState->R.ShadowMapFBO, &GameState->R.ShadowMapTexture);
+      }
+
+      // FRAMEBUFFER FOR VOLUMETRIC LIGHT SCATTERING
+      {
+        GenerateSSAOFrameBuffer(&GameState->R.LightScatterFBOs[0],
+                                &GameState->R.LightScatterTextures[0], SCREEN_WIDTH, SCREEN_HEIGHT);
+        GenerateSSAOFrameBuffer(&GameState->R.LightScatterFBOs[1],
+                                &GameState->R.LightScatterTextures[1], SCREEN_WIDTH, SCREEN_HEIGHT);
+      }
+
+      // FRAMEBUFFERS FOR HDF/BLOOM
+      {
+
+        GenerateFloatingPointFBO(&GameState->R.HdrFBOs[0], &GameState->R.HdrTextures[0],
+                                 &GameState->R.HdrRBOs[0]);
+        GenerateFloatingPointFBO(&GameState->R.HdrFBOs[1], &GameState->R.HdrTextures[1],
+                                 &GameState->R.HdrRBOs[1]);
+        GenerateFloatingPointFBO(&GameState->R.HdrFBOs[2], &GameState->R.HdrTextures[2],
+                                 &GameState->R.HdrRBOs[2]);
       }
 
       // FRAMEBUFFER GENERATION FOR POST-PROCESSING EFFECTS
@@ -322,12 +367,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // SUN DATA
         {
           GameState->R.ShadowCenterOffset          = 5.0f;
-          GameState->R.RealTimeDirectionalShadows  = false;
+          GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
           GameState->R.ClearDirectionalShadows     = false;
 
-          GameState->R.Sun.Rotation      = { 0.0f, 0.0f, 0.0f };
-          GameState->R.Sun.Radius        = 10.0f;
+          GameState->R.Sun.Rotation      = { -60.0f, -105.0f, 0.0f };
+          GameState->R.Sun.Radius        = 30.0f;
           GameState->R.Sun.Position      = { 0.0f, 0.0f, 0.0f };
           GameState->R.Sun.Center        = { 0.0f, 0.0f, 0.0f };
           GameState->R.Sun.Direction     = { 0.0f, 0.0f, 0.0f };
@@ -382,6 +427,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           }
 #endif
         }
+        GameState->R.ExposureHDR             = 1.84f;
+        GameState->R.BloomLuminanceThreshold = 1.2f;
 
         // INITIAL FOG VALUES
         {
@@ -833,8 +880,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       GLuint RenderDepthMapShaderID = GameState->Resources.GetShader(GameState->R.RenderDepthMap);
       glUseProgram(RenderDepthMapShaderID);
-      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
-      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
+      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraNearPlane"),
+                  GameState->Camera.NearClipPlane);
+      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraFarPlane"),
+                  GameState->Camera.FarClipPlane);
 
       glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.DepthTextureFBO);
       glClear(GL_DEPTH_BUFFER_BIT);
@@ -897,35 +946,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         glActiveTexture(GL_TEXTURE0);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
-      if(false)
-      {
-        if(GameState->R.PostBlurStdDev != GameState->R.PostBlurLastStdDev)
-        {
-          GameState->R.PostBlurLastStdDev = GameState->R.PostBlurStdDev;
-          GenerateGaussianBlurKernel(GameState->R.PostBlurKernel, BLUR_KERNEL_SIZE,
-                                     GameState->R.PostBlurLastStdDev);
-        }
-
-        GLuint PostBlurHShaderID = GameState->Resources.GetShader(GameState->R.PostBlurH);
-        glUseProgram(PostBlurHShaderID);
-
-        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glUniform1f(glGetUniformLocation(PostBlurHShaderID, "Offset"), 1.0f / SCREEN_WIDTH);
-        glUniform1fv(glGetUniformLocation(PostBlurHShaderID, "Kernel"), BLUR_KERNEL_SIZE,
-                     GameState->R.PostBlurKernel);
-
-        BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
-        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
-
-        GLuint PostBlurVShaderID = GameState->Resources.GetShader(GameState->R.PostBlurV);
-        glUseProgram(PostBlurVShaderID);
-
-        glUniform1f(glGetUniformLocation(PostBlurVShaderID, "Offset"), 1.0f / SCREEN_HEIGHT);
-        glUniform1fv(glGetUniformLocation(PostBlurVShaderID, "Kernel"), BLUR_KERNEL_SIZE,
-                     GameState->R.PostBlurKernel);
-      }
+      // TODO(Lukas) Add blurring to ssao shader as well as a randomization kernel buffer and more
+      // samples
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
@@ -984,9 +1006,47 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GameState->R.ClearDirectionalShadows = false;
   }
 
+  // RENDER VOLUMETRIC LIGHT SCATTERING TO TEXTURE
+  if(GameState->R.RenderVolumetricScattering)
   {
-		//TODO(Lukas): Change this fbo to one with a 16 bit floating point texture for HDR rendering
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.LightScatterFBOs[0]);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    {
+      GLuint ShaderVolumetricScatteringID =
+        GameState->Resources.GetShader(GameState->R.ShaderVolumetricScattering);
+
+      glUseProgram(ShaderVolumetricScatteringID);
+
+      glUniformMatrix4fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_mat_sun_vp"), 1,
+                         GL_FALSE, GameState->R.Sun.VPMatrix.e);
+      glUniformMatrix4fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_mat_inv_v"), 1,
+                         GL_FALSE, Math::InvMat4(GameState->Camera.ViewMatrix).e);
+      glUniform3fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_CameraPosition"), 1,
+                   (float*)&GameState->Camera.Position);
+      {
+        int tex_index = 0;
+        glActiveTexture(GL_TEXTURE0 + tex_index);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferPositionTexID);
+        glUniform1i(glGetUniformLocation(ShaderVolumetricScatteringID, "u_PositionMap"), tex_index);
+      }
+      {
+        int tex_index = 1;
+        glActiveTexture(GL_TEXTURE0 + tex_index);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTexture);
+        glUniform1i(glGetUniformLocation(ShaderVolumetricScatteringID, "u_ShadowMap"), tex_index);
+#if 0
+#endif
+      }
+      DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
+
+  {
+    // TODO(Lukas): Change this fbo to one with a 16 bit floating point texture for HDR rendering
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[0]);
+    // glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1009,6 +1069,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUniformMatrix4fv(glGetUniformLocation(CubemapShaderID, "mat_view"), 1, GL_FALSE,
                          Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
       glBindVertexArray(CubemapMesh->VAO);
+
+      glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
       glDrawElements(GL_TRIANGLES, CubemapMesh->IndiceCount, GL_UNSIGNED_INT, 0);
 
@@ -1126,7 +1188,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   // RENDERING MATERIAL PREVIEW TO TEXTURE
-	//TODO(Lukas) only render preview if material uses time or parameters were changed
+  // TODO(Lukas) only render preview if material uses time or parameters were changed
   if(GameState->CurrentMaterialID.Value > 0)
   {
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
@@ -1173,13 +1235,148 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // debug drawings *should* be untouched.
 
   {
-    glDisable(GL_DEPTH_TEST);
+    // NOTE(Lukas): HDR tonemapping and bloom use HDR buffers which are floating point unlike the
+    // remaining post effect stack
+    if(GameState->R.PPEffects & POST_HDRTonemap)
+    {
+      if(GameState->R.PPEffects & POST_Bloom)
+      {
+        // Outputting Bright regions to HDR texture
+        {
+          // Reading from HdrFBO index 0 and writing to index 1
+          glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[1]);
+          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+          GLuint ShaderBrighRegionFilterID =
+            GameState->Resources.GetShader(GameState->R.PostBrightRegion);
+
+          glUseProgram(ShaderBrighRegionFilterID);
+          glUniform1f(glGetUniformLocation(ShaderBrighRegionFilterID, "u_BloomLuminanceThreshold"),
+                      GameState->R.BloomLuminanceThreshold);
+          {
+            int tex_index = 0;
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[0]); // HDR scene
+            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "ScreenTex"), tex_index);
+            DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+          }
+
+          glActiveTexture(GL_TEXTURE0);
+          glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        for(int i = 0; i < 1; i++)
+        {
+          // Horizontal blur bright regions
+          {
+            // Reading from HdrFBO index 1 and writing to index 2
+            glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[2]);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            GLuint ShaderBrighRegionFilterID =
+              GameState->Resources.GetShader(GameState->R.PostBloomBlur);
+            glUseProgram(ShaderBrighRegionFilterID);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[1]); // HDR scene
+            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "u_Horizontal"), 1);
+            DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+          }
+          // Vertical blur bright regions
+          {
+            // Reading from HdrFBO index 2 and writing to index 1
+            glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[1]);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            GLuint ShaderBrighRegionFilterID =
+              GameState->Resources.GetShader(GameState->R.PostBloomBlur);
+            glUseProgram(ShaderBrighRegionFilterID);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[2]);
+            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "u_Horizontal"), 0);
+            DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+          }
+        }
+      }
+
+      // Applying bloom and tonemapping (This writes to the LDR CurrentFrameBuffer FBO)
+      {
+        glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        GLuint ShaderBloomTonemapID = GameState->Resources.GetShader(GameState->R.PostBloomTonemap);
+        glUseProgram(ShaderBloomTonemapID);
+
+        {
+          int tex_index = 0;
+          glActiveTexture(GL_TEXTURE0 + tex_index);
+          glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[0]); // HDR screen input
+          glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ScreenTex"), tex_index);
+        }
+
+        if(GameState->R.PPEffects & POST_Bloom)
+        {
+          {
+            int tex_index = 1;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
+            glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[1]); // HDR Bloom
+            glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_BloomTex"), tex_index);
+          }
+          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 1);
+        }
+        else
+        {
+          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 0);
+        }
+
+        glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyVolumetricScattering"),
+                    GameState->R.RenderVolumetricScattering);
+        if(GameState->R.RenderVolumetricScattering)
+        {
+          {
+            int tex_index = 2;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
+            glBindTexture(GL_TEXTURE_2D,
+                          GameState->R.LightScatterTextures[0]); // Volumetric Scattering
+            glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ScatteredLightMap"),
+                        tex_index);
+          }
+        }
+
+        glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_Exposure"),
+                    GameState->R.ExposureHDR);
+
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+      }
+    }
+    else // Transitions bufferst to LDR when HDR Tonemapping is off
+    {
+      glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      GLuint PostDefaultShaderID = GameState->Resources.GetShader(GameState->R.PostDefaultShader);
+      glUseProgram(PostDefaultShaderID);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[0]);
+
+      DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+      glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     if(GameState->R.PPEffects)
     {
       if(GameState->R.PPEffects & POST_EdgeOutline)
       {
-        GLuint PostEdgeOutlineShaderID = GameState->Resources.GetShader(GameState->R.PostEdgeOutline);
+        GLuint PostEdgeOutlineShaderID =
+          GameState->Resources.GetShader(GameState->R.PostEdgeOutline);
         glUseProgram(PostEdgeOutlineShaderID);
         glUniform1f(glGetUniformLocation(PostEdgeOutlineShaderID, "OffsetX"), 1.0 / SCREEN_WIDTH);
         glUniform1f(glGetUniformLocation(PostEdgeOutlineShaderID, "OffsetY"), 1.0 / SCREEN_HEIGHT);
@@ -1212,21 +1409,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
-      /*if(GameState->R.PPEffects & (POST_HDR | POST_Bloom))
-      {
-        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        GLuint ShaderHDRID = GameState->Resources.GetShader(GameState->R.PostHdrBloom);
-
-        glUseProgram(ShaderHdrBloomID);
-
-        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
-        glActiveTexture(GL_TEXTURE0);
-      }*/
-
-			//TODO(Lukas) Make FXAA more efficient by using fewer more spaced-out luminance samples and
-			//a seperate precomputed luminance texture for input
+      // TODO(Lukas) Make FXAA more efficient by using fewer more spaced-out luminance samples and
+      // a seperate precomputed luminance texture for input
+			// TODO(Lukas) Expose FXAA sensitivity parameters to UI
       if(GameState->R.PPEffects & POST_FXAA)
       {
         BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
@@ -1238,7 +1424,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
-        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
       }
 
       if(GameState->R.PPEffects & (POST_Blur | POST_DepthOfField))
@@ -1294,7 +1480,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           {
             int tex_index = 3;
             glActiveTexture(GL_TEXTURE0 + tex_index);
-            BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+            BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.ScreenTextures[GameState->R.CurrentTexture]);
             glUniform1i(glGetUniformLocation(ShaderDepthOfFieldID, "u_BlurredMap"), tex_index);
           }
 
@@ -1354,7 +1540,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GLuint PostSimpleFogShaderID = GameState->Resources.GetShader(GameState->R.PostSimpleFog);
         glUseProgram(PostSimpleFogShaderID);
 
-        glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "fogFarDistance"), GameState->R.FogFarDistance);
         glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
         glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
         glUniform1f(glGetUniformLocation(PostSimpleFogShaderID, "density"), GameState->R.FogDensity);
@@ -1395,18 +1580,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
 
     }
-    else
-    {
-      GLuint PostDefaultShaderID = GameState->Resources.GetShader(GameState->R.PostDefaultShader);
-      glUseProgram(PostDefaultShaderID);
-    }
 
     if(GameState->R.DrawDepthBuffer)
     {
       GLuint RenderDepthMapShaderID = GameState->Resources.GetShader(GameState->R.RenderDepthMap);
       glUseProgram(RenderDepthMapShaderID);
-      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
-      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
+      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraNearPlane"),
+                  GameState->Camera.NearClipPlane);
+      glUniform1f(glGetUniformLocation(RenderDepthMapShaderID, "cameraFarPlane"),
+                  GameState->Camera.FarClipPlane);
       BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
 
       int TexIndex = 1;
@@ -1442,7 +1624,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     glEnable(GL_DEPTH_TEST);
 
-    GameState->R.CurrentTexture = 0;
+    GameState->R.CurrentTexture     = 0;
     GameState->R.CurrentFramebuffer = 0;
   }
 

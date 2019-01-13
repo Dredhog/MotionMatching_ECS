@@ -1,6 +1,7 @@
 #pragma once
 
 #define FRAMEBUFFER_MAX_COUNT 3
+#define HDR_FRAMEBUFFER_MAX_COUNT 3
 
 #define BLUR_KERNEL_SIZE 11
 
@@ -25,7 +26,8 @@ enum env_flags
 
 #define FOR_ALL_NAMES(DO_FUNC)                                                                     \
   DO_FUNC(Phong)                                                                                   \
-  DO_FUNC(Env) DO_FUNC(Toon) DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color) DO_FUNC(Wavy) DO_FUNC(LightWave)
+  DO_FUNC(Env) DO_FUNC(Toon)                                                                       \
+  DO_FUNC(Test) DO_FUNC(Parallax) DO_FUNC(Color) DO_FUNC(Wavy) DO_FUNC(RimLight) DO_FUNC(LightWave)
 #define GENERATE_ENUM(Name) SHADER_##Name,
 #define GENERATE_STRING(Name) #Name,
 enum shader_type
@@ -47,9 +49,11 @@ enum pp_type
   POST_NightVision  = 1 << 3,
   POST_MotionBlur   = 1 << 4,
   POST_FXAA         = 1 << 5,
-  POST_EdgeOutline  = 1 << 6,
-  POST_SimpleFog    = 1 << 7,
-  POST_Noise        = 1 << 8,
+  POST_HDRTonemap   = 1 << 6,
+  POST_Bloom        = 1 << 7,
+  POST_EdgeOutline  = 1 << 8,
+  POST_SimpleFog    = 1 << 9,
+  POST_Noise        = 1 << 10,
 
   POST_EnumCount,
 };
@@ -118,6 +122,17 @@ union material {
     rid             NormalID;
     rid             DepthID;
   } Parallax;
+
+  struct
+  {
+    material_header Common;
+    vec3            RimColor;
+    float           RimStrength;
+    float           HeightScale;
+    rid             DiffuseID;
+    rid             NormalID;
+    rid             DepthID;
+  } RimLight;
 
   struct
   {
@@ -212,10 +227,12 @@ struct render_data
   rid ShaderToon;
   rid ShaderTest;
   rid ShaderParallax;
+  rid ShaderRimLight;
   rid ShaderSunDepth;
   rid ShaderSSAO;
   rid ShaderWavy;
   rid ShaderLightWave;
+  rid ShaderVolumetricScattering;
 
   // Post-processing shaders
   rid PostDefaultShader;
@@ -227,6 +244,9 @@ struct render_data
   rid PostMotionBlur;
   rid PostEdgeOutline;
   rid PostEdgeBlend;
+  rid PostBrightRegion;
+  rid PostBloomBlur;
+  rid PostBloomTonemap;
   rid PostFXAA;
   rid PostSimpleFog;
   rid PostNoise;
@@ -239,7 +259,6 @@ struct render_data
   float PostBlurStdDev;
   float PostBlurKernel[BLUR_KERNEL_SIZE];
 
-  float FogFarDistance;
   float FogDensity;
   float FogGradient;
   float FogColor;
@@ -253,6 +272,17 @@ struct render_data
 
   float CumulativeTime;
 
+  // Volumetric Light Scattering framebuffer
+  bool     RenderVolumetricScattering;
+  uint32_t LightScatterFBOs[2];
+  uint32_t LightScatterTextures[2];
+
+  // HDR tonemapping
+  float ExposureHDR;
+
+  // Bloom
+  float BloomLuminanceThreshold;
+
   // SSAO
   uint32_t SSAOFBO;
   uint32_t SSAOTexID;
@@ -260,11 +290,11 @@ struct render_data
   vec3     SSAOSampleVectors[SSAO_SAMPLE_VECTOR_COUNT];
   float    SSAOSamplingRadius;
 
-  rid      RenderDepthMap;
-  rid      RenderShadowMap;
+  rid RenderDepthMap;
+  rid RenderShadowMap;
 
   // Screen space depth buffer
-  bool DrawDepthBuffer;
+  bool     DrawDepthBuffer;
   uint32_t DepthTextureFBO;
   uint32_t DepthTextureRBO;
   uint32_t DepthTexture;
@@ -277,7 +307,6 @@ struct render_data
   uint32_t ShadowMapFBO;
   uint32_t ShadowMapTexture;
 
-  // TODO(Rytis by Lukas' recommendation :D) make array names plural
   // Temporary stuff for post-processing
   // framebuffers Screen;
   uint32_t ScreenQuadVAO;
@@ -287,6 +316,11 @@ struct render_data
   uint32_t ScreenTextures[FRAMEBUFFER_MAX_COUNT];
   uint32_t CurrentFramebuffer;
   uint32_t CurrentTexture;
+
+  // HDR framebuffers
+  uint32_t HdrFBOs[HDR_FRAMEBUFFER_MAX_COUNT];
+  uint32_t HdrTextures[HDR_FRAMEBUFFER_MAX_COUNT];
+  uint32_t HdrRBOs[HDR_FRAMEBUFFER_MAX_COUNT];
 
   // Directional shadow mapping
   float ShadowCenterOffset;
