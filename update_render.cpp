@@ -91,6 +91,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.ShaderParallax = GameState->Resources.RegisterShader("shaders/parallax");
       GameState->R.ShaderSSAO     = GameState->Resources.RegisterShader("shaders/ssao");
       GameState->R.ShaderWavy     = GameState->Resources.RegisterShader("shaders/wavy");
+      GameState->R.ShaderLightWave = GameState->Resources.RegisterShader("shaders/light_wave");
 
       GameState->R.PostDefaultShader = GameState->Resources.RegisterShader("shaders/post_default");
       GameState->R.PostGrayscale = GameState->Resources.RegisterShader("shaders/post_grayscale");
@@ -193,6 +194,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                     { SHADER_PARAM_TYPE_Vec3, offsetof(material, Wavy.AlbedoColor) });
         AddParamDef(WavyShaderDef, "map_normal", "u_NormalMap",
                     { SHADER_PARAM_TYPE_Map, offsetof(material, Wavy.NormalID) });
+      }
+
+      {
+        struct shader_def* LightWaveShaderDef =
+          AddShaderDef(SHADER_LightWave, GameState->R.ShaderLightWave, "LightWave");
+        AddParamDef(LightWaveShaderDef, "vec3_ambient", "material.ambientColor",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, LightWave.AmbientColor) });
+        AddParamDef(LightWaveShaderDef, "vec4_diffuse", "material.diffuseColor",
+                    { SHADER_PARAM_TYPE_Vec4, offsetof(material, LightWave.DiffuseColor) });
+        AddParamDef(LightWaveShaderDef, "vec3_specular", "material.specularColor",
+                    { SHADER_PARAM_TYPE_Vec3, offsetof(material, LightWave.SpecularColor) });
+        AddParamDef(LightWaveShaderDef, "shininess", "material.shininess",
+                    { SHADER_PARAM_TYPE_Float, offsetof(material, LightWave.Shininess) });
       }
     }
 

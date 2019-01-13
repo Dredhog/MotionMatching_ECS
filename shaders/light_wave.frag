@@ -1,19 +1,14 @@
 #version 330 core
 
-#define DIFFUSE_MAP 1
-#define SPECULAR_MAP 2
-#define NORMAL_MAP 4
-#define SKELETAL 8
+#define PI 3.14159265359
+
+uniform float u_Time;
 
 struct Material
 {
   vec3 ambientColor;
   vec4 diffuseColor;
   vec3 specularColor;
-
-  sampler2D diffuseMap;
-  sampler2D specularMap;
-  sampler2D normalMap;
 
   float shininess;
 };
@@ -44,9 +39,6 @@ in VertexOut
   vec3 lightPos;
   vec3 sunDir;
   vec3 cameraPos;
-  vec3 tangentLightPos;
-  vec3 tangentViewPos;
-  vec3 tangentFragPos;
   vec4 sunFragPos;
 }
 frag;
@@ -90,6 +82,18 @@ ShadowCalculation(vec4 sunFragPos, vec3 normal, vec3 lightDir)
   return shadow;
 }
 
+float
+cubicPulse(float c, float w, float x)
+{
+    x = abs(x - c);
+    if(x > w)
+    {
+      return 0.0;
+    }
+    x /= w;
+    return 1.0 - x * x * (3.0 - 2.0 * x);
+}
+
 void
 main()
 {
@@ -97,19 +101,9 @@ main()
   vec3 lightDir = vec3(0.0f);
   vec3 viewDir  = vec3(0.0f);
 
-  if((frag.flags & NORMAL_MAP) != 0)
-  {
-    normal   = normalize(texture(material.normalMap, frag.texCoord).rgb);
-    normal   = normalize(normal * 2.0f - 1.0f);
-    lightDir = normalize(frag.tangentLightPos - frag.tangentFragPos);
-    viewDir  = normalize(frag.tangentViewPos - frag.tangentFragPos);
-  }
-  else
-  {
-    normal   = normalize(frag.normal);
-    lightDir = normalize(frag.lightPos - frag.position);
-    viewDir  = normalize(frag.cameraPos - frag.position);
-  }
+  normal   = normalize(frag.normal);
+  lightDir = normalize(frag.lightPos - frag.position);
+  viewDir  = normalize(frag.cameraPos - frag.position);
 
   // --------SHADOW--------
   float shadow = ShadowCalculation(frag.sunFragPos, normal, frag.sunDir);
@@ -130,23 +124,8 @@ main()
   float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
   diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
 
-  if((frag.flags & DIFFUSE_MAP) != 0)
-  {
-    float offset_delta = 0.005f;
-#if 0	
-    vec3 diffuse_sample = texture(material.diffuseMap, frag.texCoord + vec2(offset_delta, offset_delta)).xyz + texture(material.diffuseMap, frag.texCoord+vec2(-offset_delta, offset_delta)).xyz + texture(material.diffuseMap, frag.texCoord+vec2(offset_delta, -offset_delta)).xyz + texture(material.diffuseMap, frag.texCoord+vec2(-offset_delta, -offset_delta)).xyz;
-    diffuse_sample /= 4;
-#else
-    vec3 diffuse_sample = texture(material.diffuseMap, frag.texCoord).xyz;
-#endif
-    ambient *= diffuse_sample;			
-    diffuse *= diffuse_sample;
-  }
-  else
-  {
-    ambient *= material.ambientColor;
-    diffuse *= material.diffuseColor.rgb;
-  }
+  ambient *= material.ambientColor;
+  diffuse *= material.diffuseColor.rgb;
   
   vec2 screen_tex_coords = gl_FragCoord.xy/textureSize(u_AmbientOcclusion, 0).xy; 
   float ambient_occlusion = texture(u_AmbientOcclusion, screen_tex_coords).r;
@@ -159,25 +138,16 @@ main()
 
   float sun_specular_intensity = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
   specular += sun_specular_intensity * sun.specular * lighting;
-  if((frag.flags & SPECULAR_MAP) != 0)
-  {
-    specular *= vec3(texture(material.specularMap, frag.texCoord));
-  }
-  else
-  {
-    specular *= material.specularColor;
-  }
+
+  specular *= material.specularColor;
 
   // --------FINAL----------
-  vec4 result = vec4(0.0f);
-  if((frag.flags & DIFFUSE_MAP) != 0)
-  {
-    result = vec4(diffuse + specular + ambient, 1.0f);
-  }
-  else
-  {
-    result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
-  }
+  vec4 result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
+
+  float PeriodicWaveBrightness = 0.5 * cubicPulse(0.0, 0.5, 10.0 * sin(u_Time + 0.05 * frag.position.x * frag.position.y * frag.position.z * PI));
+  float ColorValue = 0.5 * (1.0 + sin(u_Time + PI));
+  vec3 PeriodicWaveColor = vec3(ColorValue, ColorValue, 0.0);
+  result += vec4(PeriodicWaveBrightness * PeriodicWaveColor, 1.0);
 
   out_color = result;
 }

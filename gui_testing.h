@@ -434,6 +434,18 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             UI::SliderInt("LevelCount", &CurrentMaterial->Toon.LevelCount, 1, 10);
           }
           break;
+          case SHADER_LightWave:
+          {
+            UI::DragFloat3("Ambient Color", &CurrentMaterial->LightWave.AmbientColor.X, 0.0f, 1.0f,
+                           5.0f);
+            UI::DragFloat4("Diffuse Color", &CurrentMaterial->LightWave.DiffuseColor.X, 0.0f, 1.0f,
+                           5.0f);
+            UI::DragFloat3("Specular Color", &CurrentMaterial->LightWave.SpecularColor.X, 0.0f, 1.0f,
+                           5.0f);
+
+            UI::SliderFloat("Shininess", &CurrentMaterial->LightWave.Shininess, 1.0f, 512.0f);
+          }
+          break;
           case SHADER_Color:
           {
             UI::DragFloat4("Color", &CurrentMaterial->Color.Color.X, 0, 1, 5);
