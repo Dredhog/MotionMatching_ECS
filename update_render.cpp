@@ -1030,7 +1030,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   {
-    // TODO(Lukas): Change this fbo to one with a 16 bit floating point texture for HDR rendering
     glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[0]);
     // glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ScreenFBOs[GameState->R.CurrentFramebuffer]);
     glClearColor(0.3f, 0.4f, 0.7f, 1.0f);
@@ -1223,7 +1222,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     // NOTE(Lukas): HDR tonemapping and bloom use HDR buffers which are floating point unlike the
     // remaining post effect stack
-    if(GameState->R.PPEffects & POST_HDRTonemap)
+    if(GameState->R.PPEffects & (POST_HDRTonemap | POST_Bloom) || GameState->R.RenderVolumetricScattering)
     {
       if(GameState->R.PPEffects & POST_Bloom)
       {
@@ -1334,6 +1333,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           }
         }
 
+        glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyTonemapping"),
+                    (bool)(GameState->R.PPEffects & POST_HDRTonemap));
         glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_Exposure"),
                     GameState->R.ExposureHDR);
 
