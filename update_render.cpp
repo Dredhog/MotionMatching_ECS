@@ -65,8 +65,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
       GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
+      GameState->R.PostTestTextureID  = Texture::LoadTexture("./data/textures/collapsed.bmp");
       assert(GameState->CollapsedTextureID);
       assert(GameState->ExpandedTextureID);
+      assert(GameState->R.PostTestTextureID);
     }
 
     // LOAD FONTS
@@ -116,6 +118,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->R.PostFXAA      = GameState->Resources.RegisterShader("shaders/fxaa");
       GameState->R.PostSimpleFog = GameState->Resources.RegisterShader("shaders/post_simple_fog");
       GameState->R.PostNoise = GameState->Resources.RegisterShader("shaders/post_noise");
+      GameState->R.PostShaderTest = GameState->Resources.RegisterShader("shaders/post_test");
 
       GameState->R.ShaderGeomPreePass =
         GameState->Resources.RegisterShader("shaders/geom_pre_pass");
@@ -1608,6 +1611,39 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       }
 
+      if(GameState->R.PPEffects & POST_Test)
+      {
+        BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
+
+        GLuint PostTestShaderID =
+          GameState->Resources.GetShader(GameState->R.PostShaderTest);
+        glUseProgram(PostTestShaderID);
+        glUniform1f(glGetUniformLocation(PostTestShaderID, "u_Time"), GameState->R.CumulativeTime);
+
+				{
+					int TexIndex = 0;
+					glActiveTexture(GL_TEXTURE0 + TexIndex);
+					BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+          glUniform1i(glGetUniformLocation(PostTestShaderID, "u_ScreenTex"), TexIndex);
+				}
+				{
+					int TexIndex = 1;
+					glActiveTexture(GL_TEXTURE0 + TexIndex);
+      	  glBindTexture(GL_TEXTURE_2D, GameState->R.PostTestTextureID);
+          glUniform1i(glGetUniformLocation(PostTestShaderID, "u_AuxiliaryTex"), TexIndex);
+				}
+				{
+					int TexIndex = 2;
+					glActiveTexture(GL_TEXTURE0 + TexIndex);
+					glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->R.Cubemap.CubemapTexture);
+					glUniform1i(glGetUniformLocation(PostTestShaderID, "u_CubeTex"), TexIndex);
+				}
+
+        glActiveTexture(GL_TEXTURE0);
+
+        DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+				glActiveTexture(GL_TEXTURE0);
+      }
     }
 
     if(GameState->R.DrawDepthBuffer)

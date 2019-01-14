@@ -54,6 +54,7 @@ enum pp_type
   POST_EdgeOutline  = 1 << 8,
   POST_SimpleFog    = 1 << 9,
   POST_Noise        = 1 << 10,
+	POST_Test         = 1 << 11,
 
   POST_EnumCount,
 };
@@ -250,6 +251,7 @@ struct render_data
   rid PostFXAA;
   rid PostSimpleFog;
   rid PostNoise;
+  rid PostShaderTest;
 
   cubemap Cubemap;
 
@@ -307,6 +309,9 @@ struct render_data
   bool     DrawShadowMap;
   uint32_t ShadowMapFBO;
   uint32_t ShadowMapTexture;
+
+	// Post processing additional input texture
+	int32_t PostTestTextureID;
 
   // Temporary stuff for post-processing
   // framebuffers Screen;

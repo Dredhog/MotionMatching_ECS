@@ -1014,6 +1014,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
     bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
     bool Noise        = GameState->R.PPEffects & POST_Noise;
+    bool Test         = GameState->R.PPEffects & POST_Test;
 
     UI::Checkbox("HDRTonemap", &HDRTonemap);
     UI::Checkbox("Bloom", &Bloom);
@@ -1029,6 +1030,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("SimpleFog", &SimpleFog);
     UI::Checkbox("VolumetricScattering", &GameState->R.RenderVolumetricScattering);
     UI::Checkbox("Noise", &Noise);
+    UI::Checkbox("Test", &Test);
 
     if(HDRTonemap)
     {
@@ -1144,6 +1146,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     else
     {
       GameState->R.PPEffects &= ~POST_Noise;
+    }
+
+    if(Test)
+    {
+      GameState->R.PPEffects |= POST_Test;
+    }
+    else
+    {
+      GameState->R.PPEffects &= ~POST_Test;
     }
   }
 
