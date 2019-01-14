@@ -29,8 +29,8 @@ main()
   float kernel_sum = 0.0f;
   for(int i = -5; i <= 5; ++i)
   {
-    final_color += Kernel[i] * texture(ScreenTex, TexCoords + float(i) * tex_delta).rgb;
-    kernel_sum += Kernel[i];
+    final_color += Kernel[i+5] * texture(ScreenTex, TexCoords + float(i) * tex_delta).rgb;
+    kernel_sum += Kernel[i+5];
   }
   vec3 sample_color = texture(ScreenTex, TexCoords.st).rgb;
    

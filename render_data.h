@@ -281,7 +281,8 @@ struct render_data
   float ExposureHDR;
 
   // Bloom
-  float BloomLuminanceThreshold;
+  float   BloomLuminanceThreshold;
+  int32_t BloomBlurIterationCount;
 
   // SSAO
   uint32_t SSAOFBO;

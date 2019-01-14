@@ -429,6 +429,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
         GameState->R.ExposureHDR             = 1.84f;
         GameState->R.BloomLuminanceThreshold = 1.2f;
+        GameState->R.BloomBlurIterationCount = 1;
 
         // INITIAL FOG VALUES
         {
@@ -828,7 +829,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     for(int m = 0; m < CurrentModel->MeshCount; m++)
     {
       mesh_instance MeshInstance = {};
-      MeshInstance.Mesh          = CurrentModel->Meshes[m];
+      MeshInstance.Mesh     = CurrentModel->Meshes[m];
       MeshInstance.Material =
         GameState->Resources.GetMaterial(GameState->Entities[e].MaterialIDs[m]);
       MeshInstance.EntityIndex = e;
@@ -1265,7 +1266,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           glBindTexture(GL_TEXTURE_2D, 0);
         }
 
-        for(int i = 0; i < 1; i++)
+        for(int i = 0; i < GameState->R.BloomBlurIterationCount; i++)
         {
           // Horizontal blur bright regions
           {
@@ -1273,13 +1274,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[2]);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            GLuint ShaderBrighRegionFilterID =
+            GLuint ShaderPostBloomBlurID =
               GameState->Resources.GetShader(GameState->R.PostBloomBlur);
-            glUseProgram(ShaderBrighRegionFilterID);
+            glUseProgram(ShaderPostBloomBlurID);
 
-            glActiveTexture(GL_TEXTURE0);
+			int tex_index = 0;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
             glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[1]); // HDR scene
-            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "u_Horizontal"), 1);
+            glUniform1i(glGetUniformLocation(ShaderPostBloomBlurID, "ScreenTex"), tex_index);
+            glUniform1i(glGetUniformLocation(ShaderPostBloomBlurID, "u_Horizontal"), true);
             DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
             glBindTexture(GL_TEXTURE_2D, 0);
@@ -1290,13 +1293,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.HdrFBOs[1]);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            GLuint ShaderBrighRegionFilterID =
+            GLuint ShaderPostBloomBlurID =
               GameState->Resources.GetShader(GameState->R.PostBloomBlur);
-            glUseProgram(ShaderBrighRegionFilterID);
+            glUseProgram(ShaderPostBloomBlurID);
 
-            glActiveTexture(GL_TEXTURE0);
+			int tex_index = 0;
+            glActiveTexture(GL_TEXTURE0 + tex_index);
             glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[2]);
-            glUniform1i(glGetUniformLocation(ShaderBrighRegionFilterID, "u_Horizontal"), 0);
+            glUniform1i(glGetUniformLocation(ShaderPostBloomBlurID, "ScreenTex"), tex_index);
+            glUniform1i(glGetUniformLocation(ShaderPostBloomBlurID, "u_Horizontal"), false);
             DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 
             glBindTexture(GL_TEXTURE_2D, 0);
@@ -1327,11 +1332,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             glBindTexture(GL_TEXTURE_2D, GameState->R.HdrTextures[1]); // HDR Bloom
             glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_BloomTex"), tex_index);
           }
-          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 1);
+          glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), true);
         }
         else
         {
-          glUniform1f(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), 0);
+          glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyBloom"), false);
         }
 
         glUniform1i(glGetUniformLocation(ShaderBloomTonemapID, "u_ApplyVolumetricScattering"),

@@ -1044,6 +1044,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     {
       GameState->R.PPEffects |= POST_Bloom;
       UI::SliderFloat("Bloom Threshold", &GameState->R.BloomLuminanceThreshold, 0.01f, 5.0f);
+      UI::SliderInt("Bloom Blur Iterations", &GameState->R.BloomBlurIterationCount, 0, 5);
     }
     else
     {
