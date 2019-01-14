@@ -1620,8 +1620,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                   GameState->Camera.FarClipPlane);
       BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
 
-			//Just to skip
-			BindTextureAndSetNext(GameState->R.ScreenTextures, &GameState->R.CurrentTexture);
+      //Need this to keep current framebuffer and texture in sync
+      GameState->R.CurrentTexture = (GameState->R.CurrentTexture + 1) % FRAMEBUFFER_MAX_COUNT;
 			
       int TexIndex = 1;
       glActiveTexture(GL_TEXTURE0 + TexIndex);
@@ -1637,8 +1637,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUseProgram(RenderShadowMapShaderID);
       BindNextFramebuffer(GameState->R.ScreenFBOs, &GameState->R.CurrentFramebuffer);
 
-      int TexIndex = 1;
+	  GameState->R.CurrentTexture = (GameState->R.CurrentTexture + 1) % FRAMEBUFFER_MAX_COUNT;
 
+      int TexIndex = 1;
       glActiveTexture(GL_TEXTURE0 + TexIndex);
       glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTexture);
       glUniform1i(glGetUniformLocation(RenderShadowMapShaderID, "DepthMap"), TexIndex);
