@@ -293,7 +293,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       // FRAMEBUFFER CREATION FOR SHADOW MAPPING
       {
         GameState->R.DrawShadowMap = false;
-        GenerateShadowFramebuffer(&GameState->R.ShadowMapFBO, &GameState->R.ShadowMapTexture);
+				for(int i = 0; i < ArrayCount(GameState->R.ShadowMapFBOs); i++)
+				{
+					GenerateShadowFramebuffer(&GameState->R.ShadowMapFBOs[i], &GameState->R.ShadowMapTextures[i]);
+				}
       }
 
       // FRAMEBUFFER FOR VOLUMETRIC LIGHT SCATTERING
@@ -348,14 +351,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       // CAMERA FIELD INITIALIZATION
       {
-        GameState->Camera.Position      = { 0, 1.6f, 2 };
+        GameState->Camera.Position      = { 0, 2, 0 };
         GameState->Camera.Up            = { 0, 1, 0 };
         GameState->Camera.Forward       = { 0, 0, -1 };
         GameState->Camera.Right         = { 1, 0, 0 };
         GameState->Camera.Rotation      = { 0 };
         GameState->Camera.NearClipPlane = 0.01f;
         GameState->Camera.FarClipPlane  = 1000.0f;
-        GameState->Camera.FieldOfView   = 70.0f;
+        GameState->Camera.FieldOfView   = 90.0f;
         GameState->Camera.MaxTiltAngle  = 90.0f;
         GameState->Camera.Speed         = 2.0f;
       }
@@ -389,8 +392,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->R.Sun.AmbientColor  = { 0.3f, 0.3f, 0.3f };
           GameState->R.Sun.DiffuseColor  = { 0.7f, 0.7f, 0.7f };
           GameState->R.Sun.SpecularColor = { 0.7f, 0.7f, 0.7f };
-          UpdateSun(&GameState->R.Sun, GameState->R.ShadowCenterOffset * GameState->Camera.Forward,
-                    GameState->Camera.ViewMatrix);
         }
 
         GameState->R.LightPosition        = { 0.7f, 1, 1 };
@@ -612,6 +613,71 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
+
+	//TESTING OBB GENERATION FROM FRUSTUM
+	{
+		{
+			GameState->R.Sun.Rotation.X = ClampFloat(-180.0f, GameState->R.Sun.Rotation.X, 180.0f);
+			GameState->R.Sun.Rotation.Y = ClampFloat(-180.0f, GameState->R.Sun.Rotation.Y, 180.0f);
+			GameState->R.Sun.Rotation.Z = 0.0f;
+
+			GameState->R.Sun.Direction = Math::Normalized(
+				Math::MulMat3Vec3(Math::Mat4ToMat3(Math::Mat4Rotate(GameState->R.Sun.Rotation)), { 0.0f, 0.0f, -1.0f }));
+		}
+		frustum_def Frustum = {};
+		Frustum.Forward = Math::Normalized(GameState->Camera.Forward);
+		Frustum.Right = Math::Normalized(Math::Cross(Frustum.Forward, vec3{0, 1, 0}));
+		Frustum.Up = Math::Cross(Frustum.Right, Frustum.Forward);
+		Frustum.Origin = GameState->Camera.Position;
+		Frustum.Near = GameState->Camera.NearClipPlane;
+		//Frustum.Forward = vec3{0, 0, -1};
+		//Frustum.Right = vec3{1, 0, 0};
+		//Frustum.Up = vec3{0, 1, 0};
+		//Frustum.Origin = vec3{0, 2, 0};
+		Frustum.Near = GameState->Camera.NearClipPlane;
+		Frustum.Far = 2;
+		Frustum.ViewAngle = GameState->Camera.FieldOfView;
+		Frustum.Aspect = SCREEN_WIDTH/(float)SCREEN_HEIGHT;
+
+		//box_mesh FirstOBBMesh= GetOBBBoxMesh(GameState->R.Sun.OBB);
+		box_mesh FirstOBBMesh= GetFrustumBoxMesh(Frustum);
+
+		for(int i = 0; i < 8; i++)
+		{
+      Debug::PushWireframeSphere(FirstOBBMesh.Points[i], 0.001f, { 1, 0, 0, 1 });
+		}
+		{
+			Debug::PushLineStrip(FirstOBBMesh.Points,   4, { 1, 0, 0, 1 });
+			Debug::PushLineStrip(FirstOBBMesh.Points+4, 4, { 1, 0, 0, 1 });
+			Debug::PushLine(FirstOBBMesh.Points[0], FirstOBBMesh.Points[3], { 1, 0, 0, 1 });
+			Debug::PushLine(FirstOBBMesh.Points[4], FirstOBBMesh.Points[7], { 1, 0, 0, 1 });
+			Debug::PushLine(FirstOBBMesh.Points[0], FirstOBBMesh.Points[4], { 1, 0, 0, 1 });
+			Debug::PushLine(FirstOBBMesh.Points[1], FirstOBBMesh.Points[5], { 1, 0, 0, 1 });
+			Debug::PushLine(FirstOBBMesh.Points[2], FirstOBBMesh.Points[6], { 1, 0, 0, 1 });
+			Debug::PushLine(FirstOBBMesh.Points[3], FirstOBBMesh.Points[7], { 1, 0, 0, 1 });
+		}
+
+		GameState->R.Sun.OBB = GetFrustumOBBFromDir(GameState->R.Sun.Direction, FirstOBBMesh);
+		
+		box_mesh SecondOBBMesh = GetOBBBoxMesh(GameState->R.Sun.OBB);
+
+    Debug::PushWireframeSphere(GameState->R.Sun.OBB.NearCenter, 0.1f, { 1, 0, 1, 1 });
+
+		for(int i = 0; i < 8; i++)
+		{
+      Debug::PushWireframeSphere(SecondOBBMesh.Points[i], 0.05f, { 0, 0, 1, 1 });
+		}
+		{
+			Debug::PushLineStrip(SecondOBBMesh.Points,   4, { 0, 0, 1, 1 });
+			Debug::PushLineStrip(SecondOBBMesh.Points+4, 4, { 0, 0, 1, 1 });
+			Debug::PushLine(SecondOBBMesh.Points[0], SecondOBBMesh.Points[3], { 0, 0, 1, 1 });
+			Debug::PushLine(SecondOBBMesh.Points[4], SecondOBBMesh.Points[7], { 0, 0, 1, 1 });
+			Debug::PushLine(SecondOBBMesh.Points[0], SecondOBBMesh.Points[4], { 0, 0, 1, 1 });
+			Debug::PushLine(SecondOBBMesh.Points[1], SecondOBBMesh.Points[5], { 0, 0, 1, 1 });
+			Debug::PushLine(SecondOBBMesh.Points[2], SecondOBBMesh.Points[6], { 0, 0, 1, 1 });
+			Debug::PushLine(SecondOBBMesh.Points[3], SecondOBBMesh.Points[7], { 0, 0, 1, 1 });
+		}
+	}
   UpdateSun(&GameState->R.Sun, GameState->R.ShadowCenterOffset * GameState->Camera.Forward,
             GameState->Camera.ViewMatrix);
 
@@ -956,6 +1022,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
+
   // SUN DEPTH MAP PASS
   if(GameState->R.RealTimeDirectionalShadows || GameState->R.RecomputeDirectionalShadows)
   {
@@ -964,14 +1031,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_sun_vp"), 1, GL_FALSE,
                        GameState->R.Sun.VPMatrix.e);
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBOs[0]);
     glClear(GL_DEPTH_BUFFER_BIT);
 #if FIGHT_PETER_PAN
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
 #endif
 
-    // TODO(Lukas) SORT(MeshInstances,  ByMesh);
     {
       Render::mesh* PreviousMesh = nullptr;
       for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
@@ -984,8 +1050,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           glBindVertexArray(CurrentMesh->VAO);
           PreviousMesh = CurrentMesh;
         }
-
-        // TODO(Lukas) Add logic for bone matrix submission
 
         glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_model"), 1, GL_FALSE,
                            GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
@@ -1004,7 +1068,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   if(GameState->R.ClearDirectionalShadows)
   {
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBOs[0]);
     glClear(GL_DEPTH_BUFFER_BIT);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     GameState->R.ClearDirectionalShadows = false;
@@ -1037,7 +1101,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         int tex_index = 1;
         glActiveTexture(GL_TEXTURE0 + tex_index);
-        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTexture);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[0]);
         glUniform1i(glGetUniformLocation(ShaderVolumetricScatteringID, "u_ShadowMap"), tex_index);
 #if 0
 #endif
@@ -1677,7 +1741,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       int TexIndex = 1;
       glActiveTexture(GL_TEXTURE0 + TexIndex);
-      glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTexture);
+      glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[0]);
       glUniform1i(glGetUniformLocation(RenderShadowMapShaderID, "DepthMap"), TexIndex);
       DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       glActiveTexture(GL_TEXTURE0);

@@ -489,7 +489,7 @@ DrawTextureToFramebuffer(uint32_t VAO)
 inline void
 UpdateSun(sun* Sun, vec3 Center, mat4 CameraViewMatrix)
 {
-  if(Sun->CenterOffsetFromCamera)
+  /*if(Sun->CenterOffsetFromCamera)
   {
     mat4 InvViewMat = Math::InvMat4(CameraViewMatrix);
     Sun->Center     = Math::Vec4ToVec3(Math::MulMat4Vec4(InvViewMat, Math::Vec4(Center, 1.0f)));
@@ -498,6 +498,7 @@ UpdateSun(sun* Sun, vec3 Center, mat4 CameraViewMatrix)
   {
     Sun->Center = { 0.0f, 0.0f, 0.0f };
   }
+	*/
 
   Sun->Rotation.X = ClampFloat(-180.0f, Sun->Rotation.X, 180.0f);
   Sun->Rotation.Y = ClampFloat(-180.0f, Sun->Rotation.Y, 180.0f);
@@ -505,12 +506,18 @@ UpdateSun(sun* Sun, vec3 Center, mat4 CameraViewMatrix)
 
   Sun->Direction = Math::Normalized(
     Math::MulMat3Vec3(Math::Mat4ToMat3(Math::Mat4Rotate(Sun->Rotation)), { 0.0f, 0.0f, -1.0f }));
-  Sun->Position = Sun->Center - Sun->Direction * Sun->Radius;
+  //Sun->Position = Sun->Center - Sun->Direction * Sun->Radius;
 
-  mat4 ProjectionMatrix =
+  /*mat4 ProjectionMatrix =
     Math::Mat4Orthogonal(-Sun->PlaneSize, Sun->PlaneSize, -Sun->PlaneSize, Sun->PlaneSize,
                          Sun->NearClipPlane, Sun->FarClipPlane);
   mat4 ViewMatrix = Math::Mat4Camera(Sun->Position, Sun->Direction, vec3{ 0.0f, 1.0f, 0.0f });
+  Sun->VPMatrix   = Math::MulMat4(ProjectionMatrix, ViewMatrix);*/
+
+  mat4 ProjectionMatrix =
+    Math::Mat4Orthogonal(-Sun->OBB.HalfWidth, Sun->OBB.HalfWidth, -Sun->OBB.HalfHeight, Sun->OBB.HalfHeight,
+                         -20, Sun->OBB.NearFarDist);
+  mat4 ViewMatrix = Math::Mat4Camera(Sun->OBB.NearCenter, Sun->Direction, vec3{ 0.0f, 1.0f, 0.0f });
   Sun->VPMatrix   = Math::MulMat4(ProjectionMatrix, ViewMatrix);
 }
 

@@ -1198,6 +1198,14 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     }
   }
 
+  if(UI::CollapsingHeader("OBB Testing", &g_ShowDisplaySet))
+  {
+    UI::DragFloat3("NearCenter", &GameState->R.Sun.OBB.NearCenter.X, -10, 10, 5);
+    UI::DragFloat3("Fowrad", &GameState->R.Sun.OBB.Forward.X, -10, 10, 5);
+    UI::DragFloat3("Right", &GameState->R.Sun.OBB.Right.X, -10, 10, 5);
+    UI::DragFloat3("Up", &GameState->R.Sun.OBB.Up.X, -10, 10, 5);
+  }
+
   if(UI::CollapsingHeader("Render Switches", &g_ShowDisplaySet))
   {
     UI::Checkbox("Memory Visualization", &g_DrawMemoryMaps);

@@ -83,7 +83,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     uint32_t NormalTexture = (Material->Phong.Flags & PHONG_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Phong.NormalMapID)
                                : 0;
-    uint32_t ShadowTexture = GameState->R.ShadowMapTexture;
+    uint32_t ShadowTexture = GameState->R.ShadowMapTextures[0];
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, DiffuseTexture);
@@ -207,8 +207,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       glUniform1f(glGetUniformLocation(CurrentShaderID, "u_Time"), GameState->R.CumulativeTime);
       glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
       glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunNearPlane"), GameState->R.Sun.NearClipPlane);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunFarPlane"), GameState->R.Sun.FarClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunNearPlane"), 0.0f/*GameState->R.Sun.NearClipPlane*/);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunFarPlane"), GameState->R.Sun.OBB.NearFarDist);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,
                    (float*)&GameState->R.LightPosition);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.ambient"), 1,
@@ -244,7 +244,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       {
         assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
         glActiveTexture(CurrentGLTextureBindIndex);
-        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTexture);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[0]);
         glUniform1i(glGetUniformLocation(CurrentShaderID, "shadowMap"),
                     CurrentGLTextureBindIndex - GL_TEXTURE0);
 

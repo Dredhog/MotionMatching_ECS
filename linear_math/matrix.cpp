@@ -152,6 +152,16 @@ namespace Math
     return Result;
   }
 
+
+	mat3
+	Mat3Basis(vec3 Right, vec3 Up, vec3 Forward)
+	{
+    mat3 Result = { Right.X,    Right.Y,   Right.Z,
+										   Up.X,       Up.Y,      Up.Z,
+									 Forward.X, Forward.Y, Forward.Z};
+		return Result;
+	}
+
   mat4
   Mat4Translate(float Tx, float Ty, float Tz)
   {
@@ -294,8 +304,8 @@ namespace Math
     float NearOverTop   = NearOverRight;
 
     mat4 Result = {};
-    Result._11  = NearOverRight / AspectRatio;
-    Result._22  = NearOverTop;
+    Result._11  = NearOverRight;
+    Result._22  = NearOverTop * AspectRatio;
     Result._33  = -(Far + Near) / (Far - Near);
     Result._34  = (-2.0f * Far * Near) / (Far - Near);
     Result._43  = -1.0f;
@@ -305,7 +315,7 @@ namespace Math
   mat4
   Mat4Orthogonal(float Left, float Right, float Bottom, float Top, float Near, float Far)
   {
-    assert(Near > 0.0f && Far > 0.0f);
+    assert(Far - Near > 0.0f);
     assert(Right > Left);
     assert(Top > Bottom);
 

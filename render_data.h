@@ -5,6 +5,7 @@
 
 #define BLUR_KERNEL_SIZE 11
 
+#define SHADOWMAP_CASCADE_COUNT 1
 #define SHADOW_WIDTH 2048
 #define SHADOW_HEIGHT 2048
 #define FIGHT_PETER_PAN 0
@@ -178,8 +179,37 @@ struct framebuffers
 };
 #endif
 
+struct box_mesh
+{
+	vec3 Points[8];
+};
+
+struct frustum_def
+{
+	vec3 Forward;
+	vec3 Right;
+	vec3 Up;
+	vec3 Origin;
+	float Near;
+	float Far;
+	float ViewAngle;
+	float Aspect;
+};
+
+struct obb_def
+{
+	vec3 Forward;
+	vec3 Right;
+	vec3 Up;
+	vec3 NearCenter;
+	float NearFarDist;
+	float HalfWidth;
+	float HalfHeight;
+};
+
 struct sun
 {
+	//Old Data
   vec3  Rotation;
   float Radius;
   vec3  Position;
@@ -189,13 +219,144 @@ struct sun
   float FarClipPlane;
   float PlaneSize;
   mat4  VPMatrix;
+
   bool  Show;
   bool  CenterOffsetFromCamera;
 
   vec3 AmbientColor;
   vec3 DiffuseColor;
   vec3 SpecularColor;
+
+	//New data
+	obb_def OBB;
+	mat4 CascadeV[SHADOWMAP_CASCADE_COUNT];
+	mat4 CascadeVP[SHADOWMAP_CASCADE_COUNT];
+	mat4 InvCascadeVP[SHADOWMAP_CASCADE_COUNT];
+	box_mesh CascadeFrusta[SHADOWMAP_CASCADE_COUNT];
+	box_mesh CascadeOBBs[SHADOWMAP_CASCADE_COUNT];
 };
+
+//obb horizontals are always parallel to XZ plane
+inline obb_def GetFrustumOBBFromDir(vec3 LightDir, box_mesh Frustum)
+{
+	vec3 Forward = Math::Normalized(LightDir);
+	vec3 Right = Math::Normalized(Math::Cross(LightDir, vec3{0, 1, 0}));
+	vec3 Up = Math::Cross(Right, Forward);
+
+	vec3 MinRight = Frustum.Points[0];
+	vec3 MaxRight = Frustum.Points[0];
+	vec3 MinUp = Frustum.Points[0];
+	vec3 MaxUp = Frustum.Points[0];
+	vec3 MinForward = Frustum.Points[0];
+	vec3 MaxForward = Frustum.Points[0];
+	for(int i = 1; i < 8; i++)
+	{
+		vec3 CurrentPoint = Frustum.Points[i];
+		float ProjRight = Math::Dot(CurrentPoint, Right);
+		float ProjUp = Math::Dot(CurrentPoint, Up);
+		float ProjForward = Math::Dot(CurrentPoint, Forward);
+
+		//Right
+		if(ProjRight < Math::Dot(MinRight, Right))
+		{
+			MinRight = CurrentPoint;
+		}
+		if(Math::Dot(MaxRight, Right) < ProjRight)
+		{
+			MaxRight = CurrentPoint;
+		}
+
+		//Up
+		if(ProjUp < Math::Dot(MinUp, Up))
+		{
+			MinUp = CurrentPoint;
+		}
+		if(Math::Dot(MaxUp, Up) < ProjUp)
+		{
+			MaxUp = CurrentPoint;
+		}
+
+		//Forward
+		if(ProjForward < Math::Dot(MinForward, Forward))
+		{
+			MinForward = CurrentPoint;
+		}
+		if(Math::Dot(MaxForward, Forward) < ProjForward)
+		{
+			MaxForward = CurrentPoint;
+		}
+	}
+	float MaxProjRight = Math::Dot(MaxRight, Right);
+	float MinProjRight = Math::Dot(MinRight, Right);
+	float MaxProjUp = Math::Dot(MaxUp, Up);
+	float MinProjUp = Math::Dot(MinUp, Up);
+	float MaxProjForward = Math::Dot(MaxForward, Forward);
+	float MinProjForward = Math::Dot(MinForward, Forward);
+
+	obb_def Result = {};
+	Result.Forward = Forward;
+	Result.Right = Right;
+	Result.Up = Up;
+	Result.NearCenter = Right * ((MinProjRight + MaxProjRight)/2.0f) +
+											   Up * ((MinProjUp + MaxProjUp)/2.0f) + 
+				  				  Forward * MinProjForward;
+	Result.NearFarDist = MaxProjForward - MinProjForward;
+	Result.HalfWidth = (MaxProjRight - MinProjRight)/2.0f;
+	Result.HalfHeight = (MaxProjUp - MinProjUp)/2.0f;
+
+	return Result;
+}
+
+inline box_mesh GetFrustumBoxMesh(frustum_def Frustum)
+{
+	float near = Frustum.Near;
+	float far = Frustum.Far;
+	float tan_fov_over_2 = tanf((3.14159f / 180.0f) * (Frustum.ViewAngle/2.0f));
+	float hw_near = tan_fov_over_2 * near;
+	float hw_far  = tan_fov_over_2 * far;
+	float hh_near = hw_near / Frustum.Aspect;
+	float hh_far  = hw_far / Frustum.Aspect;
+	box_mesh Result= {vec3{-hw_near, -hh_near,  near}, vec3{hw_near, -hh_near,  near}, vec3{hw_near, hh_near,  near}, vec3{-hw_near, hh_near,  near},
+	                  vec3{-hw_far, -hh_far, far}, vec3{hw_far, -hh_far, far}, vec3{hw_far, hh_far, far}, vec3{-hw_far, hh_far, far}};
+  mat4 ObjectToWorld = Math::MulMat4(Math::Mat4Translate(Frustum.Origin), Math::Mat3ToMat4(Math::Mat3Basis(Frustum.Right, Frustum.Up, Frustum.Forward)));
+
+	for(int i = 0; i < 8; i++)
+	{
+		vec3 CurrentPoint = Result.Points[i];
+		vec4 CurrentPointHomog;
+		CurrentPointHomog.XYZ = CurrentPoint;
+		CurrentPointHomog.W = 1.0f;
+		CurrentPointHomog = Math::MulMat4Vec4(ObjectToWorld, CurrentPointHomog);
+
+		Result.Points[i] = CurrentPointHomog.XYZ;
+	}
+
+	return Result;
+	return Result;
+}
+
+inline box_mesh GetOBBBoxMesh(obb_def OBB)
+{
+	float hw = OBB.HalfWidth;
+	float hh = OBB.HalfHeight;
+	float depth = OBB.NearFarDist;
+	box_mesh Result= {vec3{-hw, -hh,     0}, vec3{hw, -hh,     0}, vec3{hw, hh,     0}, vec3{-hw, hh,     0},
+	                  vec3{-hw, -hh, depth}, vec3{hw, -hh, depth}, vec3{hw, hh, depth}, vec3{-hw, hh, depth}};
+  mat4 ObjectToWorld = Math::MulMat4(Math::Mat4Translate(OBB.NearCenter), Math::Mat3ToMat4(Math::Mat3Basis(OBB.Right, OBB.Up, OBB.Forward)));
+
+	for(int i = 0; i < 8; i++)
+	{
+		vec3 CurrentPoint = Result.Points[i];
+		vec4 CurrentPointHomog;
+		CurrentPointHomog.XYZ = CurrentPoint;
+		CurrentPointHomog.W = 1.0f;
+		CurrentPointHomog = Math::MulMat4Vec4(ObjectToWorld, CurrentPointHomog);
+
+		Result.Points[i] = CurrentPointHomog.XYZ;
+	}
+
+	return Result;
+}
 
 const int32_t MESH_INSTANCE_MAX_COUNT  = 10000;
 const int32_t SSAO_SAMPLE_VECTOR_COUNT = 9;
@@ -307,8 +468,8 @@ struct render_data
 
   // Depth Framebuffer for shadow mapping
   bool     DrawShadowMap;
-  uint32_t ShadowMapFBO;
-  uint32_t ShadowMapTexture;
+  uint32_t ShadowMapFBOs[SHADOWMAP_CASCADE_COUNT];
+  uint32_t ShadowMapTextures[SHADOWMAP_CASCADE_COUNT];
 
 	// Post processing additional input texture
 	int32_t PostTestTextureID;
