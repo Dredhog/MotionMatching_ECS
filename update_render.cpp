@@ -378,20 +378,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->R.ClearDirectionalShadows     = false;
 
           GameState->R.Sun.Rotation      = { -60.0f, -105.0f, 0.0f };
-          GameState->R.Sun.Radius        = 30.0f;
-          GameState->R.Sun.Position      = { 0.0f, 0.0f, 0.0f };
-          GameState->R.Sun.Center        = { 0.0f, 0.0f, 0.0f };
           GameState->R.Sun.Direction     = { 0.0f, 0.0f, 0.0f };
-          GameState->R.Sun.NearClipPlane = 0.01f;
-          GameState->R.Sun.FarClipPlane  = 50.0f;
-          GameState->R.Sun.PlaneSize     = 10.0f;
           GameState->R.Sun.Show          = false;
-
-          GameState->R.Sun.CenterOffsetFromCamera = false;
 
           GameState->R.Sun.AmbientColor  = { 0.3f, 0.3f, 0.3f };
           GameState->R.Sun.DiffuseColor  = { 0.7f, 0.7f, 0.7f };
-          GameState->R.Sun.SpecularColor = { 0.7f, 0.7f, 0.7f };
         }
 
         GameState->R.LightPosition        = { 0.7f, 1, 1 };
@@ -734,11 +725,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   if(GameState->R.Sun.Show)
   {
-    mat4 Mat4SunPosition = Math::Mat4Translate(GameState->R.Sun.Position);
-    Debug::PushGizmo(&GameState->Camera, &Mat4SunPosition);
-    Debug::PushLine(GameState->R.Sun.Position,
-                    GameState->R.Sun.Position + GameState->R.Sun.Direction);
-    Debug::PushWireframeSphere(GameState->R.Sun.Position + GameState->R.Sun.Direction, 0.05f);
+		//TODO(Lukas): Add shadowmap cascade OBBs and Light direction debug drawing
   }
 
   GameState->R.CumulativeTime += Input->dt;

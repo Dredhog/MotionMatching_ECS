@@ -211,21 +211,13 @@ struct sun
 {
 	//Old Data
   vec3  Rotation;
-  float Radius;
-  vec3  Position;
-  vec3  Center;
   vec3  Direction;
-  float NearClipPlane;
-  float FarClipPlane;
-  float PlaneSize;
   mat4  VPMatrix;
 
   bool  Show;
-  bool  CenterOffsetFromCamera;
 
   vec3 AmbientColor;
   vec3 DiffuseColor;
-  vec3 SpecularColor;
 
 	//New data
 	obb_def OBB;
