@@ -40,8 +40,10 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.diffuseMap"), 0);
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.specularMap"), 1);
     glUniform1i(glGetUniformLocation(PhongShaderID, "material.normalMap"), 2);
-    glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap"), 3);
-    glUniform1i(glGetUniformLocation(PhongShaderID, "u_AmbientOcclusion"), 4);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "u_AmbientOcclusion"), 3);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap_0"), 4);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap_1"), 5);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap_2"), 6);
     glUniform1f(glGetUniformLocation(PhongShaderID, "material.shininess"),
                 Material->Phong.Shininess);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "lightPosition"), 1,
@@ -60,8 +62,9 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                  (float*)&GameState->R.Sun.DiffuseColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
-    glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), 1, GL_FALSE,
-                       GameState->R.Sun.CascadeVP[GameState->R.Sun.CurrentCascadeIndex].e);
+		glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), SHADOWMAP_CASCADE_COUNT, GL_FALSE,
+											 GameState->R.Sun.CascadeVP[0].e);
+		glUniform1fv(glGetUniformLocation(PhongShaderID, "u_CascadeFarPlanes"), SHADOWMAP_CASCADE_COUNT, GameState->R.Sun.CascadeFarPlaneDistances);
     assert(
       ((Material->Phong.Flags & PHONG_UseDiffuseMap) && Material->Phong.DiffuseMapID.Value > 0) ||
       !(Material->Phong.Flags & PHONG_UseDiffuseMap));
@@ -81,7 +84,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     uint32_t NormalTexture = (Material->Phong.Flags & PHONG_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Phong.NormalMapID)
                                : 0;
-    uint32_t ShadowTexture = GameState->R.ShadowMapTextures[GameState->R.Sun.CurrentCascadeIndex];
+    
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, DiffuseTexture);
@@ -90,9 +93,13 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, NormalTexture);
     glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, ShadowTexture);
-    glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, GameState->R.SSAOTexID);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[0]);
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[1]);
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[2]);
     glActiveTexture(GL_TEXTURE0);
     return PhongShaderID;
   }
@@ -262,22 +269,3 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
   }
   return -1;
 }
-
-#if 0
-void
-SetUpCubemapShader(render_data* RenderData)
-{
-  glDepthFunc(GL_LEQUAL);
-  glUseProgram(GameState->ShaderCubemap);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_projection"), 1, GL_FALSE,
-                     RenderData->Camera.ProjectionMatrix.e);
-  glUniformMatrix4fv(glGetUniformLocation(GameState->ShaderCubemap, "mat_view"), 1, GL_FALSE,
-                     Math::Mat3ToMat4(Math::Mat4ToMat3(GameState->Camera.ViewMatrix)).e);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, GameState->CubemapTexture);
-  for(int i = 0; i < GameState->Cubemap->MeshCount; i++)
-  {
-    glBindVertexArray(GameState->Cubemap->Meshes[i]->VAO);
-    glDrawElements(GL_TRIANGLES, GameState->Cubemap->Meshes[i]->IndiceCount, GL_UNSIGNED_INT, 0);
-  }
-}
-#endif

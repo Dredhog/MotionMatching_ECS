@@ -389,6 +389,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
           GameState->R.ClearDirectionalShadows     = false;
+					GameState->R.Sun.CascadeFarPlaneDistances[0] = 8;
+					GameState->R.Sun.CascadeFarPlaneDistances[1] = 15;
+					GameState->R.Sun.CascadeFarPlaneDistances[2] = 30;
 
           GameState->R.Sun.AmbientColor  = { 0.3f, 0.3f, 0.3f };
           GameState->R.Sun.DiffuseColor  = { 0.7f, 0.7f, 0.7f };
@@ -972,9 +975,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 				
 				Frustum.ViewAngle = GameState->Camera.FieldOfView;
 				Frustum.Aspect = SCREEN_WIDTH/(float)SCREEN_HEIGHT;
-				GameState->R.Sun.CascadeFarPlaneDistances[0] = 3;
-				GameState->R.Sun.CascadeFarPlaneDistances[1] = 10;
-				GameState->R.Sun.CascadeFarPlaneDistances[2] = 40;
 
 				for(int i = 0; i < SHADOWMAP_CASCADE_COUNT; i++)
 				{
@@ -1171,8 +1171,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
         glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_mvp"), 1, GL_FALSE,
                            GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
-        glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
-                           GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+				glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
+													 GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+				glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_view"), 1, GL_FALSE,
+													 GameState->Camera.ViewMatrix.e);
         glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
       }
       glBindVertexArray(0);

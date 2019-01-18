@@ -48,6 +48,7 @@ in VertexOut
   vec3 tangentViewPos;
   vec3 tangentFragPos;
   vec4 sunFragPos;
+  float viewDepth;
 }
 frag;
 
@@ -55,13 +56,18 @@ uniform Material material;
 uniform Light light;
 uniform Sun sun;
 
-uniform sampler2D shadowMap;
+uniform float u_CascadeFarPlanes[3];
+uniform mat4 mat_sun_vp[3];
+uniform sampler2D shadowMap_0;
+uniform sampler2D shadowMap_1;
+uniform sampler2D shadowMap_2;
 
 out vec4 out_color;
 
 float
-ShadowCalculation(vec4 sunFragPos, vec3 normal, vec3 lightDir)
+ShadowCalculation(vec3 fragWorldPos, int shadowmapIndex, vec3 normal, vec3 lightDir, sampler2D shadowMap)
 {
+  vec4 sunFragPos = mat_sun_vp[shadowmapIndex] * vec4(fragWorldPos, 1.0f);
   vec3 projCoords = sunFragPos.xyz / sunFragPos.w;
   projCoords = projCoords * 0.5f + 0.5f;
 
@@ -112,7 +118,7 @@ main()
   }
 
   // --------SHADOW--------
-  float shadow = ShadowCalculation(frag.sunFragPos, normal, frag.sunDir);
+  float shadow = ShadowCalculation(frag.position,  (frag.viewDepth < u_CascadeFarPlanes[0]) ? 0 : ((frag.viewDepth < u_CascadeFarPlanes[1]) ? 1 : 2), normal, frag.sunDir,  (frag.viewDepth < u_CascadeFarPlanes[0]) ? shadowMap_0 : ((frag.viewDepth < u_CascadeFarPlanes[1]) ? shadowMap_1 : shadowMap_2));
   float lighting = 1.0f - shadow;
 
   vec3 sunDir = normalize(-frag.sunDir);
@@ -155,10 +161,10 @@ main()
   // --------SPECULAR------
   float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
   specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
-  vec3 specular = specular_intensity * light.specular;
+  vec3 specular = specular_intensity * light.diffuse;
 
   float sun_specular_intensity = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
-  specular += sun_specular_intensity * sun.specular * lighting;
+  specular += sun_specular_intensity * sun.diffuse * lighting;
   if((frag.flags & SPECULAR_MAP) != 0)
   {
     specular *= vec3(texture(material.specularMap, frag.texCoord));
