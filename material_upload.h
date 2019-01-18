@@ -61,7 +61,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
     glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), 1, GL_FALSE,
-                       GameState->R.Sun.VPMatrix.e);
+                       GameState->R.Sun.CascadeVP[GameState->R.Sun.CurrentCascadeIndex].e);
     assert(
       ((Material->Phong.Flags & PHONG_UseDiffuseMap) && Material->Phong.DiffuseMapID.Value > 0) ||
       !(Material->Phong.Flags & PHONG_UseDiffuseMap));
@@ -81,7 +81,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     uint32_t NormalTexture = (Material->Phong.Flags & PHONG_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Phong.NormalMapID)
                                : 0;
-    uint32_t ShadowTexture = GameState->R.ShadowMapTextures[0];
+    uint32_t ShadowTexture = GameState->R.ShadowMapTextures[GameState->R.Sun.CurrentCascadeIndex];
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, DiffuseTexture);
@@ -205,8 +205,6 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       glUniform1f(glGetUniformLocation(CurrentShaderID, "u_Time"), GameState->R.CumulativeTime);
       glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
       glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunNearPlane"), 0.0f/*GameState->R.Sun.NearClipPlane*/);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "sunFarPlane"), GameState->R.Sun.OBB.NearFarDist);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,
                    (float*)&GameState->R.LightPosition);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.ambient"), 1,
@@ -224,7 +222,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "cameraPosition"), 1,
                    (float*)&Camera->Position);
       glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_sun_vp"), 1, GL_FALSE,
-                         GameState->R.Sun.VPMatrix.e);
+                         GameState->R.Sun.CascadeVP[GameState->R.Sun.CurrentCascadeIndex].e);
       // Cubemap
       {
         assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
@@ -240,7 +238,7 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       {
         assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
         glActiveTexture(CurrentGLTextureBindIndex);
-        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[0]);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[GameState->R.Sun.CurrentCascadeIndex]);
         glUniform1i(glGetUniformLocation(CurrentShaderID, "shadowMap"),
                     CurrentGLTextureBindIndex - GL_TEXTURE0);
 

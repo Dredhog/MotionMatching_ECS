@@ -5,7 +5,7 @@
 
 #define BLUR_KERNEL_SIZE 11
 
-#define SHADOWMAP_CASCADE_COUNT 1
+#define SHADOWMAP_CASCADE_COUNT 3
 #define SHADOW_WIDTH 2048
 #define SHADOW_HEIGHT 2048
 #define FIGHT_PETER_PAN 0
@@ -209,23 +209,17 @@ struct obb_def
 
 struct sun
 {
-	//Old Data
-  vec3  Rotation;
-  vec3  Direction;
-  mat4  VPMatrix;
+	int CurrentCascadeIndex;
 
-  bool  Show;
+  float  RotationY;
+  float  RotationZ;
+  vec3  Direction;
+
+	mat4 CascadeVP[SHADOWMAP_CASCADE_COUNT];
+	float CascadeFarPlaneDistances[SHADOWMAP_CASCADE_COUNT];
 
   vec3 AmbientColor;
   vec3 DiffuseColor;
-
-	//New data
-	obb_def OBB;
-	mat4 CascadeV[SHADOWMAP_CASCADE_COUNT];
-	mat4 CascadeVP[SHADOWMAP_CASCADE_COUNT];
-	mat4 InvCascadeVP[SHADOWMAP_CASCADE_COUNT];
-	box_mesh CascadeFrusta[SHADOWMAP_CASCADE_COUNT];
-	box_mesh CascadeOBBs[SHADOWMAP_CASCADE_COUNT];
 };
 
 //obb horizontals are always parallel to XZ plane
@@ -482,7 +476,6 @@ struct render_data
   uint32_t HdrRBOs[HDR_FRAMEBUFFER_MAX_COUNT];
 
   // Directional shadow mapping
-  float ShadowCenterOffset;
   bool  RealTimeDirectionalShadows;
   bool  RecomputeDirectionalShadows;
   bool  ClearDirectionalShadows;

@@ -26,6 +26,18 @@
 #include "dynamics.h"
 #include "shader_def.h"
 
+void DrawDebugBoxMesh(box_mesh BoxMesh, vec4 Color = {0, 0, 1, 1})
+{
+		Debug::PushLineStrip(BoxMesh.Points,   4, Color);
+		Debug::PushLineStrip(BoxMesh.Points+4, 4, Color);
+		Debug::PushLine(BoxMesh.Points[0], BoxMesh.Points[3], Color);
+		Debug::PushLine(BoxMesh.Points[4], BoxMesh.Points[7], Color);
+		Debug::PushLine(BoxMesh.Points[0], BoxMesh.Points[4], Color);
+		Debug::PushLine(BoxMesh.Points[1], BoxMesh.Points[5], Color);
+		Debug::PushLine(BoxMesh.Points[2], BoxMesh.Points[6], Color);
+		Debug::PushLine(BoxMesh.Points[3], BoxMesh.Points[7], Color);
+}
+
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
   game_state* GameState = (game_state*)GameMemory.PersistentMemory;
@@ -372,14 +384,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         // SUN DATA
         {
-          GameState->R.ShadowCenterOffset          = 5.0f;
+					GameState->R.Sun.RotationZ = 75;
+					GameState->R.Sun.CurrentCascadeIndex = 0;
           GameState->R.RealTimeDirectionalShadows  = true;
           GameState->R.RecomputeDirectionalShadows = false;
           GameState->R.ClearDirectionalShadows     = false;
-
-          GameState->R.Sun.Rotation      = { -60.0f, -105.0f, 0.0f };
-          GameState->R.Sun.Direction     = { 0.0f, 0.0f, 0.0f };
-          GameState->R.Sun.Show          = false;
 
           GameState->R.Sun.AmbientColor  = { 0.3f, 0.3f, 0.3f };
           GameState->R.Sun.DiffuseColor  = { 0.7f, 0.7f, 0.7f };
@@ -605,73 +614,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
   UpdateCamera(&GameState->Camera, Input);
 
-	//TESTING OBB GENERATION FROM FRUSTUM
-	{
-		{
-			GameState->R.Sun.Rotation.X = ClampFloat(-180.0f, GameState->R.Sun.Rotation.X, 180.0f);
-			GameState->R.Sun.Rotation.Y = ClampFloat(-180.0f, GameState->R.Sun.Rotation.Y, 180.0f);
-			GameState->R.Sun.Rotation.Z = 0.0f;
-
-			GameState->R.Sun.Direction = Math::Normalized(
-				Math::MulMat3Vec3(Math::Mat4ToMat3(Math::Mat4Rotate(GameState->R.Sun.Rotation)), { 0.0f, 0.0f, -1.0f }));
-		}
-		frustum_def Frustum = {};
-		Frustum.Forward = Math::Normalized(GameState->Camera.Forward);
-		Frustum.Right = Math::Normalized(Math::Cross(Frustum.Forward, vec3{0, 1, 0}));
-		Frustum.Up = Math::Cross(Frustum.Right, Frustum.Forward);
-		Frustum.Origin = GameState->Camera.Position;
-		Frustum.Near = GameState->Camera.NearClipPlane;
-		//Frustum.Forward = vec3{0, 0, -1};
-		//Frustum.Right = vec3{1, 0, 0};
-		//Frustum.Up = vec3{0, 1, 0};
-		//Frustum.Origin = vec3{0, 2, 0};
-		Frustum.Near = GameState->Camera.NearClipPlane;
-		Frustum.Far = 2;
-		Frustum.ViewAngle = GameState->Camera.FieldOfView;
-		Frustum.Aspect = SCREEN_WIDTH/(float)SCREEN_HEIGHT;
-
-		//box_mesh FirstOBBMesh= GetOBBBoxMesh(GameState->R.Sun.OBB);
-		box_mesh FirstOBBMesh= GetFrustumBoxMesh(Frustum);
-
-		for(int i = 0; i < 8; i++)
-		{
-      Debug::PushWireframeSphere(FirstOBBMesh.Points[i], 0.001f, { 1, 0, 0, 1 });
-		}
-		{
-			Debug::PushLineStrip(FirstOBBMesh.Points,   4, { 1, 0, 0, 1 });
-			Debug::PushLineStrip(FirstOBBMesh.Points+4, 4, { 1, 0, 0, 1 });
-			Debug::PushLine(FirstOBBMesh.Points[0], FirstOBBMesh.Points[3], { 1, 0, 0, 1 });
-			Debug::PushLine(FirstOBBMesh.Points[4], FirstOBBMesh.Points[7], { 1, 0, 0, 1 });
-			Debug::PushLine(FirstOBBMesh.Points[0], FirstOBBMesh.Points[4], { 1, 0, 0, 1 });
-			Debug::PushLine(FirstOBBMesh.Points[1], FirstOBBMesh.Points[5], { 1, 0, 0, 1 });
-			Debug::PushLine(FirstOBBMesh.Points[2], FirstOBBMesh.Points[6], { 1, 0, 0, 1 });
-			Debug::PushLine(FirstOBBMesh.Points[3], FirstOBBMesh.Points[7], { 1, 0, 0, 1 });
-		}
-
-		GameState->R.Sun.OBB = GetFrustumOBBFromDir(GameState->R.Sun.Direction, FirstOBBMesh);
-		
-		box_mesh SecondOBBMesh = GetOBBBoxMesh(GameState->R.Sun.OBB);
-
-    Debug::PushWireframeSphere(GameState->R.Sun.OBB.NearCenter, 0.1f, { 1, 0, 1, 1 });
-
-		for(int i = 0; i < 8; i++)
-		{
-      Debug::PushWireframeSphere(SecondOBBMesh.Points[i], 0.05f, { 0, 0, 1, 1 });
-		}
-		{
-			Debug::PushLineStrip(SecondOBBMesh.Points,   4, { 0, 0, 1, 1 });
-			Debug::PushLineStrip(SecondOBBMesh.Points+4, 4, { 0, 0, 1, 1 });
-			Debug::PushLine(SecondOBBMesh.Points[0], SecondOBBMesh.Points[3], { 0, 0, 1, 1 });
-			Debug::PushLine(SecondOBBMesh.Points[4], SecondOBBMesh.Points[7], { 0, 0, 1, 1 });
-			Debug::PushLine(SecondOBBMesh.Points[0], SecondOBBMesh.Points[4], { 0, 0, 1, 1 });
-			Debug::PushLine(SecondOBBMesh.Points[1], SecondOBBMesh.Points[5], { 0, 0, 1, 1 });
-			Debug::PushLine(SecondOBBMesh.Points[2], SecondOBBMesh.Points[6], { 0, 0, 1, 1 });
-			Debug::PushLine(SecondOBBMesh.Points[3], SecondOBBMesh.Points[7], { 0, 0, 1, 1 });
-		}
-	}
-  UpdateSun(&GameState->R.Sun, GameState->R.ShadowCenterOffset * GameState->Camera.Forward,
-            GameState->Camera.ViewMatrix);
-
   // Dynamics
   g_Force                 = GameState->Force;
   g_ForceStart            = GameState->ForceStart;
@@ -721,11 +663,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
     Debug::PushGizmo(&GameState->Camera, &Mat4LightPosition);
-  }
-
-  if(GameState->R.Sun.Show)
-  {
-		//TODO(Lukas): Add shadowmap cascade OBBs and Light direction debug drawing
   }
 
   GameState->R.CumulativeTime += Input->dt;
@@ -1010,56 +947,114 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
 
-  // SUN DEPTH MAP PASS
+  // CASCADED SHADOW MAP GENERATION
   if(GameState->R.RealTimeDirectionalShadows || GameState->R.RecomputeDirectionalShadows)
   {
-    uint32_t SunDepthShaderID = GameState->Resources.GetShader(GameState->R.ShaderSunDepth);
-    glUseProgram(SunDepthShaderID);
-    glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_sun_vp"), 1, GL_FALSE,
-                       GameState->R.Sun.VPMatrix.e);
-    glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBOs[0]);
-    glClear(GL_DEPTH_BUFFER_BIT);
+		{
+			{
+				float DegToRad = 3.14159f/180.0f;
+				//The 0.01f is for avoiding crossing the up vector with itself later on
+				GameState->R.Sun.Direction = Math::Normalized(Math::MulMat3Vec3(Math::Mat3RotateY(GameState->R.Sun.RotationY),
+							Math::MulMat3Vec3(Math::Mat3RotateZ(GameState->R.Sun.RotationZ+0.01f), vec3{-1, 0, 0})));
+			}
+			// Compute shadowmap cascade VP matrices
+			{
+				frustum_def Frustum = {};
+				Frustum.Forward = Math::Normalized(GameState->Camera.Forward);
+				Frustum.Right = Math::Normalized(Math::Cross(Frustum.Forward, vec3{0, 1, 0}));
+				Frustum.Up = Math::Cross(Frustum.Right, Frustum.Forward);
+				Frustum.Origin = GameState->Camera.Position;
+
+				//Frustum.Forward = vec3{0, 0, -1};
+				//Frustum.Right = vec3{1, 0, 0};
+				//Frustum.Up = vec3{0, 1, 0};
+				//Frustum.Origin = {};
+				
+				Frustum.ViewAngle = GameState->Camera.FieldOfView;
+				Frustum.Aspect = SCREEN_WIDTH/(float)SCREEN_HEIGHT;
+				GameState->R.Sun.CascadeFarPlaneDistances[0] = 3;
+				GameState->R.Sun.CascadeFarPlaneDistances[1] = 10;
+				GameState->R.Sun.CascadeFarPlaneDistances[2] = 40;
+
+				for(int i = 0; i < SHADOWMAP_CASCADE_COUNT; i++)
+				{
+					Frustum.Near = (i == 0) ? GameState->Camera.NearClipPlane :
+						GameState->R.Sun.CascadeFarPlaneDistances[i-1];
+						
+					Frustum.Far = GameState->R.Sun.CascadeFarPlaneDistances[i];
+
+					box_mesh FrustumMesh= GetFrustumBoxMesh(Frustum);
+					DrawDebugBoxMesh(FrustumMesh, {1, 0, 0, 1});
+
+					obb_def OBB = GetFrustumOBBFromDir(GameState->R.Sun.Direction, FrustumMesh);
+					Debug::PushWireframeSphere(OBB.NearCenter, 0.1f, { 1, 0, 1, 1 });
+					DrawDebugBoxMesh(GetOBBBoxMesh(OBB), {0, 0, 1, 1});
+
+					mat4 ProjectionMatrix =
+						Math::Mat4Orthogonal(-OBB.HalfWidth, OBB.HalfWidth, -OBB.HalfHeight, OBB.HalfHeight,
+																 -ClampFloat(20, Frustum.Far, 20), OBB.NearFarDist);
+					mat4 ViewMatrix = Math::Mat4Camera(OBB.NearCenter, GameState->R.Sun.Direction, vec3{ 0.0f, 1.0f, 0.0f });
+					GameState->R.Sun.CascadeVP[i] = Math::MulMat4(ProjectionMatrix, ViewMatrix);
+				}
+			}
+		}
+
+		for(int i = 0; i < SHADOWMAP_CASCADE_COUNT; i++)
+		{
+			uint32_t SunDepthShaderID = GameState->Resources.GetShader(GameState->R.ShaderSunDepth);
+			glUseProgram(SunDepthShaderID);
+			glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_sun_vp"), 1, GL_FALSE,
+												 GameState->R.Sun.CascadeVP[i].e);
+			glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+			glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBOs[i]);
+			glClear(GL_DEPTH_BUFFER_BIT);
 #if FIGHT_PETER_PAN
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT);
+			glDisable(GL_CULL_FACE);
+			//glEnable(GL_CULL_FACE);
+			//glCullFace(GL_FRONT);
 #endif
 
-    {
-      Render::mesh* PreviousMesh = nullptr;
-      for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
-      {
-        Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
-        int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
+			{
+				Render::mesh* PreviousMesh = nullptr;
+				for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
+				{
+					Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
+					int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
 
-        if(CurrentMesh != PreviousMesh)
-        {
-          glBindVertexArray(CurrentMesh->VAO);
-          PreviousMesh = CurrentMesh;
-        }
+					if(CurrentMesh != PreviousMesh)
+					{
+						glBindVertexArray(CurrentMesh->VAO);
+						PreviousMesh = CurrentMesh;
+					}
 
-        glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_model"), 1, GL_FALSE,
-                           GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
-        glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
-      }
-      glBindVertexArray(0);
-    }
+					glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_model"), 1, GL_FALSE,
+														 GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+					glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
+				}
+				glBindVertexArray(0);
+			}
 
 #if FIGHT_PETER_PAN
-    glCullFace(GL_BACK);
+			glEnable(GL_CULL_FACE);
+			//glCullFace(GL_BACK);
 #endif
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    GameState->R.RecomputeDirectionalShadows = false;
-  }
+		}
+	
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+		GameState->R.RecomputeDirectionalShadows = false;
 
-  if(GameState->R.ClearDirectionalShadows)
-  {
-    glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBOs[0]);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    GameState->R.ClearDirectionalShadows = false;
-  }
+		if(GameState->R.ClearDirectionalShadows)
+		{
+			for(int i = 0; i < SHADOWMAP_CASCADE_COUNT; i++)
+			{
+				glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.ShadowMapFBOs[i]);
+				glClear(GL_DEPTH_BUFFER_BIT);
+			}
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			GameState->R.ClearDirectionalShadows = false;
+		}
+	}
 
   // RENDER VOLUMETRIC LIGHT SCATTERING TO TEXTURE
   if(GameState->R.RenderVolumetricScattering)
@@ -1074,7 +1069,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       glUseProgram(ShaderVolumetricScatteringID);
 
       glUniformMatrix4fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_mat_sun_vp"), 1,
-                         GL_FALSE, GameState->R.Sun.VPMatrix.e);
+                         GL_FALSE, GameState->R.Sun.CascadeVP[GameState->R.Sun.CurrentCascadeIndex].e);
       glUniformMatrix4fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_mat_inv_v"), 1,
                          GL_FALSE, Math::InvMat4(GameState->Camera.ViewMatrix).e);
       glUniform3fv(glGetUniformLocation(ShaderVolumetricScatteringID, "u_CameraPosition"), 1,
@@ -1088,7 +1083,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         int tex_index = 1;
         glActiveTexture(GL_TEXTURE0 + tex_index);
-        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[0]);
+        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[GameState->R.Sun.CurrentCascadeIndex]);
         glUniform1i(glGetUniformLocation(ShaderVolumetricScatteringID, "u_ShadowMap"), tex_index);
 #if 0
 #endif
@@ -1728,7 +1723,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       int TexIndex = 1;
       glActiveTexture(GL_TEXTURE0 + TexIndex);
-      glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[0]);
+      glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[GameState->R.Sun.CurrentCascadeIndex]);
       glUniform1i(glGetUniformLocation(RenderShadowMapShaderID, "DepthMap"), TexIndex);
       DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
       glActiveTexture(GL_TEXTURE0);

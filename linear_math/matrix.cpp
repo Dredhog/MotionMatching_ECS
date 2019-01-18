@@ -180,6 +180,25 @@ namespace Math
     return Mat4Translate(T.X, T.Y, T.Z);
   }
 
+  mat3
+  Mat3RotateY(float Angle)
+  {
+    Angle     = (Angle * 3.14159f) / 180.0f;
+    float Sin = sinf(Angle);
+    float Cos = cosf(Angle);
+
+    return mat3{ Cos, 0, -Sin, 0, 1, 0, Sin, 0, Cos};
+  }
+  mat3
+  Mat3RotateZ(float Angle)
+  {
+    Angle     = (Angle * 3.14159f) / 180.0f;
+    float Sin = sinf(Angle);
+    float Cos = cosf(Angle);
+
+    return mat3{ Cos, Sin, 0, -Sin, Cos, 0, 0, 0, 1};
+  }
+
   mat4
   Mat4RotateY(float Angle)
   {

@@ -29,7 +29,7 @@ namespace UI
       static bool g_DrawMemoryMaps             = false;
       static bool g_ShowCameraSettings         = false;
       static bool g_ShowSceneSettings          = false;
-      static bool g_ShowPostProcessingSettings = true;
+      static bool g_ShowPostProcessingSettings = false;
 
       EntityGUI(GameState, g_ShowEntityTools);
       MaterialGUI(GameState, g_ShowMaterialEditor);
@@ -1001,6 +1001,33 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
         bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
         bool& g_ShowPostProcessingSettings)
 {
+  if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
+  {
+    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
+    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 10, 5);
+    UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
+    UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
+
+    UI::DragFloat3("Diffuse", &GameState->R.Sun.DiffuseColor.X, 0, 1, 5);
+    UI::DragFloat3("Ambient", &GameState->R.Sun.AmbientColor.X, 0, 1, 5);
+
+    UI::SliderFloat("Sun Z Angle", &GameState->R.Sun.RotationZ, 0.0f, 90.0f);
+    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.RotationY, -180, 180);
+
+		UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0, SHADOWMAP_CASCADE_COUNT-1);
+    UI::Checkbox("Display sun-perspective depth map", &GameState->R.DrawShadowMap);
+    UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
+    if(UI::Button("Recompute Directional Shadows"))
+    {
+      GameState->R.RecomputeDirectionalShadows = true;
+    }
+
+    if(UI::Button("Clear Directional Shadows"))
+    {
+      GameState->R.ClearDirectionalShadows = true;
+    }
+  }
+
   if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessingSettings))
   {
     bool HDRTonemap   = GameState->R.PPEffects & POST_HDRTonemap;
@@ -1158,41 +1185,6 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     }
   }
 
-  if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
-  {
-    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
-    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 10, 5);
-    UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
-    UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
-
-    UI::Checkbox("Show Sun", &GameState->R.Sun.Show);
-    UI::DragFloat3("Diffuse", &GameState->R.Sun.DiffuseColor.X, 0, 1, 5);
-    UI::DragFloat3("Ambient", &GameState->R.Sun.AmbientColor.X, 0, 1, 5);
-
-    UI::SliderFloat("Sun X Angle", &GameState->R.Sun.Rotation.X, -180.0f, 180.0f);
-    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.Rotation.Y, -180.0f, 180.0f);
-
-    UI::Checkbox("Draw sun-perspective depth map", &GameState->R.DrawShadowMap);
-    UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
-    if(UI::Button("Recompute Directional Shadows"))
-    {
-      GameState->R.RecomputeDirectionalShadows = true;
-    }
-
-    if(UI::Button("Clear Directional Shadows"))
-    {
-      GameState->R.ClearDirectionalShadows = true;
-    }
-  }
-
-  if(UI::CollapsingHeader("OBB Testing", &g_ShowDisplaySet))
-  {
-    UI::DragFloat3("NearCenter", &GameState->R.Sun.OBB.NearCenter.X, -10, 10, 5);
-    UI::DragFloat3("Fowrad", &GameState->R.Sun.OBB.Forward.X, -10, 10, 5);
-    UI::DragFloat3("Right", &GameState->R.Sun.OBB.Right.X, -10, 10, 5);
-    UI::DragFloat3("Up", &GameState->R.Sun.OBB.Up.X, -10, 10, 5);
-  }
-
   if(UI::CollapsingHeader("Render Switches", &g_ShowDisplaySet))
   {
     UI::Checkbox("Memory Visualization", &g_DrawMemoryMaps);
@@ -1201,6 +1193,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
     UI::Checkbox("Cubemap", &GameState->DrawCubemap);
   }
+
   if(UI::CollapsingHeader("Camera", &g_ShowCameraSettings))
   {
     UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
