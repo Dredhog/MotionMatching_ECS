@@ -361,6 +361,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     // GAME STATE FIELD INITIALIZATION
     {
+			GameState->SelectionMode = SELECT_Mesh;
+
       // CAMERA FIELD INITIALIZATION
       {
         GameState->Camera.Position      = { 0, 2, 0 };
@@ -391,7 +393,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           GameState->R.ClearDirectionalShadows     = false;
 					GameState->R.Sun.CascadeFarPlaneDistances[0] = 8;
 					GameState->R.Sun.CascadeFarPlaneDistances[1] = 15;
-					GameState->R.Sun.CascadeFarPlaneDistances[2] = 30;
+					GameState->R.Sun.CascadeFarPlaneDistances[2] = 25;
+					GameState->R.Sun.CascadeFarPlaneDistances[3] = 50;
 
           GameState->R.Sun.AmbientColor  = { 0.3f, 0.3f, 0.3f };
           GameState->R.Sun.DiffuseColor  = { 0.7f, 0.7f, 0.7f };

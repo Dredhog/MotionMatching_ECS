@@ -44,22 +44,21 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap_0"), 4);
     glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap_1"), 5);
     glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap_2"), 6);
+    glUniform1i(glGetUniformLocation(PhongShaderID, "shadowMap_3"), 7);
     glUniform1f(glGetUniformLocation(PhongShaderID, "material.shininess"),
                 Material->Phong.Shininess);
-    glUniform3fv(glGetUniformLocation(PhongShaderID, "lightPosition"), 1,
-                 (float*)&GameState->R.LightPosition);
-    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.ambient"), 1,
-                 (float*)&GameState->R.LightAmbientColor);
-    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.diffuse"), 1,
-                 (float*)&GameState->R.LightDiffuseColor);
-    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.specular"), 1,
-                 (float*)&GameState->R.LightSpecularColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "sunDirection"), 1,
                  (float*)&GameState->R.Sun.Direction);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.ambient"), 1,
                  (float*)&GameState->R.Sun.AmbientColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "sun.diffuse"), 1,
                  (float*)&GameState->R.Sun.DiffuseColor);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "lightPosition"), 1,
+                 (float*)&GameState->R.LightPosition);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.ambient"), 1,
+                 (float*)&GameState->R.LightAmbientColor);
+    glUniform3fv(glGetUniformLocation(PhongShaderID, "light.diffuse"), 1,
+                 (float*)&GameState->R.LightDiffuseColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
 		glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), SHADOWMAP_CASCADE_COUNT, GL_FALSE,
@@ -100,6 +99,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[1]);
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[2]);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[3]);
     glActiveTexture(GL_TEXTURE0);
     return PhongShaderID;
   }

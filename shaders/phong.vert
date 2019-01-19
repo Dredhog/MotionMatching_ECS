@@ -28,10 +28,8 @@ out VertexOut
   vec3 position;
   vec3 normal;
   vec2 texCoord;
-  vec3 lightPos;
-  vec3 sunDir;
-  vec3 cameraPos;
   vec3 tangentLightPos;
+  vec3 tangentSunPos;
   vec3 tangentViewPos;
   vec3 tangentFragPos;
   vec4 sunFragPos;
@@ -58,9 +56,6 @@ main()
 
   gl_Position    = mvpMatrix * vec4(a_position, 1.0f);
   frag.position  = vec3(modelMatrix * vec4(a_position, 1.0f));
-  frag.lightPos  = lightPosition;
-  frag.sunDir    = sunDirection;
-  frag.cameraPos = cameraPosition;
   frag.flags     = flags;
 
   mat3 normalMatrix = transpose(inverse(mat3(modelMatrix)));
@@ -78,6 +73,7 @@ main()
   frag.tangentLightPos = mat_tbn * lightPosition;
   frag.tangentViewPos  = mat_tbn * cameraPosition;
   frag.tangentFragPos  = mat_tbn * frag.position;
+  frag.tangentSunPos   = mat_tbn * normalize(sunDirection);
 
   frag.viewDepth = -(mat_view * vec4(frag.position, 1)).z;
 }

@@ -2,12 +2,12 @@
 #include "scene.h"
 #include "shader_def.h"
 
-void MaterialGUI(game_state* GameState, bool& g_ShowMaterialEditor);
-void EntityGUI(game_state* GameState, bool& g_ShowEntityTools);
-void AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools);
-void MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
-             bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
-             bool& g_ShowPostProcessingSettings);
+void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
+void EntityGUI(game_state* GameState, bool& ShowEntityTools);
+void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
+void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
+             bool& ShowCameraSettings, bool& ShowSceneSettings,
+             bool& ShowPostProcessingSettings);
 
 namespace UI
 {
@@ -16,123 +16,141 @@ namespace UI
   {
     UI::BeginFrame(GameState, Input);
 
-    UI::BeginWindow("Editor Window", { 1300, 50 }, { 700, 600 });
+		static bool s_ShowDemoWindow     = false;
+		static bool s_ShowPhysicsWindow  = false;
+		static bool s_ShowProfilerWindow = false;
+
+    UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
     {
       UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings,
                 SELECT_EnumCount, UI::StringArrayToString);
 
-      static bool g_ShowMaterialEditor         = false;
-      static bool g_ShowEntityTools            = false;
-      static bool g_ShowAnimationEditor        = false;
-      static bool g_ShowLightSettings          = false;
-      static bool g_ShowDisplaySet             = false;
-      static bool g_DrawMemoryMaps             = false;
-      static bool g_ShowCameraSettings         = false;
-      static bool g_ShowSceneSettings          = false;
-      static bool g_ShowPostProcessingSettings = false;
+      static bool s_ShowMaterialEditor         = false;
+      static bool s_ShowEntityTools            = false;
+      static bool s_ShowAnimationEditor        = false;
+      static bool s_ShowLightSettings          = false;
+      static bool s_ShowDisplaySet             = false;
+      static bool s_ShowCameraSettings         = false;
+      static bool s_ShowSceneSettings          = false;
+      static bool s_ShowPostProcessingSettings = false;
 
-      EntityGUI(GameState, g_ShowEntityTools);
-      MaterialGUI(GameState, g_ShowMaterialEditor);
-      AnimationGUI(GameState, g_ShowAnimationEditor, g_ShowEntityTools);
-      MiscGUI(GameState, g_ShowLightSettings, g_ShowDisplaySet, g_DrawMemoryMaps,
-              g_ShowCameraSettings, g_ShowSceneSettings, g_ShowPostProcessingSettings);
+			UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
+			UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
+			UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+      EntityGUI(GameState, s_ShowEntityTools);
+      MaterialGUI(GameState, s_ShowMaterialEditor);
+      AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
+      MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings, s_ShowSceneSettings, s_ShowPostProcessingSettings);
+
     }
     UI::EndWindow();
 
-    UI::BeginWindow("window A", { 20, 50 }, { 500, 380 });
-    {
-      static int         s_CurrentItem = -1;
-      static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
+		if(s_ShowProfilerWindow)
+		{
+			UI::BeginWindow("Profiler Window", { 150, 500 }, { 800, 380 });
+			UI::EndWindow();
+		}
 
-      static bool s_ShowDemo = false;
-      if(UI::CollapsingHeader("Demo", &s_ShowDemo))
-      {
-        static bool s_Checkbox0 = false;
-        static bool s_Checkbox1 = false;
+		if(s_ShowPhysicsWindow)
+		{
+			UI::BeginWindow("Physics Window", { 150, 50 }, { 500, 380 });
+			{
+				UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
+				UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 200);
+				UI::SliderFloat("Beta", &GameState->Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+				GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
+				UI::Checkbox("Gravity", &GameState->UseGravity);
+				// UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
+				// UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
+				UI::Checkbox("Friction", &GameState->SimulateFriction);
+				UI::SliderFloat("Mu", &GameState->Mu, 0.0f, 1.0f);
 
-        {
-          gui_style& Style     = *UI::GetStyle();
-          int32_t    Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
-          UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
-          Style.Vars[UI::VAR_BorderThickness] = Thickness;
+				UI::Checkbox("Draw Omega    (green)", &GameState->VisualizeOmega);
+				UI::Checkbox("Draw V        (yellow)", &GameState->VisualizeV);
+				UI::Checkbox("Draw Fc       (red)", &GameState->VisualizeFc);
+				UI::Checkbox("Draw Friction (green)", &GameState->VisualizeFriction);
+				UI::Checkbox("Draw Fc Comopnents     (Magenta)", &GameState->VisualizeFcComponents);
+				UI::Checkbox("Draw Contact Points    (while)", &GameState->VisualizeContactPoints);
+				UI::Checkbox("Draw Contact Manifolds (blue/red)", &GameState->VisualizeContactManifold);
+				UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
+				UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
+				UI::Checkbox("Apply Force", &GameState->ApplyingForce);
+				UI::Checkbox("Apply Torque", &GameState->ApplyingTorque);
+				// Debug::PushLine(GameState->ForceStart, GameState->ForceStart + GameState->Force,
+				//{ 1, 1, 0, 1 });
+				// Debug::PushWireframeSphere(GameState->ForceStart + GameState->Force, 0.05f, { 1, 1, 0, 1
+				// });
+			}
+			UI::EndWindow();
+		}
 
-          UI::Text("Hold ctrl when dragging to snap to whole values");
-          UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1, 5);
-          UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
-          UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
-          UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
-          UI::SliderFloat("Vertical Spacing", &Style.Vars[UI::VAR_SpacingY], 0, 10);
-          UI::SliderFloat("Internal Spacing", &Style.Vars[UI::VAR_InternalSpacing], 0, 10);
-        }
-        UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
-        int StartIndex = 3;
-        UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
-                  ARRAY_SIZE(s_Items) - StartIndex);
-        UI::NewLine();
+		if(s_ShowDemoWindow)
+		{
+			UI::BeginWindow("window A", { 670, 50 }, { 500, 380 });
+			{
+				static int         s_CurrentItem = -1;
+				static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
 
-        char TempBuff[30];
-        snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
-        UI::Text(TempBuff);
+				static bool s_ShowDemo = true; if(UI::CollapsingHeader("Demo", &s_ShowDemo))
+				{
+					static bool s_Checkbox0 = false;
+					static bool s_Checkbox1 = false;
 
-        snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX,
-                 Input->MouseScreenY);
-        UI::Text(TempBuff);
-        snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
-                 Input->NormMouseY);
-        UI::Text(TempBuff);
-        snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
-        UI::Text(TempBuff);
+					{
+						gui_style& Style     = *UI::GetStyle();
+						int32_t    Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
+						UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
+						Style.Vars[UI::VAR_BorderThickness] = Thickness;
 
-        UI::Checkbox("Show Image", &s_Checkbox0);
-        if(s_Checkbox0)
-        {
-          UI::SameLine();
-          UI::Checkbox("Put image in frame", &s_Checkbox1);
-          UI::NewLine();
-          if(s_Checkbox1)
-          {
-            UI::BeginChildWindow("Image frame", { 300, 170 });
-          }
+						UI::Text("Hold ctrl when dragging to snap to whole values");
+						UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1, 5);
+						UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
+						UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
+						UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
+						UI::SliderFloat("Vertical Spacing", &Style.Vars[UI::VAR_SpacingY], 0, 10);
+						UI::SliderFloat("Internal Spacing", &Style.Vars[UI::VAR_InternalSpacing], 0, 10);
+					}
+					UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
+					int StartIndex = 3;
+					UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
+										ARRAY_SIZE(s_Items) - StartIndex);
+					UI::NewLine();
 
-          UI::Image("material preview", GameState->IDTexture, { 400, 220 });
+					char TempBuff[30];
+					snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+					UI::Text(TempBuff);
 
-          if(s_Checkbox1)
-          {
-            UI::EndChildWindow();
-          }
-        }
-      }
-      static bool s_ShowDynamicsTools = true;
-      if(UI::CollapsingHeader("Dynamics", &s_ShowDynamicsTools))
-      {
-        UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
-        UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 200);
-        UI::SliderFloat("Beta", &GameState->Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
-        GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
-        UI::Checkbox("Gravity", &GameState->UseGravity);
-        // UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
-        // UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
-        UI::Checkbox("Friction", &GameState->SimulateFriction);
-        UI::SliderFloat("Mu", &GameState->Mu, 0.0f, 1.0f);
+					snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX,
+									 Input->MouseScreenY);
+					UI::Text(TempBuff);
+					snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
+									 Input->NormMouseY);
+					UI::Text(TempBuff);
+					snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
+					UI::Text(TempBuff);
 
-        UI::Checkbox("Draw Omega    (green)", &GameState->VisualizeOmega);
-        UI::Checkbox("Draw V        (yellow)", &GameState->VisualizeV);
-        UI::Checkbox("Draw Fc       (red)", &GameState->VisualizeFc);
-        UI::Checkbox("Draw Friction (green)", &GameState->VisualizeFriction);
-        UI::Checkbox("Draw Fc Comopnents     (Magenta)", &GameState->VisualizeFcComponents);
-        UI::Checkbox("Draw Contact Points    (while)", &GameState->VisualizeContactPoints);
-        UI::Checkbox("Draw Contact Manifolds (blue/red)", &GameState->VisualizeContactManifold);
-        UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
-        UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
-        UI::Checkbox("Apply Force", &GameState->ApplyingForce);
-        UI::Checkbox("Apply Torque", &GameState->ApplyingTorque);
-        // Debug::PushLine(GameState->ForceStart, GameState->ForceStart + GameState->Force,
-        //{ 1, 1, 0, 1 });
-        // Debug::PushWireframeSphere(GameState->ForceStart + GameState->Force, 0.05f, { 1, 1, 0, 1
-        // });
-      }
-    }
-    UI::EndWindow();
+					UI::Checkbox("Show Image", &s_Checkbox0);
+					if(s_Checkbox0)
+					{
+						UI::SameLine();
+						UI::Checkbox("Put image in frame", &s_Checkbox1);
+						UI::NewLine();
+						if(s_Checkbox1)
+						{
+							UI::BeginChildWindow("Image frame", { 300, 170 });
+						}
+
+						UI::Image("material preview", GameState->IDTexture, { 400, 220 });
+
+						if(s_Checkbox1)
+						{
+							UI::EndChildWindow();
+						}
+					}
+				}
+			}
+			UI::EndWindow();
+		}
 
     UI::EndFrame();
   }
@@ -739,7 +757,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             GameState->SelectionMode = SELECT_Bone;
             AttachEntityToAnimEditor(GameState, &GameState->AnimEditor,
                                      GameState->SelectedEntityIndex);
-            // g_ShowAnimationEditor = true;
+            // s_ShowAnimationEditor = true;
           }
           if(UI::Button("Play Animation"))
           {
@@ -899,7 +917,7 @@ BoneArrayToString(void* Data, int Index)
 }
 
 void
-AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEntityTools)
+AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEntityTools)
 {
   if(GameState->SelectionMode == SELECT_Bone && GameState->AnimEditor.Skeleton)
   {
@@ -914,14 +932,14 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
       assert(0 && "no entity found in GameState->AnimEditor");
     }
 
-    if(UI::CollapsingHeader("Animation Editor", &g_ShowAnimationEditor))
+    if(UI::CollapsingHeader("Animation Editor", &s_ShowAnimationEditor))
     {
       if(UI::Button("Stop Editing"))
       {
         DettachEntityFromAnimEditor(GameState, &GameState->AnimEditor);
         GameState->SelectionMode = SELECT_Entity;
-        g_ShowEntityTools        = true;
-        g_ShowAnimationEditor    = false;
+        s_ShowEntityTools        = true;
+        s_ShowAnimationEditor    = false;
       }
 
       if(GameState->AnimEditor.Skeleton)
@@ -997,11 +1015,11 @@ AnimationGUI(game_state* GameState, bool& g_ShowAnimationEditor, bool& g_ShowEnt
 
 // TODO(Lukas) Add bit mask checkbox to the UI API
 void
-MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet,
-        bool& g_DrawMemoryMaps, bool& g_ShowCameraSettings, bool& g_ShowSceneSettings,
-        bool& g_ShowPostProcessingSettings)
+MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet,
+        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings,
+        bool& s_ShowPostProcessingSettings)
 {
-  if(UI::CollapsingHeader("Light Settings", &g_ShowLightSettings))
+  if(UI::CollapsingHeader("Light Settings", &s_ShowLightSettings))
   {
     UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
     UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 10, 5);
@@ -1028,7 +1046,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     }
   }
 
-  if(UI::CollapsingHeader("Post-processing", &g_ShowPostProcessingSettings))
+  if(UI::CollapsingHeader("Post-processing", &s_ShowPostProcessingSettings))
   {
     bool HDRTonemap   = GameState->R.PPEffects & POST_HDRTonemap;
     bool Bloom        = GameState->R.PPEffects & POST_Bloom;
@@ -1185,16 +1203,15 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
     }
   }
 
-  if(UI::CollapsingHeader("Render Switches", &g_ShowDisplaySet))
+  if(UI::CollapsingHeader("Render Switches", &s_ShowDisplaySet))
   {
-    UI::Checkbox("Memory Visualization", &g_DrawMemoryMaps);
     UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
-    UI::Checkbox("Timeline", &GameState->DrawTimeline);
+    //UI::Checkbox("Timeline", &GameState->DrawTimeline);
     UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
     UI::Checkbox("Cubemap", &GameState->DrawCubemap);
   }
 
-  if(UI::CollapsingHeader("Camera", &g_ShowCameraSettings))
+  if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))
   {
     UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
     UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
@@ -1202,7 +1219,7 @@ MiscGUI(game_state* GameState, bool& g_ShowLightSettings, bool& g_ShowDisplaySet
                     GameState->Camera.NearClipPlane, 500);
     UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
   }
-  if(UI::CollapsingHeader("Scene", &g_ShowSceneSettings))
+  if(UI::CollapsingHeader("Scene", &s_ShowSceneSettings))
   {
     if(UI::Button("Export As New"))
     {

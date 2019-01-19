@@ -18,20 +18,16 @@ struct Material
   float shininess;
 };
 
-uniform sampler2D u_AmbientOcclusion;
-
 struct Light
 {
   vec3 ambient;
   vec3 diffuse;
-  vec3 specular;
 };
 
 struct Sun	
 {
   vec3 ambient;
   vec3 diffuse;
-  vec3 specular;
 };
 
 in VertexOut
@@ -41,10 +37,8 @@ in VertexOut
   vec3 position;
   vec3 normal;
   vec2 texCoord;
-  vec3 lightPos;
-  vec3 sunDir;
-  vec3 cameraPos;
   vec3 tangentLightPos;
+  vec3 tangentSunPos;
   vec3 tangentViewPos;
   vec3 tangentFragPos;
   vec4 sunFragPos;
@@ -56,18 +50,26 @@ uniform Material material;
 uniform Light light;
 uniform Sun sun;
 
-uniform float u_CascadeFarPlanes[3];
-uniform mat4 mat_sun_vp[3];
+uniform vec3 lightPosition;
+uniform vec3 sunDirection;
+uniform vec3 cameraPosition;
+
+uniform sampler2D u_AmbientOcclusion;
+
+#define SHADOWMAP_CASCADE_COUNT 4
+uniform float u_CascadeFarPlanes[SHADOWMAP_CASCADE_COUNT];
+uniform mat4 mat_sun_vp[SHADOWMAP_CASCADE_COUNT];
 uniform sampler2D shadowMap_0;
 uniform sampler2D shadowMap_1;
 uniform sampler2D shadowMap_2;
-
+uniform sampler2D shadowMap_3;
 out vec4 out_color;
 
 float
-ShadowCalculation(vec3 fragWorldPos, int shadowmapIndex, vec3 normal, vec3 lightDir, sampler2D shadowMap)
+ShadowCalculation(vec3 fragWorldPos, int shadowmapIndex, vec3 normal,  sampler2D shadowMap)
 {
   vec4 sunFragPos = mat_sun_vp[shadowmapIndex] * vec4(fragWorldPos, 1.0f);
+
   vec3 projCoords = sunFragPos.xyz / sunFragPos.w;
   projCoords = projCoords * 0.5f + 0.5f;
 
@@ -113,27 +115,38 @@ main()
   else
   {
     normal   = normalize(frag.normal);
-    lightDir = normalize(frag.lightPos - frag.position);
-    viewDir  = normalize(frag.cameraPos - frag.position);
+    lightDir = normalize(lightPosition - frag.position);
+    viewDir  = normalize(cameraPosition - frag.position);
   }
 
+  int cascadeIndex = 0;
+  for(int i = 0; i < SHADOWMAP_CASCADE_COUNT; i++)
+  {
+    if(frag.viewDepth < u_CascadeFarPlanes[i])
+    {
+      cascadeIndex = i;
+      break;
+    }
+  }
   // --------SHADOW--------
-  float shadow = ShadowCalculation(frag.position,  (frag.viewDepth < u_CascadeFarPlanes[0]) ? 0 : ((frag.viewDepth < u_CascadeFarPlanes[1]) ? 1 : 2), normal, frag.sunDir,  (frag.viewDepth < u_CascadeFarPlanes[0]) ? shadowMap_0 : ((frag.viewDepth < u_CascadeFarPlanes[1]) ? shadowMap_1 : shadowMap_2));
+  float shadow = ShadowCalculation(frag.position,  cascadeIndex, normal,
+        (cascadeIndex == 0) ? shadowMap_0 :
+                             (cascadeIndex == 1) ? shadowMap_1 :
+																					(cascadeIndex == 2) ? shadowMap_2 : shadowMap_3);
   float lighting = 1.0f - shadow;
 
-  vec3 sunDir = normalize(-frag.sunDir);
-  vec3 half_vector = normalize(lightDir + viewDir);
-  vec3 reflectDir = reflect(-sunDir, normal);
+  vec3 point_half_vector = normalize(lightDir + viewDir);
+  vec3 sun_half_vector = normalize(-sunDirection +viewDir);
 
   // --------AMBIENT--------
   vec3 ambient = light.ambient;
-  ambient += sun.ambient * lighting ;
+  ambient += sun.ambient;
 
   // --------DIFFUSE------
   float diffuse_intensity = max(dot(normal, lightDir), 0.0f);
   vec3  diffuse           = diffuse_intensity * light.diffuse;
 
-  float sun_diffuse_intensity = max(dot(normal, sunDir), 0.0f);
+  float sun_diffuse_intensity = max(dot(normal, -sunDirection), 0.0f);
   diffuse += sun_diffuse_intensity * sun.diffuse * lighting;
 
   if((frag.flags & DIFFUSE_MAP) != 0)
@@ -159,11 +172,11 @@ main()
   ambient *= ambient_occlusion;
 
   // --------SPECULAR------
-  float specular_intensity = pow(max(dot(normal, half_vector), 0.0f), material.shininess);
+  float specular_intensity = pow(max(dot(normal, point_half_vector), 0.0f), material.shininess);
   specular_intensity *= (diffuse_intensity > 0.0f) ? 1.0f : 0.0f;
   vec3 specular = specular_intensity * light.diffuse;
 
-  float sun_specular_intensity = pow(max(dot(viewDir, reflectDir), 0.0f), material.shininess);
+  float sun_specular_intensity = pow(max(dot(normal, sun_half_vector), 0.0f), material.shininess);
   specular += sun_specular_intensity * sun.diffuse * lighting;
   if((frag.flags & SPECULAR_MAP) != 0)
   {
@@ -184,6 +197,8 @@ main()
   {
     result = vec4(diffuse + specular + ambient, material.diffuseColor.a);
   }
-
+//vec4((cascadeIndex == 0) ? vec3(1,0,0) :
+//                             (cascadeIndex == 1) ? vec3(0,1,0) :
+//																					//(cascadeIndex == 2) ? vec3(0,0,1) : vec3(1,0,1), 1);
   out_color = result;
 }

@@ -5,10 +5,10 @@
 
 #define BLUR_KERNEL_SIZE 11
 
-#define SHADOWMAP_CASCADE_COUNT 3
+#define SHADOWMAP_CASCADE_COUNT 4
 #define SHADOW_WIDTH 2048
 #define SHADOW_HEIGHT 2048
-#define FIGHT_PETER_PAN 0
+#define FIGHT_PETER_PAN 1
 
 enum phong_flags
 {
