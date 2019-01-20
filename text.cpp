@@ -6,6 +6,7 @@
 #include "text.h"
 #include "string.h"
 #include "misc.h"
+#include "profile.h"
 
 struct text_texture
 {
@@ -77,6 +78,7 @@ Text::LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize)
 uint32_t
 LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
 {
+	BEGIN_TIMED_BLOCK(LoadTextTexture);
   SDL_Color FontColor;
   FontColor.a = (uint8_t)(255.0f * Color.A);
   FontColor.r = (uint8_t)(255.0f * Color.R);
@@ -100,10 +102,12 @@ LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
 
     SDL_FreeSurface(DestSurface);
 
+		END_TIMED_BLOCK(LoadTextTexture);
     return Texture;
   }
   printf("error: text surface was not created!\nError: %s\n", SDL_GetError());
   assert(0 && "assert: failed to load text surface");
+	END_TIMED_BLOCK(LoadTextTexture);
   return 0;
 }
 

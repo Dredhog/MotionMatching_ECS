@@ -53,11 +53,25 @@ namespace UI
 			{
 				int PreviousFrameIndex = (g_CurrentProfileBufferFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
 				static bool s_AllowCurrentFrameChoice = false;
+				static bool s_ShowTrackedSummaries = false;
 				static int s_CurrentModifiableFrameIndex = 0;
 				
 				bool Changed = s_AllowCurrentFrameChoice;
 				UI::Checkbox("Inspect Specific Frame", &s_AllowCurrentFrameChoice);
 				Changed = Changed != s_AllowCurrentFrameChoice;
+				if(s_AllowCurrentFrameChoice){
+					UI::SameLine();
+					if(UI::Button("Previous Frame"))
+					{
+						s_CurrentModifiableFrameIndex = (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
+					}
+					UI::SameLine();
+					if(UI::Button("Next Frame"))
+					{
+						s_CurrentModifiableFrameIndex = (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT + 1)%PROFILE_MAX_FRAME_COUNT;
+					}
+					UI::NewLine();
+				}
 
 				s_CurrentModifiableFrameIndex = (s_AllowCurrentFrameChoice) ? s_CurrentModifiableFrameIndex : PreviousFrameIndex;
 
@@ -79,26 +93,52 @@ namespace UI
 				}
 				else
 				{
-					int temp = g_CurrentProfileBufferFrameIndex;
-					UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
-					g_CurrentProfileBufferFrameIndex = temp;
+					//int temp = g_CurrentProfileBufferFrameIndex;
+					//UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
+					//g_CurrentProfileBufferFrameIndex = temp;
 				}
 
-				for(int i = 0; i < ArrayCount(DEBUG_TABLE_NAMES); i++)
 				{
-					UI::Text(DEBUG_TABLE_NAMES[i]);
-					UI::SameLine();
+					const vec3 StartPosition = {0, 1, 0};
+					const float MaxProfileWidth = 0.5f;
+					const float StackBlockHeight = 0.05f;
+					const debug_frame_cycle_counter FrameCycleCounter = GLOBAL_DEBUG_FRAME_CYCLE_TABLE[s_CurrentModifiableFrameIndex];
+					const float BaselineCycleCount = 5e7;//(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
+					for(int i = 0; i < GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
 					{
-						char CountBuffer[40];
-						sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
-						UI::Text(CountBuffer);
+						debug_cycle_counter_event CurrentEvent = GLOBAL_DEBUG_CYCLE_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
+						float ElementWidth = (MaxProfileWidth/BaselineCycleCount)*(float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
+						float ElementLeft = (MaxProfileWidth/BaselineCycleCount)*(CurrentEvent.StartCycleCount-FrameCycleCounter.FrameStart);
+						float ElementTop = StackBlockHeight * (float)CurrentEvent.EventDepth;
+
+						//Note(Lukas): Big Gocha the alpha value means the StencilValue and should be >= window depth
+						int StencilValue = 1;
+						vec3 EventColor = DEBUG_ENTRY_COLORS[CurrentEvent.NameTableIndex];
+						Debug::PushTopLeftQuad(StartPosition + vec3{ElementLeft, -ElementTop,0}, ElementWidth, StackBlockHeight, vec4{EventColor.R, EventColor.G, EventColor.B, (float)StencilValue});
 					}
-					UI::SameLine();
-					UI::NewLine();
 				}
+
+				UI::Checkbox("Show Timed Block Summaries", &s_ShowTrackedSummaries);
+				if(s_ShowTrackedSummaries)
+				{
+					for(int i = 0; i < ArrayCount(DEBUG_TABLE_NAMES); i++)
+					{
+						UI::Text(DEBUG_TABLE_NAMES[i]);
+						UI::SameLine();
+						{
+							char CountBuffer[40];
+							sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
+							UI::Text(CountBuffer);
+						}
+						//UI::SameLine();
+						UI::NewLine();
+					}
+				}
+
 			}
 			UI::EndWindow();
 		}
+
 
 		if(s_ShowPhysicsWindow)
 		{

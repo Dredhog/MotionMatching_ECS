@@ -638,9 +638,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   //----------------------UPDATE------------------------
 	BEGIN_TIMED_BLOCK(Update)
 
-	BEGIN_TIMED_BLOCK(CameraUpdate)
   UpdateCamera(&GameState->Camera, Input);
-	END_TIMED_BLOCK(CameraUpdate)
 
 	BEGIN_TIMED_BLOCK(Physics)
   // Dynamics

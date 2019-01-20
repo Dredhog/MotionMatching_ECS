@@ -6,6 +6,7 @@
 #include "rid.h"
 #include "text.h"
 #include <stdlib.h>
+#include "profile.h"
 
 struct rid_path_pair
 {
@@ -160,7 +161,8 @@ ExportScene(game_state* GameState, const char* Path)
 void
 ImportScene(game_state* GameState, const char* Path)
 {
-  printf("-------------------IMPORTING-SCENE------------------------\n");
+	BEGIN_TIMED_BLOCK(ImportScene)
+  printf("---------IMPORTING-SCENE: %s---------\n", Path);
   GameState->AnimEditor    = {};
   GameState->SelectionMode = SELECT_Entity;
 
@@ -247,5 +249,6 @@ ImportScene(game_state* GameState, const char* Path)
   GameState->R.LightPosition   = Scene->LightPosition;
   GameState->CurrentMaterialID = { 0 };
 
+	END_TIMED_BLOCK(ImportScene)
   return;
 }

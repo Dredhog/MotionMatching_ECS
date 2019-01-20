@@ -136,7 +136,7 @@ main()
   float lighting = 1.0f - shadow;
 
   vec3 point_half_vector = normalize(lightDir + viewDir);
-  vec3 sun_half_vector = normalize(-sunDirection +viewDir);
+  vec3 sun_half_vector = normalize(-sunDirection + viewDir);
 
   // --------AMBIENT--------
   vec3 ambient = light.ambient;

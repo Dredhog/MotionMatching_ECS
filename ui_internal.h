@@ -542,7 +542,7 @@ TestIfVisible(const rect& Rect)
   // gui_window& Window   = *GetCurrentWindow();
   gui_context& g        = *GetContext();
   rect         ClipRect = g.ClipRectStack.Back();
-  return Rect.Intersects(ClipRect) ? true : false;
+  return Rect.Intersects(ClipRect);
 }
 
 vec3
