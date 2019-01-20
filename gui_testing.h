@@ -1109,6 +1109,14 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         bool& s_ShowCameraSettings, bool& s_ShowSceneSettings,
         bool& s_ShowPostProcessingSettings)
 {
+  if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))
+  {
+    UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
+    UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
+    UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane,
+                    GameState->Camera.NearClipPlane, 500);
+    UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
+  }
   if(UI::CollapsingHeader("Light Settings", &s_ShowLightSettings))
   {
     UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
@@ -1295,20 +1303,14 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
 
   if(UI::CollapsingHeader("Render Switches", &s_ShowDisplaySet))
   {
-    UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
-    //UI::Checkbox("Timeline", &GameState->DrawTimeline);
-    UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
     UI::Checkbox("Cubemap", &GameState->DrawCubemap);
+    UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
+    UI::Checkbox("Draw Debug lines", &GameState->DrawDebugLines);
+    UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
+    UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
+    //UI::Checkbox("Timeline", &GameState->DrawTimeline);
   }
 
-  if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))
-  {
-    UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
-    UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
-    UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane,
-                    GameState->Camera.NearClipPlane, 500);
-    UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
-  }
   if(UI::CollapsingHeader("Scene", &s_ShowSceneSettings))
   {
     if(UI::Button("Export As New"))

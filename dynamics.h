@@ -2,7 +2,7 @@
 #include "collision.h"
 #include "basic_data_structures.h"
 
-const int RIGID_BODY_MAX_COUNT = 10;
+const int RIGID_BODY_MAX_COUNT = 20;
 const int CONSTRAINT_MAX_COUNT = 200;
 
 vec3  g_Force;

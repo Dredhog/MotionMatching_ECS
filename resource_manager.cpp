@@ -2,6 +2,7 @@
 #include "file_io.h"
 #include "material_io.h"
 #include "load_shader.h"
+#include "profile.h"
 
 #include <stdio.h>
 #include <stdlib.h>

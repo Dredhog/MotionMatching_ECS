@@ -79,7 +79,9 @@ struct game_state
   // Switches/Flags
   bool  DrawCubemap;
   bool  DrawGizmos;
+  bool  DrawDebugLines;
   bool  DrawDebugSpheres;
+  bool  DrawShadowCascadeVolumes;
   bool  DrawTimeline;
   bool  IsAnimationPlaying;
   float EditorBoneRotationSpeed;

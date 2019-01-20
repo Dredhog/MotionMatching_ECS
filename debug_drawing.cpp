@@ -127,32 +127,29 @@ void
 Debug::DrawWireframeSpheres(game_state* GameState)
 {
   GLint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
-  if(GameState->DrawDebugSpheres)
-  {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDisable(GL_DEPTH_TEST);
-    glUseProgram(ColorShaderID);
-    Render::model* SphereModel = GameState->Resources.GetModel(GameState->SphereModelID);
-    glBindVertexArray(SphereModel->Meshes[0]->VAO);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDisable(GL_DEPTH_TEST);
+	glUseProgram(ColorShaderID);
+	Render::model* SphereModel = GameState->Resources.GetModel(GameState->SphereModelID);
+	glBindVertexArray(SphereModel->Meshes[0]->VAO);
 
-    // So as not to corrupt the position by the old bone data
-    {
-      mat4 Mat4Zeros = {};
-      glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"), 1, GL_FALSE,
-                         Mat4Zeros.e);
-    }
-    for(int i = 0; i < g_SphereCount; i++)
-    {
-      glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, (float*)&g_SphereColors[i]);
-      g_SphereMatrices[i] = Math::MulMat4(GameState->Camera.VPMatrix, g_SphereMatrices[i]);
-      glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "mat_mvp"), 1, GL_FALSE,
-                         g_SphereMatrices[i].e);
-      glDrawElements(GL_TRIANGLES, SphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
-    }
-    glBindVertexArray(0);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glEnable(GL_DEPTH_TEST);
-  }
+	// So as not to corrupt the position by the old bone data
+	{
+		mat4 Mat4Zeros = {};
+		glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"), 1, GL_FALSE,
+											 Mat4Zeros.e);
+	}
+	for(int i = 0; i < g_SphereCount; i++)
+	{
+		glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, (float*)&g_SphereColors[i]);
+		g_SphereMatrices[i] = Math::MulMat4(GameState->Camera.VPMatrix, g_SphereMatrices[i]);
+		glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "mat_mvp"), 1, GL_FALSE,
+											 g_SphereMatrices[i].e);
+		glDrawElements(GL_TRIANGLES, SphereModel->Meshes[0]->IndiceCount, GL_UNSIGNED_INT, 0);
+	}
+	glBindVertexArray(0);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_DEPTH_TEST);
   g_SphereCount = 0;
 }
 

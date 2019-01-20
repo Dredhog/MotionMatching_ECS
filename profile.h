@@ -23,6 +23,10 @@ enum{
 	DEBUG_DebugDrawingSubmission,
 	DEBUG_LoadTextTexture,
 	DEBUG_ImportScene,
+	DEBUG_LoadTexture,
+	DEBUG_LoadModel,
+	DEBUG_LoadShader,
+	DEBUG_LoadMaterial,
 };
 
 struct debug_frame_cycle_counter {
@@ -55,7 +59,11 @@ const char DEBUG_TABLE_NAMES[][40] = {
 	"PostProcessing        ",
 	"DebugDrawingSubmission",
 	"LoadTextTexture       ",
-	"ImportScene             ",
+	"ImportScene           ",
+	"DEBUG_LoadTexturea    ",
+	"DEBUG_LoadModel       ",
+	"DEBUG_LoadShader      ",
+	"DEBUG_LoadMaterial    ",
 };
 
 const vec3 DEBUG_ENTRY_COLORS[] = {
@@ -72,6 +80,10 @@ const vec3 DEBUG_ENTRY_COLORS[] = {
 	vec3{0.7f, 0.7f, 0.7f},
 	vec3{1, 0, 1},
 	vec3{1, 0, 0},
+	vec3{0, 0.5, 1},
+	vec3{0.5f, 0.5f, 0},
+	vec3{1, 0.6f, 0.6f},
+	vec3{1, 0.6f, 0},
 };
 
 extern debug_frame_cycle_counter GLOBAL_DEBUG_FRAME_CYCLE_TABLE[PROFILE_MAX_FRAME_COUNT+1];

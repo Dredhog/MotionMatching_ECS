@@ -3,6 +3,7 @@
 #include "shader_def.h"
 #include "stack_alloc.h"
 #include "shader_def.h"
+#include "profile.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -246,6 +247,7 @@ material
 ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* Resources,
                const char* Path)
 {
+	BEGIN_TIMED_BLOCK(LoadMaterial);
   // Make sure file extension is correct
   if(strlen(Path) <= strlen(".mat"))
   {
@@ -382,6 +384,7 @@ ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* R
   }
 
   assert(Material.Common.ShaderType >= 0);
+	END_TIMED_BLOCK(LoadMaterial);
   return Material;
 }
 

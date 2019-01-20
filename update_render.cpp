@@ -458,6 +458,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->DrawDebugSpheres = true;
       GameState->DrawTimeline     = true;
       GameState->DrawGizmos       = true;
+ 			GameState->DrawDebugLines   = true;
+ 			GameState->DrawDebugSpheres = true;
+ 			GameState->DrawShadowCascadeVolumes = false;
 
       GameState->IsAnimationPlaying      = false;
       GameState->EditorBoneRotationSpeed = 45.0f;
@@ -989,15 +992,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 			// Compute shadowmap cascade VP matrices
 			{
 				frustum_def Frustum = {};
+#if 1
 				Frustum.Forward = Math::Normalized(GameState->Camera.Forward);
 				Frustum.Right = Math::Normalized(Math::Cross(Frustum.Forward, vec3{0, 1, 0}));
 				Frustum.Up = Math::Cross(Frustum.Right, Frustum.Forward);
 				Frustum.Origin = GameState->Camera.Position;
-
-				//Frustum.Forward = vec3{0, 0, -1};
-				//Frustum.Right = vec3{1, 0, 0};
-				//Frustum.Up = vec3{0, 1, 0};
-				//Frustum.Origin = {};
+#else
+				Frustum.Forward = vec3{0, 0, -1};
+				Frustum.Right = vec3{1, 0, 0};
+				Frustum.Up = vec3{0, 1, 0};
+				Frustum.Origin = {};
+#endif
 				
 				Frustum.ViewAngle = GameState->Camera.FieldOfView;
 				Frustum.Aspect = SCREEN_WIDTH/(float)SCREEN_HEIGHT;
@@ -1010,11 +1015,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 					Frustum.Far = GameState->R.Sun.CascadeFarPlaneDistances[i];
 
 					box_mesh FrustumMesh= GetFrustumBoxMesh(Frustum);
-					DrawDebugBoxMesh(FrustumMesh, {1, 0, 0, 1});
 
 					obb_def OBB = GetFrustumOBBFromDir(GameState->R.Sun.Direction, FrustumMesh);
-					Debug::PushWireframeSphere(OBB.NearCenter, 0.1f, { 1, 0, 1, 1 });
-					DrawDebugBoxMesh(GetOBBBoxMesh(OBB), {0, 0, 1, 1});
+
+					if(GameState->DrawShadowCascadeVolumes)
+					{
+						Debug::PushWireframeSphere(OBB.NearCenter, 0.1f, { 1, 0, 1, 1 });
+						DrawDebugBoxMesh(FrustumMesh, {1, 0, 0, 1});
+						DrawDebugBoxMesh(GetOBBBoxMesh(OBB), {0, 0, 1, 1});
+					}
 
 					mat4 ProjectionMatrix =
 						Math::Mat4Orthogonal(-OBB.HalfWidth, OBB.HalfWidth, -OBB.HalfHeight, OBB.HalfHeight,
@@ -1777,14 +1786,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // ------------------DEBUG------------------
 	BEGIN_TIMED_BLOCK(DebugDrawingSubmission);
 
-  Debug::DrawWireframeSpheres(GameState);
+  if(GameState->DrawDebugSpheres)
+  {
+		Debug::DrawWireframeSpheres(GameState);
+	}
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   if(GameState->DrawGizmos)
   {
     Debug::DrawGizmos(GameState);
   }
-  Debug::DrawLines(GameState);
-  Debug::DrawQuads(GameState);
+  if(GameState->DrawDebugLines)
+  {
+		Debug::DrawLines(GameState);
+	}
+	Debug::DrawQuads(GameState);
   Debug::ClearDrawArrays();
   Text::ClearTextRequestCounts();
 

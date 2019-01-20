@@ -1,6 +1,7 @@
 #include "load_shader.h"
 #include "stack_alloc.h"
 #include "file_io.h"
+#include "profile.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -121,6 +122,7 @@ namespace Shader
   GLuint
   CheckedLoadCompileFreeShader(Memory::stack_allocator* Alloc, const char* RelativePath)
   {
+		BEGIN_TIMED_BLOCK(LoadShader);
     Memory::marker LoadStart = Alloc->GetMarker();
     GLuint         Result    = Shader::ImportShader(Alloc, RelativePath);
     Alloc->FreeToMarker(LoadStart);
@@ -129,6 +131,7 @@ namespace Shader
     {
       printf("Shader %s failed to load correctly!\n", RelativePath);
     }
+		END_TIMED_BLOCK(LoadShader);
     return Result;
   }
 }
