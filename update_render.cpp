@@ -25,6 +25,7 @@
 #include "gui_testing.h"
 #include "dynamics.h"
 #include "shader_def.h"
+#include "profile.h"
 
 void DrawDebugBoxMesh(box_mesh BoxMesh, vec4 Color = {0, 0, 1, 1})
 {
@@ -40,6 +41,8 @@ void DrawDebugBoxMesh(box_mesh BoxMesh, vec4 Color = {0, 0, 1, 1})
 
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
+	BEGIN_FRAME();
+
   game_state* GameState = (game_state*)GameMemory.PersistentMemory;
   assert(GameMemory.HasBeenInitialized);
 
@@ -47,6 +50,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if(GameState->MagicChecksum != 123456)
   {
     GameState->MagicChecksum = 123456;
+
+		BEGIN_TIMED_BLOCK(FirstInit);
 
     // INITIALIZE MEMORY
     {
@@ -476,12 +481,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
 
     SetUpCubeHull(&g_CubeHull);
+		END_TIMED_BLOCK(FirstInit);
   }
   //---------------------END INIT -------------------------
+	
+	BEGIN_TIMED_BLOCK(FilesystemUpdate);
 
   GameState->Resources.UpdateHardDriveAssetPathLists();
   GameState->Resources.DeleteUnused();
   GameState->Resources.ReloadModified();
+
+	END_TIMED_BLOCK(FilesystemUpdate);
 
   if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
   {
@@ -503,6 +513,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   if(Input->IsMouseInEditorMode)
   {
+		BEGIN_TIMED_BLOCK(Editor);
     // GUI
     UI::TestGui(GameState, Input);
 
@@ -522,6 +533,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     // Selection
     if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
     {
+			BEGIN_TIMED_BLOCK(SelectionDrawing);
       // Draw entities to ID buffer
       // SORT_MESH_INSTANCES(ByEntity);
       glDisable(GL_BLEND);
@@ -586,11 +598,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       GameState->SelectedEntityIndex = (uint32_t)IDColor[0];
       GameState->SelectedMeshIndex   = (uint32_t)IDColor[1];
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+			END_TIMED_BLOCK(SelectionDrawing);
     }
 
     // Entity creation
     if(GameState->IsEntityCreationMode && Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
     {
+			BEGIN_TIMED_BLOCK(EntityCreation);
+
       GameState->IsEntityCreationMode = false;
       vec3 RayDir =
         GetRayDirFromScreenP({ Input->NormMouseX, Input->NormMouseY },
@@ -614,12 +630,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
         AddEntity(GameState, GameState->CurrentModelID, MaterialIDs, NewTransform);
       }
+			END_TIMED_BLOCK(EntityCreation);
     }
+		END_TIMED_BLOCK(Editor);
   }
 
   //----------------------UPDATE------------------------
-  UpdateCamera(&GameState->Camera, Input);
+	BEGIN_TIMED_BLOCK(Update)
 
+	BEGIN_TIMED_BLOCK(CameraUpdate)
+  UpdateCamera(&GameState->Camera, Input);
+	END_TIMED_BLOCK(CameraUpdate)
+
+	BEGIN_TIMED_BLOCK(Physics)
   // Dynamics
   g_Force                 = GameState->Force;
   g_ForceStart            = GameState->ForceStart;
@@ -655,6 +678,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
   SimulateDynamics(GameState);
+	END_TIMED_BLOCK(Physics)
 
   if(GameState->PlayerEntityIndex != -1)
   {
@@ -818,8 +842,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
              sizeof(mat4) * GameState->AnimEditor.Skeleton->BoneCount);
     }
   }
+	END_TIMED_BLOCK(Update);
   //---------------------RENDERING----------------------------
-
+	BEGIN_TIMED_BLOCK(Render);
   // RENDER QUEUE SUBMISSION
   GameState->R.MeshInstanceCount = 0;
   for(int e = 0; e < GameState->EntityCount; e++)
@@ -1289,6 +1314,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // debug drawings *should* be untouched.
 
   {
+		BEGIN_TIMED_BLOCK(PostProcessing);
     glDisable(GL_DEPTH_TEST);
     // NOTE(Lukas): HDR tonemapping and bloom use HDR buffers which are floating point unlike the
     // remaining post effect stack
@@ -1747,11 +1773,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     GameState->R.CurrentTexture     = 0;
     GameState->R.CurrentFramebuffer = 0;
+		END_TIMED_BLOCK(PostProcessing);
   }
 
   // ------------------DEBUG------------------
-  Debug::DrawWireframeSpheres(GameState);
+	BEGIN_TIMED_BLOCK(DebugDrawingSubmission);
 
+  Debug::DrawWireframeSpheres(GameState);
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   if(GameState->DrawGizmos)
   {
@@ -1761,4 +1789,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   Debug::DrawQuads(GameState);
   Debug::ClearDrawArrays();
   Text::ClearTextRequestCounts();
+
+	END_TIMED_BLOCK(DebugDrawingSubmission);
+
+	END_TIMED_BLOCK(Render);
+	END_FRAME();
 }

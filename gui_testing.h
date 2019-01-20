@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "scene.h"
 #include "shader_def.h"
+#include "profile.h"
 
 void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
@@ -14,6 +15,7 @@ namespace UI
   void
   TestGui(game_state* GameState, const game_input* Input)
   {
+		BEGIN_TIMED_BLOCK(GUI);
     UI::BeginFrame(GameState, Input);
 
 		static bool s_ShowDemoWindow     = false;
@@ -48,6 +50,53 @@ namespace UI
 		if(s_ShowProfilerWindow)
 		{
 			UI::BeginWindow("Profiler Window", { 150, 500 }, { 800, 380 });
+			{
+				int PreviousFrameIndex = (g_CurrentProfileBufferFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
+				static bool s_AllowCurrentFrameChoice = false;
+				static int s_CurrentModifiableFrameIndex = 0;
+				
+				bool Changed = s_AllowCurrentFrameChoice;
+				UI::Checkbox("Inspect Specific Frame", &s_AllowCurrentFrameChoice);
+				Changed = Changed != s_AllowCurrentFrameChoice;
+
+				s_CurrentModifiableFrameIndex = (s_AllowCurrentFrameChoice) ? s_CurrentModifiableFrameIndex : PreviousFrameIndex;
+
+				if(Changed)
+				{
+					if(s_AllowCurrentFrameChoice)
+					{
+						s_CurrentModifiableFrameIndex = PreviousFrameIndex;
+						PAUSE_PROFILE();
+					}else
+					{
+						RESUME_PROFILE();
+					}
+				}
+
+				if(s_AllowCurrentFrameChoice)
+				{
+					UI::SliderInt("Current Frame", &s_CurrentModifiableFrameIndex , 0, PROFILE_MAX_FRAME_COUNT-1);
+				}
+				else
+				{
+					int temp = g_CurrentProfileBufferFrameIndex;
+					UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
+					g_CurrentProfileBufferFrameIndex = temp;
+				}
+
+				for(int i = 0; i < ArrayCount(DEBUG_TABLE_NAMES); i++)
+				{
+					UI::Text(DEBUG_TABLE_NAMES[i]);
+					UI::SameLine();
+					{
+						char CountBuffer[40];
+						sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
+						UI::Text(CountBuffer);
+					}
+					UI::SameLine();
+					UI::NewLine();
+				}
+			}
 			UI::EndWindow();
 		}
 
@@ -153,6 +202,7 @@ namespace UI
 		}
 
     UI::EndFrame();
+		END_TIMED_BLOCK(GUI);
   }
 }
 
