@@ -40,11 +40,6 @@ int          Destroy(gui_context* Context);
 gui_context* GetContext();
 gui_window*  GetCurrentWindow();
 
-void PushStyleVar(int32_t Index, float Value);
-void PopStyleVar();
-void PushStyleColor(int32_t Index, vec4 Color);
-void PopStyleColor();
-
 void DrawText(const vec3& BottomLeft, const char* Text);
 void DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor);
 void DrawBox(vec3 TopLeft, vec3 Size, vec4 InnerColor, vec4 BorderColor);
@@ -285,21 +280,24 @@ FocusWindow(gui_window* Window)
   gui_context& g  = *GetContext();
   g.FocusedWindow = Window;
 
-  int Index = -1;
-  for(int i = 0; i < g.OrderedWindows.Count; i++)
-  {
-    if(g.OrderedWindows[i] == Window)
-    {
-      Index = i;
-      break;
-    }
-  }
-
   if(Window)
   {
+		gui_window* RootWindow = Window->RootWindow;
+		assert(RootWindow);
+
+		int Index = -1;
+		for(int i = 0; i < g.OrderedWindows.Count; i++)
+		{
+			if(g.OrderedWindows[i] == RootWindow)
+			{
+				Index = i;
+				break;
+			}
+		}
+
     assert(0 <= Index);
     g.OrderedWindows.Delete(Index);
-    g.OrderedWindows.Push(Window);
+    g.OrderedWindows.Push(RootWindow);
   }
 }
 
@@ -518,25 +516,6 @@ AddSize(const vec3& Size)
   Window.CurrentPos.Y += Size.Y + g.Style.Vars[UI::VAR_SpacingY];
 }
 
-namespace UI
-{
-  void
-  SameLine()
-  {
-    gui_window& Window = *GetCurrentWindow();
-    Window.CurrentPos  = Window.PreviousPos;
-  }
-
-  void
-  NewLine()
-  {
-    gui_context& g      = *GetContext();
-    gui_window&  Window = *GetCurrentWindow();
-    Window.CurrentPos.X = Window.StartPos.X;
-    Window.CurrentPos.Y = Window.MaxPos.Y + g.Style.Vars[UI::VAR_SpacingY];
-  }
-}
-
 bool
 TestIfVisible(const rect& Rect)
 {
@@ -573,29 +552,6 @@ ClosePopup(ui_id ID)
   gui_context& g = *GetContext();
   assert(IsPopupOpen(ID));
   g.OpenPopupStack.Pop();
-}
-
-void
-PushStyleVar(int32_t Index, float Value)
-{
-  gui_context& g = *GetContext();
-  assert(0 <= Index && Index < UI::VAR_Count);
-
-  style_var_memo Memo = {};
-  Memo.Value          = g.Style.Vars[Index];
-  Memo.Index          = Index;
-  g.StyleVarStack.Push(Memo);
-  g.Style.Vars[Index] = Value;
-}
-
-void
-PopStyleVar()
-{
-  gui_context& g = *GetContext();
-
-  assert(0 < g.StyleVarStack.Count);
-  style_var_memo Memo      = *g.StyleVarStack.Pop();
-  g.Style.Vars[Memo.Index] = Memo.Value;
 }
 
 void

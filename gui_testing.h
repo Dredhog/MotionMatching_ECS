@@ -49,11 +49,12 @@ namespace UI
 
 		if(s_ShowProfilerWindow)
 		{
-			UI::BeginWindow("Profiler Window", { 150, 500 }, { 800, 380 });
+			UI::BeginWindow("Profiler Window", { 150, 500 }, { 1500, 500 });
 			{
 				int PreviousFrameIndex = (g_CurrentProfileBufferFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
 				static bool s_AllowCurrentFrameChoice = false;
-				static bool s_ShowTrackedSummaries = false;
+				static bool s_ShowTimelineRegion = false;
+				static bool s_ShowFrameSummaries = false;
 				static int s_CurrentModifiableFrameIndex = 0;
 				
 				bool Changed = s_AllowCurrentFrameChoice;
@@ -98,6 +99,7 @@ namespace UI
 					//g_CurrentProfileBufferFrameIndex = temp;
 				}
 
+#if 0
 				{
 					const vec3 StartPosition = {0, 1, 0};
 					const float MaxProfileWidth = 0.5f;
@@ -117,9 +119,83 @@ namespace UI
 						Debug::PushTopLeftQuad(StartPosition + vec3{ElementLeft, -ElementTop,0}, ElementWidth, StackBlockHeight, vec4{EventColor.R, EventColor.G, EventColor.B, (float)StencilValue});
 					}
 				}
+#else
+				static int s_BlockIndexForSummary = 0;
 
-				UI::Checkbox("Show Timed Block Summaries", &s_ShowTrackedSummaries);
-				if(s_ShowTrackedSummaries)
+				if(UI::CollapsingHeader("Frame Timeline", &s_ShowTimelineRegion))
+				{
+					static float s_TimelineZoom = 1;
+					UI::SliderFloat("Timeline Zoom", &s_TimelineZoom, 0, 10);
+
+					float AvailableWidth = UI::GetAvailableWidth();
+					UI::PushStyleColor(UI::COLOR_WindowBackground, vec4{0.4f, 0.4f, 0.5f, 0.3f});
+					float ChildPadding = 30.0f;
+					UI::Dummy(ChildPadding);
+					UI::SameLine();
+					UI::BeginChildWindow("Profile Timeline Window", { AvailableWidth - ChildPadding * 2, 200 });
+					{
+
+						UI::PushStyleVar(UI::VAR_SpacingX, 0);
+						UI::PushStyleVar(UI::VAR_SpacingY, 1);
+						{
+							const float MaxProfileWidth = (0.5f*s_TimelineZoom)*UI::GetWindowWidth();
+							const float StackBlockHeight = 20.0f;
+							const debug_frame_cycle_counter FrameCycleCounter = GLOBAL_DEBUG_FRAME_CYCLE_TABLE[s_CurrentModifiableFrameIndex];
+							const float BaselineCycleCount = 5e6;//(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
+							for(int j = 0; j < 4; j++)
+							{
+								float CurrentHorizontalPosition = 0.0f;
+								for(int i = 0; i < GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
+								{
+									debug_cycle_counter_event CurrentEvent = GLOBAL_DEBUG_CYCLE_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
+									if(CurrentEvent.EventDepth == j)
+									{
+										float EventWidth = (MaxProfileWidth/BaselineCycleCount)*(float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
+										float EventLeft = (MaxProfileWidth/BaselineCycleCount)*(CurrentEvent.StartCycleCount-FrameCycleCounter.FrameStart);
+
+										vec3 EventColor = DEBUG_ENTRY_COLORS[CurrentEvent.NameTableIndex];
+										UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{EventColor.R, EventColor.G, EventColor.B, 1});
+										{
+											vec3 EventColor = DEBUG_ENTRY_COLORS[CurrentEvent.NameTableIndex];
+											float DummyWidth = EventLeft - CurrentHorizontalPosition;
+											UI::Dummy(EventLeft-CurrentHorizontalPosition);
+											UI::SameLine();
+											if(UI::Button(DEBUG_TABLE_NAMES[CurrentEvent.NameTableIndex],  EventWidth))
+											{
+												s_BlockIndexForSummary = CurrentEvent.NameTableIndex;
+											}
+											UI::SameLine();
+											CurrentHorizontalPosition += DummyWidth + EventWidth;
+										}
+										UI::PopStyleColor();
+									}
+								}
+								UI::NewLine();
+							}
+						}
+					}
+					UI::EndChildWindow();
+					UI::PopStyleColor();
+					UI::NewLine();
+					{
+						UI::PopStyleVar();
+						UI::PopStyleVar();
+						{
+							UI::Text(DEBUG_TABLE_NAMES[s_BlockIndexForSummary]);
+							UI::SameLine();
+							{
+								char CountBuffer[40];
+								sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][s_BlockIndexForSummary].CycleCount);
+								UI::Text(CountBuffer);
+							}
+							UI::NewLine();
+						}
+					}
+				}
+#endif
+
+
+				if(UI::CollapsingHeader("Frame Event Summaries", &s_ShowFrameSummaries))
 				{
 					for(int i = 0; i < ArrayCount(DEBUG_TABLE_NAMES); i++)
 					{
@@ -1323,4 +1399,11 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
       }
     }
   }
+	{
+		char TempBuffer[32];
+		sprintf(TempBuffer, "ActiveID: %u", UI::GetActiveID());
+		UI::Text(TempBuffer);
+		sprintf(TempBuffer, "HotID: %u", UI::GetHotID());
+		UI::Text(TempBuffer);
+	}
 }

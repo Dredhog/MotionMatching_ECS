@@ -488,6 +488,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   //---------------------END INIT -------------------------
 	
+	BEGIN_TIMED_BLOCK(Update)
 	BEGIN_TIMED_BLOCK(FilesystemUpdate);
 
   GameState->Resources.UpdateHardDriveAssetPathLists();
@@ -639,7 +640,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   //----------------------UPDATE------------------------
-	BEGIN_TIMED_BLOCK(Update)
 
   UpdateCamera(&GameState->Camera, Input);
 

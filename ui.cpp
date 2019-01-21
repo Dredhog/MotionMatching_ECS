@@ -72,7 +72,9 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
       FocusWindow(&g.Windows[i]);
       if(!(g.Windows[i].Flags & WINDOW_IsNotMovable))
       {
-        g.Windows[i].Position += { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
+				gui_window* RootMoveWindow = g.Windows[i].RootWindow;
+				assert(RootMoveWindow);
+        RootMoveWindow->Position += { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
       }
       break;
     }
@@ -156,6 +158,21 @@ UI::EndFrame()
   g.CurrentPopupStack.Clear();
   CloseInactivePopups();
   g.LatestClipRectIndex = 0;
+}
+
+//TODO(Lukas) For debuggig use only (REMOVE)
+uint32_t
+UI::GetActiveID()
+{
+	gui_context& g = *GetContext();
+	return g.ActiveID;
+}
+
+uint32_t
+UI::GetHotID()
+{
+	gui_context& g = *GetContext();
+	return g.HotID;
 }
 
 void
@@ -417,11 +434,11 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
 		float PrevOffsetFromLeft = Window->ScrollNorm.X * Window->ScrollRange.X;
 		if(0 < NewScrollRangeX)
 		{
-		  Window->ScrollNorm.X = PrevOffsetFromLeft/NewScrollRangeX;
+		  Window->ScrollNorm.X = ClampFloat(0, PrevOffsetFromLeft/NewScrollRangeX, 1);
 		}
 		if(0 < NewScrollRangeY)
 		{
-		  Window->ScrollNorm.Y = PrevOffsetFromTop/NewScrollRangeY;
+		  Window->ScrollNorm.Y = ClampFloat(0, PrevOffsetFromTop/NewScrollRangeY, 1);
 		}
 	}
 
@@ -902,6 +919,90 @@ UI::DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, f
 }
 
 void
+UI::SameLine()
+{
+	gui_window& Window = *GetCurrentWindow();
+	Window.CurrentPos  = Window.PreviousPos;
+}
+
+void
+UI::NewLine()
+{
+	gui_context& g      = *GetContext();
+	gui_window&  Window = *GetCurrentWindow();
+	Window.CurrentPos.X = Window.StartPos.X;
+	Window.CurrentPos.Y = Window.MaxPos.Y + g.Style.Vars[UI::VAR_SpacingY];
+}
+
+void
+UI::Dummy(float Width, float Height)
+{
+	AddSize(vec3{Width, Height, 0});
+}
+
+float
+UI::GetWindowWidth()
+{
+  gui_window&  Window = *GetCurrentWindow();
+	return Window.Size.X;
+}
+
+//TODO(Lukas): Subtract various padding values
+float
+UI::GetAvailableWidth()
+{
+  gui_window&  Window = *GetCurrentWindow();
+	return Window.SizeNoScroll.X;
+}
+
+void
+UI::PushStyleVar(int32_t Index, float Value)
+{
+  gui_context& g = *GetContext();
+  assert(0 <= Index && Index < UI::VAR_Count);
+
+  style_var_memo Memo = {};
+  Memo.Value          = g.Style.Vars[Index];
+  Memo.Index          = Index;
+  g.StyleVarStack.Push(Memo);
+  g.Style.Vars[Index] = Value;
+}
+
+void
+UI::PopStyleVar()
+{
+  gui_context& g = *GetContext();
+
+  assert(0 < g.StyleVarStack.Count);
+  style_var_memo Memo      = *g.StyleVarStack.Pop();
+  g.Style.Vars[Memo.Index] = Memo.Value;
+}
+
+void
+UI::PushStyleColor(int32_t Index, vec4 Color)
+{
+  gui_context& g = *GetContext();
+  assert(0 <= Index && Index < UI::COLOR_Count);
+
+  style_color_memo Memo = {};
+  Memo.Color          = g.Style.Colors[Index];
+  Memo.Index          = Index;
+  g.StyleColorStack.Push(Memo);
+  g.Style.Colors[Index] = Color;
+}
+
+void
+UI::PopStyleColor()
+{
+  gui_context& g = *GetContext();
+
+  assert(0 < g.StyleColorStack.Count);
+  style_color_memo Memo      = *g.StyleColorStack.Pop();
+  g.Style.Colors[Memo.Index] = Memo.Color;
+}
+
+
+void
 UI::DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue, float ScreenDelta)
 {
   gui_context& g      = *GetContext();
@@ -930,6 +1031,7 @@ UI::DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue
 
   DrawText(TextPosition, Label);
 }
+
 void
 UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue, float ScreenDelta)
 {
