@@ -130,7 +130,6 @@ namespace UI
 							sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
 							UI::Text(CountBuffer);
 						}
-						//UI::SameLine();
 						UI::NewLine();
 					}
 				}
@@ -302,34 +301,10 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             CurrentMaterial->Common.ShaderType = NewShaderType;
           }
         }
-        /*
-        if(UI::Button("Previous shader"))
-        {
-          if(CurrentMaterial->Common.ShaderType > 0)
-          {
-            int32_t ShaderType                 = CurrentMaterial->Common.ShaderType - 1;
-            *CurrentMaterial                   = {};
-            CurrentMaterial->Common.ShaderType = ShaderType;
-          }
-        }
-        UI::SameLine();
-        if(UI::Button("Next shader"))
-        {
-          if(CurrentMaterial->Common.ShaderType < SHADER_EnumCount - 1)
-          {
-            int32_t ShaderType                 = CurrentMaterial->Common.ShaderType + 1;
-            *CurrentMaterial                   = {};
-            CurrentMaterial->Common.ShaderType = ShaderType;
-          }
-        }
-        UI::SameLine();
-        UI::NewLine();
-        */
 
         UI::Checkbox("Blending", &CurrentMaterial->Common.UseBlending);
         UI::SameLine();
         UI::Checkbox("Skeletel", &CurrentMaterial->Common.IsSkeletal);
-        UI::SameLine();
         UI::NewLine();
 
         if(CurrentMaterial->Common.ShaderType == SHADER_Phong)
@@ -709,7 +684,6 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             }
           }
         }
-        UI::SameLine();
         UI::NewLine();
       }
     }
@@ -1334,7 +1308,6 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         UI::SameLine();
         UI::Combo("Export Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
                   GameState->Resources.ScenePathCount, PathArrayToString);
-        UI::SameLine();
         UI::NewLine();
       }
       {
@@ -1346,7 +1319,6 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         UI::SameLine();
         UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
                   GameState->Resources.ScenePathCount, PathArrayToString);
-        UI::SameLine();
         UI::NewLine();
       }
     }

@@ -80,13 +80,13 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
 }
 
 void
-AddWindowToSortedBuffer(fixed_stack<gui_window*, 10>* SortedWindows, gui_window* Window)
+r_AddWindowToSortedBuffer(fixed_stack<gui_window*, 10>* SortedWindows, gui_window* Window)
 {
   SortedWindows->Push(Window);
   for(int i = 0; i < Window->ChildWindows.Count; i++)
   {
     gui_window* ChildWindow = Window->ChildWindows[i];
-    AddWindowToSortedBuffer(SortedWindows, ChildWindow);
+    r_AddWindowToSortedBuffer(SortedWindows, ChildWindow);
   }
 }
 
@@ -102,7 +102,7 @@ UI::EndFrame()
     gui_window* Window = g.OrderedWindows[i];
     if(!(Window->Flags & WINDOW_IsChildWindow) && Window->UsedThisFrame)
     {
-      AddWindowToSortedBuffer(&SortBuffer, Window);
+      r_AddWindowToSortedBuffer(&SortBuffer, Window);
     }
   }
   g.OrderedWindows = SortBuffer;
@@ -376,7 +376,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     Window->Size = Size;
   }
 
-  PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) && !(Window->Flags & (WINDOW_Popup | WINDOW_Combo)) ? true : false);
+  PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) && !(Window->Flags & (WINDOW_Popup | WINDOW_Combo)));
   Window->ClippedSizeRect = NewRect(Window->Position, Window->Position + Size); // used for hovering
   Window->ClippedSizeRect.Clip(g.ClipRectStack.Back());                         // used for hovering
   DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground), _GetGUIColor(WindowBorder));
@@ -390,16 +390,16 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   {
     Window->Flags |= UI::WINDOW_UseVerticalScrollbar;
   }
-  if(Window->SizeNoScroll.X < Window->ContentsSize.X) // Add horizontal Scrollbar
-  {
-    Window->Flags |= UI::WINDOW_UseHorizontalScrollbar;
-  }
-  if(Window->SizeNoScroll.Y >= Window->ContentsSize.Y) // Remove vertical Scrollbar
+	else
   {
     Window->Flags        = (Window->Flags & ~UI::WINDOW_UseVerticalScrollbar);
     Window->ScrollNorm.Y = 0;
   }
-  if(Window->SizeNoScroll.X >= Window->ContentsSize.X) // Remove horizontal Scrollbar
+  if(Window->SizeNoScroll.X < Window->ContentsSize.X) // Add horizontal Scrollbar
+  {
+    Window->Flags |= UI::WINDOW_UseHorizontalScrollbar;
+  }
+	else
   {
     Window->Flags        = (Window->Flags & ~UI::WINDOW_UseHorizontalScrollbar);
     Window->ScrollNorm.X = 0;
@@ -407,6 +407,24 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   Window->SizeNoScroll = Window->Size;
   Window->SizeNoScroll -=
     vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0, (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0 };
+
+	//Used to preserve scroll position accross content size changes
+	{
+    float NewScrollRangeX = MaxFloat(0, Window->ContentsSize.X - Window->SizeNoScroll.X); // Delta in screen space that the window content can scroll
+    float NewScrollRangeY = MaxFloat(0, Window->ContentsSize.Y - Window->SizeNoScroll.Y); // Delta in screen space that the window content can scroll
+
+		float PrevOffsetFromTop = Window->ScrollNorm.Y * Window->ScrollRange.Y;
+		float PrevOffsetFromLeft = Window->ScrollNorm.X * Window->ScrollRange.X;
+		if(0 < NewScrollRangeX)
+		{
+		  Window->ScrollNorm.X = PrevOffsetFromLeft/NewScrollRangeX;
+		}
+		if(0 < NewScrollRangeY)
+		{
+		  Window->ScrollNorm.Y = PrevOffsetFromTop/NewScrollRangeY;
+		}
+	}
+
   //#2
   if(Window->Flags & UI::WINDOW_UseVerticalScrollbar)
     Scrollbar(g.CurrentWindow, true);

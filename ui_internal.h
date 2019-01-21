@@ -47,6 +47,7 @@ void PopStyleColor();
 
 void DrawText(const vec3& BottomLeft, const char* Text);
 void DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderColor);
+void DrawBox(vec3 TopLeft, vec3 Size, vec4 InnerColor, vec4 BorderColor);
 
 // TODO(Lukas) Fix quad submission api, reduce levels of abstraction up to shader minimize getters
 // these currently store quads with faulty quad data, which is currently resubmitted to other API
@@ -480,7 +481,7 @@ IsMouseInsideRect(const vec3& MinP, const vec3& MaxP)
 {
   gui_context& g     = *GetContext();
   vec3         Point = { (float)g.Input->MouseScreenX, (float)g.Input->MouseScreenY };
-  return (MinP.X < Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y <= MaxP.Y) ? true : false;
+  return (MinP.X < Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y <= MaxP.Y);
 }
 
 bool
@@ -694,10 +695,4 @@ Init(gui_context* Context, game_state* GameState)
 
   Context->CurrentWindow = NULL;
   Context->GameState     = GameState;
-}
-
-int
-Destroy(gui_context* Context)
-{
-  return 0;
 }
