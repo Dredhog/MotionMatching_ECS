@@ -6,9 +6,18 @@
 #define PROFILE_MAX_FRAME_COUNT 500
 #define PROFILE_MAX_EVENTS_PER_FRAME 1000
 
-#include <x86intrin.h>
+
 #include "common.h"
 #include "linear_math/vector.h"
+
+#if defined( __WIN32__ ) || defined( _WIN32 ) || defined( __WIN64__ ) || defined( _WIN64 ) || defined( WIN32 )
+#include <intrin.h>
+#define _rdtsc __rdtsc
+#elif defined(__linux__) || defined( LINUX )
+#include <x86intrin.h>
+#else
+#error
+#endif
 enum{
 	DEBUG_FirstInit,
 	DEBUG_FilesystemUpdate,
