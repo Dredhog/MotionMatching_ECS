@@ -44,6 +44,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // GAME STATE INITIALIZATION (ONLY RUN ON FIRST FRAME)
   if(GameState->MagicChecksum != 123456)
   {
+		TIMED_BLOCK(FirstInit);
 		PartitionMemoryInitAllocators(&GameMemory, GameState);
 		LoadInitialResources(GameState);
 		SetGameStatePODFields(GameState);
@@ -86,43 +87,46 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   UpdateCamera(&GameState->Camera, Input);
 
-	BEGIN_TIMED_BLOCK(Physics)
 	{
+		TIMED_BLOCK(Physics);
+
 		assert(GameState->EntityCount <= RIGID_BODY_MAX_COUNT);
 		GameState->Physics.RBCount = GameState->EntityCount;
 
-		g_VisualizeContactPoints = GameState->Physics.Switches.VisualizeContactPoints;
-		g_VisualizeContactManifold = GameState->Physics.Switches.VisualizeContactManifold;
-		//Copy entity transform state into the physics world
-		//Note: valid entiteis are always stored without gaps in their array
-		for(int i = 0; i < GameState->EntityCount; i++)
 		{
-			//Copy rigid body from entity (Mainly needed when loading scenes)
-			GameState->Physics.RigidBodies[i] = GameState->Entities[i].RigidBody;
-
-			GameState->Physics.RigidBodies[i].q =
-				Math::EulerToQuat(GameState->Entities[i].Transform.Rotation);
-			GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.Translation;
-
-			GameState->Physics.RigidBodies[i].R =
-				Math::Mat4ToMat3(Math::Mat4Rotate(GameState->Entities[i].Transform.Rotation));
-
-			GameState->Physics.RigidBodies[i].Mat4Scale =
-				Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
-
-			GameState->Physics.RigidBodies[i].Collider =
-				GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
-
-			const rigid_body& RB = GameState->Physics.RigidBodies[i];
-			if(GameState->Physics.Switches.VisualizeOmega)
+			g_VisualizeContactPoints = GameState->Physics.Switches.VisualizeContactPoints;
+			g_VisualizeContactManifold = GameState->Physics.Switches.VisualizeContactManifold;
+			//Copy entity transform state into the physics world
+			//Note: valid entiteis are always stored without gaps in their array
+			for(int i = 0; i < GameState->EntityCount; i++)
 			{
-				Debug::PushLine(RB.X, RB.X + RB.w, { 0, 1, 0, 1 });
-				Debug::PushWireframeSphere(RB.X + RB.w, 0.05f, { 0, 1, 0, 1 });
-			}
-			if(GameState->Physics.Switches.VisualizeV)
-			{
-				Debug::PushLine(RB.X, RB.X + RB.v, { 1, 1, 0, 1 });
-				Debug::PushWireframeSphere(RB.X + RB.v, 0.05f, { 1, 1, 0, 1 });
+				//Copy rigid body from entity (Mainly needed when loading scenes)
+				GameState->Physics.RigidBodies[i] = GameState->Entities[i].RigidBody;
+
+				GameState->Physics.RigidBodies[i].q =
+					Math::EulerToQuat(GameState->Entities[i].Transform.Rotation);
+				GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.Translation;
+
+				GameState->Physics.RigidBodies[i].R =
+					Math::Mat4ToMat3(Math::Mat4Rotate(GameState->Entities[i].Transform.Rotation));
+
+				GameState->Physics.RigidBodies[i].Mat4Scale =
+					Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
+
+				GameState->Physics.RigidBodies[i].Collider =
+					GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
+
+				const rigid_body& RB = GameState->Physics.RigidBodies[i];
+				if(GameState->Physics.Switches.VisualizeOmega)
+				{
+					Debug::PushLine(RB.X, RB.X + RB.w, { 0, 1, 0, 1 });
+					Debug::PushWireframeSphere(RB.X + RB.w, 0.05f, { 0, 1, 0, 1 });
+				}
+				if(GameState->Physics.Switches.VisualizeV)
+				{
+					Debug::PushLine(RB.X, RB.X + RB.v, { 1, 1, 0, 1 });
+					Debug::PushWireframeSphere(RB.X + RB.v, 0.05f, { 1, 1, 0, 1 });
+				}
 			}
 		}
 
@@ -136,7 +140,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 			GameState->Entities[i].Transform.Translation = GameState->Physics.RigidBodies[i].X;
 		}
 	}
-	END_TIMED_BLOCK(Physics)
 
   if(GameState->PlayerEntityIndex != -1)
   {
@@ -155,6 +158,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   GameState->R.CumulativeTime += Input->dt;
 
+	BEGIN_TIMED_BLOCK(AnimationSystem);
   // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)
   {
@@ -176,6 +180,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
 		AnimationEditorInteraction(GameState, Input);
   }
+	END_TIMED_BLOCK(AnimationSystem);
 	END_TIMED_BLOCK(Update);
 	
   //---------------------RENDERING----------------------------

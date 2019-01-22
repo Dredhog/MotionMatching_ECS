@@ -1,5 +1,6 @@
 void PartitionMemoryInitAllocators(game_memory* GameMemory, game_state* GameState)
 {
+	TIMED_BLOCK(PartitionMemory);
 	GameState->TemporaryMemStack =
 		Memory::CreateStackAllocatorInPlace(GameMemory->TemporaryMemory,
 																				GameMemory->TemporaryMemorySize);
@@ -20,7 +21,7 @@ void PartitionMemoryInitAllocators(game_memory* GameMemory, game_state* GameStat
 
 void LoadInitialResources(game_state* GameState)
 {
-	BEGIN_TIMED_BLOCK(FirstInit);
+	TIMED_BLOCK(LoadInitialResources);
 	GameState->MagicChecksum = 123456;
 
 	// REGISTER DEBUG MODELS
@@ -313,8 +314,6 @@ void LoadInitialResources(game_state* GameState)
 		glEnable(GL_CULL_FACE);
 		glDepthFunc(GL_LEQUAL);
 	}
-
-	END_TIMED_BLOCK(FirstInit);
 }
 
 void SetGameStatePODFields(game_state *GameState)

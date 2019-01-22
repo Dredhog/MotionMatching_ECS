@@ -6,6 +6,7 @@
 #include "game.h"
 #include "debug_drawing.h"
 #include "mesh.h"
+#include "profile.h"
 
 #define MAX_CONTACT_POINTS 50
 
@@ -1229,6 +1230,7 @@ bool
 SAT(sat_contact_manifold* Manifold, const mat4 TransformA, const hull* HullA, const mat4 TransformB,
     const hull* HullB)
 {
+	TIMED_BLOCK(SAT);
   const float EDGE_THRESHOLD = 0.0001f; // FLT_EPSILON;
   const float FACE_THRESHOLD = 0.1f;    // FLT_EPSILON;
 

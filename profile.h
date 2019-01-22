@@ -36,6 +36,30 @@ enum{
 	DEBUG_LoadModel,
 	DEBUG_LoadShader,
 	DEBUG_LoadMaterial,
+	DEBUG_PartitionMemory,
+	DEBUG_LoadInitialResources,
+	DEBUG_GBufferPass,
+	DEBUG_SSAOPass,
+	DEBUG_ShadowmapPass,
+	DEBUG_VolumetricScatteringPass,
+	DEBUG_Cubemap,
+	DEBUG_RenderScene,
+	DEBUG_RenderSelection,
+	DEBUG_RenderPreview,
+	DEBUG_SimulateDynamics,
+	DEBUG_CopyDataToPhysicsWorld,
+	DEBUG_CopyDataFromPhysicsWorld,
+	DEBUG_AnimationSystem,
+	DEBUG_SAT,
+	DEBUG_ODE,
+  DEBUG_LoadSizedFont,
+  DEBUG_LoadFont,
+  DEBUG_SearchForDesiredTexture,
+	DEBUG_FindCacheLineToOccupy,
+  DEBUG_GetBestMatchingFont,
+  DEBUG_GetTextSize,
+  DEBUG_GetTextTextureID,
+  DEBUG_ResetCache,
 };
 
 struct debug_frame_cycle_counter {
@@ -73,6 +97,30 @@ const char DEBUG_TABLE_NAMES[][40] = {
 	"LoadModel",
 	"LoadShader",
 	"LoadMaterial",
+	"PartitionMemory",
+	"LoadInitialResources",
+	"GBufferPass",
+	"SSAOPass",
+	"ShadowmapPass",
+	"VolumetricScatteringPass",
+	"Cubemap",
+	"RenderScene",
+	"RenderSelection",
+	"RenderPreview",
+	"SimulateDynamics",
+	"CopyDataToPhysicsWorld",
+	"CopyDataFromPhysicsWorld",
+	"AnimationSystem",
+	"SAT",
+	"ODE",
+  "DEBUG_LoadSizedFont",
+  "DEBUG_LoadFont",
+  "DEBUG_SearchForDesiredTexture",
+  "DEBUG_FindCacheLineToOccupy",
+  "DEBUG_GetBestMatchingFont",
+  "DEBUG_GetTextSize",
+  "DEBUG_GetTextTextureID",
+  "DEBUG_ResetCache",
 };
 
 const vec3 DEBUG_ENTRY_COLORS[] = {
@@ -93,6 +141,31 @@ const vec3 DEBUG_ENTRY_COLORS[] = {
 	vec3{0.5f, 0.5f, 0},
 	vec3{1, 0.6f, 0.6f},
 	vec3{1, 0.6f, 0},
+	vec3{0.5f, 1, 0.5f},
+	vec3{0.2f, 0.7f, 0.5f},
+	vec3{0,0,1},
+	vec3{1,1,0},
+	vec3{0.2f, 0.2f, 0.2f},
+	vec3{0, 1, 1},
+	vec3{1, 1, 0},
+	vec3{0.7f, 0.7f, 0.7f},
+	vec3{1, 0, 1},
+	vec3{1, 0.4f, 0.4f},
+	vec3{0.1f, 0.8f, 0.2f},
+	vec3{0.5f, 1, 0.5f},
+	vec3{0.2f, 0.7f, 0.5f},
+	vec3{0,0,1},
+	vec3{0.6f, 0.2f, 0.2f},
+	vec3{0, 1, 1},
+	vec3{1, 0, 0},
+	vec3{1, 0.5, 1},
+	vec3{0.5f, 0.5f, 0},
+	vec3{1, 0.6f, 0.6f},
+	vec3{1, 0.6f, 0},
+	vec3{0.5f, 1, 0.5f},
+	vec3{0.2f, 0.7f, 0.5f},
+	vec3{0,0,1},
+	vec3{1,1,0},
 };
 
 extern debug_frame_cycle_counter GLOBAL_DEBUG_FRAME_CYCLE_TABLE[PROFILE_MAX_FRAME_COUNT+1];
@@ -124,9 +197,8 @@ extern int g_CurrentFrameEventCount;
 	}\
 
 #define BEGIN_TIMED_BLOCK(ID) \
-	uint64_t StartCycleCount##ID = _rdtsc();\
 	int      FrameEventIndex##ID = g_CurrentFrameEventCount;\
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].StartCycleCount = StartCycleCount##ID;\
+	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].StartCycleCount = _rdtsc();\
 	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].EventDepth = g_CurrentFrameEventDepth;\
 	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].NameTableIndex = DEBUG_##ID;\
 	++g_CurrentFrameEventCount;\
@@ -136,10 +208,21 @@ extern int g_CurrentFrameEventCount;
 #define END_TIMED_BLOCK(ID)\
 	uint64_t EndCycleCount##ID = _rdtsc();\
 	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][FrameEventIndex##ID].EndCycleCount = EndCycleCount##ID;\
-	GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][DEBUG_##ID].CycleCount += EndCycleCount##ID - StartCycleCount##ID;\
+	GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][DEBUG_##ID].CycleCount += EndCycleCount##ID - GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].StartCycleCount;\
 	GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][DEBUG_##ID].Calls++;\
   --g_CurrentFrameEventDepth;
 
+struct auto_close_scope_wrapper
+{
+	int32_t EnumValue;
+	int32_t EventIndexInFrame;
+
+	auto_close_scope_wrapper(int32_t BlockEnumValue);
+	~auto_close_scope_wrapper();
+};
+
+#define TIMED_BLOCK_(ID, Line) auto_close_scope_wrapper ID##Line(DEBUG_##ID)
+#define TIMED_BLOCK(ID) auto_close_scope_wrapper ID##__LINE__(DEBUG_##ID)
 #define PAUSE_PROFILE()\
 	g_SavedCurrentFrameIndex = g_CurrentProfileBufferFrameIndex;\
 	g_CurrentProfileBufferFrameIndex = PROFILE_MAX_FRAME_COUNT;

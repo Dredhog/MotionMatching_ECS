@@ -14,6 +14,7 @@ void DrawDebugBoxMesh(box_mesh BoxMesh, vec4 Color = {0, 0, 1, 1})
 
 void RenderGBufferDataToTextures(game_state* GameState)
 {
+	TIMED_BLOCK(GBufferPass);
 	glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.GBufferFBO);
 	glClearColor(0.0f, 0.0f, -GameState->Camera.FarClipPlane, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -81,6 +82,7 @@ void RenderGBufferDataToTextures(game_state* GameState)
 // samples
 void RenderSSAOToTexture(game_state* GameState)
 {
+	TIMED_BLOCK(SSAOPass);
 	glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.SSAOFBO);
 	glClearColor(1.f, 1.f, 1.f, 1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -119,6 +121,7 @@ void RenderSSAOToTexture(game_state* GameState)
 
 void RenderShadowmapCascadesToTextures(game_state* GameState)
 {
+	TIMED_BLOCK(ShadowmapPass);
   // CASCADED SHADOW MAP GENERATION
   if(GameState->R.RealTimeDirectionalShadows || GameState->R.RecomputeDirectionalShadows)
   {
@@ -235,7 +238,7 @@ void RenderShadowmapCascadesToTextures(game_state* GameState)
   // RENDER VOLUMETRIC LIGHT SCATTERING TO TEXTURE
 void RenderVolumeLightingToTexture(game_state *GameState)
 {
-
+	TIMED_BLOCK(VolumetricScatteringPass);
 	glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.LightScatterFBOs[0]);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	{
@@ -273,6 +276,7 @@ void RenderVolumeLightingToTexture(game_state *GameState)
 // TODO (rytis): Finish cubemap loading
 void RenderCubemap(game_state* GameState)
 {
+	TIMED_BLOCK(Cubemap);
 	if(GameState->R.Cubemap.CubemapTexture == -1)
 	{
 		GameState->R.Cubemap.CubemapTexture =
@@ -302,6 +306,7 @@ void RenderCubemap(game_state* GameState)
 // Draw scene to backbuffer
 void RenderMainSceneObjects(game_state* GameState)
 {
+	TIMED_BLOCK(RenderScene);
 	material*     PreviousMaterial = nullptr;
 	Render::mesh* PreviousMesh     = nullptr;
 	uint32_t      CurrentShaderID  = 0;
@@ -354,6 +359,7 @@ void RenderMainSceneObjects(game_state* GameState)
 
 void RenderObjectSelectionHighlighting(game_state* GameState, entity* SelectedEntity)
 {
+	TIMED_BLOCK(RenderSelection);
 	// MESH SELECTION HIGHLIGHTING
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDepthFunc(GL_LEQUAL);
@@ -408,6 +414,7 @@ void RenderObjectSelectionHighlighting(game_state* GameState, entity* SelectedEn
 
 void RenderMaterialPreviewToTexture(game_state* GameState)
 {
+	TIMED_BLOCK(RenderPreview);
 	glBindFramebuffer(GL_FRAMEBUFFER, GameState->IndexFBO);
 
 	material* PreviewMaterial = GameState->Resources.GetMaterial(GameState->CurrentMaterialID);

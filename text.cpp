@@ -47,6 +47,7 @@ Text::LoadSizedFont(const char* FontName, int FontSize)
 Text::font
 Text::LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize)
 {
+	TIMED_BLOCK(LoadFont);
   assert(0 < SizeCount && SizeCount <= MAX_FONT_SIZE_COUNT);
   assert(0 < DeltaSize);
   assert(0 < MinSize);
@@ -78,7 +79,7 @@ Text::LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize)
 uint32_t
 LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
 {
-	BEGIN_TIMED_BLOCK(LoadTextTexture);
+	TIMED_BLOCK(LoadTextTexture);
   SDL_Color FontColor;
   FontColor.a = (uint8_t)(255.0f * Color.A);
   FontColor.r = (uint8_t)(255.0f * Color.R);
@@ -102,12 +103,10 @@ LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
 
     SDL_FreeSurface(DestSurface);
 
-		END_TIMED_BLOCK(LoadTextTexture);
     return Texture;
   }
   printf("error: text surface was not created!\nError: %s\n", SDL_GetError());
   assert(0 && "assert: failed to load text surface");
-	END_TIMED_BLOCK(LoadTextTexture);
   return 0;
 }
 
@@ -250,6 +249,7 @@ Text::ClearTextRequestCounts()
 void
 Text::ResetCache()
 {
+	TIMED_BLOCK(ResetCache);
   for(int i = 0; i < TEXTURE_CACHE_LINE_COUNT; i++)
   {
     glDeleteTextures(1, &g_TextTextureCache[i].TextureID);

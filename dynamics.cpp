@@ -1,6 +1,7 @@
 #include "dynamics.h"
 #include "collision_testing.h"
 #include "collision.h"
+#include "profile.h"
 
 #define DYDT_FUNC(name)                                                                            \
   void name(vec3 Fext[][2], vec3 Fc[][2], rigid_body RigidBodies[], int RBCount,                   \
@@ -310,6 +311,7 @@ void
 ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int ConstraintCount,
     float t0, float t1, dydt_func dydt, int32_t IterationCount, bool UpdateState, const physics_params* Params, const physics_switches* Switches)
 {
+	TIMED_BLOCK(ODE);
   vec3 Fext[RIGID_BODY_MAX_COUNT][2];
   vec3 Fc[RIGID_BODY_MAX_COUNT][2];
   dydt(Fext, Fc, RigidBodies, RBCount, Constraints, ConstraintCount, t0, t1, IterationCount, Params, Switches);
@@ -361,6 +363,7 @@ ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int C
 void
 SimulateDynamics(physics_world* World)
 {
+	TIMED_BLOCK(SimulateDynamics);
   if(1 <= World->RBCount)
   {
 		SetUpCubeHull(&g_CubeHull);
