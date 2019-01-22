@@ -8,7 +8,7 @@
 struct entity
 {
   Anim::transform Transform;
-  rigid_body      RigidBody;
+	rigid_body RigidBody; //Mainly needed for serialization (currently is copied in and out before before and after every physics update
 
   rid  ModelID;
   rid* MaterialIDs;

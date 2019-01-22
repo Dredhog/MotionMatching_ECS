@@ -3,32 +3,8 @@
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
 #include "linear_math/quaternion.h"
-
-enum constraint_type
-{
-  CONSTRAINT_Distance,
-  CONSTRAINT_Point,
-  CONSTRAINT_Contact,
-  CONSTRAINT_Friction,
-  CONSTRAINT_Count,
-};
-
-struct constraint
-{
-  uint32_t Type;
-  int32_t  IndA;
-  int32_t  IndB;
-
-  float L;
-  vec3  BodyRa;
-  vec3  BodyRb;
-  float Penetration;
-  vec3  n;
-  vec3  P;
-  vec3  Tangent;
-  // For friction
-  int32_t ContactIndex;
-};
+#include <stdint.h>
+#include "mesh.h"
 
 struct rigid_body
 {

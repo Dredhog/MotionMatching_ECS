@@ -18,6 +18,7 @@
 #include "entity.h"
 #include "edit_animation.h"
 #include "resource_manager.h"
+#include "dynamics.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
@@ -50,6 +51,7 @@ struct game_state
   rid                             CurrentAnimationID;
 
   Resource::resource_manager Resources;
+	physics_world 						 Physics;
 
   camera Camera;
   camera PreviewCamera;
@@ -84,7 +86,7 @@ struct game_state
   bool  DrawShadowCascadeVolumes;
   bool  DrawTimeline;
   bool  IsAnimationPlaying;
-  float EditorBoneRotationSpeed;
+  //float EditorBoneRotationSpeed;
   bool  IsEntityCreationMode;
 
   uint32_t MagicChecksum;
@@ -94,31 +96,6 @@ struct game_state
   uint32_t IndexFBO;
   uint32_t DepthRBO;
   uint32_t IDTexture;
-
-  // Physics
-  bool    SimulateDynamics;
-  bool    PerformDynamicsStep;
-  bool    SimulateFriction;
-  int32_t PGSIterationCount;
-  vec3    ForceStart;
-  vec3    Force;
-  float   Restitution;
-  float   Beta;
-  float   Slop;
-  float   Mu;
-
-  bool ApplyingForce;
-  bool ApplyingTorque;
-  bool UseGravity;
-
-  bool VisualizeOmega;
-  bool VisualizeV;
-  bool VisualizeFriction;
-  bool VisualizeFc;
-  bool VisualizeFcComponents;
-
-  bool VisualizeContactPoints;
-  bool VisualizeContactManifold;
 };
 
 inline mat4

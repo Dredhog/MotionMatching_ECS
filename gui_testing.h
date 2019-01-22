@@ -128,13 +128,15 @@ namespace UI
 					UI::SliderFloat("Timeline Zoom", &s_TimelineZoom, 0, 10);
 
 					float AvailableWidth = UI::GetAvailableWidth();
-					UI::PushStyleColor(UI::COLOR_WindowBackground, vec4{0.4f, 0.4f, 0.5f, 0.3f});
 					float ChildPadding = 30.0f;
 					UI::Dummy(ChildPadding);
 					UI::SameLine();
+
+					UI::PushStyleColor(UI::COLOR_WindowBackground, vec4{0.4f, 0.4f, 0.5f, 0.3f});
 					UI::BeginChildWindow("Profile Timeline Window", { AvailableWidth - ChildPadding * 2, 200 });
 					{
-
+						UI::PushStyleVar(UI::VAR_BoxPaddingX, 1);
+						UI::PushStyleVar(UI::VAR_BoxPaddingY, 1);
 						UI::PushStyleVar(UI::VAR_SpacingX, 0);
 						UI::PushStyleVar(UI::VAR_SpacingY, 1);
 						{
@@ -173,13 +175,15 @@ namespace UI
 								UI::NewLine();
 							}
 						}
+						UI::PopStyleVar();
+						UI::PopStyleVar();
+						UI::PopStyleVar();
+						UI::PopStyleVar();
 					}
 					UI::EndChildWindow();
 					UI::PopStyleColor();
 					UI::NewLine();
 					{
-						UI::PopStyleVar();
-						UI::PopStyleVar();
 						{
 							UI::Text(DEBUG_TABLE_NAMES[s_BlockIndexForSummary]);
 							UI::SameLine();
@@ -219,31 +223,27 @@ namespace UI
 		{
 			UI::BeginWindow("Physics Window", { 150, 50 }, { 500, 380 });
 			{
-				UI::Checkbox("Simulating Dynamics", &GameState->SimulateDynamics);
-				UI::SliderInt("Iteration Count", &GameState->PGSIterationCount, 0, 200);
-				UI::SliderFloat("Beta", &GameState->Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
-				GameState->PerformDynamicsStep = UI::Button("Step Dynamics");
-				UI::Checkbox("Gravity", &GameState->UseGravity);
-				// UI::SliderFloat("Restitution", &GameState->Restitution, 0.0f, 1.0f);
-				// UI::SliderFloat("Slop", &GameState->Slop, 0.0f, 1.0f);
-				UI::Checkbox("Friction", &GameState->SimulateFriction);
-				UI::SliderFloat("Mu", &GameState->Mu, 0.0f, 1.0f);
+				physics_params& Params = GameState->Physics.Params;
+				physics_switches& Switches = GameState->Physics.Switches;
+				UI::Checkbox("Simulating Dynamics", &Switches.SimulateDynamics);
+				UI::SliderInt("Iteration Count", &Params.PGSIterationCount, 0, 200);
+				UI::SliderFloat("Beta", &Params.Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+				Switches.PerformDynamicsStep = UI::Button("Step Dynamics");
+				UI::Checkbox("Gravity", &Switches.UseGravity);
+				UI::Checkbox("Friction", &Switches.SimulateFriction);
+				UI::SliderFloat("Mu", &Params.Mu, 0.0f, 1.0f);
 
-				UI::Checkbox("Draw Omega    (green)", &GameState->VisualizeOmega);
-				UI::Checkbox("Draw V        (yellow)", &GameState->VisualizeV);
-				UI::Checkbox("Draw Fc       (red)", &GameState->VisualizeFc);
-				UI::Checkbox("Draw Friction (green)", &GameState->VisualizeFriction);
-				UI::Checkbox("Draw Fc Comopnents     (Magenta)", &GameState->VisualizeFcComponents);
-				UI::Checkbox("Draw Contact Points    (while)", &GameState->VisualizeContactPoints);
-				UI::Checkbox("Draw Contact Manifolds (blue/red)", &GameState->VisualizeContactManifold);
-				UI::DragFloat3("Net Force Start", &GameState->ForceStart.X, -INFINITY, INFINITY, 5);
-				UI::DragFloat3("Net Force Vector", &GameState->Force.X, -INFINITY, INFINITY, 5);
-				UI::Checkbox("Apply Force", &GameState->ApplyingForce);
-				UI::Checkbox("Apply Torque", &GameState->ApplyingTorque);
-				// Debug::PushLine(GameState->ForceStart, GameState->ForceStart + GameState->Force,
-				//{ 1, 1, 0, 1 });
-				// Debug::PushWireframeSphere(GameState->ForceStart + GameState->Force, 0.05f, { 1, 1, 0, 1
-				// });
+				UI::Checkbox("Draw Omega    (green)", &Switches.VisualizeOmega);
+				UI::Checkbox("Draw V        (yellow)", &Switches.VisualizeV);
+				UI::Checkbox("Draw Fc       (red)", &Switches.VisualizeFc);
+				UI::Checkbox("Draw Friction (green)", &Switches.VisualizeFriction);
+				UI::Checkbox("Draw Fc Comopnents     (Magenta)", &Switches.VisualizeFcComponents);
+				UI::Checkbox("Draw Contact Points    (while)", &Switches.VisualizeContactPoints);
+				UI::Checkbox("Draw Contact Manifolds (blue/red)", &Switches.VisualizeContactManifold);
+				UI::DragFloat3("Net Force Start", &Params.ExternalForceStart.X, -INFINITY, INFINITY, 5);
+				UI::DragFloat3("Net Force Vector", &Params.ExternalForce.X, -INFINITY, INFINITY, 5);
+				UI::Checkbox("Apply Force", &Switches.ApplyExternalForce);
+				UI::Checkbox("Apply Torque", &Switches.ApplyExternalTorque);
 			}
 			UI::EndWindow();
 		}
@@ -818,19 +818,23 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           RB->q.S = 1;
           RB->q.V = {};
         }
-        UI::DragFloat4("q", &RB->q.S, -INFINITY, INFINITY, 10);
-        Math::Normalize(&RB->q);
+        //UI::DragFloat4("q", &RB->q.S, -INFINITY, INFINITY, 10);
+        //Math::Normalize(&RB->q);
 
         if(UI::Button("Clear v"))
         {
           RB->v = {};
         }
+				UI::SameLine();
         UI::DragFloat3("v", &RB->v.X, -INFINITY, INFINITY, 10);
+				UI::NewLine();
         if(UI::Button("Clear w"))
         {
           RB->w = {};
         }
+				UI::SameLine();
         UI::DragFloat3("w", &RB->w.X, -INFINITY, INFINITY, 10);
+				UI::NewLine();
 
         UI::Checkbox("Regard Gravity", &RB->RegardGravity);
 
@@ -1355,7 +1359,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
   {
     UI::Checkbox("Cubemap", &GameState->DrawCubemap);
     UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
-    UI::Checkbox("Draw Debug lines", &GameState->DrawDebugLines);
+    UI::Checkbox("Draw Debug Lines", &GameState->DrawDebugLines);
     UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
     UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
     //UI::Checkbox("Timeline", &GameState->DrawTimeline);

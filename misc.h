@@ -113,4 +113,3 @@ FloatGreaterByThreshold(float A, float B, float Threshold)
 }
 
 #define ARRAY_SIZE(Array) sizeof(Array) / sizeof((Array)[0])
-
