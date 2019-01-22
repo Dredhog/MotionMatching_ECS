@@ -189,7 +189,7 @@ namespace UI
 							UI::SameLine();
 							{
 								char CountBuffer[40];
-								sprintf(CountBuffer, ": %llu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][s_BlockIndexForSummary].CycleCount);
+								sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][s_BlockIndexForSummary].CycleCount);
 								UI::Text(CountBuffer);
 							}
 							UI::NewLine();
@@ -207,7 +207,7 @@ namespace UI
 						UI::SameLine();
 						{
 							char CountBuffer[40];
-							sprintf(CountBuffer, ": %llu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
+							sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
 							UI::Text(CountBuffer);
 						}
 						UI::NewLine();
