@@ -51,7 +51,7 @@ namespace UI
 		{
 			UI::BeginWindow("Profiler Window", { 150, 500 }, { 1500, 500 });
 			{
-				int PreviousFrameIndex = (g_CurrentProfileBufferFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
+				int PreviousFrameIndex = (g_CurrentProfilerFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
 				static bool s_AllowCurrentFrameChoice = false;
 				static bool s_ShowTimelineRegion = false;
 				static bool s_ShowFrameSummaries = false;
@@ -94,9 +94,9 @@ namespace UI
 				}
 				else
 				{
-					//int temp = g_CurrentProfileBufferFrameIndex;
+					//int temp = g_CurrentProfilerFrameIndex;
 					//UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
-					//g_CurrentProfileBufferFrameIndex = temp;
+					//g_CurrentProfilerFrameIndex = temp;
 				}
 
 #if 0
@@ -104,11 +104,11 @@ namespace UI
 					const vec3 StartPosition = {0, 1, 0};
 					const float MaxProfileWidth = 0.5f;
 					const float StackBlockHeight = 0.05f;
-					const debug_frame_cycle_counter FrameCycleCounter = GLOBAL_DEBUG_FRAME_CYCLE_TABLE[s_CurrentModifiableFrameIndex];
+					const frame_endpoints FrameCycleCounter = GLOBAL_FRAME_ENDPOINT_TABLE[s_CurrentModifiableFrameIndex];
 					const float BaselineCycleCount = 5e7;//(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
-					for(int i = 0; i < GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
+					for(int i = 0; i < GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
 					{
-						debug_cycle_counter_event CurrentEvent = GLOBAL_DEBUG_CYCLE_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
+						timer_event CurrentEvent = GLOBAL_FRAME_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
 						float ElementWidth = (MaxProfileWidth/BaselineCycleCount)*(float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
 						float ElementLeft = (MaxProfileWidth/BaselineCycleCount)*(CurrentEvent.StartCycleCount-FrameCycleCounter.FrameStart);
 						float ElementTop = StackBlockHeight * (float)CurrentEvent.EventDepth;
@@ -142,26 +142,26 @@ namespace UI
 						{
 							const float MaxProfileWidth = (0.5f*s_TimelineZoom)*UI::GetWindowWidth();
 							const float StackBlockHeight = 20.0f;
-							const debug_frame_cycle_counter FrameCycleCounter = GLOBAL_DEBUG_FRAME_CYCLE_TABLE[s_CurrentModifiableFrameIndex];
+							const frame_endpoints FrameCycleCounter = GLOBAL_FRAME_ENDPOINT_TABLE[s_CurrentModifiableFrameIndex];
 							const float BaselineCycleCount = 5e6;//(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
 							for(int j = 0; j < 5; j++)
 							{
 								float CurrentHorizontalPosition = 0.0f;
-								for(int i = 0; i < GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
+								for(int i = 0; i < GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
 								{
-									debug_cycle_counter_event CurrentEvent = GLOBAL_DEBUG_CYCLE_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
+									timer_event CurrentEvent = GLOBAL_FRAME_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
 									if(CurrentEvent.EventDepth == j)
 									{
 										float EventWidth = (MaxProfileWidth/BaselineCycleCount)*(float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
 										float EventLeft = (MaxProfileWidth/BaselineCycleCount)*(CurrentEvent.StartCycleCount-FrameCycleCounter.FrameStart);
 
-										const float *EventColor = &DEBUG_ENTRY_COLORS[CurrentEvent.NameTableIndex][0];
+										const float *EventColor = &TIMER_UI_COLOR_TABLE[CurrentEvent.NameTableIndex][0];
 										UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{EventColor[0], EventColor[1], EventColor[2], 1});
 										{
 											float DummyWidth = EventLeft - CurrentHorizontalPosition;
 											UI::Dummy(EventLeft-CurrentHorizontalPosition);
 											UI::SameLine();
-											if(UI::Button(DEBUG_TABLE_NAMES[CurrentEvent.NameTableIndex],  EventWidth))
+											if(UI::Button(TIMER_NAME_TABLE[CurrentEvent.NameTableIndex],  EventWidth))
 											{
 												s_BlockIndexForSummary = CurrentEvent.NameTableIndex;
 											}
@@ -184,11 +184,11 @@ namespace UI
 					UI::NewLine();
 					{
 						{
-							UI::Text(DEBUG_TABLE_NAMES[s_BlockIndexForSummary]);
+							UI::Text(TIMER_NAME_TABLE[s_BlockIndexForSummary]);
 							UI::SameLine();
 							{
 								char CountBuffer[40];
-								sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][s_BlockIndexForSummary].CycleCount);
+								sprintf(CountBuffer, ": %lu", GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][s_BlockIndexForSummary].CycleCount);
 								UI::Text(CountBuffer);
 							}
 							UI::NewLine();
@@ -200,13 +200,13 @@ namespace UI
 
 				if(UI::CollapsingHeader("Frame Event Summaries", &s_ShowFrameSummaries))
 				{
-					for(int i = 0; i < ArrayCount(DEBUG_TABLE_NAMES); i++)
+					for(int i = 0; i < ArrayCount(TIMER_NAME_TABLE); i++)
 					{
-						UI::Text(DEBUG_TABLE_NAMES[i]);
+						UI::Text(TIMER_NAME_TABLE[i]);
 						UI::SameLine();
 						{
 							char CountBuffer[40];
-							sprintf(CountBuffer, ": %lu", GLOBAL_DEBUG_CYCLE_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
+							sprintf(CountBuffer, ": %lu", GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
 							UI::Text(CountBuffer);
 						}
 						UI::NewLine();

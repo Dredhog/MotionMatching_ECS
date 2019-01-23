@@ -31,6 +31,8 @@
 #include "rendering.h"
 #include "post_processing.h"
 
+#define ASSET_HOT_RELOADING 0
+
 extern bool g_VisualizeContactPoints;
 extern bool g_VisualizeContactManifold;
 
@@ -48,17 +50,26 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 		PartitionMemoryInitAllocators(&GameMemory, GameState);
 		RegisterLoadInitialResources(GameState);
 		SetGameStatePODFields(GameState);
+
+#if !ASSET_HOT_RELOADING
+		{
+			TIMED_BLOCK(FilesystemUpdate);
+			GameState->Resources.UpdateHardDriveAssetPathLists();
+			GameState->Resources.DeleteUnused();
+			GameState->Resources.ReloadModified();
+		}
+#endif
   }
-	
+
 	BEGIN_TIMED_BLOCK(Update)
-
-	BEGIN_TIMED_BLOCK(FilesystemUpdate);
-
-  GameState->Resources.UpdateHardDriveAssetPathLists();
-  GameState->Resources.DeleteUnused();
-  GameState->Resources.ReloadModified();
-
-	END_TIMED_BLOCK(FilesystemUpdate);
+#if ASSET_HOT_RELOADING
+	{
+		TIMED_BLOCK(FilesystemUpdate);
+		GameState->Resources.UpdateHardDriveAssetPathLists();
+		GameState->Resources.DeleteUnused();
+		GameState->Resources.ReloadModified();
+	}
+#endif
 
   if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
   {

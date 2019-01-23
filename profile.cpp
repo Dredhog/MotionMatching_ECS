@@ -1,31 +1,31 @@
 #include "profile.h"
 
-debug_frame_cycle_counter GLOBAL_DEBUG_FRAME_CYCLE_TABLE[PROFILE_MAX_FRAME_COUNT+1];
-debug_cycle_counter GLOBAL_DEBUG_CYCLE_TABLE[PROFILE_MAX_FRAME_COUNT+1][ArrayCount(DEBUG_TABLE_NAMES)];
-debug_cycle_counter_event GLOBAL_DEBUG_CYCLE_EVENT_TABLE[PROFILE_MAX_FRAME_COUNT+1][PROFILE_MAX_EVENTS_PER_FRAME];
-int GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[PROFILE_MAX_FRAME_COUNT+1];
-int g_CurrentProfileBufferFrameIndex = 0;
-int g_SavedCurrentFrameIndex = 0;
-int g_CurrentFrameEventDepth = 0;
-int g_CurrentFrameEventCount = 0;
+frame_endpoints GLOBAL_FRAME_ENDPOINT_TABLE[PROFILE_MAX_FRAME_COUNT+1];
+timer_frame_summary GLOBAL_TIMER_FRAME_SUMMARY_TABLE[PROFILE_MAX_FRAME_COUNT+1][ARRAY_COUNT(TIMER_NAME_TABLE)];
+timer_event GLOBAL_FRAME_TIMER_EVENT_TABLE[PROFILE_MAX_FRAME_COUNT+1][PROFILE_MAX_TIMER_EVENTS_PER_FRAME];
+int GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[PROFILE_MAX_FRAME_COUNT+1];
+int g_CurrentProfilerFrameIndex = 0;
+int g_SavedCurrentFrameIndex    = 0;
+int g_CurrentTimerEventDepth    = 0;
+int g_CurrentTimerEventCount    = 0;
 
 
-auto_close_scope_wrapper::auto_close_scope_wrapper(int32_t BlockEnumValue)
+timer_event_autoclose_wrapper::timer_event_autoclose_wrapper(int32_t BlockEnumValue)
 {
-	this->EnumValue = BlockEnumValue;
-	this->EventIndexInFrame = g_CurrentFrameEventCount;
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].StartCycleCount = __rdtsc();
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].EventDepth = g_CurrentFrameEventDepth;
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].NameTableIndex = this->EnumValue;
-	++g_CurrentFrameEventCount;
-	++g_CurrentFrameEventDepth;
+	this->NameTableIndex = BlockEnumValue;
+	this->IndexInFrame = g_CurrentTimerEventCount;
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].StartCycleCount = __rdtsc();
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].EventDepth = g_CurrentTimerEventDepth;
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].NameTableIndex = this->NameTableIndex;
+	++g_CurrentTimerEventCount;
+	++g_CurrentTimerEventDepth;
 }
 
-auto_close_scope_wrapper::~auto_close_scope_wrapper()
+timer_event_autoclose_wrapper::~timer_event_autoclose_wrapper()
 {
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][this->EventIndexInFrame].EndCycleCount = __rdtsc();
-	GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][this->EnumValue].CycleCount += GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][this->EventIndexInFrame].EndCycleCount -
-																																														GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].StartCycleCount;
-	GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][this->EnumValue].Calls++;
-	--g_CurrentFrameEventDepth;
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][this->IndexInFrame].EndCycleCount = __rdtsc();
+	GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][this->NameTableIndex].CycleCount += GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][this->IndexInFrame].EndCycleCount -
+																																														GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].StartCycleCount;
+	GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][this->NameTableIndex].Calls++;
+	--g_CurrentTimerEventDepth;
 }

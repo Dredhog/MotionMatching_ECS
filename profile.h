@@ -1,91 +1,82 @@
 #pragma once
 
 #define DEBUG_PROFILING 1
-#define ArrayCount(Array) sizeof((Array)) / sizeof(Array[0])
 
 #if DEBUG_PROFILING  
-#define PROFILE_MAX_FRAME_COUNT 500
-#define PROFILE_MAX_EVENTS_PER_FRAME 200
 
-#include <stdint.h>
-
+//Windows perf counter header
 #if defined( __WIN32__ ) || defined( _WIN32 ) || defined( __WIN64__ ) || defined( _WIN64 ) || defined( WIN32 )
 #include <intrin.h>
 #define _rdtsc __rdtsc
+
+//Linux perf counter header
 #elif defined(__linux__) || defined( LINUX )
 #include <x86intrin.h>
+
 #else
-#error
+#error "compilation error: OS must be either linux or windows"
 #endif
 
-enum{
-	DEBUG_FirstInit,
-	DEBUG_FilesystemUpdate,
-	DEBUG_Update,
-	DEBUG_Editor,
-	DEBUG_GUI,
-	DEBUG_SelectionDrawing,
-	DEBUG_EntityCreation,
-	DEBUG_Physics,
-	DEBUG_Render,
-	DEBUG_PostProcessing,
-	DEBUG_DebugDrawingSubmission,
-	DEBUG_LoadTextTexture,
-	DEBUG_ImportScene,
-	DEBUG_LoadTexture,
-	DEBUG_LoadModel,
-	DEBUG_LoadShader,
-	DEBUG_LoadMaterial,
-	DEBUG_PartitionMemory,
-	DEBUG_LoadInitialResources,
-	DEBUG_GBufferPass,
-	DEBUG_SSAOPass,
-	DEBUG_ShadowmapPass,
-	DEBUG_VolumetricScatteringPass,
-	DEBUG_Cubemap,
-	DEBUG_RenderScene,
-	DEBUG_RenderSelection,
-	DEBUG_RenderPreview,
-	DEBUG_SimulateDynamics,
-	DEBUG_CopyDataToPhysicsWorld,
-	DEBUG_CopyDataFromPhysicsWorld,
-	DEBUG_AnimationSystem,
-	DEBUG_SAT,
-	DEBUG_ODE,
-  DEBUG_LoadSizedFont,
-  DEBUG_LoadFont,
-  DEBUG_SearchForDesiredTexture,
-	DEBUG_FindCacheLineToOccupy,
-  DEBUG_GetBestMatchingFont,
-  DEBUG_GetTextSize,
-  DEBUG_GetTextTextureID,
-  DEBUG_ResetCache,
-  DEBUG_SetMaterial,
-  DEBUG_UpdateAssetPathLists,
-  DEBUG_DeleteUnused,
-  DEBUG_ReloadModified,
-	DEBUG_ReadEntireFile,
-	DEBUG_WriteEntireFile,
+#include <stdint.h>
+
+#define ARRAY_COUNT(Array) sizeof((Array)) / sizeof(Array[0])
+#define PROFILE_MAX_FRAME_COUNT 500
+#define PROFILE_MAX_TIMER_EVENTS_PER_FRAME 200
+
+enum
+{
+	TIMER_NAME_FirstInit,
+	TIMER_NAME_FilesystemUpdate,
+	TIMER_NAME_Update,
+	TIMER_NAME_Editor,
+	TIMER_NAME_GUI,
+	TIMER_NAME_SelectionDrawing,
+	TIMER_NAME_EntityCreation,
+	TIMER_NAME_Physics,
+	TIMER_NAME_Render,
+	TIMER_NAME_PostProcessing,
+	TIMER_NAME_DebugDrawingSubmission,
+	TIMER_NAME_LoadTextTexture,
+	TIMER_NAME_ImportScene,
+	TIMER_NAME_LoadTexture,
+	TIMER_NAME_LoadModel,
+	TIMER_NAME_LoadShader,
+	TIMER_NAME_LoadMaterial,
+	TIMER_NAME_PartitionMemory,
+	TIMER_NAME_LoadInitialResources,
+	TIMER_NAME_GBufferPass,
+	TIMER_NAME_SSAOPass,
+	TIMER_NAME_ShadowmapPass,
+	TIMER_NAME_VolumetricScatteringPass,
+	TIMER_NAME_Cubemap,
+	TIMER_NAME_RenderScene,
+	TIMER_NAME_RenderSelection,
+	TIMER_NAME_RenderPreview,
+	TIMER_NAME_SimulateDynamics,
+	TIMER_NAME_CopyDataToPhysicsWorld,
+	TIMER_NAME_CopyDataFromPhysicsWorld,
+	TIMER_NAME_AnimationSystem,
+	TIMER_NAME_SAT,
+	TIMER_NAME_ODE,
+  TIMER_NAME_LoadSizedFont,
+  TIMER_NAME_LoadFont,
+  TIMER_NAME_SearchForDesiredTexture,
+	TIMER_NAME_FindCacheLineToOccupy,
+  TIMER_NAME_GetBestMatchingFont,
+  TIMER_NAME_GetTextSize,
+  TIMER_NAME_GetTextTextureID,
+  TIMER_NAME_ResetCache,
+  TIMER_NAME_SetMaterial,
+  TIMER_NAME_UpdateAssetPathLists,
+  TIMER_NAME_DeleteUnused,
+  TIMER_NAME_ReloadModified,
+	TIMER_NAME_ReadEntireFile,
+	TIMER_NAME_WriteEntireFile,
+	TIMER_NAME_Count,
 };
 
-struct debug_frame_cycle_counter {
-	uint64_t FrameStart;
-	uint64_t FrameEnd;
-};
 
-struct debug_cycle_counter {
-	uint64_t CycleCount;
-	uint64_t Calls;
-};
-
-struct debug_cycle_counter_event {
-	uint64_t StartCycleCount;
-	uint64_t EndCycleCount;
-	int EventDepth;
-	int NameTableIndex;
-};
-
-const char DEBUG_TABLE_NAMES[][40] = {
+const char TIMER_NAME_TABLE[][TIMER_NAME_Count] = {
 	"FirstInit",
 	"FilesystemUpdate",
 	"Update",
@@ -135,7 +126,7 @@ const char DEBUG_TABLE_NAMES[][40] = {
 	"WriteEntireFile",
 };
 
-const float DEBUG_ENTRY_COLORS[][3]  = {
+const float TIMER_UI_COLOR_TABLE[TIMER_NAME_Count][3]  = {
 	{1, 0, 0},
 	{1, 0.4f, 0.4f},
 	{0.1f, 0.8f, 0.2f},
@@ -185,67 +176,86 @@ const float DEBUG_ENTRY_COLORS[][3]  = {
 	{1, 0.2f,0.3f},
 };
 
-extern debug_frame_cycle_counter GLOBAL_DEBUG_FRAME_CYCLE_TABLE[PROFILE_MAX_FRAME_COUNT+1];
-extern debug_cycle_counter GLOBAL_DEBUG_CYCLE_TABLE[PROFILE_MAX_FRAME_COUNT+1][ArrayCount(DEBUG_TABLE_NAMES)];
-extern debug_cycle_counter_event GLOBAL_DEBUG_CYCLE_EVENT_TABLE[PROFILE_MAX_FRAME_COUNT+1][PROFILE_MAX_EVENTS_PER_FRAME];
-extern int GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[PROFILE_MAX_FRAME_COUNT+1];
-extern int g_CurrentProfileBufferFrameIndex;
+struct frame_endpoints {
+	uint64_t FrameStart;
+	uint64_t FrameEnd;
+};
+
+struct timer_frame_summary {
+	uint64_t CycleCount;
+	uint64_t Calls;
+};
+
+struct timer_event {
+	uint64_t StartCycleCount;
+	uint64_t EndCycleCount;
+	int EventDepth;
+	int NameTableIndex;
+};
+
+extern frame_endpoints GLOBAL_FRAME_ENDPOINT_TABLE[PROFILE_MAX_FRAME_COUNT+1];
+extern timer_frame_summary GLOBAL_TIMER_FRAME_SUMMARY_TABLE[PROFILE_MAX_FRAME_COUNT+1][ARRAY_COUNT(TIMER_NAME_TABLE)];
+extern timer_event GLOBAL_FRAME_TIMER_EVENT_TABLE[PROFILE_MAX_FRAME_COUNT+1][PROFILE_MAX_TIMER_EVENTS_PER_FRAME];
+extern int GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[PROFILE_MAX_FRAME_COUNT+1];
+extern int g_CurrentProfilerFrameIndex;
 extern int g_SavedCurrentFrameIndex;
-extern int g_CurrentFrameEventDepth;
-extern int g_CurrentFrameEventCount;
+extern int g_CurrentTimerEventDepth;
+extern int g_CurrentTimerEventCount;
+
+struct timer_event_autoclose_wrapper
+{
+	int32_t NameTableIndex;
+	int32_t IndexInFrame;
+
+	timer_event_autoclose_wrapper(int32_t NameTableIndex);
+	~timer_event_autoclose_wrapper();
+};
+
+#define TIMED_BLOCK(ID) timer_event_autoclose_wrapper ID##__LINE__(TIMER_NAME_##ID)
 
 #define BEGIN_FRAME() \
-	for(int i = 0; i < ArrayCount(DEBUG_TABLE_NAMES); i++)\
+	for(int i = 0; i < ARRAY_COUNT(TIMER_NAME_TABLE); i++)\
 	{\
-		GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][i] = {};\
+		GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][i] = {};\
 	}\
-	GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[g_CurrentProfileBufferFrameIndex] = 0;\
-	g_CurrentFrameEventCount = 0;\
-	GLOBAL_DEBUG_FRAME_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex].FrameStart = _rdtsc();
+	GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[g_CurrentProfilerFrameIndex] = 0;\
+	g_CurrentTimerEventCount = 0;\
+	GLOBAL_FRAME_ENDPOINT_TABLE[g_CurrentProfilerFrameIndex].FrameStart = _rdtsc();
 
 #define END_FRAME()\
-	assert(g_CurrentFrameEventCount <= PROFILE_MAX_EVENTS_PER_FRAME);\
-	assert(g_CurrentFrameEventDepth == 0);\
-	GLOBAL_DEBUG_FRAME_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex].FrameEnd = _rdtsc();\
-	GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[g_CurrentProfileBufferFrameIndex] = g_CurrentFrameEventCount;\
-	if(g_CurrentProfileBufferFrameIndex != PROFILE_MAX_FRAME_COUNT)\
+	assert(g_CurrentTimerEventCount <= PROFILE_MAX_TIMER_EVENTS_PER_FRAME);\
+	assert(g_CurrentTimerEventDepth == 0);\
+	GLOBAL_FRAME_ENDPOINT_TABLE[g_CurrentProfilerFrameIndex].FrameEnd = _rdtsc();\
+	GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[g_CurrentProfilerFrameIndex] = g_CurrentTimerEventCount;\
+	if(g_CurrentProfilerFrameIndex != PROFILE_MAX_FRAME_COUNT)\
 	{\
-		g_CurrentProfileBufferFrameIndex = (g_CurrentProfileBufferFrameIndex + 1)%PROFILE_MAX_FRAME_COUNT;\
+		g_CurrentProfilerFrameIndex = (g_CurrentProfilerFrameIndex + 1)%PROFILE_MAX_FRAME_COUNT;\
 	}\
 
 #define BEGIN_TIMED_BLOCK(ID) \
-	int      FrameEventIndex##ID = g_CurrentFrameEventCount;\
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].StartCycleCount = _rdtsc();\
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].EventDepth = g_CurrentFrameEventDepth;\
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].NameTableIndex = DEBUG_##ID;\
-	++g_CurrentFrameEventCount;\
-  ++g_CurrentFrameEventDepth;\
-  if(g_CurrentProfileBufferFrameIndex == PROFILE_MAX_FRAME_COUNT) { g_CurrentFrameEventCount--; }
+	int      FrameEventIndex##ID = g_CurrentTimerEventCount;\
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].StartCycleCount = _rdtsc();\
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].EventDepth = g_CurrentTimerEventDepth;\
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].NameTableIndex = TIMER_NAME_##ID;\
+	++g_CurrentTimerEventCount;\
+  ++g_CurrentTimerEventDepth;\
+  if(g_CurrentProfilerFrameIndex == PROFILE_MAX_FRAME_COUNT) { g_CurrentTimerEventCount--; }
 
 #define END_TIMED_BLOCK(ID)\
 	uint64_t EndCycleCount##ID = _rdtsc();\
-	GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][FrameEventIndex##ID].EndCycleCount = EndCycleCount##ID;\
-	GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][DEBUG_##ID].CycleCount += EndCycleCount##ID - GLOBAL_DEBUG_CYCLE_EVENT_TABLE[g_CurrentProfileBufferFrameIndex][g_CurrentFrameEventCount].StartCycleCount;\
-	GLOBAL_DEBUG_CYCLE_TABLE[g_CurrentProfileBufferFrameIndex][DEBUG_##ID].Calls++;\
-  --g_CurrentFrameEventDepth;
+	GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][FrameEventIndex##ID].EndCycleCount = EndCycleCount##ID;\
+	GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][TIMER_NAME_##ID].CycleCount += EndCycleCount##ID - GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].StartCycleCount;\
+	GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][TIMER_NAME_##ID].Calls++;\
+  --g_CurrentTimerEventDepth;
 
-struct auto_close_scope_wrapper
-{
-	int32_t EnumValue;
-	int32_t EventIndexInFrame;
-
-	auto_close_scope_wrapper(int32_t BlockEnumValue);
-	~auto_close_scope_wrapper();
-};
-
-#define TIMED_BLOCK_(ID, Line) auto_close_scope_wrapper ID##Line(DEBUG_##ID)
-#define TIMED_BLOCK(ID) auto_close_scope_wrapper ID##__LINE__(DEBUG_##ID)
+#define BEGIN_GPU_BLOCK(ID)\
+	glBeginQuery(GL_TIME_ELAPSED, PROFILER_)
 #define PAUSE_PROFILE()\
-	g_SavedCurrentFrameIndex = g_CurrentProfileBufferFrameIndex;\
-	g_CurrentProfileBufferFrameIndex = PROFILE_MAX_FRAME_COUNT;
+	g_SavedCurrentFrameIndex = g_CurrentProfilerFrameIndex;\
+	g_CurrentProfilerFrameIndex = PROFILE_MAX_FRAME_COUNT;
 
 #define RESUME_PROFILE()\
-	g_CurrentProfileBufferFrameIndex = g_SavedCurrentFrameIndex;
+	g_CurrentProfilerFrameIndex = g_SavedCurrentFrameIndex;
 
 #else
 
