@@ -248,6 +248,7 @@ ImportScene(game_state* GameState, const char* Path)
   GameState->Camera            = Scene->Camera;
   GameState->R.LightPosition   = Scene->LightPosition;
   GameState->CurrentMaterialID = { 0 };
+  GameState->SelectedEntityIndex = -1;
 
 	END_TIMED_BLOCK(ImportScene)
   return;

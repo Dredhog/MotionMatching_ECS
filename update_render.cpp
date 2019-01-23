@@ -10,19 +10,19 @@
 #include "asset.h"
 #include "load_texture.h"
 #include "misc.h"
-#include "intersection_testing.h"
-#include "render_data.h"
-#include "material_upload.h"
-#include "material_io.h"
-
 #include "text.h"
-
-#include "debug_drawing.h"
+#include "material_io.h"
 #include "camera.h"
-#include "player_controller.h"
-
 #include "shader_def.h"
+#include "render_data.h"
+
 #include "profile.h"
+
+#include "intersection_testing.h"
+#include "debug_drawing.h"
+#include "player_controller.h"
+#include "material_upload.h"
+
 #include "dynamics.h"
 #include "gui_testing.h"
 
@@ -46,7 +46,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
 		TIMED_BLOCK(FirstInit);
 		PartitionMemoryInitAllocators(&GameMemory, GameState);
-		LoadInitialResources(GameState);
+		RegisterLoadInitialResources(GameState);
 		SetGameStatePODFields(GameState);
   }
 	
@@ -215,9 +215,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 	RenderShadowmapCascadesToTextures(GameState);
 
-	if(GameState->R.RenderSSAO)
 	{
-		RenderSSAOToTexture(GameState);
+		glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.SSAOFBO);
+		glClearColor(1.f, 1.f, 1.f, 1.f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		if(GameState->R.RenderSSAO)
+		{
+			RenderSSAOToTexture(GameState);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
   if(GameState->R.RenderVolumetricScattering)

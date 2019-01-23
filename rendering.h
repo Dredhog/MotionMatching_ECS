@@ -83,40 +83,35 @@ void RenderGBufferDataToTextures(game_state* GameState)
 void RenderSSAOToTexture(game_state* GameState)
 {
 	TIMED_BLOCK(SSAOPass);
-	glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.SSAOFBO);
-	glClearColor(1.f, 1.f, 1.f, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT);
+
+	uint32_t SSAOShaderID = GameState->Resources.GetShader(GameState->R.ShaderSSAO);
+	glUseProgram(SSAOShaderID);
 	{
-		uint32_t SSAOShaderID = GameState->Resources.GetShader(GameState->R.ShaderSSAO);
-		glUseProgram(SSAOShaderID);
-		{
-			glUniform3fv(glGetUniformLocation(SSAOShaderID, "u_SampleVectors"),
-									 SSAO_SAMPLE_VECTOR_COUNT, (float*)&GameState->R.SSAOSampleVectors);
-		}
-		{
-			glUniformMatrix4fv(glGetUniformLocation(SSAOShaderID, "u_mat_projection"), 1, GL_FALSE,
-												 GameState->Camera.ProjectionMatrix.e);
-		}
-		{
-			glUniform1f(glGetUniformLocation(SSAOShaderID, "u_SamplingRadius"),
-									GameState->R.SSAOSamplingRadius);
-		}
-		{
-			int tex_index = 1;
-			glActiveTexture(GL_TEXTURE0 + tex_index);
-			glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferNormalTexID);
-			glUniform1i(glGetUniformLocation(SSAOShaderID, "u_NormalMap"), tex_index);
-		}
-		{
-			int tex_index = 2;
-			glActiveTexture(GL_TEXTURE0 + tex_index);
-			glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferPositionTexID);
-			glUniform1i(glGetUniformLocation(SSAOShaderID, "u_PositionMap"), tex_index);
-		}
-		glActiveTexture(GL_TEXTURE0);
-		DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
+		glUniform3fv(glGetUniformLocation(SSAOShaderID, "u_SampleVectors"),
+								 SSAO_SAMPLE_VECTOR_COUNT, (float*)&GameState->R.SSAOSampleVectors);
 	}
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	{
+		glUniformMatrix4fv(glGetUniformLocation(SSAOShaderID, "u_mat_projection"), 1, GL_FALSE,
+											 GameState->Camera.ProjectionMatrix.e);
+	}
+	{
+		glUniform1f(glGetUniformLocation(SSAOShaderID, "u_SamplingRadius"),
+								GameState->R.SSAOSamplingRadius);
+	}
+	{
+		int tex_index = 1;
+		glActiveTexture(GL_TEXTURE0 + tex_index);
+		glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferNormalTexID);
+		glUniform1i(glGetUniformLocation(SSAOShaderID, "u_NormalMap"), tex_index);
+	}
+	{
+		int tex_index = 2;
+		glActiveTexture(GL_TEXTURE0 + tex_index);
+		glBindTexture(GL_TEXTURE_2D, GameState->R.GBufferPositionTexID);
+		glUniform1i(glGetUniformLocation(SSAOShaderID, "u_PositionMap"), tex_index);
+	}
+	glActiveTexture(GL_TEXTURE0);
+	DrawTextureToFramebuffer(GameState->R.ScreenQuadVAO);
 }
 
 void RenderShadowmapCascadesToTextures(game_state* GameState)
@@ -277,6 +272,7 @@ void RenderVolumeLightingToTexture(game_state *GameState)
 void RenderCubemap(game_state* GameState)
 {
 	TIMED_BLOCK(Cubemap);
+
 	if(GameState->R.Cubemap.CubemapTexture == -1)
 	{
 		GameState->R.Cubemap.CubemapTexture =
@@ -302,10 +298,10 @@ void RenderCubemap(game_state* GameState)
 }
 
 
-// TODO(Lukas) SORT(MeshInstances, ByBlend, ByMaterial, ByMesh);
-// Draw scene to backbuffer
+//Main scene object rendering loop
 void RenderMainSceneObjects(game_state* GameState)
 {
+// TODO(Lukas) SORT(MeshInstances, ByBlend, ByMaterial, ByMesh);
 	TIMED_BLOCK(RenderScene);
 	material*     PreviousMaterial = nullptr;
 	Render::mesh* PreviousMesh     = nullptr;

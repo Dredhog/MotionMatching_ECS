@@ -144,7 +144,7 @@ namespace UI
 							const float StackBlockHeight = 20.0f;
 							const debug_frame_cycle_counter FrameCycleCounter = GLOBAL_DEBUG_FRAME_CYCLE_TABLE[s_CurrentModifiableFrameIndex];
 							const float BaselineCycleCount = 5e6;//(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
-							for(int j = 0; j < 4; j++)
+							for(int j = 0; j < 5; j++)
 							{
 								float CurrentHorizontalPosition = 0.0f;
 								for(int i = 0; i < GLOBAL_DEBUG_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
@@ -155,10 +155,9 @@ namespace UI
 										float EventWidth = (MaxProfileWidth/BaselineCycleCount)*(float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
 										float EventLeft = (MaxProfileWidth/BaselineCycleCount)*(CurrentEvent.StartCycleCount-FrameCycleCounter.FrameStart);
 
-										vec3 EventColor = DEBUG_ENTRY_COLORS[CurrentEvent.NameTableIndex];
-										UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{EventColor.R, EventColor.G, EventColor.B, 1});
+										const float *EventColor = &DEBUG_ENTRY_COLORS[CurrentEvent.NameTableIndex][0];
+										UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{EventColor[0], EventColor[1], EventColor[2], 1});
 										{
-											vec3 EventColor = DEBUG_ENTRY_COLORS[CurrentEvent.NameTableIndex];
 											float DummyWidth = EventLeft - CurrentHorizontalPosition;
 											UI::Dummy(EventLeft-CurrentHorizontalPosition);
 											UI::SameLine();

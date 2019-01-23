@@ -425,6 +425,7 @@ namespace Resource
   void
   resource_manager::UpdateHardDriveAssetPathLists()
   {
+		TIMED_BLOCK(UpdateAssetPathLists);
     // Update models paths
     this->DiffedModelCount =
       Platform::ReadPaths(this->DiffedModels, this->ModelPaths, this->ModelStats,
@@ -453,6 +454,7 @@ namespace Resource
   void
   resource_manager::ReloadModified()
   {
+		TIMED_BLOCK(ReloadModified);
     for(int i = 0; i < this->DiffedAnimationCount; i++)
     {
       // printf("diffed path: %s found to be registered\n", DiffedAnimations[i].Path.Name);
@@ -539,6 +541,7 @@ namespace Resource
   void
   resource_manager::DeleteUnused()
   {
+		TIMED_BLOCK(DeleteUnused);
     for(int i = 1; i <= RESOURCE_MAX_COUNT; i++)
     {
       Render::model* Model;

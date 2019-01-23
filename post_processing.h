@@ -10,7 +10,7 @@
 
 void PerformPostProcessing(game_state* GameState)
 {
-	BEGIN_TIMED_BLOCK(PostProcessing);
+	TIMED_BLOCK(PostProcessing);
 	glDisable(GL_DEPTH_TEST);
 	// NOTE(Lukas): HDR tonemapping and bloom use HDR buffers which are floating point unlike the
 	// remaining post effect stack
@@ -469,5 +469,4 @@ void PerformPostProcessing(game_state* GameState)
 
 	GameState->R.CurrentTexture     = 0;
 	GameState->R.CurrentFramebuffer = 0;
-	END_TIMED_BLOCK(PostProcessing);
 }

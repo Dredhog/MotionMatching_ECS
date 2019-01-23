@@ -6,10 +6,12 @@
 
 #include "../file_io.h"
 #include "../file_queries.h"
+#include "../profile.h"
 
 debug_read_file_result
 Platform::ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName)
 {
+	TIMED_BLOCK(ReadEntireFile);
   assert(Allocator);
   debug_read_file_result Result     = {};
   int                    FileHandle = open(FileName, O_RDONLY);
@@ -60,6 +62,7 @@ Platform::ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileNam
 debug_read_file_result
 Platform::ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName)
 {
+	TIMED_BLOCK(ReadEntireFile);
   assert(Allocator);
   debug_read_file_result Result     = {};
   int                    FileHandle = open(FileName, O_RDONLY);
@@ -110,6 +113,7 @@ Platform::ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName
 bool
 Platform::WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
 {
+	TIMED_BLOCK(WriteEntireFile);
   int FileHandle = open(Filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   if(FileHandle == -1)

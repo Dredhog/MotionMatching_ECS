@@ -1,14 +1,13 @@
 #pragma once
 
 #define DEBUG_PROFILING 1
+#define ArrayCount(Array) sizeof((Array)) / sizeof(Array[0])
 
 #if DEBUG_PROFILING  
 #define PROFILE_MAX_FRAME_COUNT 500
-#define PROFILE_MAX_EVENTS_PER_FRAME 1000
+#define PROFILE_MAX_EVENTS_PER_FRAME 200
 
-
-#include "common.h"
-#include "linear_math/vector.h"
+#include <stdint.h>
 
 #if defined( __WIN32__ ) || defined( _WIN32 ) || defined( __WIN64__ ) || defined( _WIN64 ) || defined( WIN32 )
 #include <intrin.h>
@@ -18,6 +17,7 @@
 #else
 #error
 #endif
+
 enum{
 	DEBUG_FirstInit,
 	DEBUG_FilesystemUpdate,
@@ -60,6 +60,12 @@ enum{
   DEBUG_GetTextSize,
   DEBUG_GetTextTextureID,
   DEBUG_ResetCache,
+  DEBUG_SetMaterial,
+  DEBUG_UpdateAssetPathLists,
+  DEBUG_DeleteUnused,
+  DEBUG_ReloadModified,
+	DEBUG_ReadEntireFile,
+	DEBUG_WriteEntireFile,
 };
 
 struct debug_frame_cycle_counter {
@@ -113,59 +119,70 @@ const char DEBUG_TABLE_NAMES[][40] = {
 	"AnimationSystem",
 	"SAT",
 	"ODE",
-  "DEBUG_LoadSizedFont",
-  "DEBUG_LoadFont",
-  "DEBUG_SearchForDesiredTexture",
-  "DEBUG_FindCacheLineToOccupy",
-  "DEBUG_GetBestMatchingFont",
-  "DEBUG_GetTextSize",
-  "DEBUG_GetTextTextureID",
-  "DEBUG_ResetCache",
+  "LoadSizedFont",
+  "LoadFont",
+  "SearchForDesiredTexture",
+  "FindCacheLineToOccupy",
+  "GetBestMatchingFont",
+  "GetTextSize",
+  "GetTextTextureID",
+  "ResetCache",
+  "SetMaterial",
+  "UpdateAssetPathLists",
+  "DeleteUnused",
+  "ReloadModified",
+	"ReadEntireFile",
+	"WriteEntireFile",
 };
 
-const vec3 DEBUG_ENTRY_COLORS[] = {
-	vec3{1, 0, 0},
-	vec3{1, 0.4f, 0.4f},
-	vec3{0.1f, 0.8f, 0.2f},
-	vec3{0.5f, 1, 0.5f},
-	vec3{0.2f, 0.7f, 0.5f},
-	vec3{0,0,1},
-	vec3{1,1,0},
-	vec3{0.2f, 0.2f, 0.2f},
-	vec3{0, 1, 1},
-	vec3{1, 1, 0},
-	vec3{0.7f, 0.7f, 0.7f},
-	vec3{1, 0, 1},
-	vec3{1, 0, 0},
-	vec3{0, 0.5, 1},
-	vec3{0.5f, 0.5f, 0},
-	vec3{1, 0.6f, 0.6f},
-	vec3{1, 0.6f, 0},
-	vec3{0.5f, 1, 0.5f},
-	vec3{0.2f, 0.7f, 0.5f},
-	vec3{0,0,1},
-	vec3{1,1,0},
-	vec3{0.2f, 0.2f, 0.2f},
-	vec3{0, 1, 1},
-	vec3{1, 1, 0},
-	vec3{0.7f, 0.7f, 0.7f},
-	vec3{1, 0, 1},
-	vec3{1, 0.4f, 0.4f},
-	vec3{0.1f, 0.8f, 0.2f},
-	vec3{0.5f, 1, 0.5f},
-	vec3{0.2f, 0.7f, 0.5f},
-	vec3{0,0,1},
-	vec3{0.6f, 0.2f, 0.2f},
-	vec3{0, 1, 1},
-	vec3{1, 0, 0},
-	vec3{1, 0.5, 1},
-	vec3{0.5f, 0.5f, 0},
-	vec3{1, 0.6f, 0.6f},
-	vec3{1, 0.6f, 0},
-	vec3{0.5f, 1, 0.5f},
-	vec3{0.2f, 0.7f, 0.5f},
-	vec3{0,0,1},
-	vec3{1,1,0},
+const float DEBUG_ENTRY_COLORS[][3]  = {
+	{1, 0, 0},
+	{1, 0.4f, 0.4f},
+	{0.1f, 0.8f, 0.2f},
+	{0.5f, 1, 0.5f},
+	{0.2f, 0.7f, 0.5f},
+	{0,0,1},
+	{1,1,0},
+	{0.2f, 0.2f, 0.2f},
+	{0, 1, 1},
+	{1, 1, 0},
+	{0.7f, 0.7f, 0.7f},
+	{1, 0, 1},
+	{1, 0, 0},
+	{0, 0.5, 1},
+	{0.5f, 0.5f, 0},
+	{1, 0.6f, 0.6f},
+	{1, 0.6f, 0},
+	{0.5f, 1, 0.5f},
+	{0.2f, 0.7f, 0.5f},
+	{0,0,1},
+	{1,1,0},
+	{0.2f, 0.2f, 0.2f},
+	{0, 1, 1},
+	{1, 1, 0},
+	{0.7f, 0.7f, 0.7f},
+	{1, 0, 1},
+	{1, 0.4f, 0.4f},
+	{0.1f, 0.8f, 0.2f},
+	{0.5f, 1, 0.5f},
+	{0.2f, 0.7f, 0.5f},
+	{0,0,1},
+	{0.6f, 0.2f, 0.2f},
+	{0, 1, 1},
+	{1, 0, 0},
+	{1, 0.5, 1},
+	{0.5f, 0.5f, 0},
+	{1, 0.6f, 0.6f},
+	{1, 0.6f, 0},
+	{0.5f, 1, 0.5f},
+	{0.2f, 0.7f, 0.5f},
+	{0,0,1},
+	{0.1f,0.8f,0.2f},
+	{0,0,1},
+	{1,1,0},
+	{0.5f,0.2f,0.5f},
+	{0.6f, 0.5f,0.3f},
+	{1, 0.2f,0.3f},
 };
 
 extern debug_frame_cycle_counter GLOBAL_DEBUG_FRAME_CYCLE_TABLE[PROFILE_MAX_FRAME_COUNT+1];

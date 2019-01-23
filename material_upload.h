@@ -2,18 +2,19 @@
 
 #include "shader_def.h"
 
-void
+/*void
 UnsetMaterial(render_data* RenderData, int32_t MaterialIndex)
 {
   glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
   glDepthFunc(GL_LESS);
   glBindTexture(GL_TEXTURE_2D, 0);
   glBindVertexArray(0);
-}
+}*/
 
 GLuint
 SetMaterial(game_state* GameState, const camera* Camera, const material* Material)
 {
+	TIMED_BLOCK(SetMaterial);
   if(Material->Common.UseBlending)
   {
     glEnable(GL_BLEND);

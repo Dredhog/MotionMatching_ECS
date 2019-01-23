@@ -26,3 +26,4 @@ struct camera
 };
 
 void UpdateCamera(camera* Camera, const game_input* Input);
+void UpdateCameraDerivedFields(camera* Camera);

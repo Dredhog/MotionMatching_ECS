@@ -19,17 +19,17 @@ void PartitionMemoryInitAllocators(game_memory* GameMemory, game_state* GameStat
 															GameState->TemporaryMemStack);
 }
 
-void LoadInitialResources(game_state* GameState)
+void RegisterLoadInitialResources(game_state* GameState)
 {
 	TIMED_BLOCK(LoadInitialResources);
 	GameState->MagicChecksum = 123456;
 
-	// REGISTER DEBUG MODELS
+	// Register debug models
 	{
 		RegisterDebugModels(GameState);
 	}
 
-	// LOAD UNMANAGED TEXTURES (ONLY USED IN UI)
+	// Load unmanaged textures (only used in ui)
 	{
 		GameState->CollapsedTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
 		GameState->ExpandedTextureID  = Texture::LoadTexture("./data/textures/expanded.bmp");
@@ -39,12 +39,12 @@ void LoadInitialResources(game_state* GameState)
 		assert(GameState->R.PostTestTextureID);
 	}
 
-	// LOAD FONTS
+	// Load fonts
 	{
 		GameState->Font = Text::LoadFont("data/UbuntuMono.ttf", 18, 1, 2);
 	}
 
-	// HAND LOAD SHADERS
+	// Load shaders
 	{
 		// TODO(2-tuple) Make mesh shader loading management automatic
 		GameState->R.ShaderPhong   = GameState->Resources.RegisterShader("shaders/phong");
@@ -98,7 +98,7 @@ void LoadInitialResources(game_state* GameState)
 		GameState->Resources.SetDefaultShaderID(MissingShaderID);
 	}
 
-	// SET UP SHADER PARAMETER DEFINITIONS (CAN BE MADE AUTOMATIC BY PARSING ASSOCIATED SHADER)
+	// Set up shader parameter definitions (can be made automatic by parsing associated shader)
 	{
 		// TODO(2-tuple) adhere to a common, more appropriate shader variable naming standard
 		// TODO(Lukas) rename all variables with "coord" to "coords"
@@ -334,12 +334,13 @@ void SetGameStatePODFields(game_state *GameState)
 		GameState->Camera.Speed         = 2.0f;
 	}
 
-	GameState->PreviewCamera          = GameState->Camera;
-	GameState->PreviewCamera.Position = { 0, 0, 2 };
-	GameState->PreviewCamera.Rotation = {};
-	//UpdateCamera(&GameState->PreviewCamera, Input);
+	{
+		GameState->PreviewCamera          = GameState->Camera;
+		GameState->PreviewCamera.Position = { 0, 0, 2.2f };
+		GameState->PreviewCamera.Rotation = {};
+		UpdateCameraDerivedFields(&GameState->PreviewCamera);
+	}
 
-	// render_data miscellaneous POD field init
 	{
 		// SUN DATA
 		{
@@ -398,7 +399,7 @@ void SetGameStatePODFields(game_state *GameState)
 		GameState->R.BloomLuminanceThreshold = 1.2f;
 		GameState->R.BloomBlurIterationCount = 1;
 
-		// INITIAL FOG VALUES
+		// Initial fog values
 		{
 			GameState->R.FogDensity = 0.1f;
 			GameState->R.FogGradient = 3.0f;
@@ -419,9 +420,9 @@ void SetGameStatePODFields(game_state *GameState)
 	GameState->CurrentMaterialID       = { 0 };
 	GameState->PlayerEntityIndex       = -1;
 
-	GameState->Physics.Params.Beta                     = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
-	GameState->Physics.Params.Mu                       = 1.0f;
-	GameState->Physics.Params.PGSIterationCount        = 10;
+	GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
+	GameState->Physics.Params.Mu                         = 1.0f;
+	GameState->Physics.Params.PGSIterationCount          = 10;
 	GameState->Physics.Switches.UseGravity               = true;
 	GameState->Physics.Switches.VisualizeOmega           = false;
 	GameState->Physics.Switches.VisualizeV               = false;
