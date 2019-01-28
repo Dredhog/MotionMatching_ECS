@@ -55,6 +55,7 @@ namespace UI
 				static bool s_AllowCurrentFrameChoice = false;
 				static bool s_ShowTimelineRegion = false;
 				static bool s_ShowFrameSummaries = false;
+				static bool s_ShowGPUFrameSummaries = false;
 				static int s_CurrentModifiableFrameIndex = 0;
 				
 				bool Changed = s_AllowCurrentFrameChoice;
@@ -197,7 +198,6 @@ namespace UI
 				}
 #endif
 
-
 				if(UI::CollapsingHeader("Frame Event Summaries", &s_ShowFrameSummaries))
 				{
 					for(int i = 0; i < ArrayCount(TIMER_NAME_TABLE); i++)
@@ -213,6 +213,20 @@ namespace UI
 					}
 				}
 
+				if(UI::CollapsingHeader("GPU Frame Event Summaries", &s_ShowGPUFrameSummaries))
+				{
+					for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)
+					{
+						UI::Text(GPU_TIMER_NAME_TABLE[i]);
+						UI::SameLine();
+						{
+							char CountBuffer[40];
+							sprintf(CountBuffer, ": %fms", GPU_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i].ElapsedTime/(float)1e6);
+							UI::Text(CountBuffer);
+						}
+						UI::NewLine();
+					}
+				}
 			}
 			UI::EndWindow();
 		}
@@ -225,7 +239,7 @@ namespace UI
 				physics_params& Params = GameState->Physics.Params;
 				physics_switches& Switches = GameState->Physics.Switches;
 				UI::Checkbox("Simulating Dynamics", &Switches.SimulateDynamics);
-				UI::SliderInt("Iteration Count", &Params.PGSIterationCount, 0, 200);
+				UI::SliderInt("Iteration Count", &Params.PGSIterationCount, 0, 250);
 				UI::SliderFloat("Beta", &Params.Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
 				Switches.PerformDynamicsStep = UI::Button("Step Dynamics");
 				UI::Checkbox("Gravity", &Switches.UseGravity);

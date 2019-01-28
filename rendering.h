@@ -299,10 +299,12 @@ void RenderCubemap(game_state* GameState)
 
 
 //Main scene object rendering loop
+// TODO(Lukas) SORT(MeshInstances, ByBlend, ByMaterial, ByMesh);
 void RenderMainSceneObjects(game_state* GameState)
 {
-// TODO(Lukas) SORT(MeshInstances, ByBlend, ByMaterial, ByMesh);
 	TIMED_BLOCK(RenderScene);
+	
+	BEGIN_GPU_TIMED_BLOCK(RenderScene);
 	material*     PreviousMaterial = nullptr;
 	Render::mesh* PreviousMesh     = nullptr;
 	uint32_t      CurrentShaderID  = 0;
@@ -351,6 +353,7 @@ void RenderMainSceneObjects(game_state* GameState)
 		glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
 	}
 	glBindVertexArray(0);
+	END_GPU_TIMED_BLOCK(RenderScene);
 }
 
 void RenderObjectSelectionHighlighting(game_state* GameState, entity* SelectedEntity)

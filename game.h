@@ -79,15 +79,15 @@ struct game_state
   Text::font Font;
 
   // Switches/Flags
-  bool  DrawCubemap;
-  bool  DrawGizmos;
-  bool  DrawDebugLines;
-  bool  DrawDebugSpheres;
-  bool  DrawShadowCascadeVolumes;
-  bool  DrawTimeline;
-  bool  IsAnimationPlaying;
+  bool DrawCubemap;
+  bool DrawGizmos;
+  bool DrawDebugLines;
+  bool DrawDebugSpheres;
+  bool DrawShadowCascadeVolumes;
+  bool DrawTimeline;
+  bool IsAnimationPlaying;
   //float EditorBoneRotationSpeed;
-  bool  IsEntityCreationMode;
+  bool IsEntityCreationMode;
 
   uint32_t MagicChecksum;
   uint32_t SelectionMode;

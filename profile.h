@@ -211,9 +211,82 @@ struct timer_event_autoclose_wrapper
 	~timer_event_autoclose_wrapper();
 };
 
+#define FOR_ALL_NAMES(DO_FUNC) DO_FUNC(GeomPrePass) DO_FUNC(Shadowmapping)\
+DO_FUNC(VolumetricLighting) DO_FUNC(SSAO) DO_FUNC(RenderScene) DO_FUNC(FXAA)\
+DO_FUNC(PostProcessing) DO_FUNC(Bloom) DO_FUNC(MotionBlur) DO_FUNC(DepthOfField)\
+DO_FUNC(FlipScreenbuffer)
+
+#define GENERATE_ENUM_NO_COMMA(Name) GPU_TIMER_##Name
+#define GENERATE_ENUM(Name) GENERATE_ENUM_NO_COMMA(Name),
+#define GENERATE_STRING(Name) #Name,
+enum gpu_timer_type
+{
+  FOR_ALL_NAMES(GENERATE_ENUM) GENERATE_ENUM(EnumCount)
+};
+static const char* GPU_TIMER_NAME_TABLE[GENERATE_ENUM_NO_COMMA(EnumCount)] = { FOR_ALL_NAMES(GENERATE_STRING) };
+#undef FOR_ALL_NAMES
+#undef GENERATE_ENUM
+#undef GENERATE_STRING
+struct gpu_timer_event {
+	uint32_t ElapsedTime;
+	bool WasRunThisFrame;
+};
+
+extern gpu_timer_event GPU_TIMER_EVENT_TABLE[PROFILE_MAX_FRAME_COUNT+1][GPU_TIMER_EnumCount];
+extern uint32_t GPU_QUERY_OBJECT_TABLE[GPU_TIMER_EnumCount];
+
+#define TIME_GPU_EXECUTION 0
+
+#if TIME_GPU_EXECUTION
+
+#if 0
+struct gpu_timer_event_autoclose_wrapper
+{
+	inline gpu_timer_event_autoclose_wrapper(int32_t TableIndex)
+	{
+		glBeginQuery(GL_TIME_ELAPSED, &GPU_QUERY_OBJECT_TABLE[TableIndex]);
+	}
+
+	inline ~gpu_timer_event_autoclose_wrapper()
+	{
+		glEndQuery(GL_TIME_ELAPSED);
+	}
+};
+#endif
+#define BEGIN_GPU_TIMED_BLOCK(ID)\
+		GPU_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][GPU_TIMER_##ID].WasRunThisFrame = true;\
+		glBeginQuery(GL_TIME_ELAPSED, GPU_QUERY_OBJECT_TABLE[GPU_TIMER_##ID]);
+
+#define END_GPU_TIMED_BLOCK(ID)\
+		glEndQuery(GL_TIME_ELAPSED);
+
+#define INIT_GPU_TIMERS() glGenQueries(GPU_TIMER_EnumCount, GPU_QUERY_OBJECT_TABLE)
+#define READ_GPU_QUERY_TIMERS() for(int q_ind = 0; q_ind < GPU_TIMER_EnumCount; q_ind++)\
+				{\
+					int PrevInd = (g_CurrentProfilerFrameIndex-1+PROFILE_MAX_FRAME_COUNT)%PROFILE_MAX_FRAME_COUNT;\
+					if(GPU_TIMER_EVENT_TABLE[PrevInd][q_ind].WasRunThisFrame)\
+					glGetQueryObjectuiv(GPU_QUERY_OBJECT_TABLE[q_ind], GL_QUERY_RESULT, &GPU_TIMER_EVENT_TABLE[PrevInd][q_ind].ElapsedTime);\
+				}
+#define GPU_TIMED_BLOCK(ID) gpu_timer_event_autoclose_wrapper ID##__LINE__(GPU_TIMER_NAME_##ID)
+
+#else
+
+#define BEGIN_GPU_TIMED_BLOCK(ID)
+#define END_GPU_TIMED_BLOCK(ID)
+#define INIT_GPU_TIMERS() 
+#define READ_GPU_QUERY_TIMERS() 
+#define GPU_TIMED_BLOCK(ID) 
+
+#endif
+
+
 #define TIMED_BLOCK(ID) timer_event_autoclose_wrapper ID##__LINE__(TIMER_NAME_##ID)
 
 #define BEGIN_FRAME() \
+	for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)\
+	{\
+		GPU_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][i] = {};\
+	}\
 	for(int i = 0; i < ARRAY_COUNT(TIMER_NAME_TABLE); i++)\
 	{\
 		GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][i] = {};\

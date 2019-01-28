@@ -114,8 +114,8 @@ FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(float Epsilon[], int Jmap[][2],
     }
     else if(Constraints[i].Type == CONSTRAINT_Friction)
     {
-      LambdaMinMax[i][0] = -INFINITY; //-Mu;
-      LambdaMinMax[i][1] = INFINITY;  // Mu;
+      LambdaMinMax[i][0] = -Mu; //-Mu;
+      LambdaMinMax[i][1] = Mu;  // Mu;
 
       vec3 rA = Constraints[i].BodyRa;
       vec3 rB = Constraints[i].BodyRb;
@@ -123,7 +123,7 @@ FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(float Epsilon[], int Jmap[][2],
 
       Epsilon[i] = 0;
 
-      // Dependencies[i] = Constraints[i].ContactIndex;
+      Dependencies[i] = Constraints[i].ContactIndex;
 
       Jmap[i][0] = IndA;
       Jmap[i][1] = IndB;
@@ -235,40 +235,50 @@ DYDT_FUNC(DYDT_PGS)
     Lambda[i] = 0.0f;
   }
 
+	const float LARGE_NUMBER = 1e2;
+#if 1
   // Solve for lambda (PGS)
   for(int k = 0; k < IterationCount; k++)
   {
     for(int i = 0; i < ConstraintCount; i++)
     {
-      float Delta = 0.0f;
-      {
-        for(int j = 0; j < i; j++)
-        {
-          Delta += a[i][j] * Lambda[j];
-        }
-        for(int j = i + 1; j < ConstraintCount; j++)
-        {
-          Delta += a[i][j] * Lambda[j];
-        }
-      }
+			//if(Constraints[i].Type != CONSTRAINT_Friction)
+			{
+				float Delta = 0.0f;
+				{
+					for(int j = 0; j < i; j++)
+					{
+						//if(Constraints[j].Type != CONSTRAINT_Friction)
+							Delta += a[i][j] * Lambda[j];
+					}
+					for(int j = i + 1; j < ConstraintCount; j++)
+					{
+						//if(Constraints[j].Type != CONSTRAINT_Friction)
+							Delta += a[i][j] * Lambda[j];
+					}
+				}
 
-      // TODO(Lukas) Remove magic value or other solution
-      if(0.00001f < a[i][i])
-      {
-        Lambda[i] = (b[i] - Delta) / a[i][i];
-      }
+				// TODO(Lukas) Remove magic value or other solution
+				if(0.00001f < a[i][i])
+				{
+					Lambda[i] = (b[i] - Delta) / a[i][i];
+				}else {
+					Lambda[i] = LARGE_NUMBER;
+				}
 
-      float S = 1.0f;
-      if(0 <= LambdaDependencies[i])
-      {
-        S = Lambda[LambdaDependencies[i]];
-      }
+				float S = 1.0f;
+				if(0 <= LambdaDependencies[i])
+				{
+					S = Lambda[LambdaDependencies[i]];
+				}
 
-      assert(LambdaMinMax[0] < LambdaMinMax[1]);
-      Lambda[i] = ClampFloat(LambdaMinMax[i][0] * S, Lambda[i], LambdaMinMax[i][1] * S);
-    }
+				assert(LambdaMinMax[0] < LambdaMinMax[1]);
+				Lambda[i] = ClampFloat(LambdaMinMax[i][0] * S, Lambda[i], LambdaMinMax[i][1] * S);
+			}
+		}
   }
-
+#else
+#endif
   for(int i = 0; i < RBCount; i++)
   {
     Fc[i][0] = {};
@@ -370,8 +380,8 @@ SimulateDynamics(physics_world* World)
     { // Constrainttest
       World->Constraints.Clear();
 
-      /*constraint TestConstraint = {};
-      TestConstraint.Type       = CONSTRAINT_Distance;
+      constraint TestConstraint = {};
+      /*TestConstraint.Type       = CONSTRAINT_Distance;
       TestConstraint.IndA       = 5;
       TestConstraint.IndB       = 6;
       TestConstraint.L          = 0;
@@ -439,9 +449,9 @@ SimulateDynamics(physics_world* World)
           if(SAT(&Manifold, TransformA, &g_CubeHull, TransformB, &g_CubeHull))
           {
             constraint Constraint;
-            Constraint.Type = CONSTRAINT_Contact;
             for(int c = 0; c < Manifold.PointCount; ++c)
             {
+            	Constraint.Type = CONSTRAINT_Contact;
               // Constraint
               assert(Manifold.Points[c].Penetration < 0);
               vec3 P                 = Manifold.Points[c].Position;
@@ -455,7 +465,6 @@ SimulateDynamics(physics_world* World)
               }
               else
               {
-
                 Constraint.IndA = j;
                 Constraint.IndB = i;
               }

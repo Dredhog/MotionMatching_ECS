@@ -9,6 +9,7 @@
 #include <assert.h>
 
 #include "common.h"
+#include "profile.h"
 
 static bool
 ProcessInput(const game_input* OldInput, game_input* NewInput, SDL_Event* Event, SDL_Window* Window)
@@ -376,7 +377,7 @@ Init(SDL_Window** Window)
     // Create an SDL window
     SDL_SetRelativeMouseMode(SDL_TRUE);
     //TODO(rytis): Print screen is not working correctly. Might have something to do with SDL window creation or input handling.
-    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_ALLOW_HIGHDPI);
+    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | /*SDL_WINDOW_FULLSCREEN |*/ SDL_WINDOW_ALLOW_HIGHDPI);
 
     if(!Window)
     {

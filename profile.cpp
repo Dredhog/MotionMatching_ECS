@@ -29,3 +29,6 @@ timer_event_autoclose_wrapper::~timer_event_autoclose_wrapper()
 	GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][this->NameTableIndex].Calls++;
 	--g_CurrentTimerEventDepth;
 }
+
+gpu_timer_event GPU_TIMER_EVENT_TABLE[PROFILE_MAX_FRAME_COUNT+1][GPU_TIMER_EnumCount];
+uint32_t GPU_QUERY_OBJECT_TABLE[GPU_TIMER_EnumCount];

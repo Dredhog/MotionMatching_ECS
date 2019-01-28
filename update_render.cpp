@@ -31,7 +31,7 @@
 #include "rendering.h"
 #include "post_processing.h"
 
-#define ASSET_HOT_RELOADING 0
+#define ASSET_HOT_RELOADING 1
 
 extern bool g_VisualizeContactPoints;
 extern bool g_VisualizeContactManifold;
@@ -46,6 +46,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // GAME STATE INITIALIZATION (ONLY RUN ON FIRST FRAME)
   if(GameState->MagicChecksum != 123456)
   {
+		INIT_GPU_TIMERS();
 		TIMED_BLOCK(FirstInit);
 		PartitionMemoryInitAllocators(&GameMemory, GameState);
 		RegisterLoadInitialResources(GameState);
@@ -213,7 +214,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+	BEGIN_GPU_TIMED_BLOCK(GeomPrePass);
   RenderGBufferDataToTextures(GameState);
+	END_GPU_TIMED_BLOCK(GeomPrePass);
 	
   // Saving previous frame entity MVP matrix (USED ONLY FOR MOTION BLUR)
   {
@@ -224,8 +227,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
 
+	BEGIN_GPU_TIMED_BLOCK(Shadowmapping);
 	RenderShadowmapCascadesToTextures(GameState);
+	END_GPU_TIMED_BLOCK(Shadowmapping);
 
+	BEGIN_GPU_TIMED_BLOCK(SSAO);
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, GameState->R.SSAOFBO);
 		glClearColor(1.f, 1.f, 1.f, 1.f);
@@ -236,10 +242,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
+	END_GPU_TIMED_BLOCK(SSAO);
 
   if(GameState->R.RenderVolumetricScattering)
   {
+		BEGIN_GPU_TIMED_BLOCK(VolumetricLighting);
 		RenderVolumeLightingToTexture(GameState);
+		END_GPU_TIMED_BLOCK(VolumetricLighting);
 	}
 
   {
@@ -270,7 +279,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
 	//--------------Post Processing-----------------
+	BEGIN_GPU_TIMED_BLOCK(PostProcessing);
 	PerformPostProcessing(GameState);
+	END_GPU_TIMED_BLOCK(PostProcessing);
 
   //---------------DEBUG DRAWING------------------
 	BEGIN_TIMED_BLOCK(DebugDrawingSubmission);
@@ -292,5 +303,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 	END_TIMED_BLOCK(DebugDrawingSubmission);
 
 	END_TIMED_BLOCK(Render);
+	READ_GPU_QUERY_TIMERS();
 	END_FRAME();
 }
