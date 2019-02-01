@@ -1230,7 +1230,7 @@ bool
 SAT(sat_contact_manifold* Manifold, const mat4 TransformA, const hull* HullA, const mat4 TransformB,
     const hull* HullB)
 {
-	TIMED_BLOCK(SAT);
+  TIMED_BLOCK(SAT);
   const float EDGE_THRESHOLD = 0.0001f; // FLT_EPSILON;
   const float FACE_THRESHOLD = 0.1f;    // FLT_EPSILON;
 

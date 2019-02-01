@@ -247,7 +247,7 @@ material
 ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* Resources,
                const char* Path)
 {
-	BEGIN_TIMED_BLOCK(LoadMaterial);
+  BEGIN_TIMED_BLOCK(LoadMaterial);
   // Make sure file extension is correct
   if(strlen(Path) <= strlen(".mat"))
   {
@@ -384,7 +384,7 @@ ImportMaterial(Memory::stack_allocator* Allocator, Resource::resource_manager* R
   }
 
   assert(Material.Common.ShaderType >= 0);
-	END_TIMED_BLOCK(LoadMaterial);
+  END_TIMED_BLOCK(LoadMaterial);
   return Material;
 }
 

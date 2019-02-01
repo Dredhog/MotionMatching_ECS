@@ -1,15 +1,14 @@
 #pragma once
 
-union vec2
-{
-    struct
-    {
-        float X, Y;
-    };
-    struct
-    {
-        float U, V;
-    };
+union vec2 {
+  struct
+  {
+    float X, Y;
+  };
+  struct
+  {
+    float U, V;
+  };
 };
 
 union vec3 {

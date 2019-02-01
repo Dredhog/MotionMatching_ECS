@@ -319,7 +319,8 @@ ProcessInput(const game_input* OldInput, game_input* NewInput, SDL_Event* Event,
 
   for(uint32_t Index = 0; Index < sizeof(NewInput->Buttons) / sizeof(game_button_state); Index++)
   {
-    NewInput->Buttons[Index].Changed = (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
+    NewInput->Buttons[Index].Changed =
+      (OldInput->Buttons[Index].EndedDown == NewInput->Buttons[Index].EndedDown) ? false : true;
   }
 
   if(NewInput->Tab.EndedDown && NewInput->Tab.Changed)
@@ -376,8 +377,11 @@ Init(SDL_Window** Window)
 
     // Create an SDL window
     SDL_SetRelativeMouseMode(SDL_TRUE);
-    //TODO(rytis): Print screen is not working correctly. Might have something to do with SDL window creation or input handling.
-    *Window = SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | /*SDL_WINDOW_FULLSCREEN |*/ SDL_WINDOW_ALLOW_HIGHDPI);
+    // TODO(rytis): Print screen is not working correctly. Might have something to do with SDL
+    // window creation or input handling.
+    *Window =
+      SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+                       SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_ALLOW_HIGHDPI);
 
     if(!Window)
     {
@@ -425,7 +429,8 @@ main(int argc, char* argv[])
     return -1;
   }
 
-  if(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) != (IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF))
+  if(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF) !=
+     (IMG_INIT_PNG | IMG_INIT_JPG | IMG_INIT_TIF))
   {
     printf("Image loading could not be initialized!\nError: %s\n", SDL_GetError());
   }

@@ -56,5 +56,5 @@ UpdateCamera(camera* Camera, const game_input* Input)
     Camera->Rotation.X += 0.05f * (float)Input->dMouseY;
     Camera->Rotation.Y -= 0.05f * (float)Input->dMouseX;
   }
-	UpdateCameraDerivedFields(Camera);
+  UpdateCameraDerivedFields(Camera);
 }

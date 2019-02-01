@@ -7,20 +7,19 @@ void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
-             bool& ShowCameraSettings, bool& ShowSceneSettings,
-             bool& ShowPostProcessingSettings);
+             bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings);
 
 namespace UI
 {
   void
   TestGui(game_state* GameState, const game_input* Input)
   {
-		BEGIN_TIMED_BLOCK(GUI);
+    BEGIN_TIMED_BLOCK(GUI);
     UI::BeginFrame(GameState, Input);
 
-		static bool s_ShowDemoWindow     = false;
-		static bool s_ShowPhysicsWindow  = false;
-		static bool s_ShowProfilerWindow = false;
+    static bool s_ShowDemoWindow     = false;
+    static bool s_ShowPhysicsWindow  = false;
+    static bool s_ShowProfilerWindow = false;
 
     UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
     {
@@ -36,69 +35,78 @@ namespace UI
       static bool s_ShowSceneSettings          = false;
       static bool s_ShowPostProcessingSettings = false;
 
-			UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
-			UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
-			UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+      UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
+      UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
+      UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
       EntityGUI(GameState, s_ShowEntityTools);
       MaterialGUI(GameState, s_ShowMaterialEditor);
       AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
-      MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings, s_ShowSceneSettings, s_ShowPostProcessingSettings);
-
+      MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings,
+              s_ShowSceneSettings, s_ShowPostProcessingSettings);
     }
     UI::EndWindow();
 
-		if(s_ShowProfilerWindow)
-		{
-			UI::BeginWindow("Profiler Window", { 150, 500 }, { 1500, 500 });
-			{
-				int PreviousFrameIndex = (g_CurrentProfilerFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
-				static bool s_AllowCurrentFrameChoice = false;
-				static bool s_ShowTimelineRegion = false;
-				static bool s_ShowFrameSummaries = false;
-				static bool s_ShowGPUFrameSummaries = false;
-				static int s_CurrentModifiableFrameIndex = 0;
-				
-				bool Changed = s_AllowCurrentFrameChoice;
-				UI::Checkbox("Inspect Specific Frame", &s_AllowCurrentFrameChoice);
-				Changed = Changed != s_AllowCurrentFrameChoice;
-				if(s_AllowCurrentFrameChoice){
-					UI::SameLine();
-					if(UI::Button("Previous Frame"))
-					{
-						s_CurrentModifiableFrameIndex = (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT - 1)%PROFILE_MAX_FRAME_COUNT;
-					}
-					UI::SameLine();
-					if(UI::Button("Next Frame"))
-					{
-						s_CurrentModifiableFrameIndex = (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT + 1)%PROFILE_MAX_FRAME_COUNT;
-					}
-					UI::NewLine();
-				}
+    if(s_ShowProfilerWindow)
+    {
+      UI::BeginWindow("Profiler Window", { 150, 500 }, { 1500, 500 });
+      {
+        int PreviousFrameIndex =
+          (g_CurrentProfilerFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) % PROFILE_MAX_FRAME_COUNT;
+        static bool s_AllowCurrentFrameChoice     = false;
+        static bool s_ShowTimelineRegion          = false;
+        static bool s_ShowFrameSummaries          = false;
+        static bool s_ShowGPUFrameSummaries       = false;
+        static int  s_CurrentModifiableFrameIndex = 0;
 
-				s_CurrentModifiableFrameIndex = (s_AllowCurrentFrameChoice) ? s_CurrentModifiableFrameIndex : PreviousFrameIndex;
+        bool Changed = s_AllowCurrentFrameChoice;
+        UI::Checkbox("Inspect Specific Frame", &s_AllowCurrentFrameChoice);
+        Changed = Changed != s_AllowCurrentFrameChoice;
+        if(s_AllowCurrentFrameChoice)
+        {
+          UI::SameLine();
+          if(UI::Button("Previous Frame"))
+          {
+            s_CurrentModifiableFrameIndex =
+              (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) %
+              PROFILE_MAX_FRAME_COUNT;
+          }
+          UI::SameLine();
+          if(UI::Button("Next Frame"))
+          {
+            s_CurrentModifiableFrameIndex =
+              (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT + 1) %
+              PROFILE_MAX_FRAME_COUNT;
+          }
+          UI::NewLine();
+        }
 
-				if(Changed)
-				{
-					if(s_AllowCurrentFrameChoice)
-					{
-						s_CurrentModifiableFrameIndex = PreviousFrameIndex;
-						PAUSE_PROFILE();
-					}else
-					{
-						RESUME_PROFILE();
-					}
-				}
+        s_CurrentModifiableFrameIndex =
+          (s_AllowCurrentFrameChoice) ? s_CurrentModifiableFrameIndex : PreviousFrameIndex;
 
-				if(s_AllowCurrentFrameChoice)
-				{
-					UI::SliderInt("Current Frame", &s_CurrentModifiableFrameIndex , 0, PROFILE_MAX_FRAME_COUNT-1);
-				}
-				else
-				{
-					//int temp = g_CurrentProfilerFrameIndex;
-					//UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
-					//g_CurrentProfilerFrameIndex = temp;
-				}
+        if(Changed)
+        {
+          if(s_AllowCurrentFrameChoice)
+          {
+            s_CurrentModifiableFrameIndex = PreviousFrameIndex;
+            PAUSE_PROFILE();
+          }
+          else
+          {
+            RESUME_PROFILE();
+          }
+        }
+
+        if(s_AllowCurrentFrameChoice)
+        {
+          UI::SliderInt("Current Frame", &s_CurrentModifiableFrameIndex, 0,
+                        PROFILE_MAX_FRAME_COUNT - 1);
+        }
+        else
+        {
+          // int temp = g_CurrentProfilerFrameIndex;
+          // UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
+          // g_CurrentProfilerFrameIndex = temp;
+        }
 
 #if 0
 				{
@@ -121,216 +129,233 @@ namespace UI
 					}
 				}
 #else
-				static int s_BlockIndexForSummary = 0;
+        static int s_BlockIndexForSummary = 0;
 
-				if(UI::CollapsingHeader("Frame Timeline", &s_ShowTimelineRegion))
-				{
-					static float s_TimelineZoom = 1;
-					UI::SliderFloat("Timeline Zoom", &s_TimelineZoom, 0, 10);
+        if(UI::CollapsingHeader("Frame Timeline", &s_ShowTimelineRegion))
+        {
+          static float s_TimelineZoom = 1;
+          UI::SliderFloat("Timeline Zoom", &s_TimelineZoom, 0, 10);
 
-					float AvailableWidth = UI::GetAvailableWidth();
-					float ChildPadding = 30.0f;
-					UI::Dummy(ChildPadding);
-					UI::SameLine();
+          float AvailableWidth = UI::GetAvailableWidth();
+          float ChildPadding   = 30.0f;
+          UI::Dummy(ChildPadding);
+          UI::SameLine();
 
-					UI::PushStyleColor(UI::COLOR_WindowBackground, vec4{0.4f, 0.4f, 0.5f, 0.3f});
-					UI::BeginChildWindow("Profile Timeline Window", { AvailableWidth - ChildPadding * 2, 200 });
-					{
-						UI::PushStyleVar(UI::VAR_BoxPaddingX, 1);
-						UI::PushStyleVar(UI::VAR_BoxPaddingY, 1);
-						UI::PushStyleVar(UI::VAR_SpacingX, 0);
-						UI::PushStyleVar(UI::VAR_SpacingY, 1);
-						{
-							const float MaxProfileWidth = (0.5f*s_TimelineZoom)*UI::GetWindowWidth();
-							const float StackBlockHeight = 20.0f;
-							const frame_endpoints FrameCycleCounter = GLOBAL_FRAME_ENDPOINT_TABLE[s_CurrentModifiableFrameIndex];
-							const float BaselineCycleCount = 5e6;//(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
-							for(int j = 0; j < 5; j++)
-							{
-								float CurrentHorizontalPosition = 0.0f;
-								for(int i = 0; i < GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
-								{
-									timer_event CurrentEvent = GLOBAL_FRAME_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
-									if(CurrentEvent.EventDepth == j)
-									{
-										float EventWidth = (MaxProfileWidth/BaselineCycleCount)*(float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
-										float EventLeft = (MaxProfileWidth/BaselineCycleCount)*(CurrentEvent.StartCycleCount-FrameCycleCounter.FrameStart);
+          UI::PushStyleColor(UI::COLOR_WindowBackground, vec4{ 0.4f, 0.4f, 0.5f, 0.3f });
+          UI::BeginChildWindow("Profile Timeline Window",
+                               { AvailableWidth - ChildPadding * 2, 200 });
+          {
+            UI::PushStyleVar(UI::VAR_BoxPaddingX, 1);
+            UI::PushStyleVar(UI::VAR_BoxPaddingY, 1);
+            UI::PushStyleVar(UI::VAR_SpacingX, 0);
+            UI::PushStyleVar(UI::VAR_SpacingY, 1);
+            {
+              const float MaxProfileWidth  = (0.5f * s_TimelineZoom) * UI::GetWindowWidth();
+              const float StackBlockHeight = 20.0f;
+              const frame_endpoints FrameCycleCounter =
+                GLOBAL_FRAME_ENDPOINT_TABLE[s_CurrentModifiableFrameIndex];
+              const float BaselineCycleCount =
+                5e6; //(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
+              for(int j = 0; j < 5; j++)
+              {
+                float CurrentHorizontalPosition = 0.0f;
+                for(int i = 0;
+                    i < GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
+                {
+                  timer_event CurrentEvent =
+                    GLOBAL_FRAME_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
+                  if(CurrentEvent.EventDepth == j)
+                  {
+                    float EventWidth =
+                      (MaxProfileWidth / BaselineCycleCount) *
+                      (float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
+                    float EventLeft = (MaxProfileWidth / BaselineCycleCount) *
+                                      (CurrentEvent.StartCycleCount - FrameCycleCounter.FrameStart);
 
-										const float *EventColor = &TIMER_UI_COLOR_TABLE[CurrentEvent.NameTableIndex][0];
-										UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{EventColor[0], EventColor[1], EventColor[2], 1});
-										{
-											float DummyWidth = EventLeft - CurrentHorizontalPosition;
-											UI::Dummy(EventLeft-CurrentHorizontalPosition);
-											UI::SameLine();
-											if(UI::Button(TIMER_NAME_TABLE[CurrentEvent.NameTableIndex],  EventWidth))
-											{
-												s_BlockIndexForSummary = CurrentEvent.NameTableIndex;
-											}
-											UI::SameLine();
-											CurrentHorizontalPosition += DummyWidth + EventWidth;
-										}
-										UI::PopStyleColor();
-									}
-								}
-								UI::NewLine();
-							}
-						}
-						UI::PopStyleVar();
-						UI::PopStyleVar();
-						UI::PopStyleVar();
-						UI::PopStyleVar();
-					}
-					UI::EndChildWindow();
-					UI::PopStyleColor();
-					UI::NewLine();
-					{
-						{
-							UI::Text(TIMER_NAME_TABLE[s_BlockIndexForSummary]);
-							UI::SameLine();
-							{
-								char CountBuffer[40];
-								sprintf(CountBuffer, ": %lu", GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][s_BlockIndexForSummary].CycleCount);
-								UI::Text(CountBuffer);
-							}
-							UI::NewLine();
-						}
-					}
-				}
+                    const float* EventColor = &TIMER_UI_COLOR_TABLE[CurrentEvent.NameTableIndex][0];
+                    UI::PushStyleColor(UI::COLOR_ButtonNormal,
+                                       vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
+                    {
+                      float DummyWidth = EventLeft - CurrentHorizontalPosition;
+                      UI::Dummy(EventLeft - CurrentHorizontalPosition);
+                      UI::SameLine();
+                      if(UI::Button(TIMER_NAME_TABLE[CurrentEvent.NameTableIndex], EventWidth))
+                      {
+                        s_BlockIndexForSummary = CurrentEvent.NameTableIndex;
+                      }
+                      UI::SameLine();
+                      CurrentHorizontalPosition += DummyWidth + EventWidth;
+                    }
+                    UI::PopStyleColor();
+                  }
+                }
+                UI::NewLine();
+              }
+            }
+            UI::PopStyleVar();
+            UI::PopStyleVar();
+            UI::PopStyleVar();
+            UI::PopStyleVar();
+          }
+          UI::EndChildWindow();
+          UI::PopStyleColor();
+          UI::NewLine();
+          {
+            {
+              UI::Text(TIMER_NAME_TABLE[s_BlockIndexForSummary]);
+              UI::SameLine();
+              {
+                char CountBuffer[40];
+                sprintf(CountBuffer, ": %lu",
+                        GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex]
+                                                        [s_BlockIndexForSummary]
+                                                          .CycleCount);
+                UI::Text(CountBuffer);
+              }
+              UI::NewLine();
+            }
+          }
+        }
 #endif
 
-				if(UI::CollapsingHeader("Frame Event Summaries", &s_ShowFrameSummaries))
-				{
-					for(int i = 0; i < ArrayCount(TIMER_NAME_TABLE); i++)
-					{
-						UI::Text(TIMER_NAME_TABLE[i]);
-						UI::SameLine();
-						{
-							char CountBuffer[40];
-							sprintf(CountBuffer, ": %lu", GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
-							UI::Text(CountBuffer);
-						}
-						UI::NewLine();
-					}
-				}
+        if(UI::CollapsingHeader("Frame Event Summaries", &s_ShowFrameSummaries))
+        {
+          for(int i = 0; i < ArrayCount(TIMER_NAME_TABLE); i++)
+          {
+            UI::Text(TIMER_NAME_TABLE[i]);
+            UI::SameLine();
+            {
+              char CountBuffer[40];
+              sprintf(CountBuffer, ": %lu",
+                      GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][i]
+                        .CycleCount);
+              UI::Text(CountBuffer);
+            }
+            UI::NewLine();
+          }
+        }
 
-				if(UI::CollapsingHeader("GPU Frame Event Summaries", &s_ShowGPUFrameSummaries))
-				{
-					for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)
-					{
-						UI::Text(GPU_TIMER_NAME_TABLE[i]);
-						UI::SameLine();
-						{
-							char CountBuffer[40];
-							sprintf(CountBuffer, ": %fms", GPU_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i].ElapsedTime/(float)1e6);
-							UI::Text(CountBuffer);
-						}
-						UI::NewLine();
-					}
-				}
-			}
-			UI::EndWindow();
-		}
+        if(UI::CollapsingHeader("GPU Frame Event Summaries", &s_ShowGPUFrameSummaries))
+        {
+          for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)
+          {
+            UI::Text(GPU_TIMER_NAME_TABLE[i]);
+            UI::SameLine();
+            {
+              char CountBuffer[40];
+              sprintf(CountBuffer, ": %fms",
+                      GPU_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i].ElapsedTime /
+                        (float)1e6);
+              UI::Text(CountBuffer);
+            }
+            UI::NewLine();
+          }
+        }
+      }
+      UI::EndWindow();
+    }
 
+    if(s_ShowPhysicsWindow)
+    {
+      UI::BeginWindow("Physics Window", { 150, 50 }, { 500, 380 });
+      {
+        physics_params&   Params   = GameState->Physics.Params;
+        physics_switches& Switches = GameState->Physics.Switches;
+        UI::Checkbox("Simulating Dynamics", &Switches.SimulateDynamics);
+        UI::SliderInt("Iteration Count", &Params.PGSIterationCount, 0, 250);
+        UI::SliderFloat("Beta", &Params.Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+        Switches.PerformDynamicsStep = UI::Button("Step Dynamics");
+        UI::Checkbox("Gravity", &Switches.UseGravity);
+        UI::Checkbox("Friction", &Switches.SimulateFriction);
+        UI::SliderFloat("Mu", &Params.Mu, 0.0f, 1.0f);
 
-		if(s_ShowPhysicsWindow)
-		{
-			UI::BeginWindow("Physics Window", { 150, 50 }, { 500, 380 });
-			{
-				physics_params& Params = GameState->Physics.Params;
-				physics_switches& Switches = GameState->Physics.Switches;
-				UI::Checkbox("Simulating Dynamics", &Switches.SimulateDynamics);
-				UI::SliderInt("Iteration Count", &Params.PGSIterationCount, 0, 250);
-				UI::SliderFloat("Beta", &Params.Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
-				Switches.PerformDynamicsStep = UI::Button("Step Dynamics");
-				UI::Checkbox("Gravity", &Switches.UseGravity);
-				UI::Checkbox("Friction", &Switches.SimulateFriction);
-				UI::SliderFloat("Mu", &Params.Mu, 0.0f, 1.0f);
+        UI::Checkbox("Draw Omega    (green)", &Switches.VisualizeOmega);
+        UI::Checkbox("Draw V        (yellow)", &Switches.VisualizeV);
+        UI::Checkbox("Draw Fc       (red)", &Switches.VisualizeFc);
+        UI::Checkbox("Draw Friction (green)", &Switches.VisualizeFriction);
+        UI::Checkbox("Draw Fc Comopnents     (Magenta)", &Switches.VisualizeFcComponents);
+        UI::Checkbox("Draw Contact Points    (while)", &Switches.VisualizeContactPoints);
+        UI::Checkbox("Draw Contact Manifolds (blue/red)", &Switches.VisualizeContactManifold);
+        UI::DragFloat3("Net Force Start", &Params.ExternalForceStart.X, -INFINITY, INFINITY, 5);
+        UI::DragFloat3("Net Force Vector", &Params.ExternalForce.X, -INFINITY, INFINITY, 5);
+        UI::Checkbox("Apply Force", &Switches.ApplyExternalForce);
+        UI::Checkbox("Apply Torque", &Switches.ApplyExternalTorque);
+      }
+      UI::EndWindow();
+    }
 
-				UI::Checkbox("Draw Omega    (green)", &Switches.VisualizeOmega);
-				UI::Checkbox("Draw V        (yellow)", &Switches.VisualizeV);
-				UI::Checkbox("Draw Fc       (red)", &Switches.VisualizeFc);
-				UI::Checkbox("Draw Friction (green)", &Switches.VisualizeFriction);
-				UI::Checkbox("Draw Fc Comopnents     (Magenta)", &Switches.VisualizeFcComponents);
-				UI::Checkbox("Draw Contact Points    (while)", &Switches.VisualizeContactPoints);
-				UI::Checkbox("Draw Contact Manifolds (blue/red)", &Switches.VisualizeContactManifold);
-				UI::DragFloat3("Net Force Start", &Params.ExternalForceStart.X, -INFINITY, INFINITY, 5);
-				UI::DragFloat3("Net Force Vector", &Params.ExternalForce.X, -INFINITY, INFINITY, 5);
-				UI::Checkbox("Apply Force", &Switches.ApplyExternalForce);
-				UI::Checkbox("Apply Torque", &Switches.ApplyExternalTorque);
-			}
-			UI::EndWindow();
-		}
+    if(s_ShowDemoWindow)
+    {
+      UI::BeginWindow("window A", { 670, 50 }, { 500, 380 });
+      {
+        static int         s_CurrentItem = -1;
+        static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
 
-		if(s_ShowDemoWindow)
-		{
-			UI::BeginWindow("window A", { 670, 50 }, { 500, 380 });
-			{
-				static int         s_CurrentItem = -1;
-				static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
+        static bool s_ShowDemo = true;
+        if(UI::CollapsingHeader("Demo", &s_ShowDemo))
+        {
+          static bool s_Checkbox0 = false;
+          static bool s_Checkbox1 = false;
 
-				static bool s_ShowDemo = true; if(UI::CollapsingHeader("Demo", &s_ShowDemo))
-				{
-					static bool s_Checkbox0 = false;
-					static bool s_Checkbox1 = false;
+          {
+            gui_style& Style     = *UI::GetStyle();
+            int32_t    Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
+            UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
+            Style.Vars[UI::VAR_BorderThickness] = Thickness;
 
-					{
-						gui_style& Style     = *UI::GetStyle();
-						int32_t    Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
-						UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
-						Style.Vars[UI::VAR_BorderThickness] = Thickness;
+            UI::Text("Hold ctrl when dragging to snap to whole values");
+            UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1,
+                           5);
+            UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
+            UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
+            UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
+            UI::SliderFloat("Vertical Spacing", &Style.Vars[UI::VAR_SpacingY], 0, 10);
+            UI::SliderFloat("Internal Spacing", &Style.Vars[UI::VAR_InternalSpacing], 0, 10);
+          }
+          UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
+          int StartIndex = 3;
+          UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
+                    ARRAY_SIZE(s_Items) - StartIndex);
+          UI::NewLine();
 
-						UI::Text("Hold ctrl when dragging to snap to whole values");
-						UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1, 5);
-						UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
-						UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
-						UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
-						UI::SliderFloat("Vertical Spacing", &Style.Vars[UI::VAR_SpacingY], 0, 10);
-						UI::SliderFloat("Internal Spacing", &Style.Vars[UI::VAR_InternalSpacing], 0, 10);
-					}
-					UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
-					int StartIndex = 3;
-					UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
-										ARRAY_SIZE(s_Items) - StartIndex);
-					UI::NewLine();
+          char TempBuff[30];
+          snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+          UI::Text(TempBuff);
 
-					char TempBuff[30];
-					snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
-					UI::Text(TempBuff);
+          snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX,
+                   Input->MouseScreenY);
+          UI::Text(TempBuff);
+          snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
+                   Input->NormMouseY);
+          UI::Text(TempBuff);
+          snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
+          UI::Text(TempBuff);
 
-					snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX,
-									 Input->MouseScreenY);
-					UI::Text(TempBuff);
-					snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
-									 Input->NormMouseY);
-					UI::Text(TempBuff);
-					snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
-					UI::Text(TempBuff);
+          UI::Checkbox("Show Image", &s_Checkbox0);
+          if(s_Checkbox0)
+          {
+            UI::SameLine();
+            UI::Checkbox("Put image in frame", &s_Checkbox1);
+            UI::NewLine();
+            if(s_Checkbox1)
+            {
+              UI::BeginChildWindow("Image frame", { 300, 170 });
+            }
 
-					UI::Checkbox("Show Image", &s_Checkbox0);
-					if(s_Checkbox0)
-					{
-						UI::SameLine();
-						UI::Checkbox("Put image in frame", &s_Checkbox1);
-						UI::NewLine();
-						if(s_Checkbox1)
-						{
-							UI::BeginChildWindow("Image frame", { 300, 170 });
-						}
+            UI::Image("material preview", GameState->IDTexture, { 400, 220 });
 
-						UI::Image("material preview", GameState->IDTexture, { 400, 220 });
-
-						if(s_Checkbox1)
-						{
-							UI::EndChildWindow();
-						}
-					}
-				}
-			}
-			UI::EndWindow();
-		}
+            if(s_Checkbox1)
+            {
+              UI::EndChildWindow();
+            }
+          }
+        }
+      }
+      UI::EndWindow();
+    }
 
     UI::EndFrame();
-		END_TIMED_BLOCK(GUI);
+    END_TIMED_BLOCK(GUI);
   }
 }
 
@@ -612,8 +637,8 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
                            5.0f);
             UI::DragFloat4("Diffuse Color", &CurrentMaterial->LightWave.DiffuseColor.X, 0.0f, 1.0f,
                            5.0f);
-            UI::DragFloat3("Specular Color", &CurrentMaterial->LightWave.SpecularColor.X, 0.0f, 1.0f,
-                           5.0f);
+            UI::DragFloat3("Specular Color", &CurrentMaterial->LightWave.SpecularColor.X, 0.0f,
+                           1.0f, 5.0f);
 
             UI::SliderFloat("Shininess", &CurrentMaterial->LightWave.Shininess, 1.0f, 512.0f);
           }
@@ -831,23 +856,23 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           RB->q.S = 1;
           RB->q.V = {};
         }
-        //UI::DragFloat4("q", &RB->q.S, -INFINITY, INFINITY, 10);
-        //Math::Normalize(&RB->q);
+        // UI::DragFloat4("q", &RB->q.S, -INFINITY, INFINITY, 10);
+        // Math::Normalize(&RB->q);
 
         if(UI::Button("Clear v"))
         {
           RB->v = {};
         }
-				UI::SameLine();
+        UI::SameLine();
         UI::DragFloat3("v", &RB->v.X, -INFINITY, INFINITY, 10);
-				UI::NewLine();
+        UI::NewLine();
         if(UI::Button("Clear w"))
         {
           RB->w = {};
         }
-				UI::SameLine();
+        UI::SameLine();
         UI::DragFloat3("w", &RB->w.X, -INFINITY, INFINITY, 10);
-				UI::NewLine();
+        UI::NewLine();
 
         UI::Checkbox("Regard Gravity", &RB->RegardGravity);
 
@@ -1173,8 +1198,7 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
 // TODO(Lukas) Add bit mask checkbox to the UI API
 void
 MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet,
-        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings,
-        bool& s_ShowPostProcessingSettings)
+        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings)
 {
   if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))
   {
@@ -1197,7 +1221,8 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     UI::SliderFloat("Sun Z Angle", &GameState->R.Sun.RotationZ, 0.0f, 90.0f);
     UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.RotationY, -180, 180);
 
-		UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0, SHADOWMAP_CASCADE_COUNT-1);
+    UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0,
+                  SHADOWMAP_CASCADE_COUNT - 1);
     UI::Checkbox("Display sun-perspective depth map", &GameState->R.DrawShadowMap);
     UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
     if(UI::Button("Recompute Directional Shadows"))
@@ -1335,7 +1360,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
 #endif
     }
 
-    //UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
+    // UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
 
     if(SimpleFog)
     {
@@ -1375,7 +1400,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     UI::Checkbox("Draw Debug Lines", &GameState->DrawDebugLines);
     UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
     UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
-    //UI::Checkbox("Timeline", &GameState->DrawTimeline);
+    // UI::Checkbox("Timeline", &GameState->DrawTimeline);
   }
 
   if(UI::CollapsingHeader("Scene", &s_ShowSceneSettings))
@@ -1416,11 +1441,11 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
       }
     }
   }
-	{
-		char TempBuffer[32];
-		sprintf(TempBuffer, "ActiveID: %u", UI::GetActiveID());
-		UI::Text(TempBuffer);
-		sprintf(TempBuffer, "HotID: %u", UI::GetHotID());
-		UI::Text(TempBuffer);
-	}
+  {
+    char TempBuffer[32];
+    sprintf(TempBuffer, "ActiveID: %u", UI::GetActiveID());
+    UI::Text(TempBuffer);
+    sprintf(TempBuffer, "HotID: %u", UI::GetHotID());
+    UI::Text(TempBuffer);
+  }
 }

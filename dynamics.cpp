@@ -12,7 +12,8 @@ typedef DYDT_FUNC(dydt_func);
 hull g_CubeHull;
 
 void
-ComputeExternalForcesAndTorques(vec3 F[][2], const rigid_body RigidBodies[], int RBCount, const physics_params* Params, const physics_switches* Switches)
+ComputeExternalForcesAndTorques(vec3 F[][2], const rigid_body RigidBodies[], int RBCount,
+                                const physics_params* Params, const physics_switches* Switches)
 {
   for(int i = 0; i < RBCount; i++)
   {
@@ -42,8 +43,7 @@ FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(float Epsilon[], int Jmap[][2],
                                                  float LambdaMinMax[][2], int32_t Dependencies[],
                                                  const rigid_body RigidBodies[], int RBCount,
                                                  const constraint Constraints[],
-                                                 int              ConstraintCount,
-																								 float Mu, float Bias)
+                                                 int ConstraintCount, float Mu, float Bias)
 {
   for(int i = 0; i < ConstraintCount; i++)
   {
@@ -181,8 +181,8 @@ DYDT_FUNC(DYDT_PGS)
   FillMDiagInvMatrix(MDiagInv, RigidBodies, RBCount);
   FillEpsilonJmapJspLambdaMinMaxLambdaDependencies(Epsilon, Jmap, Jsp, LambdaMinMax,
                                                    LambdaDependencies, RigidBodies, RBCount,
-                                                   Constraints, ConstraintCount,
-																									 Params->Mu, Params->Beta);
+                                                   Constraints, ConstraintCount, Params->Mu,
+                                                   Params->Beta);
   ComputeExternalForcesAndTorques(Fext, RigidBodies, RBCount, Params, Switches);
 
   const float dt = t1 - t0;
@@ -235,50 +235,45 @@ DYDT_FUNC(DYDT_PGS)
     Lambda[i] = 0.0f;
   }
 
-	const float LARGE_NUMBER = 1e2;
-#if 1
   // Solve for lambda (PGS)
   for(int k = 0; k < IterationCount; k++)
   {
     for(int i = 0; i < ConstraintCount; i++)
     {
-			//if(Constraints[i].Type != CONSTRAINT_Friction)
-			{
-				float Delta = 0.0f;
-				{
-					for(int j = 0; j < i; j++)
-					{
-						//if(Constraints[j].Type != CONSTRAINT_Friction)
-							Delta += a[i][j] * Lambda[j];
-					}
-					for(int j = i + 1; j < ConstraintCount; j++)
-					{
-						//if(Constraints[j].Type != CONSTRAINT_Friction)
-							Delta += a[i][j] * Lambda[j];
-					}
-				}
+      // if(Constraints[i].Type != CONSTRAINT_Friction)
+      {
+        float Delta = 0.0f;
+        {
+          for(int j = 0; j < i; j++)
+          {
+            // if(Constraints[j].Type != CONSTRAINT_Friction)
+            Delta += a[i][j] * Lambda[j];
+          }
+          for(int j = i + 1; j < ConstraintCount; j++)
+          {
+            // if(Constraints[j].Type != CONSTRAINT_Friction)
+            Delta += a[i][j] * Lambda[j];
+          }
+        }
 
-				// TODO(Lukas) Remove magic value or other solution
-				if(0.00001f < a[i][i])
-				{
-					Lambda[i] = (b[i] - Delta) / a[i][i];
-				}else {
-					Lambda[i] = LARGE_NUMBER;
-				}
+        // TODO(Lukas) Remove magic value or other solution
+        if(0.000001f < a[i][i])
+        {
+          Lambda[i] = (b[i] - Delta) / a[i][i];
+        }
 
-				float S = 1.0f;
-				if(0 <= LambdaDependencies[i])
-				{
-					S = Lambda[LambdaDependencies[i]];
-				}
+        float S = 1.0f;
+        if(0 <= LambdaDependencies[i])
+        {
+          S = Lambda[LambdaDependencies[i]];
+        }
 
-				assert(LambdaMinMax[0] < LambdaMinMax[1]);
-				Lambda[i] = ClampFloat(LambdaMinMax[i][0] * S, Lambda[i], LambdaMinMax[i][1] * S);
-			}
-		}
+        assert(LambdaMinMax[0] < LambdaMinMax[1]);
+        Lambda[i] = ClampFloat(LambdaMinMax[i][0] * S, Lambda[i], LambdaMinMax[i][1] * S);
+      }
+    }
   }
-#else
-#endif
+
   for(int i = 0; i < RBCount; i++)
   {
     Fc[i][0] = {};
@@ -294,37 +289,39 @@ DYDT_FUNC(DYDT_PGS)
     Fc[IndB][0] += Jsp[i][2] * Lambda[i];
     Fc[IndB][1] += Jsp[i][3] * Lambda[i];
 
-		if(Switches->VisualizeFcComponents)
-		{
-			vec3 Pa0 = RigidBodies[IndA].X + Constraints[i].BodyRa;
-			vec3 Pa1 = Pa0 + Jsp[i][0] * Lambda[i];
-			switch(Constraints[i].Type)
-			{
-				case CONSTRAINT_Contact:
-				{
-					Debug::PushLine(Pa0, Pa1, { 1, 0, 0.5f, 1 });
-					Debug::PushWireframeSphere(Pa1, 0.05f, { 1, 0, 0.5f, 1 });
-					break;
-				}
-				case CONSTRAINT_Friction:
-				{
-					Debug::PushLine(Pa0, Pa1, { 1, 1, 0, 1 });
-					Debug::PushWireframeSphere(Pa1, 0.05f, { 1, 1, 0, 1 });
-					break;
-				}
-			}
-		}
+    if(Switches->VisualizeFcComponents)
+    {
+      vec3 Pa0 = RigidBodies[IndA].X + Constraints[i].BodyRa;
+      vec3 Pa1 = Pa0 + Jsp[i][0] * Lambda[i];
+      switch(Constraints[i].Type)
+      {
+        case CONSTRAINT_Contact:
+        {
+          Debug::PushLine(Pa0, Pa1, { 1, 0, 0.5f, 1 });
+          Debug::PushWireframeSphere(Pa1, 0.05f, { 1, 0, 0.5f, 1 });
+          break;
+        }
+        case CONSTRAINT_Friction:
+        {
+          Debug::PushLine(Pa0, Pa1, { 1, 1, 0, 1 });
+          Debug::PushWireframeSphere(Pa1, 0.05f, { 1, 1, 0, 1 });
+          break;
+        }
+      }
+    }
   }
 }
 
 void
 ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int ConstraintCount,
-    float t0, float t1, dydt_func dydt, int32_t IterationCount, bool UpdateState, const physics_params* Params, const physics_switches* Switches)
+    float t0, float t1, dydt_func dydt, int32_t IterationCount, bool UpdateState,
+    const physics_params* Params, const physics_switches* Switches)
 {
-	TIMED_BLOCK(ODE);
+  TIMED_BLOCK(ODE);
   vec3 Fext[RIGID_BODY_MAX_COUNT][2];
   vec3 Fc[RIGID_BODY_MAX_COUNT][2];
-  dydt(Fext, Fc, RigidBodies, RBCount, Constraints, ConstraintCount, t0, t1, IterationCount, Params, Switches);
+  dydt(Fext, Fc, RigidBodies, RBCount, Constraints, ConstraintCount, t0, t1, IterationCount, Params,
+       Switches);
 
   const float dt = t1 - t0;
   // Euler step
@@ -368,20 +365,18 @@ ODE(rigid_body RigidBodies[], int RBCount, const constraint Constraints[], int C
   }
 }
 
-
-
 void
 SimulateDynamics(physics_world* World)
 {
-	TIMED_BLOCK(SimulateDynamics);
+  TIMED_BLOCK(SimulateDynamics);
   if(1 <= World->RBCount)
   {
-		SetUpCubeHull(&g_CubeHull);
+    SetUpCubeHull(&g_CubeHull);
     { // Constrainttest
       World->Constraints.Clear();
 
-      constraint TestConstraint = {};
-      /*TestConstraint.Type       = CONSTRAINT_Distance;
+      /*constraint TestConstraint = {};
+      TestConstraint.Type       = CONSTRAINT_Distance;
       TestConstraint.IndA       = 5;
       TestConstraint.IndB       = 6;
       TestConstraint.L          = 0;
@@ -408,17 +403,64 @@ SimulateDynamics(physics_world* World)
       TestConstraint.IndA   = 0;
       World->Constraints.Push(TestConstraint);*/
 
+      /*TestConstraint.Type = CONSTRAINT_Point;
+      TestConstraint.IndA   = 2;
+      TestConstraint.IndB   = 3;
+      TestConstraint.BodyRa = { -1, 1, 1 };
+      TestConstraint.BodyRb = { 1, 1, 1 };
+      World->Constraints.Push(TestConstraint);*/
+      /*{
+        constraint TestConstraint = {};
+        TestConstraint.Type = CONSTRAINT_Point;
+        TestConstraint.IndA   = 1;
+        TestConstraint.BodyRa = {1.0f, 1.0f, 1.0f};
+        TestConstraint.P      = {0.0f, 7.0f, 0.0f};
+        TestConstraint.L      = 0;
+        World->Constraints.Push(TestConstraint);
+      }
+
+      {
+        constraint TestConstraint = {};
+        TestConstraint.Type = CONSTRAINT_Distance;
+        TestConstraint.IndA   = 1;
+        TestConstraint.IndB   = 2;
+        TestConstraint.BodyRa = {-1.0f, -1.0f, -1.0f};
+        TestConstraint.BodyRb = {1.0f, 1.0f, 1.0f};
+        TestConstraint.L      = 5;
+        World->Constraints.Push(TestConstraint);
+      }
+      {
+        constraint TestConstraint = {};
+        TestConstraint.Type = CONSTRAINT_Distance;
+        TestConstraint.IndA   = 2;
+        TestConstraint.IndB   = 3;
+        TestConstraint.BodyRa = {-1.0f, -1.0f, -1.0f};
+        TestConstraint.BodyRb = {1.0f, 1.0f, 1.0f};
+        TestConstraint.L      = 5;
+        World->Constraints.Push(TestConstraint);
+      }
+      {
+        constraint TestConstraint = {};
+        TestConstraint.Type = CONSTRAINT_Distance;
+        TestConstraint.IndA   = 3;
+        TestConstraint.IndB   = 4;
+        TestConstraint.BodyRa = {-1.0f, -1.0f, -1.0f};
+        TestConstraint.BodyRb = {1.0f, 1.0f, 1.0f};
+        TestConstraint.L      = 0;
+        World->Constraints.Push(TestConstraint);
+      }*/
+
       for(int i = 0; i < World->RBCount; i++)
       {
         for(int j = 0; j < i; j++)
         {
 
-          //Anim::transform ATransform = GameState->Entities[i].Transform;
-          mat4            TransformA = Math::MulMat4(Math::Mat4Translate(World->RigidBodies[i].X),
+          // Anim::transform ATransform = GameState->Entities[i].Transform;
+          mat4 TransformA = Math::MulMat4(Math::Mat4Translate(World->RigidBodies[i].X),
                                           Math::MulMat4(Math::Mat3ToMat4(World->RigidBodies[i].R),
                                                         World->RigidBodies[i].Mat4Scale));
-          //Anim::transform BTransform = GameState->Entities[j].Transform;
-          mat4            TransformB = Math::MulMat4(Math::Mat4Translate(World->RigidBodies[j].X),
+          // Anim::transform BTransform = GameState->Entities[j].Transform;
+          mat4 TransformB = Math::MulMat4(Math::Mat4Translate(World->RigidBodies[j].X),
                                           Math::MulMat4(Math::Mat3ToMat4(World->RigidBodies[j].R),
                                                         World->RigidBodies[j].Mat4Scale));
           /*Math::PrintMat4(Math::MulMat4(Math::Mat4Translate(World->RigidBodies[1].X),
@@ -451,7 +493,7 @@ SimulateDynamics(physics_world* World)
             constraint Constraint;
             for(int c = 0; c < Manifold.PointCount; ++c)
             {
-            	Constraint.Type = CONSTRAINT_Contact;
+              Constraint.Type = CONSTRAINT_Contact;
               // Constraint
               assert(Manifold.Points[c].Penetration < 0);
               vec3 P                 = Manifold.Points[c].Position;
@@ -511,7 +553,8 @@ SimulateDynamics(physics_world* World)
     }
 
     bool UpdateState = (World->Switches.SimulateDynamics || World->Switches.PerformDynamicsStep);
-    ODE(World->RigidBodies, World->RBCount, World->Constraints.Elements, World->Constraints.Count, 0.0f,
-        (FRAME_TIME_MS / 1000.0f), DYDT_PGS, World->Params.PGSIterationCount, UpdateState, &World->Params, &World->Switches);
+    ODE(World->RigidBodies, World->RBCount, World->Constraints.Elements, World->Constraints.Count,
+        0.0f, (FRAME_TIME_MS / 1000.0f), DYDT_PGS, World->Params.PGSIterationCount, UpdateState,
+        &World->Params, &World->Switches);
   }
 }

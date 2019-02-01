@@ -51,7 +51,7 @@ struct game_state
   rid                             CurrentAnimationID;
 
   Resource::resource_manager Resources;
-	physics_world 						 Physics;
+  physics_world              Physics;
 
   camera Camera;
   camera PreviewCamera;
@@ -86,7 +86,7 @@ struct game_state
   bool DrawShadowCascadeVolumes;
   bool DrawTimeline;
   bool IsAnimationPlaying;
-  //float EditorBoneRotationSpeed;
+  // float EditorBoneRotationSpeed;
   bool IsEntityCreationMode;
 
   uint32_t MagicChecksum;

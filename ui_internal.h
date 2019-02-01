@@ -46,7 +46,8 @@ void DrawBox(vec3 TopLeft, vec3 Size, vec4 InnerColor, vec4 BorderColor);
 
 // TODO(Lukas) Fix quad submission api, reduce levels of abstraction up to shader minimize getters
 // these currently store quads with faulty quad data, which is currently resubmitted to other API
-void PushClipQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, bool IntersectWithPrevious = true);
+void PushClipQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size,
+                  bool IntersectWithPrevious = true);
 void PushColoredQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, const vec4& Color);
 void PushTexturedQuad(gui_window* Window, const vec3& TopLeft, const vec3& Size, int32_t TextureID);
 //-----------------------------
@@ -77,7 +78,8 @@ struct rect
   bool
   Encloses(vec3 Point) const
   {
-    return (MinP.X < Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y <= MaxP.Y) ? true : false;
+    return (MinP.X < Point.X && Point.X <= MaxP.X && MinP.Y < Point.Y && Point.Y <= MaxP.Y) ? true
+                                                                                            : false;
   }
 
   bool
@@ -226,7 +228,8 @@ vec3
 gui_window::GetDefaultItemSize() const
 {
   gui_context& g      = *GetContext();
-  vec3         Result = { this->DefaultItemWidth, g.Style.Vars[UI::VAR_FontSize] + 2 * g.Style.Vars[UI::VAR_BoxPaddingY] };
+  vec3         Result = { this->DefaultItemWidth,
+                  g.Style.Vars[UI::VAR_FontSize] + 2 * g.Style.Vars[UI::VAR_BoxPaddingY] };
   return Result;
 }
 
@@ -282,18 +285,18 @@ FocusWindow(gui_window* Window)
 
   if(Window)
   {
-		gui_window* RootWindow = Window->RootWindow;
-		assert(RootWindow);
+    gui_window* RootWindow = Window->RootWindow;
+    assert(RootWindow);
 
-		int Index = -1;
-		for(int i = 0; i < g.OrderedWindows.Count; i++)
-		{
-			if(g.OrderedWindows[i] == RootWindow)
-			{
-				Index = i;
-				break;
-			}
-		}
+    int Index = -1;
+    for(int i = 0; i < g.OrderedWindows.Count; i++)
+    {
+      if(g.OrderedWindows[i] == RootWindow)
+      {
+        Index = i;
+        break;
+      }
+    }
 
     assert(0 <= Index);
     g.OrderedWindows.Delete(Index);
@@ -355,8 +358,10 @@ DrawText(const vec3& BottomLeft, const char* Text)
 
   int32_t  TextureWidth;
   int32_t  TextureHeight;
-  uint32_t TextureID = Text::GetTextTextureID(g.Font, (int32_t)g.Style.Vars[UI::VAR_FontSize], Text, _GetGUIColor(Text), &TextureWidth, &TextureHeight);
-  PushTexturedQuad(Window, { BottomLeft.X, BottomLeft.Y - (float)TextureHeight }, { (float)TextureWidth, (float)TextureHeight }, TextureID);
+  uint32_t TextureID = Text::GetTextTextureID(g.Font, (int32_t)g.Style.Vars[UI::VAR_FontSize], Text,
+                                              _GetGUIColor(Text), &TextureWidth, &TextureHeight);
+  PushTexturedQuad(Window, { BottomLeft.X, BottomLeft.Y - (float)TextureHeight },
+                   { (float)TextureWidth, (float)TextureHeight }, TextureID);
 }
 
 void
@@ -366,7 +371,8 @@ DrawBox(vec3 TopLeft, float Width, float Height, vec4 InnerColor, vec4 BorderCol
   gui_window*  Window = GetCurrentWindow();
   float        Border = g.Style.Vars[UI::VAR_BorderThickness];
   // PushColoredQuad(Window, TopLeft, { Width, Height }, BorderColor);
-  // PushColoredQuad(Window, vec3{ TopLeft.X + Border, TopLeft.Y + Border, TopLeft.Z }, { Width - 2 * Border, Height - 2 * Border }, InnerColor);
+  // PushColoredQuad(Window, vec3{ TopLeft.X + Border, TopLeft.Y + Border, TopLeft.Z }, { Width - 2
+  // * Border, Height - 2 * Border }, InnerColor);
   PushColoredQuad(Window, TopLeft, { Width, Height }, InnerColor);
 }
 
@@ -407,8 +413,9 @@ IDHash(const void* data, int data_size, uint32_t seed)
     // Zero-terminated string
     while(unsigned char c = *current++)
     {
-      // We support a syntax of "label###id" where only "###id" is included in the hash, and only "label" gets displayed.
-      // Because this syntax is rarely used we are optimizing for the common case.
+      // We support a syntax of "label###id" where only "###id" is included in the hash, and only
+      // "label" gets displayed. Because this syntax is rarely used we are optimizing for the common
+      // case.
       // - If we reach ### in the string we discard the hash so far and reset to the seed.
       // - We don't do 'current += 2; continue;' after handling ### to keep the code smaller.
       if(c == '#' && current[0] == '#' && current[1] == '#')
@@ -509,8 +516,10 @@ AddSize(const vec3& Size)
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  Window.MaxPos.X = MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X /* + g.Style.Vars[UI::VAR_SpacingX]*/);
-  Window.MaxPos.Y = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y /*+ g.Style.Vars[UI::VAR_SpacingY]*/);
+  Window.MaxPos.X =
+    MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X /* + g.Style.Vars[UI::VAR_SpacingX]*/);
+  Window.MaxPos.Y =
+    MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y /*+ g.Style.Vars[UI::VAR_SpacingY]*/);
 
   Window.PreviousPos = Window.CurrentPos + vec3{ Size.X + g.Style.Vars[UI::VAR_SpacingX], 0 };
   Window.CurrentPos.Y += Size.Y + g.Style.Vars[UI::VAR_SpacingY];
@@ -543,7 +552,8 @@ bool
 IsPopupOpen(ui_id ID)
 {
   gui_context& g = *GetContext();
-  return (g.CurrentPopupStack.Count < g.OpenPopupStack.Count && g.OpenPopupStack[g.CurrentPopupStack.Count].ID == ID);
+  return (g.CurrentPopupStack.Count < g.OpenPopupStack.Count &&
+          g.OpenPopupStack[g.CurrentPopupStack.Count].ID == ID);
 }
 
 void
@@ -600,7 +610,8 @@ CloseInactivePopups()
       bool HasFocus = false;
       for(int m = n; m < g.OpenPopupStack.Count && !HasFocus; m++)
       {
-        HasFocus = (g.OpenPopupStack[m].Window && g.OpenPopupStack[m].Window->RootWindow == g.FocusedWindow);
+        HasFocus =
+          (g.OpenPopupStack[m].Window && g.OpenPopupStack[m].Window->RootWindow == g.FocusedWindow);
       }
       if(!HasFocus)
       {

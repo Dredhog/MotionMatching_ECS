@@ -47,7 +47,7 @@ Text::LoadSizedFont(const char* FontName, int FontSize)
 Text::font
 Text::LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize)
 {
-	TIMED_BLOCK(LoadFont);
+  TIMED_BLOCK(LoadFont);
   assert(0 < SizeCount && SizeCount <= MAX_FONT_SIZE_COUNT);
   assert(0 < DeltaSize);
   assert(0 < MinSize);
@@ -79,7 +79,7 @@ Text::LoadFont(const char* FontName, int MinSize, int SizeCount, int DeltaSize)
 uint32_t
 LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
 {
-	TIMED_BLOCK(LoadTextTexture);
+  TIMED_BLOCK(LoadTextTexture);
   SDL_Color FontColor;
   FontColor.a = (uint8_t)(255.0f * Color.A);
   FontColor.r = (uint8_t)(255.0f * Color.R);
@@ -96,8 +96,9 @@ LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
     glGenTextures(1, &Texture);
     glBindTexture(GL_TEXTURE_2D, Texture);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DestSurface->w, DestSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, DestSurface->pixels);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DestSurface->w, DestSurface->h, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, DestSurface->pixels);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -111,7 +112,8 @@ LoadTextTexture(TTF_Font* Font, const char* Text, vec4 Color)
 }
 
 bool
-IsDesiredTexture(const text_texture* Texture, const char* TargetText, Text::sized_font* SizedFont, vec4 Color)
+IsDesiredTexture(const text_texture* Texture, const char* TargetText, Text::sized_font* SizedFont,
+                 vec4 Color)
 {
   if((SizedFont == Texture->SizedFont) && (Color == Texture->Color))
   {
@@ -126,7 +128,8 @@ IsDesiredTexture(const text_texture* Texture, const char* TargetText, Text::size
 void ReplaceTextTexture();
 
 int32_t
-SearchForDesiredTextureID(text_texture* Textures, Text::sized_font* SizedFont, const char* Text, vec4 Color, int32_t TextureCount)
+SearchForDesiredTextureID(text_texture* Textures, Text::sized_font* SizedFont, const char* Text,
+                          vec4 Color, int32_t TextureCount)
 {
   for(int i = 0; i < TextureCount; i++)
   {
@@ -196,10 +199,12 @@ Text::GetTextSize(const font* Font, const char* Text, int32_t* OutWidth, int32_t
 }
 
 uint32_t
-Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color, int32_t* Width, int32_t* Height)
+Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Color, int32_t* Width,
+                       int32_t* Height)
 {
-  sized_font SizedFont        = GetBestMatchingSizedFont(Font, FontSize);
-  int32_t    TextTextureIndex = SearchForDesiredTextureID(g_TextTextureCache, &SizedFont, Text, Color, g_CachedTextureCount);
+  sized_font SizedFont = GetBestMatchingSizedFont(Font, FontSize);
+  int32_t    TextTextureIndex =
+    SearchForDesiredTextureID(g_TextTextureCache, &SizedFont, Text, Color, g_CachedTextureCount);
   if(TextTextureIndex < 0)
   {
     int32_t NewIndex = FindCacheLineToOccupy(g_HitCounts, TEXTURE_CACHE_LINE_COUNT);
@@ -213,10 +218,13 @@ Text::GetTextTextureID(font* Font, int32_t FontSize, const char* Text, vec4 Colo
     }
 
     g_TextTextureCache[NewIndex].TextureID = LoadTextTexture(SizedFont.Font, Text, Color);
-    g_TextTextureCache[NewIndex].Text      = WriteTextToLineBufferAtIndex(g_TextLineCache, Text, NewIndex);
+    g_TextTextureCache[NewIndex].Text =
+      WriteTextToLineBufferAtIndex(g_TextLineCache, Text, NewIndex);
     g_TextTextureCache[NewIndex].SizedFont = &SizedFont;
     g_TextTextureCache[NewIndex].Color     = Color;
-    TTF_SizeText(SizedFont.Font, g_TextTextureCache[NewIndex].Text, &g_TextTextureCache[NewIndex].Dimensions[0], &g_TextTextureCache[NewIndex].Dimensions[1]);
+    TTF_SizeText(SizedFont.Font, g_TextTextureCache[NewIndex].Text,
+                 &g_TextTextureCache[NewIndex].Dimensions[0],
+                 &g_TextTextureCache[NewIndex].Dimensions[1]);
     if(NewIndex == g_CachedTextureCount)
     {
       ++g_CachedTextureCount;
@@ -249,7 +257,7 @@ Text::ClearTextRequestCounts()
 void
 Text::ResetCache()
 {
-	TIMED_BLOCK(ResetCache);
+  TIMED_BLOCK(ResetCache);
   for(int i = 0; i < TEXTURE_CACHE_LINE_COUNT; i++)
   {
     glDeleteTextures(1, &g_TextTextureCache[i].TextureID);

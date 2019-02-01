@@ -100,6 +100,7 @@ namespace Platform
   void  SetHighDPIAwareness();
 }
 
-#define GAME_UPDATE_AND_RENDER(name) void name(game_memory GameMemory, const game_input* const Input)
+#define GAME_UPDATE_AND_RENDER(name)                                                               \
+  void name(game_memory GameMemory, const game_input* const Input)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
 game_update_and_render GameUpdateAndRender;

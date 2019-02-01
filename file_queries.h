@@ -33,7 +33,8 @@ struct file_stat
 
 namespace Platform
 {
-  int32_t ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t MaxElementCount, int32_t* ElementCount, const char* StartPath, const char* Extension);
+  int32_t ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t MaxElementCount,
+                    int32_t* ElementCount, const char* StartPath, const char* Extension);
 }
 
 inline int32_t

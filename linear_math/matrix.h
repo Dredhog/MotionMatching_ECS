@@ -26,7 +26,7 @@ namespace Math
 {
   mat3 Mat3Ident();
   mat4 Mat4Ident();
-	mat3 Mat3Basis(vec3 Right, vec3 Up, vec3 Forward);
+  mat3 Mat3Basis(vec3 Right, vec3 Up, vec3 Forward);
   mat3 MulMat3(mat3 A, mat3 B);
   mat3 Mat4ToMat3(mat4 Mat4);
   mat4 Mat3ToMat4(mat3 Mat3);

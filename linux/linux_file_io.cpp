@@ -11,7 +11,7 @@
 debug_read_file_result
 Platform::ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName)
 {
-	TIMED_BLOCK(ReadEntireFile);
+  TIMED_BLOCK(ReadEntireFile);
   assert(Allocator);
   debug_read_file_result Result     = {};
   int                    FileHandle = open(FileName, O_RDONLY);
@@ -62,7 +62,7 @@ Platform::ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileNam
 debug_read_file_result
 Platform::ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName)
 {
-	TIMED_BLOCK(ReadEntireFile);
+  TIMED_BLOCK(ReadEntireFile);
   assert(Allocator);
   debug_read_file_result Result     = {};
   int                    FileHandle = open(FileName, O_RDONLY);
@@ -113,7 +113,7 @@ Platform::ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName
 bool
 Platform::WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
 {
-	TIMED_BLOCK(WriteEntireFile);
+  TIMED_BLOCK(WriteEntireFile);
   int FileHandle = open(Filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   if(FileHandle == -1)
@@ -180,7 +180,8 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
         }
 
         size_t ExtensionStartIndex = PathLength - ExtensionLength;
-        if(!(Path[ExtensionStartIndex - 1] == '.' && strcmp(&Path[ExtensionStartIndex], g_Extension) == 0))
+        if(!(Path[ExtensionStartIndex - 1] == '.' &&
+             strcmp(&Path[ExtensionStartIndex], g_Extension) == 0))
         {
           return 0;
         }
@@ -225,7 +226,8 @@ CheckFile(const char* Path, const struct stat* Stat, int32_t Flag, struct FTW* F
 }
 
 int32_t
-Platform::ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t MAX_ELEMENT_COUNT, int32_t* ElementCount, const char* StartPath, const char* Extension)
+Platform::ReadPaths(asset_diff* DiffPaths, path* Paths, file_stat* Stats, int32_t MAX_ELEMENT_COUNT,
+                    int32_t* ElementCount, const char* StartPath, const char* Extension)
 {
   int32_t DiffCount = 0;
 

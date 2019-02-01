@@ -14,7 +14,7 @@ UnsetMaterial(render_data* RenderData, int32_t MaterialIndex)
 GLuint
 SetMaterial(game_state* GameState, const camera* Camera, const material* Material)
 {
-	TIMED_BLOCK(SetMaterial);
+  TIMED_BLOCK(SetMaterial);
   if(Material->Common.UseBlending)
   {
     glEnable(GL_BLEND);
@@ -62,9 +62,10 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
                  (float*)&GameState->R.LightDiffuseColor);
     glUniform3fv(glGetUniformLocation(PhongShaderID, "cameraPosition"), 1,
                  (float*)&Camera->Position);
-		glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), SHADOWMAP_CASCADE_COUNT, GL_FALSE,
-											 GameState->R.Sun.CascadeVP[0].e);
-		glUniform1fv(glGetUniformLocation(PhongShaderID, "u_CascadeFarPlanes"), SHADOWMAP_CASCADE_COUNT, GameState->R.Sun.CascadeFarPlaneDistances);
+    glUniformMatrix4fv(glGetUniformLocation(PhongShaderID, "mat_sun_vp"), SHADOWMAP_CASCADE_COUNT,
+                       GL_FALSE, GameState->R.Sun.CascadeVP[0].e);
+    glUniform1fv(glGetUniformLocation(PhongShaderID, "u_CascadeFarPlanes"), SHADOWMAP_CASCADE_COUNT,
+                 GameState->R.Sun.CascadeFarPlaneDistances);
     assert(
       ((Material->Phong.Flags & PHONG_UseDiffuseMap) && Material->Phong.DiffuseMapID.Value > 0) ||
       !(Material->Phong.Flags & PHONG_UseDiffuseMap));
@@ -84,7 +85,6 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
     uint32_t NormalTexture = (Material->Phong.Flags & PHONG_UseNormalMap)
                                ? GameState->Resources.GetTexture(Material->Phong.NormalMapID)
                                : 0;
-    
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, DiffuseTexture);
@@ -212,8 +212,10 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       //<TODO(Lukas) make constant things upload only on shader change>
       // TODO(Lukas) Change dt for time uniform to a cumulative time
       glUniform1f(glGetUniformLocation(CurrentShaderID, "u_Time"), GameState->R.CumulativeTime);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraNearPlane"), GameState->Camera.NearClipPlane);
-      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraFarPlane"), GameState->Camera.FarClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraNearPlane"),
+                  GameState->Camera.NearClipPlane);
+      glUniform1f(glGetUniformLocation(CurrentShaderID, "cameraFarPlane"),
+                  GameState->Camera.FarClipPlane);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "lightPosition"), 1,
                    (float*)&GameState->R.LightPosition);
       glUniform3fv(glGetUniformLocation(CurrentShaderID, "light.ambient"), 1,
@@ -247,7 +249,8 @@ SetMaterial(game_state* GameState, const camera* Camera, const material* Materia
       {
         assert(CurrentGLTextureBindIndex < (GL_TEXTURE0 + MaximalBoundGLTextureCount));
         glActiveTexture(CurrentGLTextureBindIndex);
-        glBindTexture(GL_TEXTURE_2D, GameState->R.ShadowMapTextures[GameState->R.Sun.CurrentCascadeIndex]);
+        glBindTexture(GL_TEXTURE_2D,
+                      GameState->R.ShadowMapTextures[GameState->R.Sun.CurrentCascadeIndex]);
         glUniform1i(glGetUniformLocation(CurrentShaderID, "shadowMap"),
                     CurrentGLTextureBindIndex - GL_TEXTURE0);
 

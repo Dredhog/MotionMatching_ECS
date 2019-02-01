@@ -4,9 +4,12 @@
 #include "misc.h"
 #include "text.h"
 
-static bool ButtonBehavior(rect BoundingBox, ui_id ID, bool* OutHeld = NULL, bool* OutHovered = NULL, UI::button_flags_t Flags = 0);
-static void DragBehavior(ui_id ID, rect BB, float* Value, float MinValue, float MaxValue, float DeltaPerScreen, bool* OutHeld = NULL, bool* OutHovering = NULL);
-static rect SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Vertical = false, bool* OutHeld = NULL, bool* OutHovering = NULL);
+static bool ButtonBehavior(rect BoundingBox, ui_id ID, bool* OutHeld = NULL,
+                           bool* OutHovered = NULL, UI::button_flags_t Flags = 0);
+static void DragBehavior(ui_id ID, rect BB, float* Value, float MinValue, float MaxValue,
+                         float DeltaPerScreen, bool* OutHeld = NULL, bool* OutHovering = NULL);
+static rect SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize,
+                           bool Vertical = false, bool* OutHeld = NULL, bool* OutHovering = NULL);
 static void Scrollbar(gui_window* Window, bool Vertical);
 
 UI::gui_style*
@@ -47,17 +50,23 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
         const float MagicScrollPixelAmount = 50;
         if(g.Input->LeftShift.EndedDown) // Horizontal scrolling
         {
-          const float NormScrollDistance = (g.HoveredWindow->SizeNoScroll.X < g.HoveredWindow->ContentsSize.X)
-                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.HoveredWindow->ContentsSize.X - g.HoveredWindow->SizeNoScroll.X)
-                                             : 0;
-          g.HoveredWindow->ScrollNorm.X = ClampFloat(0, g.HoveredWindow->ScrollNorm.X + NormScrollDistance, 1);
+          const float NormScrollDistance =
+            (g.HoveredWindow->SizeNoScroll.X < g.HoveredWindow->ContentsSize.X)
+              ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) /
+                  (g.HoveredWindow->ContentsSize.X - g.HoveredWindow->SizeNoScroll.X)
+              : 0;
+          g.HoveredWindow->ScrollNorm.X =
+            ClampFloat(0, g.HoveredWindow->ScrollNorm.X + NormScrollDistance, 1);
         }
         else // Vertical scrolling
         {
-          const float NormScrollDistance = (g.HoveredWindow->SizeNoScroll.Y < g.HoveredWindow->ContentsSize.Y)
-                                             ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) / (g.HoveredWindow->ContentsSize.Y - g.HoveredWindow->SizeNoScroll.Y)
-                                             : 0;
-          g.HoveredWindow->ScrollNorm.Y = ClampFloat(0, g.HoveredWindow->ScrollNorm.Y + NormScrollDistance, 1);
+          const float NormScrollDistance =
+            (g.HoveredWindow->SizeNoScroll.Y < g.HoveredWindow->ContentsSize.Y)
+              ? (g.Input->dMouseWheelScreen * MagicScrollPixelAmount) /
+                  (g.HoveredWindow->ContentsSize.Y - g.HoveredWindow->SizeNoScroll.Y)
+              : 0;
+          g.HoveredWindow->ScrollNorm.Y =
+            ClampFloat(0, g.HoveredWindow->ScrollNorm.Y + NormScrollDistance, 1);
         }
       }
 
@@ -72,9 +81,10 @@ UI::BeginFrame(game_state* GameState, const game_input* Input)
       FocusWindow(&g.Windows[i]);
       if(!(g.Windows[i].Flags & WINDOW_IsNotMovable))
       {
-				gui_window* RootMoveWindow = g.Windows[i].RootWindow;
-				assert(RootMoveWindow);
-        RootMoveWindow->Position += { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
+        gui_window* RootMoveWindow = g.Windows[i].RootWindow;
+        assert(RootMoveWindow);
+        RootMoveWindow->Position +=
+          { (float)g.Input->dMouseScreenX, (float)g.Input->dMouseScreenY };
       }
       break;
     }
@@ -160,19 +170,19 @@ UI::EndFrame()
   g.LatestClipRectIndex = 0;
 }
 
-//TODO(Lukas) For debuggig use only (REMOVE)
+// TODO(Lukas) For debuggig use only (REMOVE)
 uint32_t
 UI::GetActiveID()
 {
-	gui_context& g = *GetContext();
-	return g.ActiveID;
+  gui_context& g = *GetContext();
+  return g.ActiveID;
 }
 
 uint32_t
 UI::GetHotID()
 {
-	gui_context& g = *GetContext();
-	return g.HotID;
+  gui_context& g = *GetContext();
+  return g.HotID;
 }
 
 void
@@ -203,22 +213,30 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
     return;
   }
 
-  bool Held     = false;
-  bool Hovered  = false;
-  rect DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
-  *Value        = NormValue * ValueRange + MinValue;
+  bool Held    = false;
+  bool Hovered = false;
+  rect DragRect =
+    SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
+  *Value = NormValue * ValueRange + MinValue;
   if(Held && g.Input->LeftCtrl.EndedDown)
   {
     *Value = floorf(*Value + 0.5f);
   }
 
-  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
-  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox),
+          _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.GetSize(),
+          Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag),
+          _GetGUIColor(ScrollbarDrag));
+  DrawText(SliderRect.MaxP +
+             vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] },
+           Label);
 
   char TempBuffer[20];
   snprintf(TempBuffer, sizeof(TempBuffer), "%.2f", *Value);
-  DrawText({ SliderRect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], SliderRect.MinP.Y + SliderRect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
+  DrawText({ SliderRect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX],
+             SliderRect.MinP.Y + SliderRect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] },
+           TempBuffer);
 }
 
 void
@@ -251,19 +269,27 @@ UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxVa
     return;
   }
 
-  bool Held     = false;
-  bool Hovered  = false;
-  rect DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
-  ValueF        = NormValue * ValueRange + MinValueF;
-  *Value        = (int32_t)(ValueF + 0.5f);
+  bool Held    = false;
+  bool Hovered = false;
+  rect DragRect =
+    SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, Vertical, &Held, &Hovered);
+  ValueF = NormValue * ValueRange + MinValueF;
+  *Value = (int32_t)(ValueF + 0.5f);
 
-  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
-  DrawText(SliderRect.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox),
+          _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.GetSize(),
+          Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag),
+          _GetGUIColor(ScrollbarDrag));
+  DrawText(SliderRect.MaxP +
+             vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] },
+           Label);
 
   char TempBuffer[20];
   snprintf(TempBuffer, sizeof(TempBuffer), "%d", *Value);
-  DrawText({ SliderRect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], SliderRect.MinP.Y + SliderRect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
+  DrawText({ SliderRect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX],
+             SliderRect.MinP.Y + SliderRect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] },
+           TempBuffer);
 }
 
 static void
@@ -291,25 +317,42 @@ Scrollbar(gui_window* Window, bool Vertical)
   // Determine drag size
   float*      ScrollNorm = (Vertical) ? &Window->ScrollNorm.Y : &Window->ScrollNorm.X;
   const float NormDragSize =
-    (Vertical) ? MaxFloat((Window->SizeNoScroll.Y < Window->ContentsSize.Y) ? Window->SizeNoScroll.Y / Window->ContentsSize.Y : 1, g.Style.Vars[UI::VAR_DragMinSize] / Window->SizeNoScroll.Y)
-               : MaxFloat((Window->SizeNoScroll.X < Window->ContentsSize.X) ? Window->SizeNoScroll.X / Window->ContentsSize.X : 1, g.Style.Vars[UI::VAR_DragMinSize] / Window->SizeNoScroll.X);
-  rect ScrollRect = (Vertical) ? NewRect(Window->Position + vec3{ Window->SizeNoScroll.X, 0 }, Window->Position + vec3{ Window->Size.X, Window->SizeNoScroll.Y })
-                               : NewRect(Window->Position + vec3{ 0, Window->SizeNoScroll.Y }, Window->Position + vec3{ Window->SizeNoScroll.X, Window->Size.Y });
+    (Vertical) ? MaxFloat((Window->SizeNoScroll.Y < Window->ContentsSize.Y)
+                            ? Window->SizeNoScroll.Y / Window->ContentsSize.Y
+                            : 1,
+                          g.Style.Vars[UI::VAR_DragMinSize] / Window->SizeNoScroll.Y)
+               : MaxFloat((Window->SizeNoScroll.X < Window->ContentsSize.X)
+                            ? Window->SizeNoScroll.X / Window->ContentsSize.X
+                            : 1,
+                          g.Style.Vars[UI::VAR_DragMinSize] / Window->SizeNoScroll.X);
+  rect ScrollRect = (Vertical)
+                      ? NewRect(Window->Position + vec3{ Window->SizeNoScroll.X, 0 },
+                                Window->Position + vec3{ Window->Size.X, Window->SizeNoScroll.Y })
+                      : NewRect(Window->Position + vec3{ 0, Window->SizeNoScroll.Y },
+                                Window->Position + vec3{ Window->SizeNoScroll.X, Window->Size.Y });
 
   bool Held;
   bool Hovering;
-  rect DragRect = SliderBehavior(ID, ScrollRect, ScrollNorm, NormDragSize, Vertical, &Held, &Hovering);
+  rect DragRect =
+    SliderBehavior(ID, ScrollRect, ScrollNorm, NormDragSize, Vertical, &Held, &Hovering);
 
-  DrawBox(ScrollRect.MinP, ScrollRect.GetSize(), _GetGUIColor(ScrollbarBox), _GetGUIColor(ScrollbarBox));
-  DrawBox(DragRect.MinP, DragRect.GetSize(), Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag), _GetGUIColor(ScrollbarDrag));
+  DrawBox(ScrollRect.MinP, ScrollRect.GetSize(), _GetGUIColor(ScrollbarBox),
+          _GetGUIColor(ScrollbarBox));
+  DrawBox(DragRect.MinP, DragRect.GetSize(),
+          Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag),
+          _GetGUIColor(ScrollbarDrag));
 
   if(Vertical)
   {
-    Window->ScrollRange.Y = (Window->SizeNoScroll.Y < Window->ContentsSize.Y) ? Window->ContentsSize.Y - Window->SizeNoScroll.Y : 0; // Delta in screen space that the window content can scroll
+    Window->ScrollRange.Y = (Window->SizeNoScroll.Y < Window->ContentsSize.Y)
+                              ? Window->ContentsSize.Y - Window->SizeNoScroll.Y
+                              : 0; // Delta in screen space that the window content can scroll
   }
   else
   {
-    Window->ScrollRange.X = (Window->SizeNoScroll.X < Window->ContentsSize.X) ? Window->ContentsSize.X - Window->SizeNoScroll.X : 0; // Delta in screen space that the window content can scroll
+    Window->ScrollRange.X = (Window->SizeNoScroll.X < Window->ContentsSize.X)
+                              ? Window->ContentsSize.X - Window->SizeNoScroll.X
+                              : 0; // Delta in screen space that the window content can scroll
   }
 }
 
@@ -393,21 +436,27 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     Window->Size = Size;
   }
 
-  PushClipQuad(Window, Window->Position, Window->Size, (Window->Flags & WINDOW_IsChildWindow) && !(Window->Flags & (WINDOW_Popup | WINDOW_Combo)));
+  PushClipQuad(Window, Window->Position, Window->Size,
+               (Window->Flags & WINDOW_IsChildWindow) &&
+                 !(Window->Flags & (WINDOW_Popup | WINDOW_Combo)));
   Window->ClippedSizeRect = NewRect(Window->Position, Window->Position + Size); // used for hovering
   Window->ClippedSizeRect.Clip(g.ClipRectStack.Back());                         // used for hovering
-  DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground), _GetGUIColor(WindowBorder));
+  DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground),
+          _GetGUIColor(WindowBorder));
 
   // Order matters
   //#1
   Window->SizeNoScroll = Window->Size;
   Window->SizeNoScroll -=
-    vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0, (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0 };
+    vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize]
+                                                            : 0,
+          (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize]
+                                                              : 0 };
   if(Window->SizeNoScroll.Y < Window->ContentsSize.Y) // Add vertical Scrollbar
   {
     Window->Flags |= UI::WINDOW_UseVerticalScrollbar;
   }
-	else
+  else
   {
     Window->Flags        = (Window->Flags & ~UI::WINDOW_UseVerticalScrollbar);
     Window->ScrollNorm.Y = 0;
@@ -416,31 +465,40 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   {
     Window->Flags |= UI::WINDOW_UseHorizontalScrollbar;
   }
-	else
+  else
   {
     Window->Flags        = (Window->Flags & ~UI::WINDOW_UseHorizontalScrollbar);
     Window->ScrollNorm.X = 0;
   }
   Window->SizeNoScroll = Window->Size;
   Window->SizeNoScroll -=
-    vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0, (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize] : 0 };
+    vec3{ (Window->Flags & UI::WINDOW_UseVerticalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize]
+                                                            : 0,
+          (Window->Flags & UI::WINDOW_UseHorizontalScrollbar) ? g.Style.Vars[UI::VAR_ScrollbarSize]
+                                                              : 0 };
 
-	//Used to preserve scroll position accross content size changes
-	{
-    float NewScrollRangeX = MaxFloat(0, Window->ContentsSize.X - Window->SizeNoScroll.X); // Delta in screen space that the window content can scroll
-    float NewScrollRangeY = MaxFloat(0, Window->ContentsSize.Y - Window->SizeNoScroll.Y); // Delta in screen space that the window content can scroll
+  // Used to preserve scroll position accross content size changes
+  {
+    float NewScrollRangeX =
+      MaxFloat(0, Window->ContentsSize.X -
+                    Window->SizeNoScroll
+                      .X); // Delta in screen space that the window content can scroll
+    float NewScrollRangeY =
+      MaxFloat(0, Window->ContentsSize.Y -
+                    Window->SizeNoScroll
+                      .Y); // Delta in screen space that the window content can scroll
 
-		float PrevOffsetFromTop = Window->ScrollNorm.Y * Window->ScrollRange.Y;
-		float PrevOffsetFromLeft = Window->ScrollNorm.X * Window->ScrollRange.X;
-		if(0 < NewScrollRangeX)
-		{
-		  Window->ScrollNorm.X = ClampFloat(0, PrevOffsetFromLeft/NewScrollRangeX, 1);
-		}
-		if(0 < NewScrollRangeY)
-		{
-		  Window->ScrollNorm.Y = ClampFloat(0, PrevOffsetFromTop/NewScrollRangeY, 1);
-		}
-	}
+    float PrevOffsetFromTop  = Window->ScrollNorm.Y * Window->ScrollRange.Y;
+    float PrevOffsetFromLeft = Window->ScrollNorm.X * Window->ScrollRange.X;
+    if(0 < NewScrollRangeX)
+    {
+      Window->ScrollNorm.X = ClampFloat(0, PrevOffsetFromLeft / NewScrollRangeX, 1);
+    }
+    if(0 < NewScrollRangeY)
+    {
+      Window->ScrollNorm.Y = ClampFloat(0, PrevOffsetFromTop / NewScrollRangeY, 1);
+    }
+  }
 
   //#2
   if(Window->Flags & UI::WINDOW_UseVerticalScrollbar)
@@ -449,7 +507,9 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
     Scrollbar(g.CurrentWindow, false);
 
   //#3
-  Window->StartPos = Window->MaxPos = Window->CurrentPos = Window->Position - vec3{ Window->ScrollNorm.X * Window->ScrollRange.X, Window->ScrollNorm.Y * Window->ScrollRange.Y };
+  Window->StartPos = Window->MaxPos = Window->CurrentPos =
+    Window->Position - vec3{ Window->ScrollNorm.X * Window->ScrollRange.X,
+                             Window->ScrollNorm.Y * Window->ScrollRange.Y };
   PushClipQuad(Window, Window->Position, Window->SizeNoScroll);
 
   Window->DefaultItemWidth = (Window->Flags & WINDOW_Popup ? 1 : 0.65f) * Window->SizeNoScroll.X;
@@ -460,7 +520,8 @@ UI::EndWindow()
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
-  vec3         MinPos = Window.Position - vec3{ Window.ScrollNorm.X * Window.ScrollRange.X, Window.ScrollNorm.Y * Window.ScrollRange.Y };
+  vec3         MinPos = Window.Position - vec3{ Window.ScrollNorm.X * Window.ScrollRange.X,
+                                        Window.ScrollNorm.Y * Window.ScrollRange.Y };
   Window.ContentsSize = Window.MaxPos - MinPos;
 
   //----------Window mooving-----------
@@ -497,7 +558,8 @@ UI::EndChildWindow()
 void
 UI::BeginPopupWindow(const char* Name, vec3 Size, window_flags_t Flags)
 {
-  UI::BeginWindow(Name, {}, Size, Flags | WINDOW_Popup | WINDOW_IsNotMovable | WINDOW_IsNotResizable);
+  UI::BeginWindow(Name, {}, Size,
+                  Flags | WINDOW_Popup | WINDOW_IsNotMovable | WINDOW_IsNotResizable);
 }
 
 void
@@ -511,13 +573,15 @@ UI::EndPopupWindow()
 }
 
 void
-UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems, float Width)
+UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems,
+          float Width)
 {
   UI::Combo(Label, CurrentItem, Items, ItemCount, StringArrayToString, HeightInItems, Width);
 }
 
 void
-UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* (*DataToText)(void*, int), int HeightInItems, float Width)
+UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount,
+          char* (*DataToText)(void*, int), int HeightInItems, float Width)
 {
   gui_context& g      = *GetContext();
   gui_window*  Window = GetCurrentWindow();
@@ -540,7 +604,8 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
   const float ItemHeight  = ButtonSize.Y;
   const float ItemSpacing = 0;
   const float PopupHeight = ItemHeight * (float)MinInt32(ItemCount + 1, HeightInItems);
-  const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y }, { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
+  const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y },
+                               { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
 
   if(!TestIfVisible(ButtonBB))
   {
@@ -598,12 +663,20 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount, char* 
     }
   }
   // So space appears after combo
-  const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem) ? "not selected" : DataToText(Data, *CurrentItem);
+  const char* ActiveText = (*CurrentItem < 0 || ItemCount <= *CurrentItem)
+                             ? "not selected"
+                             : DataToText(Data, *CurrentItem);
 
-  DrawBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(), (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal), _GetGUIColor(Border));
-  DrawText(vec3{ ButtonBB.MinP.X, ButtonBB.MinP.Y + ItemHeight } + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, ActiveText);
+  DrawBox(ButtonTextBB.MinP, ButtonTextBB.GetSize(),
+          (Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal),
+          _GetGUIColor(Border));
+  DrawText(vec3{ ButtonBB.MinP.X, ButtonBB.MinP.Y + ItemHeight } +
+             vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] },
+           ActiveText);
   PushTexturedQuad(Window, IconBB.MinP, IconBB.GetSize(), g.GameState->ExpandedTextureID);
-  DrawText(ButtonBB.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(ButtonBB.MaxP +
+             vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] },
+           Label);
 }
 
 bool
@@ -618,7 +691,8 @@ UI::Button(const char* Label, float Width)
   vec3 Size;
   int  LabelWidth, LabelHeight;
   Text::GetTextSize(g.Font, Label, &LabelWidth, &LabelHeight);
-  Size = vec3{ (float)LabelWidth, (float)LabelHeight } + 2 * vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], g.Style.Vars[UI::VAR_BoxPaddingY] };
+  Size = vec3{ (float)LabelWidth, (float)LabelHeight } +
+         2 * vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], g.Style.Vars[UI::VAR_BoxPaddingY] };
 
   if(Width != 0)
   {
@@ -634,9 +708,13 @@ UI::Button(const char* Label, float Width)
   }
 
   bool Result     = ButtonBehavior(Rect, ID);
-  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(ButtonPressed) : ((ID == g.HotID) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal));
+  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(ButtonPressed)
+                                       : ((ID == g.HotID) ? _GetGUIColor(ButtonHovered)
+                                                          : _GetGUIColor(ButtonNormal));
   DrawBox(Rect.MinP, Size, InnerColor, _GetGUIColor(Border));
-  DrawText(Rect.MinP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(Rect.MinP +
+             vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] },
+           Label);
 
   return Result;
 }
@@ -655,9 +733,12 @@ UI::Checkbox(const char* Label, bool* Toggle)
 
   float CheckboxHeight = Window.GetDefaultItemSize().Y;
 
-  const vec3  IconSize    = vec3{ CheckboxHeight, CheckboxHeight };
-  const rect  IconBB      = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize);
-  const rect& HitRegionBB = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize + vec3{ LabelSize.X + 2 * g.Style.Vars[UI::VAR_InternalSpacing], 0 });
+  const vec3  IconSize = vec3{ CheckboxHeight, CheckboxHeight };
+  const rect  IconBB   = NewRect(Window.CurrentPos, Window.CurrentPos + IconSize);
+  const rect& HitRegionBB =
+    NewRect(Window.CurrentPos,
+            Window.CurrentPos + IconSize +
+              vec3{ LabelSize.X + 2 * g.Style.Vars[UI::VAR_InternalSpacing], 0 });
 
   AddSize(HitRegionBB.GetSize());
   if(!TestIfVisible(HitRegionBB))
@@ -671,14 +752,18 @@ UI::Checkbox(const char* Label, bool* Toggle)
     *Toggle = !(*Toggle);
   }
 
-  vec4 InnerColor = ((ID == g.HotID) ? _GetGUIColor(CheckboxHovered) : _GetGUIColor(CheckboxNormal));
+  vec4 InnerColor =
+    ((ID == g.HotID) ? _GetGUIColor(CheckboxHovered) : _GetGUIColor(CheckboxNormal));
   DrawBox(IconBB.MinP, IconSize, InnerColor, _GetGUIColor(Border));
   if(*Toggle)
   {
-    PushColoredQuad(&Window, IconBB.MinP + 0.2f * IconSize, 0.6f * IconSize, _GetGUIColor(CheckboxPressed));
+    PushColoredQuad(&Window, IconBB.MinP + 0.2f * IconSize, 0.6f * IconSize,
+                    _GetGUIColor(CheckboxPressed));
   }
 
-  DrawText(IconBB.MaxP + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  DrawText(IconBB.MaxP +
+             vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] },
+           Label);
 }
 
 bool
@@ -703,12 +788,18 @@ UI::CollapsingHeader(const char* Label, bool* IsExpanded)
   *IsExpanded = (Result) ? !*IsExpanded : *IsExpanded;
 
   // draw square icon
-  int32_t IconTextureID = (*IsExpanded) ? g.GameState->ExpandedTextureID : g.GameState->CollapsedTextureID;
+  int32_t IconTextureID =
+    (*IsExpanded) ? g.GameState->ExpandedTextureID : g.GameState->CollapsedTextureID;
   PushTexturedQuad(&Window, Rect.MinP, { Size.Y, Size.Y }, IconTextureID);
 
-  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(HeaderPressed) : ((ID == g.HotID) ? _GetGUIColor(HeaderHovered) : _GetGUIColor(HeaderNormal));
-  DrawBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, InnerColor, _GetGUIColor(Border));
-  DrawText(vec3{ Rect.MinP.X, Rect.MinP.Y } + vec3{ Size.Y + g.Style.Vars[UI::VAR_BoxPaddingX], Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+  vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(HeaderPressed)
+                                       : ((ID == g.HotID) ? _GetGUIColor(HeaderHovered)
+                                                          : _GetGUIColor(HeaderNormal));
+  DrawBox({ Rect.MinP.X + Size.Y, Rect.MinP.Y }, { Size.X - Size.Y, Size.Y }, InnerColor,
+          _GetGUIColor(Border));
+  DrawText(vec3{ Rect.MinP.X, Rect.MinP.Y } + vec3{ Size.Y + g.Style.Vars[UI::VAR_BoxPaddingX],
+                                                    Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] },
+           Label);
 
   return *IsExpanded;
 }
@@ -733,11 +824,13 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, UI::button_fl
   bool Result = false;
   if(ID == g.HotID)
   {
-    if((Flags & UI::BUTTON_PressOnRelease) && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+    if((Flags & UI::BUTTON_PressOnRelease) && g.Input->MouseLeft.EndedDown &&
+       g.Input->MouseLeft.Changed)
     {
       SetActive(ID, &Window);
     }
-    else if((Flags & UI::BUTTON_PressOnClick) && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+    else if((Flags & UI::BUTTON_PressOnClick) && g.Input->MouseLeft.EndedDown &&
+            g.Input->MouseLeft.Changed)
     {
       SetActive(0, NULL);
       Result = true;
@@ -751,7 +844,8 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, UI::button_fl
     {
       Held = true;
     }
-    else if((Flags & UI::BUTTON_PressOnRelease) && !g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+    else if((Flags & UI::BUTTON_PressOnRelease) && !g.Input->MouseLeft.EndedDown &&
+            g.Input->MouseLeft.Changed)
     {
       if(ID == g.HotID)
       {
@@ -774,7 +868,8 @@ ButtonBehavior(rect BB, ui_id ID, bool* OutHeld, bool* OutHovered, UI::button_fl
 }
 
 static rect
-SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Vertical, bool* OutHeld, bool* OutHovering)
+SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Vertical,
+               bool* OutHeld, bool* OutHovering)
 {
   assert(BB.MinP.X < BB.MaxP.X);
   assert(BB.MinP.Y < BB.MaxP.Y);
@@ -787,18 +882,22 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
   const float RegionSize = (Vertical) ? BB.GetHeight() : BB.GetWidth();
   assert(g.Style.Vars[UI::VAR_DragMinSize] <= RegionSize);
 
-  const float DragSize          = (NormDragSize * RegionSize < g.Style.Vars[UI::VAR_DragMinSize]) ? g.Style.Vars[UI::VAR_DragMinSize] : NormDragSize * RegionSize;
+  const float DragSize = (NormDragSize * RegionSize < g.Style.Vars[UI::VAR_DragMinSize])
+                           ? g.Style.Vars[UI::VAR_DragMinSize]
+                           : NormDragSize * RegionSize;
   const float MovableRegionSize = RegionSize - DragSize;
   const float DragOffset        = (*ScrollNorm) * MovableRegionSize;
 
   rect DragRect;
   if(Vertical)
   {
-    DragRect = NewRect(BB.MinP.X, BB.MinP.Y + DragOffset, BB.MinP.X + BB.GetWidth(), BB.MinP.Y + DragOffset + DragSize);
+    DragRect = NewRect(BB.MinP.X, BB.MinP.Y + DragOffset, BB.MinP.X + BB.GetWidth(),
+                       BB.MinP.Y + DragOffset + DragSize);
   }
   else
   {
-    DragRect = NewRect(BB.MinP.X + DragOffset, BB.MinP.Y, BB.MinP.X + DragOffset + DragSize, BB.MinP.Y + BB.GetHeight());
+    DragRect = NewRect(BB.MinP.X + DragOffset, BB.MinP.Y, BB.MinP.X + DragOffset + DragSize,
+                       BB.MinP.Y + BB.GetHeight());
   }
 
   bool Held     = false;
@@ -819,15 +918,19 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
     }
 
     // TODO(Lukas) connect to other floating point precision facilities
-    *ScrollNorm = (MovableRegionSize > 0.00001f) ? (((*ScrollNorm) - ScreenRegionStart) / MovableRegionSize) : 0;
+    *ScrollNorm = (MovableRegionSize > 0.00001f)
+                    ? (((*ScrollNorm) - ScreenRegionStart) / MovableRegionSize)
+                    : 0;
 
     if(Vertical)
     {
-      DragRect = NewRect(BB.MinP.X, BB.MinP.Y + DragOffset, BB.MinP.X + BB.GetWidth(), BB.MinP.Y + DragOffset + DragSize);
+      DragRect = NewRect(BB.MinP.X, BB.MinP.Y + DragOffset, BB.MinP.X + BB.GetWidth(),
+                         BB.MinP.Y + DragOffset + DragSize);
     }
     else
     {
-      DragRect = NewRect(BB.MinP.X + DragOffset, BB.MinP.Y, BB.MinP.X + DragOffset + DragSize, BB.MinP.Y + BB.GetHeight());
+      DragRect = NewRect(BB.MinP.X + DragOffset, BB.MinP.Y, BB.MinP.X + DragOffset + DragSize,
+                         BB.MinP.Y + BB.GetHeight());
     }
   }
   if(OutHeld)
@@ -843,7 +946,8 @@ SliderBehavior(ui_id ID, rect BB, float* ScrollNorm, float NormDragSize, bool Ve
 }
 
 static void
-DragBehavior(ui_id ID, rect BB, float* Value, float MinValue, float MaxValue, float DeltaPerScreen, bool* OutHeld, bool* OutHovering)
+DragBehavior(ui_id ID, rect BB, float* Value, float MinValue, float MaxValue, float DeltaPerScreen,
+             bool* OutHeld, bool* OutHovering)
 {
   assert(BB.MinP.X < BB.MaxP.X);
   assert(BB.MinP.Y < BB.MaxP.Y);
@@ -873,7 +977,8 @@ DragBehavior(ui_id ID, rect BB, float* Value, float MinValue, float MaxValue, fl
 }
 
 void
-UI::DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, float ScreenDelta, float Width)
+UI::DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, float ScreenDelta,
+              float Width)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
@@ -906,53 +1011,58 @@ UI::DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, f
   bool Hovered = false;
   DragBehavior(ID, Rect, Value, MinValue, MaxValue, ScreenDelta, &Held, &Hovered);
 
-  vec4 InnerColor = (Held) ? _GetGUIColor(ButtonPressed) : ((Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal));
+  vec4 InnerColor = (Held) ? _GetGUIColor(ButtonPressed)
+                           : ((Hovered) ? _GetGUIColor(ButtonHovered) : _GetGUIColor(ButtonNormal));
   DrawBox(Rect.MinP, Size, InnerColor, _GetGUIColor(Border));
   if(Label)
   {
-    DrawText(Rect.MaxP + vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] }, Label);
+    DrawText(Rect.MaxP +
+               vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], -g.Style.Vars[UI::VAR_BoxPaddingY] },
+             Label);
   }
 
   char TempBuffer[20];
   snprintf(TempBuffer, sizeof(TempBuffer), "%.4f", *Value);
-  DrawText({ Rect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX], Rect.MinP.Y + Rect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] }, TempBuffer);
+  DrawText({ Rect.MinP.X + g.Style.Vars[UI::VAR_BoxPaddingX],
+             Rect.MinP.Y + Rect.GetHeight() - g.Style.Vars[UI::VAR_BoxPaddingY] },
+           TempBuffer);
 }
 
 void
 UI::SameLine()
 {
-	gui_window& Window = *GetCurrentWindow();
-	Window.CurrentPos  = Window.PreviousPos;
+  gui_window& Window = *GetCurrentWindow();
+  Window.CurrentPos  = Window.PreviousPos;
 }
 
 void
 UI::NewLine()
 {
-	gui_context& g      = *GetContext();
-	gui_window&  Window = *GetCurrentWindow();
-	Window.CurrentPos.X = Window.StartPos.X;
-	Window.CurrentPos.Y = Window.MaxPos.Y + g.Style.Vars[UI::VAR_SpacingY];
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+  Window.CurrentPos.X = Window.StartPos.X;
+  Window.CurrentPos.Y = Window.MaxPos.Y + g.Style.Vars[UI::VAR_SpacingY];
 }
 
 void
 UI::Dummy(float Width, float Height)
 {
-	AddSize(vec3{Width, Height, 0});
+  AddSize(vec3{ Width, Height, 0 });
 }
 
 float
 UI::GetWindowWidth()
 {
-  gui_window&  Window = *GetCurrentWindow();
-	return Window.Size.X;
+  gui_window& Window = *GetCurrentWindow();
+  return Window.Size.X;
 }
 
-//TODO(Lukas): Subtract various padding values
+// TODO(Lukas): Subtract various padding values
 float
 UI::GetAvailableWidth()
 {
-  gui_window&  Window = *GetCurrentWindow();
-	return Window.SizeNoScroll.X;
+  gui_window& Window = *GetCurrentWindow();
+  return Window.SizeNoScroll.X;
 }
 
 void
@@ -985,8 +1095,8 @@ UI::PushStyleColor(int32_t Index, vec4 Color)
   assert(0 <= Index && Index < UI::COLOR_Count);
 
   style_color_memo Memo = {};
-  Memo.Color          = g.Style.Colors[Index];
-  Memo.Index          = Index;
+  Memo.Color            = g.Style.Colors[Index];
+  Memo.Index            = Index;
   g.StyleColorStack.Push(Memo);
   g.Style.Colors[Index] = Color;
 }
@@ -1001,15 +1111,16 @@ UI::PopStyleColor()
   g.Style.Colors[Memo.Index] = Memo.Color;
 }
 
-
 void
 UI::DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue, float ScreenDelta)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  vec3  Size              = Window.GetDefaultItemSize();
-  vec3  TextPosition      = Window.CurrentPos + Size + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] };
+  vec3 Size = Window.GetDefaultItemSize();
+  vec3 TextPosition =
+    Window.CurrentPos + Size +
+    vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] };
   float SingleSliderWidth = Size.X / 3;
 
   rect DragRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
@@ -1038,8 +1149,10 @@ UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  vec3  Size              = Window.GetDefaultItemSize();
-  vec3  TextPosition      = Window.CurrentPos + Size + vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] };
+  vec3 Size = Window.GetDefaultItemSize();
+  vec3 TextPosition =
+    Window.CurrentPos + Size +
+    vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] };
   float SingleSliderWidth = Size.X / 4;
 
   rect DragRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);

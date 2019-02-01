@@ -80,16 +80,15 @@ namespace UI
   void EndChildWindow();
   void EndPopupWindow();
 
-	void Dummy(float Width, float Height = 0);
-	float GetWindowWidth();
-	float GetAvailableWidth();
-  void SameLine();
-  void NewLine();
-	void PushStyleVar(int32_t Index, float Value);
-	void PopStyleVar();
-	void PushStyleColor(int32_t Index, vec4 Color);
-	void PopStyleColor();
-
+  void  Dummy(float Width, float Height = 0);
+  float GetWindowWidth();
+  float GetAvailableWidth();
+  void  SameLine();
+  void  NewLine();
+  void  PushStyleVar(int32_t Index, float Value);
+  void  PopStyleVar();
+  void  PushStyleColor(int32_t Index, vec4 Color);
+  void  PopStyleColor();
 
   bool CollapsingHeader(const char* Text, bool* IsExpanded);
   bool Button(const char* Text, float Width = 0);
@@ -110,8 +109,8 @@ namespace UI
   void Image(const char* Name, int32_t TextureID, vec3 Size);
   void Text(const char* Text);
 
-	uint32_t GetActiveID();
-	uint32_t GetHotID();
+  uint32_t GetActiveID();
+  uint32_t GetHotID();
 
   gui_style* GetStyle();
 

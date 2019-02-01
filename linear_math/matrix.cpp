@@ -32,7 +32,7 @@ namespace Math
     {
       A.e[i] *= S;
     }
-    return Result;	
+    return Result;
   }
 
   mat3
@@ -152,15 +152,12 @@ namespace Math
     return Result;
   }
 
-
-	mat3
-	Mat3Basis(vec3 Right, vec3 Up, vec3 Forward)
-	{
-    mat3 Result = { Right.X,    Right.Y,   Right.Z,
-										   Up.X,       Up.Y,      Up.Z,
-									 Forward.X, Forward.Y, Forward.Z};
-		return Result;
-	}
+  mat3
+  Mat3Basis(vec3 Right, vec3 Up, vec3 Forward)
+  {
+    mat3 Result = { Right.X, Right.Y, Right.Z, Up.X, Up.Y, Up.Z, Forward.X, Forward.Y, Forward.Z };
+    return Result;
+  }
 
   mat4
   Mat4Translate(float Tx, float Ty, float Tz)
@@ -187,7 +184,7 @@ namespace Math
     float Sin = sinf(Angle);
     float Cos = cosf(Angle);
 
-    return mat3{ Cos, 0, -Sin, 0, 1, 0, Sin, 0, Cos};
+    return mat3{ Cos, 0, -Sin, 0, 1, 0, Sin, 0, Cos };
   }
   mat3
   Mat3RotateZ(float Angle)
@@ -196,7 +193,7 @@ namespace Math
     float Sin = sinf(Angle);
     float Cos = cosf(Angle);
 
-    return mat3{ Cos, Sin, 0, -Sin, Cos, 0, 0, 0, 1};
+    return mat3{ Cos, Sin, 0, -Sin, Cos, 0, 0, 0, 1 };
   }
 
   mat4
