@@ -9,9 +9,9 @@ for i in $dst_dir/*.model $dst_dir/*.actor; do
 done
 
 for i in $src_dir*.obj; do
-  $build $i $dst_dir`basename $i .obj` 
+  $build $i $dst_dir`basename $i .obj` '--model' '--actor'
 done
 
 for i in $src_dir*.dae; do
-	$build $i $dst_dir`basename $i .dae`
+	$build $i $dst_dir`basename $i .dae` '--model' '--actor'
 done

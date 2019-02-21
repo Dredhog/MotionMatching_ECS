@@ -4,4 +4,7 @@ linker_flags = -L/usr/lib64 -lstdc++
 header_dirs = ../
 
 all:
-	@$(compiler) $(common_flags) $(linker_flags) -I $(header_dirs) /usr/lib/x86_64-linux-gnu/libassimp.so main.cpp ../asset.cpp -o builder 
+	@$(compiler) $(common_flags) $(linker_flags) -I $(header_dirs) /usr/lib/x86_64-linux-gnu/libassimp.so main.cpp ../asset.cpp ../linux/linux_file_io.cpp -o builder 
+
+test:
+	@./builder ../data/animations/14_01.bvh test

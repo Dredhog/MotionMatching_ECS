@@ -646,7 +646,7 @@ Init(gui_context* Context, game_state* GameState)
   Context->Style.Vars[UI::VAR_ScrollbarSize]   = 20;
   Context->Style.Vars[UI::VAR_DragMinSize]     = 10;
   Context->Style.Vars[UI::VAR_BoxPaddingX]     = 5;
-  Context->Style.Vars[UI::VAR_BoxPaddingY]     = 5;
+  Context->Style.Vars[UI::VAR_BoxPaddingY]     = 2;
   Context->Style.Vars[UI::VAR_SpacingX]        = 5;
   Context->Style.Vars[UI::VAR_SpacingY]        = 5;
   Context->Style.Vars[UI::VAR_InternalSpacing] = 5;

@@ -409,6 +409,7 @@ SimulateDynamics(physics_world* World)
       TestConstraint.BodyRa = { -1, 1, 1 };
       TestConstraint.BodyRb = { 1, 1, 1 };
       World->Constraints.Push(TestConstraint);*/
+
       /*{
         constraint TestConstraint = {};
         TestConstraint.Type = CONSTRAINT_Point;
@@ -417,8 +418,9 @@ SimulateDynamics(physics_world* World)
         TestConstraint.P      = {0.0f, 7.0f, 0.0f};
         TestConstraint.L      = 0;
         World->Constraints.Push(TestConstraint);
-      }
+      }*/
 
+#if 0
       {
         constraint TestConstraint = {};
         TestConstraint.Type = CONSTRAINT_Distance;
@@ -428,6 +430,13 @@ SimulateDynamics(physics_world* World)
         TestConstraint.BodyRb = {1.0f, 1.0f, 1.0f};
         TestConstraint.L      = 5;
         World->Constraints.Push(TestConstraint);
+				{
+					int IndA = TestConstraint.IndA;
+					int IndB = TestConstraint.IndB;
+					vec3 P0 = World->RigidBodies[IndA].X + Math::MulMat3Vec3(World->RigidBodies[IndA].R, TestConstraint.BodyRa);
+					vec3 P1 = World->RigidBodies[IndB].X + Math::MulMat3Vec3(World->RigidBodies[IndB].R, TestConstraint.BodyRb);
+					Debug::PushLine(P0, P1, vec4{0, 1, 0, 1});
+				}
       }
       {
         constraint TestConstraint = {};
@@ -436,9 +445,34 @@ SimulateDynamics(physics_world* World)
         TestConstraint.IndB   = 3;
         TestConstraint.BodyRa = {-1.0f, -1.0f, -1.0f};
         TestConstraint.BodyRb = {1.0f, 1.0f, 1.0f};
-        TestConstraint.L      = 5;
+        TestConstraint.L      = 0.5;
         World->Constraints.Push(TestConstraint);
+				{
+					int IndA = TestConstraint.IndA;
+					int IndB = TestConstraint.IndB;
+					vec3 P0 = World->RigidBodies[IndA].X + Math::MulMat3Vec3(World->RigidBodies[IndA].R, TestConstraint.BodyRa);
+					vec3 P1 = World->RigidBodies[IndB].X + Math::MulMat3Vec3(World->RigidBodies[IndB].R, TestConstraint.BodyRb);
+					Debug::PushLine(P0, P1, vec4{0, 1, 0, 1});
+				}
       }
+      {
+        constraint TestConstraint = {};
+        TestConstraint.Type = CONSTRAINT_Distance;
+        TestConstraint.IndA   = 2;
+        TestConstraint.IndB   = 3;
+        TestConstraint.BodyRa = {-1.0f, 1.0f, -1.0f};
+        TestConstraint.BodyRb = {1.0f, -1.0f, 1.0f};
+        TestConstraint.L      = 0.5;
+        World->Constraints.Push(TestConstraint);
+				{
+					int IndA = TestConstraint.IndA;
+					int IndB = TestConstraint.IndB;
+					vec3 P0 = World->RigidBodies[IndA].X + Math::MulMat3Vec3(World->RigidBodies[IndA].R, TestConstraint.BodyRa);
+					vec3 P1 = World->RigidBodies[IndB].X + Math::MulMat3Vec3(World->RigidBodies[IndB].R, TestConstraint.BodyRb);
+					Debug::PushLine(P0, P1, vec4{0, 1, 0, 1});
+				}
+      }
+
       {
         constraint TestConstraint = {};
         TestConstraint.Type = CONSTRAINT_Distance;
@@ -446,9 +480,34 @@ SimulateDynamics(physics_world* World)
         TestConstraint.IndB   = 4;
         TestConstraint.BodyRa = {-1.0f, -1.0f, -1.0f};
         TestConstraint.BodyRb = {1.0f, 1.0f, 1.0f};
-        TestConstraint.L      = 0;
+        TestConstraint.L      = 1;
         World->Constraints.Push(TestConstraint);
-      }*/
+				{
+					int IndA = TestConstraint.IndA;
+					int IndB = TestConstraint.IndB;
+					vec3 P0 = World->RigidBodies[IndA].X + Math::MulMat3Vec3(World->RigidBodies[IndA].R, TestConstraint.BodyRa);
+					vec3 P1 = World->RigidBodies[IndB].X + Math::MulMat3Vec3(World->RigidBodies[IndB].R, TestConstraint.BodyRb);
+					Debug::PushLine(P0, P1, vec4{0, 1, 0, 1});
+				}
+      }
+			{
+        constraint TestConstraint = {};
+        TestConstraint.Type = CONSTRAINT_Distance;
+        TestConstraint.IndA   = 3;
+        TestConstraint.IndB   = 4;
+        TestConstraint.BodyRa = {-1.0f, 1.0f, -1.0f};
+        TestConstraint.BodyRb = {1.0f, -1.0f, 1.0f};
+        TestConstraint.L      = 1;
+        World->Constraints.Push(TestConstraint);
+				{
+					int IndA = TestConstraint.IndA;
+					int IndB = TestConstraint.IndB;
+					vec3 P0 = World->RigidBodies[IndA].X + Math::MulMat3Vec3(World->RigidBodies[IndA].R, TestConstraint.BodyRa);
+					vec3 P1 = World->RigidBodies[IndB].X + Math::MulMat3Vec3(World->RigidBodies[IndB].R, TestConstraint.BodyRb);
+					Debug::PushLine(P0, P1, vec4{0, 1, 0, 1});
+				}
+      }
+#endif
 
       for(int i = 0; i < World->RBCount; i++)
       {
@@ -556,5 +615,9 @@ SimulateDynamics(physics_world* World)
     ODE(World->RigidBodies, World->RBCount, World->Constraints.Elements, World->Constraints.Count,
         0.0f, (FRAME_TIME_MS / 1000.0f), DYDT_PGS, World->Params.PGSIterationCount, UpdateState,
         &World->Params, &World->Switches);
+		//Visualize constraints
+		{
+
+		}
   }
 }

@@ -17,10 +17,6 @@
 #include "heap_alloc.cpp"
 
 #include "file_io.h"
-#include "win32_file_io.cpp"
-
-void InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight);
-void NormalizeVertexBoneWeights(Render::vertex* Verte);
 
 void
 InsertBoneIntoVertex(Render::vertex* Vertex, int BoneIndex, float BoneWeight)
@@ -88,7 +84,7 @@ Convert_aiMatrix4x4_To_mat4(aiMatrix4x4t<float> AssimpMat)
 }
 
 void
-r_CreateSkeleton(aiNode* Node, Anim::skeleton* Skeleton)
+r_AddBoneAndDescendantBonesToSkeleton(aiNode* Node, Anim::skeleton* Skeleton)
 {
   assert(Skeleton->BoneCount >= 0 && Skeleton->BoneCount < SKELETON_MAX_BONE_COUNT);
 
@@ -112,20 +108,20 @@ r_CreateSkeleton(aiNode* Node, Anim::skeleton* Skeleton)
 
   for(int i = 0; i < Node->mNumChildren; i++)
   {
-    r_CreateSkeleton(Node->mChildren[i], Skeleton);
+    r_AddBoneAndDescendantBonesToSkeleton(Node->mChildren[i], Skeleton);
   }
 }
 
 aiNode*
-r_FindSkeletonRootInSubtre(aiNode* Node)
+r_FindSkeletonRootInSubtre(aiNode* Node, const char* RootBoneName)
 {
-  if(strcmp(Node->mName.C_Str(), "root") == 0)
+  if(strcmp(Node->mName.C_Str(), RootBoneName) == 0)
   {
     return Node;
   }
   for(int i = 0; i < Node->mNumChildren; i++)
   {
-    aiNode* Result = r_FindSkeletonRootInSubtre(Node->mChildren[i]);
+    aiNode* Result = r_FindSkeletonRootInSubtre(Node->mChildren[i], RootBoneName);
     if(Result)
     {
       return Result;
@@ -239,7 +235,7 @@ r_ProcessNode(Memory::stack_allocator* Alloc, const aiNode* Node, const aiScene*
 }
 
 int32_t
-CalculateTotalAssetSize(const aiScene* Scene, bool IsActor)
+CalculateTotalModelSize(const aiScene* Scene)
 {
   int64_t Total = 0;
 
@@ -253,13 +249,13 @@ CalculateTotalAssetSize(const aiScene* Scene, bool IsActor)
     Total += sizeof(Render::vertex) * AssimpMesh->mNumVertices;
     Total += sizeof(uint32_t) * AssimpMesh->mNumFaces * 3;
   }
-
-  if(IsActor)
-  {
-    Total += sizeof(Anim::skeleton);
-  }
-
+  
   return SafeTruncateUint64(Total);
+}
+
+void PrintUsage()
+{
+	printf("usage:\nbuilder input_file output_name [--root_bone_name name] --model | --actor | --animation\n");
 }
 
 int
@@ -267,24 +263,73 @@ main(int ArgCount, char** Args)
 {
   char* ModelName;
   char* ActorName;
+  char* AnimationName;
+
+  bool BuildModel = false;
+  bool BuildActor = false;
+	bool BuildAnimation = false;
+
+  const char* RootBoneName = "root";
   // Process command line arguments
   {
-    if(ArgCount != 3)
+		//printf("%s\n", Args[1]);
+    if(ArgCount < 3)
     {
-      printf("error: not enough command line arguments.\n");
+			PrintUsage();
       return 1;
     }
+
     const char* ModelExtension = ".model";
     const char* ActorExtension = ".actor";
+    const char* AnimationExtension = ".anim";
 
     size_t LenWithoutExtension = strlen(Args[2]);
-    ModelName                  = (char*)malloc(LenWithoutExtension + strlen(ModelExtension));
-    ActorName                  = (char*)malloc(LenWithoutExtension + strlen(ActorExtension));
+    ModelName                  = (char*)malloc(LenWithoutExtension + strlen(ModelExtension) + 1);
+    ActorName                  = (char*)malloc(LenWithoutExtension + strlen(ActorExtension) + 1);
+    AnimationName              = (char*)malloc(LenWithoutExtension + strlen(AnimationExtension) + 1);
 
     strcpy(ModelName, Args[2]);
     strcpy(ActorName, Args[2]);
+    strcpy(AnimationName, Args[2]);
+
     strcpy(ModelName + LenWithoutExtension, ModelExtension);
     strcpy(ActorName + LenWithoutExtension, ActorExtension);
+    strcpy(AnimationName + LenWithoutExtension, AnimationExtension);
+
+    for(int ArgIndex = 3; ArgIndex < ArgCount; ArgIndex++)
+    {
+      if(strcmp(Args[ArgIndex], "--model") == 0)
+      {
+        BuildModel= true;
+      }
+			else if(strcmp(Args[ArgIndex], "--actor") == 0)
+      {
+        BuildActor = true;
+      }
+			else if(strcmp(Args[ArgIndex], "--animation") == 0)
+      {
+        BuildAnimation = true;
+      }
+      else if(strcmp(Args[ArgIndex], "--root_bone") == 0)
+			{
+        if(ArgIndex + 1 < ArgCount)
+        {
+          RootBoneName = Args[ArgIndex + 1];
+        }else{
+          PrintUsage();
+          return 1;
+        }
+			}
+      else{
+        PrintUsage();
+				return 1;
+      }
+    }
+		if(!(BuildModel || BuildActor || BuildAnimation))
+		{
+			PrintUsage();
+			return 1;
+		}
   }
 
   Assimp::Importer Importer;
@@ -299,70 +344,83 @@ main(int ArgCount, char** Args)
   }
 
   // Create Skeleton
-  bool           IsActor  = false;
   Anim::skeleton Skeleton = {};
+  if(BuildActor)
   {
-    aiNode* SkeletonRootNode = r_FindSkeletonRootInSubtre(Scene->mRootNode);
+    aiNode* RootBoneNode = r_FindSkeletonRootInSubtre(Scene->mRootNode, RootBoneName);
 
-    if(SkeletonRootNode)
+    if(RootBoneNode)
     {
-      r_CreateSkeleton(SkeletonRootNode, &Skeleton);
-      IsActor = true;
+      r_AddBoneAndDescendantBonesToSkeleton(RootBoneNode, &Skeleton);
+    }
+    else
+    {
+      printf("error: cannot build actor - no root bone named \"%s\" in file\n", RootBoneName);
+			BuildActor = false;
     }
   }
 
   // Determine file size on disk
-  int32_t TotalOutputFileSize = CalculateTotalAssetSize(Scene, IsActor);
-  void*   FileMemory          = calloc(TotalOutputFileSize, 1);
+  int32_t TotalModelFileSize = CalculateTotalModelSize(Scene);
+  int32_t TotalActorFileSize = TotalModelFileSize + SafeTruncateUint64(sizeof(Skeleton));
+  int32_t TotalAnimFileSize  = 0;//CalculateTotalAnimationSize(Scene);
+
+  int32_t MaximumAssetSize = (TotalActorFileSize > TotalAnimFileSize) ? TotalActorFileSize : TotalAnimFileSize;
+  void*   FileMemory       = calloc(MaximumAssetSize, 1);
 
   Memory::stack_allocator Allocator = {};
-  Allocator.Create(FileMemory, TotalOutputFileSize);
+  Allocator.Create(FileMemory, MaximumAssetSize);
 
-  // Reserve Space For Model
-  Render::model* Model = PushStruct(&Allocator, Render::model);
+  if(BuildModel || BuildActor)
   {
-    // Reserve Space For Mesh Pointer Array
-    Model->Meshes = PushArray(&Allocator, Scene->mNumMeshes, Render::mesh*);
+    // Reserve Space For Model
+    Render::model* Model = PushStruct(&Allocator, Render::model);
+    {
+      // Reserve Space For Mesh Pointer Array
+      Model->Meshes = PushArray(&Allocator, Scene->mNumMeshes, Render::mesh*);
 
-    // Create The Actual Meshes
-    r_ProcessNode(&Allocator, Scene->mRootNode, Scene, Model, &Skeleton);
+      // Create The Actual Meshes
+      r_ProcessNode(&Allocator, Scene->mRootNode, Scene, Model, &Skeleton);
+    }
+
+    if(BuildModel)
+    {
+      // write '.model'
+      assert(Allocator.GetUsedSize() == TotalModelFileSize);
+      
+      Model->Skeleton = 0;
+      printf("writing: %s\n", ModelName);
+      PrintModelHeader(Model);
+      Asset::PackModel(Model);
+      Platform::WriteEntireFile(ModelName, TotalModelFileSize, FileMemory);
+      Asset::UnpackModel(Model);
+    }
+
+    if(BuildActor)
+    {
+      // write '.actor'
+      Anim::skeleton* SkeletonPtr = PushStruct(&Allocator, Anim::skeleton);
+      *SkeletonPtr                = Skeleton;
+      Model->Skeleton             = SkeletonPtr;
+
+      assert(Allocator.GetUsedSize() == TotalActorFileSize);
+
+      printf("writing: %s\n", ActorName);
+      PrintSkeleton(&Skeleton);
+      printf("\n");
+      Asset::PackModel(Model);
+      Platform::WriteEntireFile(ActorName, TotalActorFileSize, FileMemory);
+    }
   }
 
-  if(IsActor)
+  if(BuildAnimation)
   {
-    // write '.model'
-    assert(Allocator.GetUsedSize() == TotalOutputFileSize - sizeof(Anim::skeleton));
-
-    Model->Skeleton = 0;
-    printf("writing: %s\n", ModelName);
-    PrintModelHeader(Model);
-    Asset::PackModel(Model);
-    WriteEntireFile(ModelName, TotalOutputFileSize - sizeof(Anim::skeleton), FileMemory);
-
-    Asset::UnpackModel(Model);
-
-    // write '.actor'
-    Anim::skeleton* SkeletonPtr = PushStruct(&Allocator, Anim::skeleton);
-    *SkeletonPtr                = Skeleton;
-    Model->Skeleton             = SkeletonPtr;
-    assert(Allocator.GetUsedSize() == TotalOutputFileSize);
-
-    printf("writing: %s\n", ActorName);
-    PrintSkeleton(&Skeleton);
-    printf("\n");
-    Asset::PackModel(Model);
-    WriteEntireFile(ActorName, TotalOutputFileSize, FileMemory);
+    Allocator.Clear();
   }
-  else
-  {
-    // write '.model'
-    assert(Allocator.GetUsedSize() == TotalOutputFileSize);
-
-    printf("writing: %s\n", ModelName);
-    Render::PrintModelHeader(Model);
-    printf("\n");
-		Asset::PackModel(Model);
-    WriteEntireFile(ModelName, TotalOutputFileSize, FileMemory);
-  }
+  
+	free(ModelName);
+	free(ActorName);
+	free(AnimationName);
+  free(FileMemory);
   return 0;
 }

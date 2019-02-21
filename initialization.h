@@ -418,7 +418,7 @@ SetGameStatePODFields(game_state* GameState)
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
   GameState->Physics.Params.Mu                         = 1.0f;
-  GameState->Physics.Params.PGSIterationCount          = 10;
+  GameState->Physics.Params.PGSIterationCount          = 50;
   GameState->Physics.Switches.UseGravity               = true;
   GameState->Physics.Switches.VisualizeOmega           = false;
   GameState->Physics.Switches.VisualizeV               = false;
@@ -427,5 +427,5 @@ SetGameStatePODFields(game_state* GameState)
   GameState->Physics.Switches.VisualizeContactPoints   = false;
   GameState->Physics.Switches.VisualizeContactManifold = false;
   GameState->Physics.Switches.SimulateDynamics         = false;
-  GameState->Physics.Switches.SimulateFriction         = false;
+  GameState->Physics.Switches.SimulateFriction         = true;
 }
