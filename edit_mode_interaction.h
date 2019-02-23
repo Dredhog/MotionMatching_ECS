@@ -105,6 +105,7 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
     if(RaycastResult.Success && GameState->CurrentModelID.Value != 0)
     {
       Anim::transform NewTransform = {};
+      NewTransform.Rotation        = Math::QuatIdent();
       NewTransform.Translation     = RaycastResult.IntersectP;
       NewTransform.Scale           = { 1, 1, 1 };
 

@@ -843,7 +843,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
       Anim::transform* Transform = &SelectedEntity->Transform;
       UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10);
-      UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
+      //UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
       UI::DragFloat3("Scale", (float*)&Transform->Scale, -INFINITY, INFINITY, 10.0f);
 
       // Rigid Body
@@ -1187,7 +1187,7 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
                .Transforms[GameState->AnimEditor.CurrentBone];
           mat4 Mat4Transform = TransformToGizmoMat4(Transform);
           UI::DragFloat3("Translation", &Transform->Translation.X, -INFINITY, INFINITY, 10.0f);
-          UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
+          //UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
           UI::DragFloat3("Scale", &Transform->Scale.X, -INFINITY, INFINITY, 10.0f);
         }
       }

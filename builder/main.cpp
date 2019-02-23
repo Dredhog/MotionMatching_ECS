@@ -513,10 +513,9 @@ main(int ArgCount, char** Args)
             mat4 LocalBindPose = {};
             {
               Anim::transform LocalTransform = {};
-              LocalTransform.Rotation =
-                Math::QuatToEuler({ BoneQuat.w, BoneQuat.x, BoneQuat.y, BoneQuat.z });
-              LocalTransform.Scale       = { BoneScale.x, BoneScale.y, BoneScale.z };
-              LocalTransform.Translation = { BoneTranslation.x, BoneTranslation.y,
+              LocalTransform.Rotation        = { BoneQuat.w, BoneQuat.x, BoneQuat.y, BoneQuat.z };
+              LocalTransform.Scale           = { BoneScale.x, BoneScale.y, BoneScale.z };
+              LocalTransform.Translation     = { BoneTranslation.x, BoneTranslation.y,
                                              BoneTranslation.z };
 
               LocalBindPose = Anim::TransformToMat4(&LocalTransform);
@@ -580,9 +579,10 @@ main(int ArgCount, char** Args)
           BoneParentSpaceAbsTransform.Scale.Y = Channel->mScalingKeys[0].mValue.y;
           BoneParentSpaceAbsTransform.Scale.Z = Channel->mScalingKeys[0].mValue.z;
 
-          BoneParentSpaceAbsTransform.Rotation = Math::QuatToEuler(
-            { Channel->mRotationKeys[i].mValue.w, Channel->mRotationKeys[i].mValue.x,
-              Channel->mRotationKeys[i].mValue.y, Channel->mRotationKeys[i].mValue.z });
+          BoneParentSpaceAbsTransform.Rotation = { Channel->mRotationKeys[i].mValue.w,
+                                                   Channel->mRotationKeys[i].mValue.x,
+                                                   Channel->mRotationKeys[i].mValue.y,
+                                                   Channel->mRotationKeys[i].mValue.z };
 
 #ifdef USE_BIND_POSE
           mat4 BoneParentSpaceAbsPose = Anim::TransformToMat4(&BoneParentSpaceAbsTransform);

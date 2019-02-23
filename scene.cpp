@@ -163,7 +163,7 @@ ImportScene(game_state* GameState, const char* Path)
 {
 	BEGIN_TIMED_BLOCK(ImportScene)
   printf("---------IMPORTING-SCENE: %s---------\n", Path);
-  GameState->AnimEditor    = {};
+  memset(&GameState->AnimEditor, 0, sizeof(EditAnimation::animation_editor));
   GameState->SelectionMode = SELECT_Entity;
 
   // Load the scene into the temp memory stack and fix pointers

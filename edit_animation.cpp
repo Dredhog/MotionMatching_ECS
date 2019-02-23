@@ -11,15 +11,9 @@ EditAnimation::LerpTransforms(Anim::transform* Result, const Anim::transform* A,
     printf("t: %f\n", (double)t);
     assert(0 <= t && t <= 1);
   }
-  Result->Translation.X = A->Translation.X * (1 - t) + B->Translation.X * t;
-  Result->Translation.Y = A->Translation.Y * (1 - t) + B->Translation.Y * t;
-  Result->Translation.Z = A->Translation.Z * (1 - t) + B->Translation.Z * t;
-  Result->Rotation.X    = A->Rotation.X * (1 - t) + B->Rotation.X * t;
-  Result->Rotation.Y    = A->Rotation.Y * (1 - t) + B->Rotation.Y * t;
-  Result->Rotation.Z    = A->Rotation.Z * (1 - t) + B->Rotation.Z * t;
-  Result->Scale.X       = A->Scale.X * (1 - t) + B->Scale.X * t;
-  Result->Scale.Y       = A->Scale.Y * (1 - t) + B->Scale.Y * t;
-  Result->Scale.Z       = A->Scale.Z * (1 - t) + B->Scale.Z * t;
+  Result->Translation = A->Translation * (1 - t) + B->Translation * t;
+  Result->Rotation    = Math::QuatLerp(A->Rotation, B->Rotation, t);
+  Result->Scale       = A->Scale * (1 - t) + B->Scale * t;
 }
 
 void

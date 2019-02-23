@@ -4,6 +4,7 @@
 #include "rid.h"
 #include "linear_math/matrix.h"
 #include "linear_math/vector.h"
+#include "linear_math/quaternion.h"
 
 #include "skeleton.h"
 
@@ -14,7 +15,7 @@ namespace Anim
 {
   struct transform
   {
-    vec3 Rotation;
+    quat Rotation;
     vec3 Translation;
     vec3 Scale;
   };

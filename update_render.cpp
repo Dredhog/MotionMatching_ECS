@@ -31,7 +31,7 @@
 #include "rendering.h"
 #include "post_processing.h"
 
-#define ASSET_HOT_RELOADING 0
+#define ASSET_HOT_RELOADING 1
 
 extern bool g_VisualizeContactPoints;
 extern bool g_VisualizeContactManifold;
@@ -115,8 +115,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // Copy rigid body from entity (Mainly needed when loading scenes)
         GameState->Physics.RigidBodies[i] = GameState->Entities[i].RigidBody;
 
-        GameState->Physics.RigidBodies[i].q =
-          Math::EulerToQuat(GameState->Entities[i].Transform.Rotation);
+        GameState->Physics.RigidBodies[i].q = GameState->Entities[i].Transform.Rotation;
         GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.Translation;
 
         GameState->Physics.RigidBodies[i].R =
@@ -147,9 +146,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     for(int i = 0; i < GameState->EntityCount; i++)
     {
-      GameState->Entities[i].RigidBody = GameState->Physics.RigidBodies[i];
-      GameState->Entities[i].Transform.Rotation =
-        Math::QuatToEuler(GameState->Physics.RigidBodies[i].q);
+      GameState->Entities[i].RigidBody             = GameState->Physics.RigidBodies[i];
+      GameState->Entities[i].Transform.Rotation    = GameState->Physics.RigidBodies[i].q;
       GameState->Entities[i].Transform.Translation = GameState->Physics.RigidBodies[i].X;
     }
   }

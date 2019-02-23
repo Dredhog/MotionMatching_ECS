@@ -192,6 +192,7 @@ Gameplay::UpdatePlayer(entity* Player, const game_input* Input)
     g_SpeedBlend = 0;
   }
   Player->Transform.Translation += g_Player.dP * Input->dt;
-  Player->Transform.Rotation.Y = g_Player.Angle;
-  Player->Transform.Rotation.X = g_Player.TiltAngle;
+  //Player->Transform.Rotation.Y = g_Player.Angle;
+  //Player->Transform.Rotation.X = g_Player.TiltAngle;
+	assert(false && "Player logic sets incorrect rotations");
 }

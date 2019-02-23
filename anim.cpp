@@ -120,7 +120,7 @@ Anim::LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int
   for(int i = 0; i < TransformCount; i++)
   {
     Out[i].Translation = KoefA * InA[i].Translation + KoefB * InB[i].Translation;
-    Out[i].Rotation    = KoefA * InA[i].Rotation + KoefB * InB[i].Rotation;
+    Out[i].Rotation    = Math::QuatLerp(InA[i].Rotation, InB[i].Rotation, T);
     Out[i].Scale       = KoefA * InA[i].Scale + KoefB * InB[i].Scale;
   }
 }

@@ -9,7 +9,11 @@ AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor*
   {
     Render::model* Model = GameState->Resources.GetModel(AddedEntity->ModelID);
     assert(Model->Skeleton);
-    *Editor             = {};
+		
+    /* #1 */ //*Editor = {};
+		
+		/* #2 */ memset(Editor, 0, sizeof(EditAnimation::animation_editor));
+
     Editor->Skeleton    = Model->Skeleton;
     Editor->Transform   = &AddedEntity->Transform;
     Editor->EntityIndex = EntityIndex;
@@ -204,7 +208,7 @@ DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animatio
 {
   assert(GameState->Entities[Editor->EntityIndex].AnimController);
   assert(Editor->Skeleton);
-  *Editor = {};
+  memset(Editor, 0, sizeof(EditAnimation::animation_editor));
 }
 
 bool

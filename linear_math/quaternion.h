@@ -22,6 +22,45 @@ struct quat
   };
 };
 
+inline quat
+operator+(const quat& A, const quat& B)
+{
+  quat Result;
+
+  Result.S = A.S + B.S;
+  Result.i = A.i + B.i;
+  Result.j = A.j + B.j;
+  Result.k = A.k + B.k;
+
+  return Result;
+}
+
+inline quat operator*(float S, const quat& Q)
+{
+  quat Result = Q;
+  Result.S *= S;
+  Result.i *= S;
+  Result.j *= S;
+  Result.k *= S;
+  return Result;
+}
+
+inline quat operator*(const quat& Q, float S)
+{
+  quat Result = Q;
+  Result.S *= S;
+  Result.V *= S;
+  return Result;
+}
+
+inline quat operator*(const quat& A, const quat& B)
+{
+  quat Result;
+  Result.S = A.S * B.S - Math::Dot(A.V, B.V);
+  Result.V = (A.S * B.V) + (B.S * A.V) + Math::Cross(A.V, B.V);
+  return Result;
+}
+
 namespace Math
 {
   inline mat3
@@ -40,6 +79,35 @@ namespace Math
     Result._21 = 2.0f * (X * Y + Q.S * Z);
     Result._31 = 2.0f * (X * Z - Q.S * Y);
     Result._32 = 2.0f * (Y * Z + Q.S * X);
+    return Result;
+  }
+
+  inline mat4
+  Mat4Rotate(const quat& Q)
+  {
+    float X = Q.V.X;
+    float Y = Q.V.Y;
+    float Z = Q.V.Z;
+    mat4  Result;
+    Result._11 = 1.0f - 2.0f * (Y * Y + Z * Z);
+    Result._22 = 1.0f - 2.0f * (X * X + Z * Z);
+    Result._33 = 1.0f - 2.0f * (X * X + Y * Y);
+    Result._12 = 2.0f * (X * Y - Q.S * Z);
+    Result._13 = 2.0f * (X * Z + Q.S * Y);
+    Result._23 = 2.0f * (Y * Z - Q.S * X);
+    Result._21 = 2.0f * (X * Y + Q.S * Z);
+    Result._31 = 2.0f * (X * Z - Q.S * Y);
+    Result._32 = 2.0f * (Y * Z + Q.S * X);
+
+    Result._44 = 1.0f;
+
+    Result._41 = 0.0f;
+    Result._42 = 0.0f;
+    Result._43 = 0.0f;
+
+    Result._14 = 0.0f;
+    Result._24 = 0.0f;
+    Result._34 = 0.0f;
     return Result;
   }
 
@@ -112,44 +180,36 @@ namespace Math
     Q->k /= Length;
     return *Q;
   }
+
+  inline quat
+  QuatIdent()
+  {
+    quat Result = {};
+    Result.S    = 1.0f;
+    return Result;
+  }
+
+  inline quat
+  QuatLerp(quat Q0, quat Q1, float t)
+  {
+    quat Result = {};
+
+    // Compute the cosine of the angle between the two vectors.
+    double Dot = Math::Dot(Q0.V, Q1.V) + Q0.S*Q1.S;
+
+    // If the dot product is negative, slerp won't take
+    // the shorter path. Note that v1 and -v1 are equivalent when
+    // the negation is applied to all four components. Fix by
+    // reversing one quaternion.
+    if(Dot < 0.0f)
+    {
+      Q1.S = -Q1.S;
+      Q1.V = -Q1.V;
+
+      Dot = -Dot;
+    }
+    Result = (1.0f - t) * Q0 + t * Q1;
+		Normalize(&Result);
+    return Result;
+  }
 }
-
-inline quat
-operator+(const quat& A, const quat& B)
-{
-  quat Result;
-
-  Result.S = A.S + B.S;
-  Result.i = A.i + B.i;
-  Result.j = A.j + B.j;
-  Result.k = A.k + B.k;
-
-  return Result;
-}
-
-inline quat operator*(float S, const quat& Q)
-{
-  quat Result = Q;
-  Result.S *= S;
-  Result.i *= S;
-  Result.j *= S;
-  Result.k *= S;
-  return Result;
-}
-
-inline quat operator*(const quat& Q, float S)
-{
-  quat Result = Q;
-  Result.S *= S;
-  Result.V *= S;
-  return Result;
-}
-
-inline quat operator*(const quat& A, const quat& B)
-{
-  quat Result;
-  Result.S = A.S * B.S - Math::Dot(A.V, B.V);
-  Result.V = (A.S * B.V) + (B.S * A.V) + Math::Cross(A.V, B.V);
-  return Result;
-}
-
