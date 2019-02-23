@@ -6,8 +6,8 @@
 #include "skeleton.h"
 #include "entity.h"
 
-static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 0.1f;
-static const int   ANIM_EDITOR_MAX_KEYFRAME_COUNT     = 30;
+static const int   ANIM_EDITOR_MAX_KEYFRAME_COUNT     = 5500;
+static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 1.0f/121.0f;
 
 struct editor_keyframe
 {

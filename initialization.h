@@ -327,7 +327,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->Camera.FarClipPlane  = 1000.0f;
     GameState->Camera.FieldOfView   = 90.0f;
     GameState->Camera.MaxTiltAngle  = 90.0f;
-    GameState->Camera.Speed         = 2.0f;
+    GameState->Camera.Speed         = 12.0f;
   }
 
   {

@@ -2,6 +2,7 @@
 
 build='builder/builder'
 src_dir='data/animations/'
+dst_dir='data/animations/'
 
 for i in $dst_dir/*.anim $dst_dir/*.actor; do
   rm $i

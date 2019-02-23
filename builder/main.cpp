@@ -571,9 +571,10 @@ main(int ArgCount, char** Args)
         for(int i = 0; i < Channel->mNumRotationKeys; i++)
         {
           Anim::transform BoneParentSpaceAbsTransform = {};
-          BoneParentSpaceAbsTransform.Translation.X   = Channel->mPositionKeys[0].mValue.x;
-          BoneParentSpaceAbsTransform.Translation.Y   = Channel->mPositionKeys[0].mValue.y;
-          BoneParentSpaceAbsTransform.Translation.Z   = Channel->mPositionKeys[0].mValue.z;
+					int TranslationKeyIndex = (b == 0) ? i : 0;
+          BoneParentSpaceAbsTransform.Translation.X   = Channel->mPositionKeys[TranslationKeyIndex].mValue.x;
+          BoneParentSpaceAbsTransform.Translation.Y   = Channel->mPositionKeys[TranslationKeyIndex].mValue.y;
+          BoneParentSpaceAbsTransform.Translation.Z   = Channel->mPositionKeys[TranslationKeyIndex].mValue.z;
 
           BoneParentSpaceAbsTransform.Scale.X = Channel->mScalingKeys[0].mValue.x;
           BoneParentSpaceAbsTransform.Scale.Y = Channel->mScalingKeys[0].mValue.y;
