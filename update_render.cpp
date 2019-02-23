@@ -184,6 +184,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         Controller->Animations[i] = GameState->Resources.GetAnimation(Controller->AnimationIDs[i]);
       }
       Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+
+			for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
+			{
+				mat4 Mat4Bone =
+					Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+												Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[b],
+																			Controller->Skeleton->Bones[b].BindPose));
+				vec3 Position = Math::GetMat4Translation(Mat4Bone);
+
+
+				if(0 < b)
+				{
+					int ParentIndex = Controller->Skeleton->Bones[b].ParentIndex;
+					mat4 Mat4Bone =
+						Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+													Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[ParentIndex],
+																				Controller->Skeleton->Bones[ParentIndex].BindPose));
+					vec3 ParentPosition = Math::GetMat4Translation(Mat4Bone);
+					Debug::PushLine(Position, ParentPosition);
+				}
+				Debug::PushWireframeSphere(Position, 0.05f);
+			}
     }
   }
 

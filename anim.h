@@ -74,7 +74,7 @@ namespace Anim
   void StartAnimationAtGlobalTime(animation_controller*, int AnimationIndex, bool Loop = true);
   void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
                   int AnimationIndex, bool Loop = true);
-	void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
+  void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
 
   // Blending and sampling facilities
   void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
@@ -90,4 +90,13 @@ namespace Anim
                               const Anim::skeleton* Skeleton);
   void ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSpaceMatrices,
                                      const Anim::skeleton* Skeleton);
+
+  inline mat4
+  TransformToMat4(const Anim::transform* Transform)
+  {
+    mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
+                                Math::MulMat4(Math::Mat4Rotate(Transform->Rotation),
+                                              Math::Mat4Scale(Transform->Scale)));
+    return Result;
+  }
 }

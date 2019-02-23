@@ -441,6 +441,48 @@ namespace Math
   {
     return { Mat4._14, Mat4._24, Mat4._34 };
   }
+	
+	vec3
+	Mat4GetScaleAndNormalize(mat4* Mat4)
+	{
+    vec3 Scale = { Length({ Mat4->_11, Mat4->_21, Mat4->_31 }),
+                   Length({ Mat4->_12, Mat4->_22, Mat4->_32 }),
+                   Length({ Mat4->_13, Mat4->_23, Mat4->_33 }) };
+    Mat4->_11 /= Scale.X;
+    Mat4->_21 /= Scale.X;
+    Mat4->_31 /= Scale.X;
+
+    Mat4->_12 /= Scale.Y;
+    Mat4->_22 /= Scale.Y;
+    Mat4->_32 /= Scale.Y;
+
+    Mat4->_13 /= Scale.Z;
+    Mat4->_23 /= Scale.Z;
+    Mat4->_33 /= Scale.Z;
+
+    return Scale;
+  }
+
+	vec3
+	Mat3GetScaleAndNormalize(mat3* Mat3)
+	{
+    vec3 Scale = { Length({ Mat3->_11, Mat3->_21, Mat3->_31 }),
+                   Length({ Mat3->_12, Mat3->_22, Mat3->_32 }),
+                   Length({ Mat3->_13, Mat3->_23, Mat3->_33 }) };
+    Mat3->_11 /= Scale.X;
+    Mat3->_21 /= Scale.X;
+    Mat3->_31 /= Scale.X;
+
+    Mat3->_12 /= Scale.Y;
+    Mat3->_22 /= Scale.Y;
+    Mat3->_32 /= Scale.Y;
+
+    Mat3->_13 /= Scale.Z;
+    Mat3->_23 /= Scale.Z;
+    Mat3->_33 /= Scale.Z;
+
+    return Scale;
+  }
 
   float
   Determinant(const mat4& M)

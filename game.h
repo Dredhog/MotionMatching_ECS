@@ -98,14 +98,14 @@ struct game_state
   uint32_t IDTexture;
 };
 
-inline mat4
+/*inline mat4
 TransformToMat4(const Anim::transform* Transform)
 {
   mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
                               Math::MulMat4(Math::Mat4Rotate(Transform->Rotation),
                                             Math::Mat4Scale(Transform->Scale)));
   return Result;
-}
+}*/
 
 inline void
 GetCubemapRIDs(rid* RIDs, Resource::resource_manager* Resources,
