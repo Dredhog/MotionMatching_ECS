@@ -74,12 +74,14 @@ GetCubemapRIDs(rid* RIDs, Resource::resource_manager* Resources,
 void
 RegisterDebugModels(game_state* GameState)
 {
-  GameState->GizmoModelID    = GameState->Resources.RegisterModel("data/built/gizmo1.model");
+  GameState->GizmoModelID       = GameState->Resources.RegisterModel("data/built/gizmo1.model");
+  GameState->BoneDiamondModelID = GameState->Resources.RegisterModel("data/built/bone_diamond.model");
   GameState->QuadModelID     = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
   GameState->CubemapModelID  = GameState->Resources.RegisterModel("data/built/inverse_cube.model");
   GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
   GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
   GameState->Resources.Models.AddReference(GameState->GizmoModelID);
+  GameState->Resources.Models.AddReference(GameState->BoneDiamondModelID);
   GameState->Resources.Models.AddReference(GameState->QuadModelID);
   GameState->Resources.Models.AddReference(GameState->CubemapModelID);
   GameState->Resources.Models.AddReference(GameState->SphereModelID);
@@ -168,6 +170,19 @@ AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform 
   GameState->Entities[GameState->EntityCount++] = NewEntity;
 }
 
+// Note(Lukas): Currently should not be used as no references are actually added
+void
+RemoveAnimationReferences(Resource::resource_manager* Resources,
+                          Anim::animation_controller* Controller)
+{
+  for(int i = 0; i < Controller->AnimStateCount; i++)
+  {
+    Resources->Animations.RemoveReference(Controller->AnimationIDs[i]);
+    Controller->AnimationIDs[i] = {};
+    Controller->Animations[i] = {};
+  }
+}
+
 bool
 DeleteEntity(game_state* GameState, int32_t Index)
 {
@@ -175,6 +190,11 @@ DeleteEntity(game_state* GameState, int32_t Index)
   {
     GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
     GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
+		if(GameState->Entities[Index].AnimController)
+		{
+				RemoveAnimationReferences(&GameState->Resources, GameState->Entities[Index].AnimController);
+		}
+
     --GameState->EntityCount;
     if(GameState->PlayerEntityIndex == Index)
     {

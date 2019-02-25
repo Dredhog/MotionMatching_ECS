@@ -1,5 +1,4 @@
 #include "anim.h"
-#include "resource_manager.h"
 
 void
 Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,

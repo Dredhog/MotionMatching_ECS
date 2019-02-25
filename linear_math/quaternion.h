@@ -195,7 +195,7 @@ namespace Math
     quat Result = {};
 
     // Compute the cosine of the angle between the two vectors.
-    double Dot = Math::Dot(Q0.V, Q1.V) + Q0.S*Q1.S;
+    float Dot = Math::Dot(Q0.V, Q1.V) + Q0.S*Q1.S;
 
     // If the dot product is negative, slerp won't take
     // the shorter path. Note that v1 and -v1 are equivalent when

@@ -56,11 +56,14 @@ struct game_state
   camera Camera;
   camera PreviewCamera;
 
+	bool UseHotReloading;
+
   // Models
   rid SphereModelID;
   rid UVSphereModelID;
   rid QuadModelID;
   rid GizmoModelID;
+  rid BoneDiamondModelID;
   rid CubemapModelID;
 
   // Temp textures (not their place)
@@ -75,19 +78,23 @@ struct game_state
   int32_t PlayerEntityIndex;
   mat4    PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
 
+  // Motion Matching
+  float TrajectoryLengthInTime;
+  int   TrajectorySampleCount;
+
   // Fonts/text
   Text::font Font;
 
   // Switches/Flags
-  bool DrawCubemap;
-  bool DrawGizmos;
-  bool DrawDebugLines;
-  bool DrawDebugSpheres;
-  bool DrawShadowCascadeVolumes;
-  bool DrawTimeline;
-  bool IsAnimationPlaying;
-  // float EditorBoneRotationSpeed;
-  bool IsEntityCreationMode;
+  bool  DrawCubemap;
+  bool  DrawGizmos;
+  bool  DrawDebugLines;
+  bool  DrawDebugSpheres;
+  bool  DrawShadowCascadeVolumes;
+  bool  DrawTimeline;
+  bool  IsAnimationPlaying;
+  bool  IsEntityCreationMode;
+  float BoneSphereRadius;
 
   uint32_t MagicChecksum;
   uint32_t SelectionMode;
@@ -122,6 +129,8 @@ void DrawTextureToFramebuffer(uint32_t VAO);
 
 void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform);
 bool DeleteEntity(game_state* GameState, int32_t Index);
+void RemoveAnimationReferences(Resource::resource_manager* Resources,
+                               Anim::animation_controller* Controller);
 bool GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex);
 void AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
                               int32_t EntityIndex);

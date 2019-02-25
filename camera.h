@@ -23,6 +23,7 @@ struct camera
   mat4 ViewMatrix;
   mat4 ProjectionMatrix;
   mat4 VPMatrix;
+  mat4 InvVPMatrix;
 };
 
 void UpdateCamera(camera* Camera, const game_input* Input);

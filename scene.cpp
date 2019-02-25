@@ -161,7 +161,7 @@ ExportScene(game_state* GameState, const char* Path)
 void
 ImportScene(game_state* GameState, const char* Path)
 {
-	BEGIN_TIMED_BLOCK(ImportScene)
+	TIMED_BLOCK(ImportScene);
   printf("---------IMPORTING-SCENE: %s---------\n", Path);
   memset(&GameState->AnimEditor, 0, sizeof(EditAnimation::animation_editor));
   GameState->SelectionMode = SELECT_Entity;
@@ -228,6 +228,12 @@ ImportScene(game_state* GameState, const char* Path)
       GameState->Entities[e].AnimController  = PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
       *GameState->Entities[e].AnimController = *Scene->Entities[e].AnimController;
 
+      for(int a = 0; a < GameState->Entities[e].AnimController->AnimStateCount; a++)
+      {
+        GameState->Entities[e].AnimController->Animations[a] = NULL;
+        GameState->Resources.Animations.AddReference(GameState->Entities[e].AnimController->AnimationIDs[a]);
+      }
+
       assert(Model->Skeleton);
       GameState->Entities[e].AnimController->Skeleton           = Model->Skeleton;
       GameState->Entities[e].AnimController->OutputTransforms   = PushArray(GameState->PersistentMemStack, ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * Model->Skeleton->BoneCount, Anim::transform);
@@ -250,6 +256,5 @@ ImportScene(game_state* GameState, const char* Path)
   GameState->CurrentMaterialID = { 0 };
   GameState->SelectedEntityIndex = -1;
 
-	END_TIMED_BLOCK(ImportScene)
   return;
 }

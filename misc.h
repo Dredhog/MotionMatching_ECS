@@ -80,6 +80,16 @@ ClampMinInt32(int32_t Min, int32_t T)
   return T;
 }
 
+/*inline float
+CeilFloat(float F)
+{
+	if((F - (float)((int64_t)F)) > 0.0f)
+	{
+		++F;
+	}
+  return F;
+}*/
+
 inline float
 AbsFloat(float F)
 {

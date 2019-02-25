@@ -31,8 +31,6 @@
 #include "rendering.h"
 #include "post_processing.h"
 
-#define ASSET_HOT_RELOADING 1
-
 extern bool g_VisualizeContactPoints;
 extern bool g_VisualizeContactManifold;
 
@@ -52,25 +50,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     RegisterLoadInitialResources(GameState);
     SetGameStatePODFields(GameState);
 
-#if !ASSET_HOT_RELOADING
+		if(!GameState->UseHotReloading)
     {
       TIMED_BLOCK(FilesystemUpdate);
       GameState->Resources.UpdateHardDriveAssetPathLists();
       GameState->Resources.DeleteUnused();
       GameState->Resources.ReloadModified();
     }
-#endif
   }
 
   BEGIN_TIMED_BLOCK(Update)
-#if ASSET_HOT_RELOADING
+	if(GameState->UseHotReloading)
   {
     TIMED_BLOCK(FilesystemUpdate);
     GameState->Resources.UpdateHardDriveAssetPathLists();
     GameState->Resources.DeleteUnused();
     GameState->Resources.ReloadModified();
   }
-#endif
 
   if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
   {
@@ -173,7 +169,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)
   {
-    Anim::animation_controller* Controller = GameState->Entities[e].AnimController;
+    Anim::animation_controller* Controller               = GameState->Entities[e].AnimController;
+    mat4                        CurrentEntityModelMatrix = GetEntityModelMatrix(GameState, e);
     if(Controller)
     {
       for(int i = 0; i < Controller->AnimStateCount; i++)
@@ -181,29 +178,129 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         assert(Controller->AnimationIDs[i].Value > 0);
         Controller->Animations[i] = GameState->Resources.GetAnimation(Controller->AnimationIDs[i]);
       }
+
       Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
 
-			for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
-			{
-				mat4 Mat4Bone =
-					Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
-												Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[b],
-																			Controller->Skeleton->Bones[b].BindPose));
-				vec3 Position = Math::GetMat4Translation(Mat4Bone);
+      for(int i = 0; i < Controller->AnimStateCount; i++)
+      {
+        const Anim::animation*       CurrentAnimation = Controller->Animations[i];
+        const Anim::animation_state* CurrentState     = &Controller->States[i];
 
+        const float AnimDuration =
+          (CurrentAnimation->SampleTimes[CurrentAnimation->KeyframeCount - 1] -
+           CurrentAnimation->SampleTimes[0]);
 
-				if(0 < b)
-				{
-					int ParentIndex = Controller->Skeleton->Bones[b].ParentIndex;
-					mat4 Mat4Bone =
-						Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
-													Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[ParentIndex],
-																				Controller->Skeleton->Bones[ParentIndex].BindPose));
-					vec3 ParentPosition = Math::GetMat4Translation(Mat4Bone);
-					Debug::PushLine(Position, ParentPosition);
-				}
-				Debug::PushWireframeSphere(Position, 0.05f);
-			}
+        // Compute the index of the keyframe left of the playhead
+        int PrevKeyframeIndex = 0;
+        {
+          float SampleTime = CurrentState->PlaybackRateSec *
+                             (Controller->GlobalTimeSec - CurrentState->StartTimeSec);
+          if(CurrentState->Loop && AnimDuration < SampleTime)
+          {
+            SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
+          }
+          else if(AnimDuration < SampleTime)
+          {
+            SampleTime = AnimDuration;
+          }
+
+          for(int k = 0; k < CurrentAnimation->KeyframeCount - 1; k++)
+          {
+            if(SampleTime <= CurrentAnimation->SampleTimes[k + 1])
+            {
+              PrevKeyframeIndex = k;
+              break;
+            }
+          }
+        }
+
+        int FutureTrajectoryPointCount = 0;
+        {
+          FutureTrajectoryPointCount = (int)(GameState->TrajectoryLengthInTime /
+                                             (AnimDuration / CurrentAnimation->KeyframeCount));
+        }
+
+        int EndKeyframeIndex = MinInt32(PrevKeyframeIndex + FutureTrajectoryPointCount,
+                                        CurrentAnimation->KeyframeCount - 1);
+        int SamplePeriod =
+          (int)floorf(FutureTrajectoryPointCount / (float)GameState->TrajectorySampleCount);
+        for(int i = PrevKeyframeIndex; i < EndKeyframeIndex - SamplePeriod; i += SamplePeriod)
+        {
+          vec3 LocalHipPositionA =
+            CurrentAnimation->Transforms[0 + i * CurrentAnimation->ChannelCount].Translation;
+          vec3 LocalHipPositionB =
+            CurrentAnimation->Transforms[0 + (i + SamplePeriod) * CurrentAnimation->ChannelCount]
+              .Translation;
+
+          vec3 HipPositionA =
+            Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                              { LocalHipPositionA.X, LocalHipPositionA.Y, LocalHipPositionA.Z, 1 })
+              .XYZ;
+          vec3 HipPositionB =
+            Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                              { LocalHipPositionB.X, LocalHipPositionB.Y, LocalHipPositionB.Z, 1 })
+              .XYZ;
+          vec3 RootPositionA = Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                                                 { LocalHipPositionA.X, 0, LocalHipPositionA.Z, 1 })
+                                 .XYZ;
+          vec3 RootPositionB = Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                                                 { LocalHipPositionB.X, 0, LocalHipPositionB.Z, 1 })
+                                 .XYZ;
+
+          Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });
+          Debug::PushLine(RootPositionA, RootPositionB, { 0, 1, 1, 1 });
+        }
+      }
+
+      for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
+      {
+        mat4 Mat4Bone = Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+                                      Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[b],
+                                                    Controller->Skeleton->Bones[b].BindPose));
+        vec3 Position = Math::GetMat4Translation(Mat4Bone);
+
+        if(0 < b)
+        {
+          int  ParentIndex = Controller->Skeleton->Bones[b].ParentIndex;
+          mat4 Mat4Parent =
+            Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+                          Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[ParentIndex],
+                                        Controller->Skeleton->Bones[ParentIndex].BindPose));
+          mat4 Mat4Root = Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+                                        Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[0],
+                                                      Controller->Skeleton->Bones[0].BindPose));
+          vec3 ParentPosition = Math::GetMat4Translation(Mat4Parent);
+
+#define USE_DIAMOND_VISUALIZATION 1
+#if USE_DIAMOND_VISUALIZATION
+          float BoneLength    = Math::Length(Position - ParentPosition);
+          vec3  ParentToChild = Math::Normalized(Position - ParentPosition);
+
+          vec3 Forward = Math::Normalized(
+            Math::Cross(ParentToChild, { Mat4Root._11, Mat4Root._12, Mat4Root._13 }));
+          vec3 Right = Math::Normalized(Math::Cross(ParentToChild, Forward));
+
+          mat4 DiamondMatrix = Mat4Parent;
+
+          DiamondMatrix._11 = Right.X;
+          DiamondMatrix._21 = Right.Y;
+          DiamondMatrix._31 = Right.Z;
+
+          DiamondMatrix._12 = ParentToChild.X;
+          DiamondMatrix._22 = ParentToChild.Y;
+          DiamondMatrix._32 = ParentToChild.Z;
+
+          DiamondMatrix._13 = Forward.X;
+          DiamondMatrix._23 = Forward.Y;
+          DiamondMatrix._33 = Forward.Z;
+
+          Debug::PushShadedBone(DiamondMatrix, BoneLength);
+#else
+          Debug::PushLine(Position, ParentPosition);
+#endif
+        }
+        Debug::PushWireframeSphere(Position, GameState->BoneSphereRadius);
+      }
     }
   }
 
@@ -230,10 +327,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       MeshInstance.Mesh          = CurrentModel->Meshes[m];
       MeshInstance.Material =
         GameState->Resources.GetMaterial(GameState->Entities[e].MaterialIDs[m]);
-      MeshInstance.EntityIndex = e;
+      MeshInstance.MVP            = GetEntityMVPMatrix(GameState, e);
+      MeshInstance.PrevMVP        = GameState->PrevFrameMVPMatrices[e];
+      MeshInstance.AnimController = GameState->Entities[e].AnimController;
       AddMeshInstance(&GameState->R, MeshInstance);
     }
   }
+
+  // SHADED GIZMO SUBMISSION
+  Debug::SubmitShadedBoneMeshInstances(GameState, NewPhongMaterial());
 
   BEGIN_GPU_TIMED_BLOCK(GeomPrePass);
   RenderGBufferDataToTextures(GameState);
@@ -326,4 +428,4 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   END_TIMED_BLOCK(Render);
   READ_GPU_QUERY_TIMERS();
   END_FRAME();
-}
+  }

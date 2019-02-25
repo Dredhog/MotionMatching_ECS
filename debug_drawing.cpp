@@ -1,12 +1,13 @@
 #include "debug_drawing.h"
 #include "basic_data_structures.h"
 
-#define SPHERE_MAX_COUNT 300
+#define SPHERE_MAX_COUNT 500
 #define GIZMO_MAX_COUNT 300
 #define TEXTURED_QUAD_MAX_COUNT 300
 #define COLORED_QUAD_MAX_COUNT 500
-#define LINE_INSTRUCTION_COUNT 300
-#define LINE_POINT_COUNT 500
+#define LINE_INSTRUCTION_COUNT 500
+#define LINE_POINT_COUNT 1000
+#define SHADED_BONE_MAX_COUNT 200
 
 mat4    g_SphereMatrices[SPHERE_MAX_COUNT];
 vec4    g_SphereColors[SPHERE_MAX_COUNT];
@@ -29,6 +30,31 @@ struct line_instruction
 
 fixed_array<line_instruction, LINE_INSTRUCTION_COUNT> g_LineInstructions;
 fixed_array<vec3, LINE_POINT_COUNT>                   g_LinePoints;
+
+fixed_array<mat4, SHADED_BONE_MAX_COUNT> g_ShadedBoneMatrices;
+
+void
+Debug::PushShadedBone(mat4 GlobalBonePose, float Length)
+{
+  g_ShadedBoneMatrices.Append(Math::MulMat4(GlobalBonePose, Math::Mat4Scale(Length)));
+}
+
+void
+Debug::SubmitShadedBoneMeshInstances(game_state* GameState, material Material)
+{
+	static material s_Material = Material;
+
+	Render::mesh* BoneDiamondMesh= GameState->Resources.GetModel(GameState->BoneDiamondModelID)->Meshes[0];
+  for(int i = 0; i < g_ShadedBoneMatrices.Count; i++)
+  {
+    mesh_instance BoneMeshInstance = {};
+    BoneMeshInstance.Material     = &s_Material;
+    BoneMeshInstance.Mesh         = BoneDiamondMesh;
+    BoneMeshInstance.MVP          = Math::MulMat4(GameState->Camera.VPMatrix, g_ShadedBoneMatrices[i]);
+    BoneMeshInstance.PrevMVP      = BoneMeshInstance.MVP;
+    AddMeshInstance(&GameState->R, BoneMeshInstance);
+  }
+}
 
 void
 Debug::PushWireframeSphere(vec3 Position, float Radius, vec4 Color)
@@ -293,4 +319,5 @@ Debug::ClearDrawArrays()
   g_SphereCount   = 0;
   g_LineInstructions.Clear();
   g_LinePoints.Clear();
+  g_ShadedBoneMatrices.Clear();
 }

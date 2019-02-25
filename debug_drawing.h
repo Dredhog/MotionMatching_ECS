@@ -25,6 +25,7 @@ namespace Debug
   void PushTopLeftQuad(vec3 Position, float Width, float Height, vec4 Color);
   void PushTopLeftTexturedQuad(int32_t TextureID, vec3 Position, float Width, float Height);
   void PushGizmo(const camera* Camera, const mat4* GizmoBase, vec3 Scale = { 1, 1, 1 });
+  void PushShadedBone(mat4 GlobalBonePose, float Length);
   void PushWireframeSphere(vec3 Position, float Radius, vec4 Color = vec4{ 1, 0, 0, 1 });
   void PushLine(vec3 PointA, vec3 PointB, vec4 Color = { 1, 0, 0, 1 });
   void PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color = { 1, 0, 0, 1 });
@@ -33,6 +34,8 @@ namespace Debug
   void UIPushQuad(vec3 Position, vec3 Size, vec4 Color = { 0.5f, 0.5f, 0.5f, 1.0f });
   void UIPushTexturedQuad(int32_t TextureID, vec3 BottomLeft, vec3 Size);
   void UIPushClipQuad(vec3 Position, vec3 Size, int32_t StencilValue);
+
+  void SubmitShadedBoneMeshInstances(game_state* GameState, material Material);
 
   void DrawGizmos(game_state* GameState);
   void DrawQuads(game_state* GameState);

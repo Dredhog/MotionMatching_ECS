@@ -327,7 +327,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->Camera.FarClipPlane  = 1000.0f;
     GameState->Camera.FieldOfView   = 90.0f;
     GameState->Camera.MaxTiltAngle  = 90.0f;
-    GameState->Camera.Speed         = 12.0f;
+    GameState->Camera.Speed         = 5.0f;
   }
 
   {
@@ -345,10 +345,10 @@ SetGameStatePODFields(game_state* GameState)
       GameState->R.RealTimeDirectionalShadows      = true;
       GameState->R.RecomputeDirectionalShadows     = false;
       GameState->R.ClearDirectionalShadows         = false;
-      GameState->R.Sun.CascadeFarPlaneDistances[0] = 8;
-      GameState->R.Sun.CascadeFarPlaneDistances[1] = 15;
-      GameState->R.Sun.CascadeFarPlaneDistances[2] = 25;
-      GameState->R.Sun.CascadeFarPlaneDistances[3] = 50;
+      GameState->R.Sun.CascadeFarPlaneDistances[0] = 1;
+      GameState->R.Sun.CascadeFarPlaneDistances[1] = 4;
+      GameState->R.Sun.CascadeFarPlaneDistances[2] = 10;
+      GameState->R.Sun.CascadeFarPlaneDistances[3] = 20;
 
       GameState->R.Sun.AmbientColor = { 0.3f, 0.3f, 0.3f };
       GameState->R.Sun.DiffuseColor = { 0.7f, 0.7f, 0.7f };
@@ -403,6 +403,8 @@ SetGameStatePODFields(game_state* GameState)
     }
   }
 
+	GameState->UseHotReloading = false;
+
   GameState->DrawCubemap              = true;
   GameState->DrawDebugSpheres         = true;
   GameState->DrawTimeline             = true;
@@ -410,11 +412,18 @@ SetGameStatePODFields(game_state* GameState)
   GameState->DrawDebugLines           = true;
   GameState->DrawDebugSpheres         = true;
   GameState->DrawShadowCascadeVolumes = false;
+  GameState->BoneSphereRadius         = 0.01f;
 
   GameState->IsAnimationPlaying = false;
   // GameState->EditorBoneRotationSpeed = 45.0f;
   GameState->CurrentMaterialID = { 0 };
   GameState->PlayerEntityIndex = -1;
+
+	//Motion Matchin
+	{
+		GameState->TrajectoryLengthInTime = 1;
+		GameState->TrajectorySampleCount = 20;
+	}
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
   GameState->Physics.Params.Mu                         = 1.0f;

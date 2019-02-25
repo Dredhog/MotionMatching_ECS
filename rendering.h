@@ -29,8 +29,8 @@ RenderGBufferDataToTextures(game_state* GameState)
     glUseProgram(GeomPrePassShaderID);
     for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
     {
-      Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
-      int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
+			const mesh_instance* MeshInstance = &GameState->R.MeshInstances[i];
+      Render::mesh* CurrentMesh = MeshInstance->Mesh;
 
       if(CurrentMesh != PreviousMesh)
       {
@@ -41,11 +41,11 @@ RenderGBufferDataToTextures(game_state* GameState)
       // TODO(Lukas) Add logic for bone matrix submission
 
       glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_mvp"), 1, GL_FALSE,
-                         GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
+                         MeshInstance->MVP.e);
       glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_prev_mvp"), 1, GL_FALSE,
-                         GameState->PrevFrameMVPMatrices[CurrentEntityIndex].e);
+                         MeshInstance->PrevMVP.e);
       glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_model"), 1, GL_FALSE,
-                         GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+                         Math::MulMat4(GameState->Camera.InvVPMatrix, MeshInstance->MVP).e);
       glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_view"), 1, GL_FALSE,
                          GameState->Camera.ViewMatrix.e);
       glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
@@ -198,8 +198,8 @@ RenderShadowmapCascadesToTextures(game_state* GameState)
         Render::mesh* PreviousMesh = nullptr;
         for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
         {
-          Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
-          int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
+          Render::mesh* CurrentMesh      = GameState->R.MeshInstances[i].Mesh;
+          mat4          CurrentMVPMatrix = GameState->R.MeshInstances[i].MVP;
 
           if(CurrentMesh != PreviousMesh)
           {
@@ -208,7 +208,7 @@ RenderShadowmapCascadesToTextures(game_state* GameState)
           }
 
           glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_model"), 1, GL_FALSE,
-                             GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+                             Math::MulMat4(GameState->Camera.InvVPMatrix, CurrentMVPMatrix).e);
           glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);
         }
         glBindVertexArray(0);
@@ -320,9 +320,11 @@ RenderMainSceneObjects(game_state* GameState)
   uint32_t      CurrentShaderID  = 0;
   for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
   {
-    material*     CurrentMaterial    = GameState->R.MeshInstances[i].Material;
-    Render::mesh* CurrentMesh        = GameState->R.MeshInstances[i].Mesh;
-    int           CurrentEntityIndex = GameState->R.MeshInstances[i].EntityIndex;
+    mesh_instance*                MeshInstance          = &GameState->R.MeshInstances[i];
+    material*                     CurrentMaterial       = MeshInstance->Material;
+    Render::mesh*                 CurrentMesh           = MeshInstance->Mesh;
+    Anim::animation_controller*   CurrentAnimController = MeshInstance->AnimController;
+
     if(CurrentMaterial != PreviousMaterial)
     {
       if(PreviousMaterial)
@@ -338,14 +340,11 @@ RenderMainSceneObjects(game_state* GameState)
       glBindVertexArray(CurrentMesh->VAO);
       PreviousMesh = CurrentMesh;
     }
-    if(CurrentMaterial->Common.IsSkeletal && GameState->Entities[CurrentEntityIndex].AnimController)
+    if(CurrentMaterial->Common.IsSkeletal && CurrentAnimController)
     {
       glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"),
-                         GameState->Entities[CurrentEntityIndex]
-                           .AnimController->Skeleton->BoneCount,
-                         GL_FALSE,
-                         (float*)GameState->Entities[CurrentEntityIndex]
-                           .AnimController->HierarchicalModelSpaceMatrices);
+                         CurrentAnimController->Skeleton->BoneCount, GL_FALSE,
+                         (float*)CurrentAnimController->HierarchicalModelSpaceMatrices);
     }
     else
     {
@@ -354,9 +353,9 @@ RenderMainSceneObjects(game_state* GameState)
                          Mat4Zeros.e);
     }
     glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_mvp"), 1, GL_FALSE,
-                       GetEntityMVPMatrix(GameState, CurrentEntityIndex).e);
+                       MeshInstance->MVP.e);
     glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_model"), 1, GL_FALSE,
-                       GetEntityModelMatrix(GameState, CurrentEntityIndex).e);
+                       Math::MulMat4(GameState->Camera.InvVPMatrix, MeshInstance->MVP).e);
     glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "mat_view"), 1, GL_FALSE,
                        GameState->Camera.ViewMatrix.e);
     glDrawElements(GL_TRIANGLES, CurrentMesh->IndiceCount, GL_UNSIGNED_INT, 0);

@@ -8,3 +8,14 @@ all:
 	@$(compiler) $(warning_flags) -g -std=c++11 linux/*.cpp *.cpp linear_math/*.cpp -o engine $(linker_flags)
 	@./engine
 
+models:
+	@./build.sh
+
+animations:
+	@./build_anim.sh
+
+conference:
+	@./builder/builder ./data/models_actors/conference.obj ./data/built/conference --model --scale 0.0035
+
+skeleton:
+	@./builder/builder ./data/animations/91_01.bvh ./data/built/01_91 --root_bone Hips --actor --scale 0.056444

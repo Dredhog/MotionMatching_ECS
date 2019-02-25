@@ -17,8 +17,8 @@ namespace Resource
                            Memory::stack_allocator* TemporaryStack)
   {
     *this                      = {};
-    uint32_t ModelHeapSize     = (uint32_t)((float)TotalMemorySize * 0.3f);
-    uint32_t AnimationHeapSize = (uint32_t)((float)TotalMemorySize * 0.65f);
+    uint32_t ModelHeapSize     = (uint32_t)((float)TotalMemorySize * 0.6f);
+    uint32_t AnimationHeapSize = (uint32_t)((float)TotalMemorySize * 0.3f);
     uint32_t MaterialStackSize = TotalMemorySize - ModelHeapSize - AnimationHeapSize;
 
     uint8_t* ModelHeapStart     = MemoryStart;
@@ -216,8 +216,11 @@ namespace Resource
   void
   resource_manager::WipeAllShaderData()
   {
-    // TODO(Lukas) Implement shader cleanup
-    assert(0 && "WileAllShaderData NOT IMPLEMENTED!");
+    for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
+    {
+      this->FreeShader({ i + 1 });
+    }
+    this->Shaders.Reset();
   }
 
   void
@@ -560,7 +563,7 @@ namespace Resource
         }
       }
     }
-#if 0
+#if 1
     for(int i = 1; i <= RESOURCE_MAX_COUNT; i++)
     {
       Anim::animation* Animation;
@@ -573,7 +576,7 @@ namespace Resource
           int32_t RefCount = this->Animations.QueryReferences(RID);
           if(RefCount <= 0)
           {
-            printf("deleting model rid: %d, refs: %d\n", RID.Value, RefCount);
+            printf("deleting animation rid: %d, refs: %d\n", RID.Value, RefCount);
             FreeAnimation(RID);
           }
         }

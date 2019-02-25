@@ -354,14 +354,16 @@ GetOBBBoxMesh(obb_def OBB)
   return Result;
 }
 
-const int32_t MESH_INSTANCE_MAX_COUNT  = 10000;
+const int32_t MESH_INSTANCE_MAX_COUNT  = 1000;
 const int32_t SSAO_SAMPLE_VECTOR_COUNT = 9;
 
 struct mesh_instance
 {
-  Render::mesh* Mesh;
-  material*     Material;
-  int32_t       EntityIndex;
+  Render::mesh*          Mesh;
+  material*              Material;
+  Anim::animation_controller* AnimController;
+  mat4                   MVP;
+  mat4                   PrevMVP;
 };
 
 struct render_data

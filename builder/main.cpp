@@ -137,7 +137,7 @@ r_FindSkeletonRootInSubtre(aiNode* Node, const char* RootBoneName)
 
 Render::mesh
 ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skeleton* Skeleton,
-            bool ExtractBindPose)
+            float SpaceScale, bool ExtractBindPose)
 {
   Render::mesh Mesh = {};
   Mesh.VerticeCount = AssimpMesh->mNumVertices;
@@ -152,9 +152,9 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
   for(int i = 0; i < Mesh.VerticeCount; i++)
   {
     Render::vertex Vertex = {};
-    Vertex.Position.X     = AssimpMesh->mVertices[i].x;
-    Vertex.Position.Y     = AssimpMesh->mVertices[i].y;
-    Vertex.Position.Z     = AssimpMesh->mVertices[i].z;
+    Vertex.Position.X     = SpaceScale * AssimpMesh->mVertices[i].x;
+    Vertex.Position.Y     = SpaceScale * AssimpMesh->mVertices[i].y;
+    Vertex.Position.Z     = SpaceScale * AssimpMesh->mVertices[i].z;
 
     Vertex.Normal.X = AssimpMesh->mNormals[i].x;
     Vertex.Normal.Y = AssimpMesh->mNormals[i].y;
@@ -179,9 +179,10 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
   }
   if(AssimpMesh->HasBones() && Skeleton->BoneCount > 0)
   {
-    Mesh.HasBones = true;
-    // CURRENTLY ONLY ONE BONE
+    Mesh.HasBones  = true;
     Mesh.BoneCount = AssimpMesh->mNumBones;
+    // TODO(Lukas) Remove the ExtractBindPose it should not be here, no verts get bone weights right
+    // now
     for(int i = 0; i < AssimpMesh->mNumBones && ExtractBindPose; i++)
     {
       aiBone* AssimpBone = AssimpMesh->mBones[i];
@@ -225,18 +226,20 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
 
 void
 r_ProcessNode(Memory::stack_allocator* Alloc, const aiNode* Node, const aiScene* Scene,
-              Render::model* Model, Anim::skeleton* Skeleton, bool ExtractBindPose = false)
+              Render::model* Model, Anim::skeleton* Skeleton, float SpaceScale,
+              bool ExtractBindPose = false)
 {
   for(int i = 0; i < Node->mNumMeshes; i++)
   {
     Render::mesh* Mesh = PushStruct(Alloc, Render::mesh);
-    *Mesh = ProcessMesh(Alloc, Scene->mMeshes[Node->mMeshes[i]], Skeleton, ExtractBindPose);
+    *Mesh =
+      ProcessMesh(Alloc, Scene->mMeshes[Node->mMeshes[i]], Skeleton, SpaceScale, ExtractBindPose);
 
     Model->Meshes[Model->MeshCount++] = Mesh;
   }
   for(int i = 0; i < Node->mNumChildren; i++)
   {
-    r_ProcessNode(Alloc, Node->mChildren[i], Scene, Model, Skeleton, ExtractBindPose);
+    r_ProcessNode(Alloc, Node->mChildren[i], Scene, Model, Skeleton, SpaceScale, ExtractBindPose);
   }
 }
 
@@ -310,7 +313,7 @@ void
 PrintUsage()
 {
   printf(
-    "usage:\nbuilder input_file output_name [--root_bone name] --model | --actor | --animation\n");
+    "usage:\nbuilder input_file output_name [--root_bone name] [--scale value] --model | --actor | --animation\n");
 }
 
 int
@@ -323,6 +326,8 @@ main(int ArgCount, char** Args)
   bool BuildModel     = false;
   bool BuildActor     = false;
   bool BuildAnimation = false;
+
+  float RescaleCoefficient = 1.0f;
 
   const char* RootBoneName = "root";
   // Process command line arguments
@@ -370,6 +375,19 @@ main(int ArgCount, char** Args)
         if(ArgIndex + 1 < ArgCount)
         {
           RootBoneName = Args[ArgIndex + 1];
+          ++ArgIndex;
+        }
+        else
+        {
+          PrintUsage();
+          return 1;
+        }
+      }
+      else if(strcmp(Args[ArgIndex], "--scale") == 0)
+      {
+        if(ArgIndex + 1 < ArgCount)
+        {
+          RescaleCoefficient = (float)atof(Args[ArgIndex + 1]);
           ++ArgIndex;
         }
         else
@@ -440,7 +458,8 @@ main(int ArgCount, char** Args)
       Model->Meshes = PushArray(&Allocator, Scene->mNumMeshes, Render::mesh*);
 
       // Create The Actual Meshes
-      r_ProcessNode(&Allocator, Scene->mRootNode, Scene, Model, &Skeleton);
+      r_ProcessNode(&Allocator, Scene->mRootNode, Scene, Model, &Skeleton, RescaleCoefficient,
+                    false);
     }
 
     if(BuildModel)
@@ -515,8 +534,8 @@ main(int ArgCount, char** Args)
               Anim::transform LocalTransform = {};
               LocalTransform.Rotation        = { BoneQuat.w, BoneQuat.x, BoneQuat.y, BoneQuat.z };
               LocalTransform.Scale           = { BoneScale.x, BoneScale.y, BoneScale.z };
-              LocalTransform.Translation     = { BoneTranslation.x, BoneTranslation.y,
-                                             BoneTranslation.z };
+              LocalTransform.Translation =
+                RescaleCoefficient * vec3{ BoneTranslation.x, BoneTranslation.y, BoneTranslation.z };
 
               LocalBindPose = Anim::TransformToMat4(&LocalTransform);
             }
@@ -538,11 +557,11 @@ main(int ArgCount, char** Args)
           printf("No animation for bone \"%s\" found\n", Skeleton.Bones[BoneIndex].Name);
 
 #ifdef USE_BIND_POSE
-					{
-          	printf("Removing \"%s\" from animation hierarchy\n", Skeleton.Bones[BoneIndex].Name);
-						SimpleRemoveBoneFromSkeleton(&Skeleton, BoneIndex);
-						--BoneIndex;
-					}
+          {
+            printf("Removing \"%s\" from animation hierarchy\n", Skeleton.Bones[BoneIndex].Name);
+            SimpleRemoveBoneFromSkeleton(&Skeleton, BoneIndex);
+            --BoneIndex;
+          }
 #endif
         }
       }
@@ -570,10 +589,13 @@ main(int ArgCount, char** Args)
         for(int i = 0; i < Channel->mNumRotationKeys; i++)
         {
           Anim::transform BoneParentSpaceAbsTransform = {};
-					int TranslationKeyIndex = (b == 0) ? i : 0;
-          BoneParentSpaceAbsTransform.Translation.X   = Channel->mPositionKeys[TranslationKeyIndex].mValue.x;
-          BoneParentSpaceAbsTransform.Translation.Y   = Channel->mPositionKeys[TranslationKeyIndex].mValue.y;
-          BoneParentSpaceAbsTransform.Translation.Z   = Channel->mPositionKeys[TranslationKeyIndex].mValue.z;
+          int             TranslationKeyIndex         = (b == 0) ? i : 0;
+          BoneParentSpaceAbsTransform.Translation.X =
+            RescaleCoefficient * Channel->mPositionKeys[TranslationKeyIndex].mValue.x;
+          BoneParentSpaceAbsTransform.Translation.Y =
+            RescaleCoefficient * Channel->mPositionKeys[TranslationKeyIndex].mValue.y;
+          BoneParentSpaceAbsTransform.Translation.Z =
+            RescaleCoefficient * Channel->mPositionKeys[TranslationKeyIndex].mValue.z;
 
           BoneParentSpaceAbsTransform.Scale.X = Channel->mScalingKeys[0].mValue.x;
           BoneParentSpaceAbsTransform.Scale.Y = Channel->mScalingKeys[0].mValue.y;
@@ -618,9 +640,9 @@ main(int ArgCount, char** Args)
               BindRelativeLocalBoneTransform.Rotation = { x, y, z };
             }
           }
-#else //USE_BIND_POSE
-					Anim::transform BindRelativeLocalBoneTransform = BoneParentSpaceAbsTransform;
-#endif //USE_BIND_POSE
+#else  // USE_BIND_POSE
+          Anim::transform BindRelativeLocalBoneTransform = BoneParentSpaceAbsTransform;
+#endif // USE_BIND_POSE
 
           Animation->Transforms[i * Skeleton.BoneCount + BoneIndex] =
             BindRelativeLocalBoneTransform;

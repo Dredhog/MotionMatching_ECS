@@ -17,9 +17,10 @@ namespace UI
     BEGIN_TIMED_BLOCK(GUI);
     UI::BeginFrame(GameState, Input);
 
-    static bool s_ShowDemoWindow     = false;
-    static bool s_ShowPhysicsWindow  = false;
-    static bool s_ShowProfilerWindow = false;
+    static bool s_ShowDemoWindow           = false;
+    static bool s_ShowPhysicsWindow        = false;
+    static bool s_ShowProfilerWindow       = false;
+    static bool s_ShowMotionMatchingWindow = false;
 
     UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
     {
@@ -35,9 +36,11 @@ namespace UI
       static bool s_ShowSceneSettings          = false;
       static bool s_ShowPostProcessingSettings = false;
 
+      UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
       UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
       UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
       UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+      UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
       EntityGUI(GameState, s_ShowEntityTools);
       MaterialGUI(GameState, s_ShowMaterialEditor);
       AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
@@ -350,6 +353,18 @@ namespace UI
             }
           }
         }
+      }
+      UI::EndWindow();
+    }
+
+    if(s_ShowMotionMatchingWindow)
+    {
+      UI::BeginWindow("Motion Matching", { 670, 50 }, { 500, 380 });
+      {
+        UI::SliderFloat("Root Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0,
+                        10);
+        UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2,
+                        40);
       }
       UI::EndWindow();
     }
@@ -928,8 +943,15 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
             PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
         }
-        else if(SelectedEntity->AnimController && UI::Button("Delete Anim. Controller"))
+        else if(SelectedEntity->AnimController &&
+                GameState->SelectedEntityIndex != GameState->AnimEditor.EntityIndex &&
+                UI::Button("Delete Anim. Controller"))
+
         {
+          // Note(Lukas): MEMORY LEAK!!!!!! The AnimController and its arrays are still on the
+          // persistent stack
+          RemoveAnimationReferences(&GameState->Resources,
+                                    SelectedEntity->AnimController);
           SelectedEntity->AnimController = 0;
         }
         else if(SelectedEntity->AnimController)
@@ -952,10 +974,14 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 {
                   SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
                   SelectedEntity->AnimController->AnimStateCount  = 1;
+
+									GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
                 }
                 else
                 {
+									GameState->Resources.Animations.RemoveReference(SelectedEntity->AnimController->AnimationIDs[0]);
                   SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
+									GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
                 }
                 Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
               }

@@ -15,7 +15,8 @@ UpdateCameraDerivedFields(camera* Camera)
   Camera->ProjectionMatrix =
     Math::Mat4Perspective(Camera->FieldOfView, (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
                           Camera->NearClipPlane, Camera->FarClipPlane);
-  Camera->VPMatrix = Math::MulMat4(Camera->ProjectionMatrix, Camera->ViewMatrix);
+  Camera->VPMatrix    = Math::MulMat4(Camera->ProjectionMatrix, Camera->ViewMatrix);
+  Camera->InvVPMatrix = Math::InvMat4(Camera->VPMatrix);
 }
 
 void
