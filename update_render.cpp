@@ -181,10 +181,59 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
 
+
+      //Todo(Luakas): remove most parts of this code as it is repeated multiple times in different locations
       for(int i = 0; i < Controller->AnimStateCount; i++)
       {
         const Anim::animation*       CurrentAnimation = Controller->Animations[i];
         const Anim::animation_state* CurrentState     = &Controller->States[i];
+        
+        //Transform current pose into the space of the root bone
+        {
+          const int HipBoneIndex = 0;
+#if 1
+          mat4 Mat4Hip = Controller->HierarchicalModelSpaceMatrices[HipBoneIndex];
+
+          vec3 Up      = { 0, 1, 0 };
+          vec3 Right   = Math::Normalized(Math::Cross(Up, Mat4Hip.Z));
+          vec3 Forward = Math::Cross(Right, Up);
+
+          mat4 Mat4Root = Math::Mat4Ident();
+          Mat4Root.T    = { Mat4Hip.T.X, 0, Mat4Hip.T.Z };
+          Mat4Root.Y    = Up;
+          Mat4Root.X    = Right;
+          Mat4Root.Z    = Forward;
+
+          Debug::PushGizmo(&GameState->Camera, &Mat4Root);
+					mat4 Mat4InvRoot = Math::InvMat4(Mat4Root);
+
+					for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
+					{
+						Controller->HierarchicalModelSpaceMatrices[b] = Math::MulMat4(Math::InvMat4(Mat4Root), Controller->HierarchicalModelSpaceMatrices[b]);
+					}
+#else
+          anim::transform LocalHipTransform =
+            CurrentAnimation->Transforms[HipBoneIndex + i * CurrentAnimation->ChannelCount];
+          vec3 LocalHipPositionA = LocalHipTransform.Translation;
+
+          vec3 HipPositionA =
+            Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                              { LocalHipPositionA.X, LocalHipPositionA.Y, LocalHipPositionA.Z, 1 });
+
+          vec3 RootPositionA =
+            Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                              { LocalHipPositionA.X, 0, LocalHipPositionA.Z, 1 });
+          quaternion WorldSpaceHipRotation =
+            GameState->Entities[e].Transform.Rotation * LocalHipTransform.Rotation;
+          mat3 WorldSpaceHipRotationMatrix = Math::QuatToMat3(WorldSpaceHipRotation);
+          mat4 RootBone vec3 Up            = { 0, 1, 0 };
+          vec3               Right         = Math::Normalized(
+            Math::Cross(vec3{ WorldSpaceHipRotationMatrix._11, WorldSpaceHipRotationMatrix._21,
+                              WorldSpaceHipRotationMatrix._31 },
+                        Up));
+          vec3 Forward = Math::Cross(Up, Right);
+#endif
+        }
 
         const float AnimDuration =
           (CurrentAnimation->SampleTimes[CurrentAnimation->KeyframeCount - 1] -
@@ -282,17 +331,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
           mat4 DiamondMatrix = Mat4Parent;
 
-          DiamondMatrix._11 = Right.X;
-          DiamondMatrix._21 = Right.Y;
-          DiamondMatrix._31 = Right.Z;
-
-          DiamondMatrix._12 = ParentToChild.X;
-          DiamondMatrix._22 = ParentToChild.Y;
-          DiamondMatrix._32 = ParentToChild.Z;
-
-          DiamondMatrix._13 = Forward.X;
-          DiamondMatrix._23 = Forward.Y;
-          DiamondMatrix._33 = Forward.Z;
+          DiamondMatrix.X = Right;
+          DiamondMatrix.Y = ParentToChild;
+          DiamondMatrix.Z = Forward;
 
           Debug::PushShadedBone(DiamondMatrix, BoneLength);
 #else

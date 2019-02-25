@@ -8,6 +8,11 @@ union mat3 {
     float _12, _22, _32;
     float _13, _23, _33;
   };
+  struct{
+    vec3 X;
+    vec3 Y;
+    vec3 Z;
+  };
   float e[9];
 };
 
@@ -19,6 +24,20 @@ union mat4 {
     float _13, _23, _33, _43;
     float _14, _24, _34, _44;
   };
+  struct
+  {
+    vec4 X_h;
+    vec4 Y_h;
+    vec4 Z_h;
+    vec4 T_h;
+  };
+  struct{
+    vec3 X; float PadX;
+    vec3 Y; float padY;
+    vec3 Z; float PadZ;
+    vec3 T; float PadT;
+  };
+  
   float e[16];
 };
 
