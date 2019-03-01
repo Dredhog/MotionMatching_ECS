@@ -96,6 +96,12 @@ AbsFloat(float F)
   return (F < 0) ? -F : F;
 }
 
+inline float
+SignFloat(float F)
+{
+	return (F < 0) ? -1.0f : 1.0f;
+}
+
 inline int32_t
 AbsInt32(int32_t T)
 {

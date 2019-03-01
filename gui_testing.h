@@ -9,6 +9,13 @@ void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEn
 void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
              bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings);
 
+char*
+PathArrayToString(void* Data, int Index)
+{
+  path* Paths = (path*)Data;
+  return Paths[Index].Name;
+}
+
 namespace UI
 {
   void
@@ -363,8 +370,44 @@ namespace UI
       {
         UI::SliderFloat("Root Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0,
                         10);
-        UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2,
-                        40);
+        UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2, 40);
+
+        {
+          static int32_t ActivePathIndex = 0;
+          UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
+                    GameState->Resources.AnimationPathCount, PathArrayToString);
+          rid NewRID = { 0 };
+          if(GameState->Resources.AnimationPathCount > 0 &&
+             !GameState->Resources
+                .GetAnimationPathRID(&NewRID,
+                                     GameState->Resources.AnimationPaths[ActivePathIndex].Name))
+          {
+            NewRID = GameState->Resources.RegisterAnimation(
+              GameState->Resources.AnimationPaths[ActivePathIndex].Name);
+          }
+
+          if(UI::Button("Push Animation") &&
+             GameState->MMSet.AnimRIDs.Count < GameState->MMSet.AnimRIDs.GetCapacity())
+          {
+            GameState->MMSet.AnimRIDs.Push(NewRID);
+            GameState->Resources.Animations.AddReference(NewRID);
+          }
+          UI::SameLine();
+          if(UI::Button("Pop Animation") && 0 < GameState->MMSet.AnimRIDs.Count)
+          {
+            GameState->MMSet.AnimRIDs.Pop();
+            GameState->Resources.Animations.RemoveReference(NewRID);
+          }
+          UI::NewLine();
+        }
+      }
+      {
+        for(int i = 0; i < GameState->MMSet.AnimRIDs.Count; i++)
+        {
+          char* Path;
+          GameState->Resources.Animations.Get(GameState->MMSet.AnimRIDs[i], NULL, &Path);
+          UI::Text(Path);
+        }
       }
       UI::EndWindow();
     }
@@ -372,13 +415,6 @@ namespace UI
     UI::EndFrame();
     END_TIMED_BLOCK(GUI);
   }
-}
-
-char*
-PathArrayToString(void* Data, int Index)
-{
-  path* Paths = (path*)Data;
-  return Paths[Index].Name;
 }
 
 void
@@ -1023,10 +1059,6 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
-            UI::SliderFloat("Acceleration", &g_Acceleration, 0, 40);
-            UI::SliderFloat("Deceleration", &g_Decceleration, 0, 40);
-            UI::SliderFloat("Max Speed", &g_MaxSpeed, 0, 50);
-            UI::SliderFloat("Playback Rate", &g_MovePlaybackRate, 0.1f, 10);
 
             { // Walk animation
               static int32_t ActivePathIndex = 0;

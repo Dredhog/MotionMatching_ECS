@@ -423,6 +423,7 @@ SetGameStatePODFields(game_state* GameState)
 	{
 		GameState->TrajectoryLengthInTime = 1;
 		GameState->TrajectorySampleCount = 20;
+		GameState->MMSet = {};
 	}
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;

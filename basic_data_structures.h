@@ -69,6 +69,11 @@ struct fixed_stack
     assert(0 <= Index && Index < Count);
     return this->Elements[Index];
   }
+
+	int GetCapacity()
+	{
+		return Capacity;
+	}
 };
 
 template<typename T, int Capacity>

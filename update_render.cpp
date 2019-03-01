@@ -50,7 +50,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     RegisterLoadInitialResources(GameState);
     SetGameStatePODFields(GameState);
 
-		if(!GameState->UseHotReloading)
+    if(!GameState->UseHotReloading)
     {
       TIMED_BLOCK(FilesystemUpdate);
       GameState->Resources.UpdateHardDriveAssetPathLists();
@@ -60,7 +60,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   BEGIN_TIMED_BLOCK(Update)
-	if(GameState->UseHotReloading)
+  if(GameState->UseHotReloading)
   {
     TIMED_BLOCK(FilesystemUpdate);
     GameState->Resources.UpdateHardDriveAssetPathLists();
@@ -153,7 +153,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     entity* PlayerEntity = {};
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
-      Gameplay::UpdatePlayer(PlayerEntity, Input);
+      Gameplay::UpdatePlayer(PlayerEntity, Input, &GameState->Camera);
     }
   }
 
@@ -181,18 +181,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
 
-
-      //Todo(Luakas): remove most parts of this code as it is repeated multiple times in different locations
+      // Todo(Luakas): remove most parts of this code as it is repeated multiple times in different
+      // locations
       for(int i = 0; i < Controller->AnimStateCount; i++)
       {
         const Anim::animation*       CurrentAnimation = Controller->Animations[i];
         const Anim::animation_state* CurrentState     = &Controller->States[i];
-        
-        //Transform current pose into the space of the root bone
+
+        // Transform current pose into the space of the root bone
+        mat4 Mat4InvRoot = Math::Mat4Ident();
+#if 1
         {
           const int HipBoneIndex = 0;
-#if 1
-          mat4 Mat4Hip = Controller->HierarchicalModelSpaceMatrices[HipBoneIndex];
+          mat4      Mat4Hip      = Controller->HierarchicalModelSpaceMatrices[HipBoneIndex];
 
           vec3 Up      = { 0, 1, 0 };
           vec3 Right   = Math::Normalized(Math::Cross(Up, Mat4Hip.Z));
@@ -205,35 +206,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           Mat4Root.Z    = Forward;
 
           Debug::PushGizmo(&GameState->Camera, &Mat4Root);
-					mat4 Mat4InvRoot = Math::InvMat4(Mat4Root);
+          Mat4InvRoot = Math::InvMat4(Mat4Root);
 
-					for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
-					{
-						Controller->HierarchicalModelSpaceMatrices[b] = Math::MulMat4(Math::InvMat4(Mat4Root), Controller->HierarchicalModelSpaceMatrices[b]);
-					}
-#else
-          anim::transform LocalHipTransform =
-            CurrentAnimation->Transforms[HipBoneIndex + i * CurrentAnimation->ChannelCount];
-          vec3 LocalHipPositionA = LocalHipTransform.Translation;
-
-          vec3 HipPositionA =
-            Math::MulMat4Vec4(CurrentEntityModelMatrix,
-                              { LocalHipPositionA.X, LocalHipPositionA.Y, LocalHipPositionA.Z, 1 });
-
-          vec3 RootPositionA =
-            Math::MulMat4Vec4(CurrentEntityModelMatrix,
-                              { LocalHipPositionA.X, 0, LocalHipPositionA.Z, 1 });
-          quaternion WorldSpaceHipRotation =
-            GameState->Entities[e].Transform.Rotation * LocalHipTransform.Rotation;
-          mat3 WorldSpaceHipRotationMatrix = Math::QuatToMat3(WorldSpaceHipRotation);
-          mat4 RootBone vec3 Up            = { 0, 1, 0 };
-          vec3               Right         = Math::Normalized(
-            Math::Cross(vec3{ WorldSpaceHipRotationMatrix._11, WorldSpaceHipRotationMatrix._21,
-                              WorldSpaceHipRotationMatrix._31 },
-                        Up));
-          vec3 Forward = Math::Cross(Up, Right);
-#endif
+          for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
+          {
+            Controller->HierarchicalModelSpaceMatrices[b] =
+              Math::MulMat4(Math::InvMat4(Mat4Root), Controller->HierarchicalModelSpaceMatrices[b]);
+          }
         }
+#endif
 
         const float AnimDuration =
           (CurrentAnimation->SampleTimes[CurrentAnimation->KeyframeCount - 1] -
@@ -280,6 +261,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           vec3 LocalHipPositionB =
             CurrentAnimation->Transforms[0 + (i + SamplePeriod) * CurrentAnimation->ChannelCount]
               .Translation;
+
+          LocalHipPositionA =
+            Math::MulMat4Vec4(Mat4InvRoot,
+                              { LocalHipPositionA.X, LocalHipPositionA.Y, LocalHipPositionA.Z, 1 })
+              .XYZ;
+          LocalHipPositionB =
+            Math::MulMat4Vec4(Mat4InvRoot,
+                              { LocalHipPositionB.X, LocalHipPositionB.Y, LocalHipPositionB.Z, 1 })
+              .XYZ;
 
           vec3 HipPositionA =
             Math::MulMat4Vec4(CurrentEntityModelMatrix,
@@ -469,4 +459,4 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   END_TIMED_BLOCK(Render);
   READ_GPU_QUERY_TIMERS();
   END_FRAME();
-  }
+}

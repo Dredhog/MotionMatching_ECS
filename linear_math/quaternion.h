@@ -139,6 +139,7 @@ namespace Math
     return EulerToQuat(Rotation.X, Rotation.Y, Rotation.Z);
   }
 
+
   inline vec3
   QuatToEuler(quat Q)
   {
@@ -187,6 +188,15 @@ namespace Math
     quat Result = {};
     Result.S    = 1.0f;
     return Result;
+  }
+
+	inline quat QuatFromTo(vec3 From, vec3 To)
+	{
+		quat Result;
+    Result.V = Math::Cross(From, To);
+		Result.S = Math::Length(From)*Math::Length(To) + Math::Dot(From, To);
+		Math::Normalize(&Result);
+		return Result;
   }
 
   inline quat

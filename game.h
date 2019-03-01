@@ -19,10 +19,12 @@
 #include "edit_animation.h"
 #include "resource_manager.h"
 #include "dynamics.h"
+#include "motion_matching.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
 const int32_t MESH_SELECTION_MAX_COUNT   = 400;
+const int32_t MAX_MM_ANIMATION_COUNT     = 30;
 
 #define FOR_ALL_NAMES(DO_FUNC) DO_FUNC(Entity) DO_FUNC(Mesh) DO_FUNC(Bone)
 #define GENERATE_ENUM(Name) SELECT_##Name,
@@ -39,7 +41,6 @@ static const char* g_SelectionEnumStrings[SELECT_EnumCount] = { FOR_ALL_NAMES(GE
 
 struct game_state
 {
-
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
   Memory::heap_allocator   HeapAllocator;
@@ -56,7 +57,9 @@ struct game_state
   camera Camera;
   camera PreviewCamera;
 
-	bool UseHotReloading;
+	animation_set MMSet;
+
+  bool UseHotReloading;
 
   // Models
   rid SphereModelID;
@@ -79,8 +82,10 @@ struct game_state
   mat4    PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
 
   // Motion Matching
-  float TrajectoryLengthInTime;
-  int   TrajectorySampleCount;
+  float   TrajectoryLengthInTime;
+  int     TrajectorySampleCount;
+  rid     MMAnimationRIDs[MAX_MM_ANIMATION_COUNT];
+  int32_t MMAnimationCount;
 
   // Fonts/text
   Text::font Font;
