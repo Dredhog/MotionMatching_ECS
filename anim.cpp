@@ -55,40 +55,31 @@ Anim::UpdateController(Anim::animation_controller* Controller, float dt,
 }
 
 void
-Anim::AddAnimation(Anim::animation_controller* Controller, rid AnimationID)
+Anim::AppendAnimation(Anim::animation_controller* Controller, rid AnimationID)
 {
   assert(0 <= Controller->AnimStateCount &&
          Controller->AnimStateCount < ANIM_CONTROLLER_MAX_ANIM_COUNT);
-  assert(AnimationID.Value > 0);
-  Controller->States[Controller->AnimStateCount]         = {};
-  Controller->AnimationIDs[Controller->AnimStateCount++] = AnimationID;
+	SetAnimation(Controller, AnimationID, Controller->AnimStateCount);
+  Controller->AnimStateCount++;
 }
 
 void
-Anim::SetAnimation(Anim::animation_controller* Controller, rid AnimationID, int32_t ControllerIndex)
+Anim::SetAnimation(Anim::animation_controller* Controller, rid AnimationID, int32_t AnimationIndex)
 {
-  assert(0 <= ControllerIndex && ControllerIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
-  assert(AnimationID.Value > 0);
-  Controller->States[ControllerIndex] = {};
+  assert(0 <= AnimationIndex && AnimationIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
+  assert(0 < AnimationID.Value);
 
-  if(Controller->AnimationIDs[ControllerIndex].Value == 0)
-  {
-    Controller->AnimationIDs[ControllerIndex] = AnimationID;
-    ++Controller->AnimStateCount;
-  }
-  else
-  {
-    Controller->AnimationIDs[ControllerIndex] = AnimationID;
-  }
+  Controller->States[AnimationIndex]       = {};
+  Controller->AnimationIDs[AnimationIndex] = AnimationID;
 }
 
 void
 Anim::StartAnimationAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
-                                 bool Loop)
+                                 bool Loop, float LocalStartTime)
 {
   assert(0 <= AnimationIndex && AnimationIndex <= ANIM_CONTROLLER_MAX_ANIM_COUNT);
   Controller->States[AnimationIndex]                 = {};
-  Controller->States[AnimationIndex].StartTimeSec    = Controller->GlobalTimeSec;
+  Controller->States[AnimationIndex].StartTimeSec    = Controller->GlobalTimeSec - LocalStartTime;
   Controller->States[AnimationIndex].IsPlaying       = true;
   Controller->States[AnimationIndex].PlaybackRateSec = 1.0f;
   Controller->States[AnimationIndex].Loop            = Loop;
@@ -99,16 +90,17 @@ Anim::StopAnimation(Anim::animation_controller* Controller, int AnimationIndex)
 {
   assert(0 <= AnimationIndex && AnimationIndex <= ANIM_CONTROLLER_MAX_ANIM_COUNT);
   Controller->States[AnimationIndex] = {};
-  Controller->AnimStateCount         = 0;
+  // Controller->AnimStateCount         = 0;
+  assert(0 && "Invalid Code Path");
 }
 
-void
+/*void
 Anim::SetPlaybackRate(Anim::animation_controller* Controller, int32_t Index, float Rate)
 {
   assert(Rate >= 0);
   assert(0 <= Index && Index <= Controller->AnimStateCount);
   Controller->States[Index].PlaybackRateSec = Rate;
-}
+}*/
 
 void
 Anim::LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,

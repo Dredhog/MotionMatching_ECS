@@ -189,11 +189,12 @@ DeleteEntity(game_state* GameState, int32_t Index)
   if(0 <= Index && GameState->EntityCount)
   {
     GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
-    GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
 		if(GameState->Entities[Index].AnimController)
 		{
 				RemoveAnimationReferences(&GameState->Resources, GameState->Entities[Index].AnimController);
 		}
+
+    GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
 
     --GameState->EntityCount;
     if(GameState->PlayerEntityIndex == Index)

@@ -1,30 +1,54 @@
-struct blend_state
+#pragma once
+
+#include "basic_data_structures.h"
+#include "anim.h"
+#include "rid.h"
+
+struct blend_in_info
 {
-	int32_t CurrentIndex
+  float   GlobalStartTime;
+  float   Duration;
+  int32_t AnimStateIndex;
+};
+
+circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos;
+int                                                           g_CurrentAnimStateIndex = 0;
+
+void
+PlayAnimation(Anim::animation_controller* C, rid NewAnimRID, float LocalStartTime,
+              float BlendInTime)
+{
+  blend_in_info AnimBlend   = {};
+  AnimBlend.Duration        = BlendInTime;
+  AnimBlend.GlobalStartTime = C->GlobalTimeSec;
+  AnimBlend.AnimStateIndex  = g_CurrentAnimStateIndex;
+	g_BlendInfos.Push(AnimBlend);
+
+  Anim::SetAnimation(C, NewAnimRID, g_CurrentAnimStateIndex);
+  Anim::StartAnimationAtGlobalTime(C, g_CurrentAnimStateIndex, true, LocalStartTime);
+
+  C->AnimStateCount = g_BlendInfos.GetCount();
+
+  g_CurrentAnimStateIndex = (g_CurrentAnimStateIndex + 1) % g_BlendInfos.GetCapacity();
 }
 
-float PlayAnimation(rid NewAnimRID, int32_t StartFrame, float FadeInTime, bool Looped = true)
-{
-}
-
-// Defered execution inside of the animation system
+// Deferred execution inside of the animation system
 void
 ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
 {
-	//In order from oldest to most recent
-	Anim::SampleAtGlobalTime(C, 0, 0);
-
-	for(int i = 1; i < CurrentAnimCount; i++)
+	if(0 < g_BlendInfos.m_Count)
 	{
-		Anim::SampleAtGlobalTime(C, i, 1);
-		Anim::LinearBlend(C, 0, 1, FadeFraction[i], 0);
-	}
+    // In order from oldest to most recent
+    Anim::SampleAtGlobalTime(C, g_BlendInfos[0].AnimStateIndex, 0);
 
-  /*Anim::SetPlaybackRate(C, 0, g_MovePlaybackRate);
-  Anim::SetPlaybackRate(C, 1, g_MovePlaybackRate);
-  Anim::SampleAtGlobalTime(C, 0, 0);           // Sample Walk
-  Anim::SampleAtGlobalTime(C, 1, 1);           // Sample Run
-  Anim::LinearBlend(C, 0, 1, g_SpeedBlend, 1); // LERP(Walk, Run) => move
-  Anim::SampleAtGlobalTime(C, 2, 0);           // Sample Idle
-  Anim::LinearBlend(C, 0, 1, g_SpeedBlend, 0); // LERP(move, Idle) => ground*/
+    for(int i = 1; i < g_BlendInfos.m_Count; i++)
+    {
+      Anim::SampleAtGlobalTime(C, g_BlendInfos[i].AnimStateIndex, 1);
+      float t =
+        ClampFloat(0.0f,
+                   (C->GlobalTimeSec - g_BlendInfos[i].GlobalStartTime) / g_BlendInfos[i].Duration,
+                   1.0f);
+      Anim::LinearBlend(C, 0, 1, t, 0);
+    }
+  }
 }

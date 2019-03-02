@@ -21,7 +21,7 @@
 
 #define ARRAY_COUNT(Array) sizeof((Array)) / sizeof(Array[0])
 #define PROFILE_MAX_FRAME_COUNT 500
-#define PROFILE_MAX_TIMER_EVENTS_PER_FRAME 200
+#define PROFILE_MAX_TIMER_EVENTS_PER_FRAME 500
 
 enum
 {

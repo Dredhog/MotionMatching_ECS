@@ -372,6 +372,7 @@ namespace UI
                         10);
         UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2, 40);
 
+        UI::Checkbox("Transform To Root Space", &GameState->MMTransformToRootSpace);
         {
           static int32_t ActivePathIndex = 0;
           UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
@@ -386,27 +387,30 @@ namespace UI
               GameState->Resources.AnimationPaths[ActivePathIndex].Name);
           }
 
-          if(UI::Button("Push Animation") &&
-             GameState->MMSet.AnimRIDs.Count < GameState->MMSet.AnimRIDs.GetCapacity())
+          if(UI::Button("Add Animation") && !GameState->MMSet.AnimRIDs.Full())
           {
             GameState->MMSet.AnimRIDs.Push(NewRID);
             GameState->Resources.Animations.AddReference(NewRID);
           }
-          UI::SameLine();
-          if(UI::Button("Pop Animation") && 0 < GameState->MMSet.AnimRIDs.Count)
-          {
-            GameState->MMSet.AnimRIDs.Pop();
-            GameState->Resources.Animations.RemoveReference(NewRID);
-          }
-          UI::NewLine();
         }
       }
       {
         for(int i = 0; i < GameState->MMSet.AnimRIDs.Count; i++)
         {
-          char* Path;
-          GameState->Resources.Animations.Get(GameState->MMSet.AnimRIDs[i], NULL, &Path);
-          UI::Text(Path);
+          bool DeleteCurrent = UI::Button("Delete", 0, i);
+					UI::SameLine();
+					{
+            char* Path;
+            GameState->Resources.Animations.Get(GameState->MMSet.AnimRIDs[i], NULL, &Path);
+            UI::Text(Path);
+          }
+					UI::NewLine();
+					if(DeleteCurrent)
+					{
+            GameState->Resources.Animations.RemoveReference(GameState->MMSet.AnimRIDs[i]);
+						GameState->MMSet.AnimRIDs.Delete(i);
+            i--;
+          }
         }
       }
       UI::EndWindow();
@@ -1027,6 +1031,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
               }
             }
           }
+
           {
             static int32_t ActivePathIndex = 0;
             UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
@@ -1042,106 +1047,18 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             }
             GameState->CurrentAnimationID = NewRID;
           }
-#if 0
-            UI::Row(&Layout);
-            char CurrentAnimationIDString[30];
-            sprintf(CurrentAnimationIDString, "Current Anim ID: %d",
-                    GameState->CurrentAnimationID.Value);
-            UI::DrawTextBox(GameState, &Layout, CurrentAnimationIDString);
-#endif
+					
           if(UI::Button("Play as entity"))
           {
             Gameplay::ResetPlayer();
             GameState->PlayerEntityIndex = GameState->SelectedEntityIndex;
-            StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0, true);
-            StartAnimationAtGlobalTime(SelectedEntity->AnimController, 1, true);
-            StartAnimationAtGlobalTime(SelectedEntity->AnimController, 2, true);
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
-
-            { // Walk animation
-              static int32_t ActivePathIndex = 0;
-#if 0
-                if(SelectedEntity->AnimController->AnimationIDs[0].Value > 0)
-                {
-                  ActivePathIndex = GameState->Resources.GetAnimationPathIndex(
-                    SelectedEntity->AnimController->AnimationIDs[0]);
-                }
-#endif
-              UI::Combo("Walk", &ActivePathIndex, GameState->Resources.AnimationPaths,
-                        GameState->Resources.AnimationPathCount, PathArrayToString);
-              rid NewRID = { 0 };
-              if(GameState->Resources.AnimationPathCount > 0 &&
-                 !GameState->Resources
-                    .GetAnimationPathRID(&NewRID,
-                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
-              {
-                NewRID = GameState->Resources.RegisterAnimation(
-                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
-              }
-              if(GameState->Resources.AnimationPathCount &&
-                 SelectedEntity->AnimController->AnimationIDs[0].Value != NewRID.Value)
-              {
-                Anim::SetAnimation(SelectedEntity->AnimController, NewRID, 0);
-                printf("Setting walk\n");
-                Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0, true);
-              }
-            }
-            { // Run animation
-              static int32_t ActivePathIndex = 0;
-#if 0
-                if(SelectedEntity->AnimController->AnimationIDs[1].Value > 0)
-                {
-                  ActivePathIndex = GameState->Resources.GetAnimationPathIndex(
-                    SelectedEntity->AnimController->AnimationIDs[1]);
-                }
-#endif
-              UI::Combo("Run", &ActivePathIndex, GameState->Resources.AnimationPaths,
-                        GameState->Resources.AnimationPathCount, PathArrayToString);
-              rid NewRID = { 0 };
-              if(GameState->Resources.AnimationPathCount > 0 &&
-                 !GameState->Resources
-                    .GetAnimationPathRID(&NewRID,
-                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
-              {
-                NewRID = GameState->Resources.RegisterAnimation(
-                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
-              }
-              if(SelectedEntity->AnimController->AnimationIDs[1].Value != NewRID.Value)
-              {
-                Anim::SetAnimation(SelectedEntity->AnimController, NewRID, 1);
-                printf("Setting run\n");
-                Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 1, true);
-              }
-            }
-            { // Idle animation
-              static int32_t ActivePathIndex = 0;
-#if 0
-                if(SelectedEntity->AnimController->AnimationIDs[2].Value > 0)
-                {
-                  ActivePathIndex = GameState->Resources.GetAnimationPathIndex(
-                    SelectedEntity->AnimController->AnimationIDs[2]);
-                }
-#endif
-              UI::Combo("Idle", &ActivePathIndex, GameState->Resources.AnimationPaths,
-                        GameState->Resources.AnimationPathCount, PathArrayToString);
-              rid NewRID = { 0 };
-              if(GameState->Resources.AnimationPathCount > 0 &&
-                 !GameState->Resources
-                    .GetAnimationPathRID(&NewRID,
-                                         GameState->Resources.AnimationPaths[ActivePathIndex].Name))
-              {
-                NewRID = GameState->Resources.RegisterAnimation(
-                  GameState->Resources.AnimationPaths[ActivePathIndex].Name);
-              }
-              if(SelectedEntity->AnimController->AnimationIDs[2].Value != NewRID.Value)
-              {
-                Anim::SetAnimation(SelectedEntity->AnimController, NewRID, 2);
-                printf("Setting idle\n");
-                Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 2, true);
-              }
-            }
+						if(UI::Button("Stop playing as entity"))
+						{
+							GameState->PlayerEntityIndex = -1;
+						}
           }
         }
       }
@@ -1463,6 +1380,17 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
 
   if(UI::CollapsingHeader("Scene", &s_ShowSceneSettings))
   {
+    static int32_t SelectedSceneIndex = 0;
+    UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
+              GameState->Resources.ScenePathCount, PathArrayToString);
+    if(0 < GameState->Resources.ScenePathCount)
+    {
+      if(UI::Button("Import"))
+      {
+        ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
+      }
+    }
+		UI::SameLine();
     if(UI::Button("Export As New"))
     {
       struct tm* TimeInfo;
@@ -1473,32 +1401,17 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
       strftime(PathName, sizeof(PathName), "data/scenes/%H_%M_%S.scene", TimeInfo);
       ExportScene(GameState, PathName);
     }
-    if(GameState->Resources.ScenePathCount > 0)
+		UI::SameLine();
+    if(0 < GameState->Resources.ScenePathCount)
     {
+      if(UI::Button("Export"))
       {
-        static int32_t SelectedSceneIndex = 0;
-        if(UI::Button("Export"))
-        {
-          ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
-        }
-        UI::SameLine();
-        UI::Combo("Export Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
-                  GameState->Resources.ScenePathCount, PathArrayToString);
-        UI::NewLine();
-      }
-      {
-        static int32_t SelectedSceneIndex = 0;
-        if(UI::Button("Import"))
-        {
-          ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
-        }
-        UI::SameLine();
-        UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
-                  GameState->Resources.ScenePathCount, PathArrayToString);
-        UI::NewLine();
+        ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
       }
     }
+		UI::NewLine();
   }
+
   {
     char TempBuffer[32];
     sprintf(TempBuffer, "ActiveID: %u", UI::GetActiveID());

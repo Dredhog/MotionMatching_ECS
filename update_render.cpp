@@ -153,7 +153,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     entity* PlayerEntity = {};
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
-      Gameplay::UpdatePlayer(PlayerEntity, Input, &GameState->Camera);
+      Gameplay::UpdatePlayer(PlayerEntity, Input, &GameState->Camera, &GameState->MMSet);
     }
   }
 
@@ -175,13 +175,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       for(int i = 0; i < Controller->AnimStateCount; i++)
       {
-        assert(Controller->AnimationIDs[i].Value > 0);
+        assert(0 < Controller->AnimationIDs[i].Value);
         Controller->Animations[i] = GameState->Resources.GetAnimation(Controller->AnimationIDs[i]);
       }
 
       Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
 
-      // Todo(Luakas): remove most parts of this code as it is repeated multiple times in different
+      // Todo(Lukas): remove most parts of this code as it is repeated multiple times in different
       // locations
       for(int i = 0; i < Controller->AnimStateCount; i++)
       {
@@ -190,7 +190,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         // Transform current pose into the space of the root bone
         mat4 Mat4InvRoot = Math::Mat4Ident();
-#if 1
+
+				if(GameState->MMTransformToRootSpace)
         {
           const int HipBoneIndex = 0;
           mat4      Mat4Hip      = Controller->HierarchicalModelSpaceMatrices[HipBoneIndex];
@@ -214,7 +215,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               Math::MulMat4(Math::InvMat4(Mat4Root), Controller->HierarchicalModelSpaceMatrices[b]);
           }
         }
-#endif
 
         const float AnimDuration =
           (CurrentAnimation->SampleTimes[CurrentAnimation->KeyframeCount - 1] -
@@ -286,7 +286,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                                  { LocalHipPositionB.X, 0, LocalHipPositionB.Z, 1 })
                                  .XYZ;
 
-          Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });
+          //Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });
           Debug::PushLine(RootPositionA, RootPositionB, { 0, 1, 1, 1 });
         }
       }

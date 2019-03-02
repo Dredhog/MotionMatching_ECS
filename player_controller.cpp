@@ -1,7 +1,7 @@
 #include "player_controller.h"
 #include "math.h"
-#include "basic_data_structures.h"
 #include "motion_matching.h"
+#include "blend_stack.h"
 
 static float g_SpeedBlend = 0;
 
@@ -14,7 +14,8 @@ Gameplay::ResetPlayer()
 }
 
 void
-Gameplay::UpdatePlayer(entity* Player, const game_input* Input, const camera* Camera)
+Gameplay::UpdatePlayer(entity* Player, const game_input* Input, const camera* Camera,
+                       const animation_set* MMSet)
 {
   vec3 CameraForward = Camera->Forward;
   vec3 ViewForward   = Math::Normalized(vec3{ CameraForward.X, 0, CameraForward.Z });
@@ -47,17 +48,35 @@ Gameplay::UpdatePlayer(entity* Player, const game_input* Input, const camera* Ca
     Player->Transform.Rotation = Math::QuatFromTo({0, 0, 1}, Dir);
   }
 
-	//Fill goal struct
-	/*animation_goal AnimGoal = {};
+	if(Player->AnimController)
 	{
-		GetCurrentFrameGoal();
-	}
+		Player->AnimController->BlendFunc = ThirdPersonAnimationBlendFunction;
+    //TODO(Lukas) Fill goal struct
+    /*animation_goal AnimGoal = {};
+    {
+      GetCurrentFrameGoal();
+    }
 
-	//Match animation
-  rid NewAnim, int32_t StartFrame = MotionMatch(MMSet, AnimGoal, CurrentAnim, CurrentAnimThresh);
+    //TODO(Lukas) Match animation
+    rid NewAnim, float StartTime = MotionMatch(MMSet, AnimGoal, CurrentAnim, CurrentAnimThresh);
+    */
+		if(0 < MMSet->AnimRIDs.Count)
+		{
+      static int CurrentAnimIndex = 0;
+      if(Input->n.EndedDown && Input->n.Changed)
+      {
+				CurrentAnimIndex--;
+      }
+      if(Input->m.EndedDown && Input->m.Changed)
+      {
+				CurrentAnimIndex++;
+      }
+      CurrentAnimIndex = (CurrentAnimIndex + MMSet->AnimRIDs.Count) % MMSet->AnimRIDs.Count;
 
-	if(NewAnimInd != -1)
-	{
-		PlayAnimation(NewAnim, 0.1f);
-	}*/
+      if(Input->Space.EndedDown && Input->Space.Changed)
+      {
+        PlayAnimation(Player->AnimController, MMSet->AnimRIDs[CurrentAnimIndex], 0.0, 1.0f);
+      }
+    }
+  }
 }

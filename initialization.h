@@ -403,7 +403,7 @@ SetGameStatePODFields(game_state* GameState)
     }
   }
 
-	GameState->UseHotReloading = false;
+  GameState->UseHotReloading = false;
 
   GameState->DrawCubemap              = true;
   GameState->DrawDebugSpheres         = true;
@@ -419,12 +419,13 @@ SetGameStatePODFields(game_state* GameState)
   GameState->CurrentMaterialID = { 0 };
   GameState->PlayerEntityIndex = -1;
 
-	//Motion Matchin
-	{
-		GameState->TrajectoryLengthInTime = 1;
-		GameState->TrajectorySampleCount = 20;
-		GameState->MMSet = {};
-	}
+  // Motion Matchin
+  {
+    GameState->TrajectoryLengthInTime = 1;
+    GameState->TrajectorySampleCount  = 20;
+    GameState->MMTransformToRootSpace = true;
+    GameState->MMSet                  = {};
+  }
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;
   GameState->Physics.Params.Mu                         = 1.0f;

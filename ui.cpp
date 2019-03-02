@@ -680,13 +680,14 @@ UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount,
 }
 
 bool
-UI::Button(const char* Label, float Width)
+UI::Button(const char* Label, float Width, int UniqueID)
 {
   assert(0 <= Width);
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
   ui_id ID = Window.GetID(Label);
+	ID = IDHash(&ID, sizeof(ui_id*), (uint32_t)UniqueID);
 
   vec3 Size;
   int  LabelWidth, LabelHeight;

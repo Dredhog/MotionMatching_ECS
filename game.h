@@ -84,6 +84,7 @@ struct game_state
   // Motion Matching
   float   TrajectoryLengthInTime;
   int     TrajectorySampleCount;
+  bool    MMTransformToRootSpace;
   rid     MMAnimationRIDs[MAX_MM_ANIMATION_COUNT];
   int32_t MMAnimationCount;
 

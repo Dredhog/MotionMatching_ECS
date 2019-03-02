@@ -36,6 +36,7 @@ namespace Anim
     bool  Loop;
   };
 
+	//Note(Lukas): Move this to the asset/serialization system
   struct animation_group
   {
     animation** Animations;
@@ -67,19 +68,21 @@ namespace Anim
                         void BlendFunction(animation_controller*) = NULL);
 
   // Animation controller interface
-  void AddAnimation(animation_controller*, rid AnimationID);
+  void AppendAnimation(animation_controller*, rid AnimationID);
   void SetAnimation(animation_controller*, rid AnimationID, int32_t AnimationIndex);
 
   void StopAnimation(animation_controller*, int AnimationIndex);
-  void StartAnimationAtTime(animation_controller*, int Index, float Time);
-  void StartAnimationAtGlobalTime(animation_controller*, int AnimationIndex, bool Loop = true);
-  void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
-                  int AnimationIndex, bool Loop = true);
-  void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
+  void StartAnimationAtGlobalTime(animation_controller*, int AnimationIndex, bool Loop = true,
+                                  float LocalStartTime = 0.0f);
+  void StartAnimationAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
+                                   bool Loop, float LocalStartTime);
+    /*void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
+                    int AnimationIndex, bool Loop = true);*/
+    // void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
 
-  // Blending and sampling facilities
-  void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
-                      float T, Anim::transform* Out);
+    // Blending and sampling facilities
+    void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
+                        float T, Anim::transform* Out);
   void AddTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
                      float T, Anim::transform* Out);
   void LinearAnimationSample(animation_controller*, int AnimAInd, float Time, int ResultIndex);
