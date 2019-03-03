@@ -81,12 +81,12 @@ namespace Anim
     // void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
 
     // Blending and sampling facilities
-    void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
+  void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
                         float T, Anim::transform* Out);
   void AddTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
                      float T, Anim::transform* Out);
+  void LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation, float Time);
   void LinearAnimationSample(animation_controller*, int AnimAInd, float Time, int ResultIndex);
-
   // Matrix palette generation
   void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,
                              int32_t Count);
@@ -95,12 +95,16 @@ namespace Anim
   void ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSpaceMatrices,
                                      const Anim::skeleton* Skeleton);
 
+  // Helper functions
+  void GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRoot, mat4 HipMatrix);
+  float GetAnimDuration(const Anim::animation* Animation);
+
   inline mat4
-  TransformToMat4(const Anim::transform* Transform)
+  TransformToMat4(const Anim::transform& Transform)
   {
-    mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
-                                Math::MulMat4(Math::Mat4Rotate(Transform->Rotation),
-                                              Math::Mat4Scale(Transform->Scale)));
+    mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform.Translation),
+                                Math::MulMat4(Math::Mat4Rotate(Transform.Rotation),
+                                              Math::Mat4Scale(Transform.Scale)));
     return Result;
   }
 }

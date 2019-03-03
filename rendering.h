@@ -406,7 +406,7 @@ RenderObjectSelectionHighlighting(game_state* GameState, entity* SelectedEntity)
     entity* SelectedEntity = {};
     if(GetSelectedEntity(GameState, &SelectedEntity))
     {
-      mat4 Mat4EntityTransform = TransformToMat4(&SelectedEntity->Transform);
+      mat4 Mat4EntityTransform = TransformToMat4(SelectedEntity->Transform);
       Debug::PushGizmo(&GameState->Camera, &Mat4EntityTransform, SelectedEntity->Transform.Scale);
       Render::model* Model = GameState->Resources.GetModel(SelectedEntity->ModelID);
       for(int m = 0; m < Model->MeshCount; m++)

@@ -23,6 +23,11 @@ union vec3 {
 };
 
 union vec4 {
+	struct
+	{
+    vec3  V;
+    float w;
+	};
   struct
   {
     float X, Y, Z, W;

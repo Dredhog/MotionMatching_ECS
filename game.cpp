@@ -260,7 +260,7 @@ GetSelectedMesh(game_state* GameState, Render::mesh** OutputMesh)
 mat4
 GetEntityModelMatrix(game_state* GameState, int32_t EntityIndex)
 {
-  mat4 ModelMatrix = TransformToMat4(&GameState->Entities[EntityIndex].Transform);
+  mat4 ModelMatrix = TransformToMat4(GameState->Entities[EntityIndex].Transform);
   return ModelMatrix;
 }
 

@@ -16,6 +16,13 @@ PathArrayToString(void* Data, int Index)
   return Paths[Index].Name;
 }
 
+char*
+BoneArrayToString(void* Data, int Index)
+{
+  Anim::bone* Bones = (Anim::bone*)Data;
+  return Bones[Index].Name;
+}
+
 namespace UI
 {
   void
@@ -398,18 +405,61 @@ namespace UI
         for(int i = 0; i < GameState->MMSet.AnimRIDs.Count; i++)
         {
           bool DeleteCurrent = UI::Button("Delete", 0, i);
-					UI::SameLine();
-					{
+          UI::SameLine();
+          {
             char* Path;
             GameState->Resources.Animations.Get(GameState->MMSet.AnimRIDs[i], NULL, &Path);
             UI::Text(Path);
           }
-					UI::NewLine();
-					if(DeleteCurrent)
-					{
+          UI::NewLine();
+          if(DeleteCurrent)
+          {
             GameState->Resources.Animations.RemoveReference(GameState->MMSet.AnimRIDs[i]);
-						GameState->MMSet.AnimRIDs.Delete(i);
+            GameState->MMSet.AnimRIDs.Delete(i);
             i--;
+          }
+        }
+      }
+      entity* SelectedEntity = {};
+      if(GetSelectedEntity(GameState, &SelectedEntity) && SelectedEntity->AnimController)
+      {
+        static int32_t ActiveBoneIndex = 0;
+        UI::Combo("Bone", &ActiveBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
+                  SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
+
+        if(UI::Button("Add Bone") && !GameState->MMSet.FormatInfo.ComparisonBoneIndices.Full())
+        {
+          GameState->MMSet.FormatInfo.ComparisonBoneIndices.Push(ActiveBoneIndex);
+        }
+
+        for(int i = 0; i < GameState->MMSet.FormatInfo.ComparisonBoneIndices.Count; i++)
+        {
+          bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
+          UI::SameLine();
+          {
+            UI::Text(SelectedEntity->AnimController->Skeleton
+                       ->Bones[GameState->MMSet.FormatInfo.ComparisonBoneIndices[i]]
+                       .Name);
+          }
+          UI::NewLine();
+          if(DeleteCurrent)
+          {
+            GameState->MMSet.FormatInfo.ComparisonBoneIndices.Delete(i);
+          }
+        }
+
+        if(0 < GameState->MMSet.AnimRIDs.Count)
+        {
+          UI::SliderFloat("Build MM data", &GameState->MMSet.FormatInfo.TrajectoryTimeHorizon, 0.0f,
+                          5.0f);
+          if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
+          {
+            if(UI::Button("Build MM data"))
+            {
+              PrecomputeRuntimeMMData(GameState->TemporaryMemStack, &GameState->MMSet,
+                                      &GameState->Resources,
+                                      SelectedEntity->AnimController->Skeleton);
+            }
           }
         }
       }
@@ -898,7 +948,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
       Anim::transform* Transform = &SelectedEntity->Transform;
       UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10);
-      //UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
+      // UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
       UI::DragFloat3("Scale", (float*)&Transform->Scale, -INFINITY, INFINITY, 10.0f);
 
       // Rigid Body
@@ -990,8 +1040,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         {
           // Note(Lukas): MEMORY LEAK!!!!!! The AnimController and its arrays are still on the
           // persistent stack
-          RemoveAnimationReferences(&GameState->Resources,
-                                    SelectedEntity->AnimController);
+          RemoveAnimationReferences(&GameState->Resources, SelectedEntity->AnimController);
           SelectedEntity->AnimController = 0;
         }
         else if(SelectedEntity->AnimController)
@@ -1015,13 +1064,14 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                   SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
                   SelectedEntity->AnimController->AnimStateCount  = 1;
 
-									GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
+                  GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
                 }
                 else
                 {
-									GameState->Resources.Animations.RemoveReference(SelectedEntity->AnimController->AnimationIDs[0]);
+                  GameState->Resources.Animations.RemoveReference(
+                    SelectedEntity->AnimController->AnimationIDs[0]);
                   SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
-									GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
+                  GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
                 }
                 Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
               }
@@ -1047,7 +1097,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             }
             GameState->CurrentAnimationID = NewRID;
           }
-					
+
           if(UI::Button("Play as entity"))
           {
             Gameplay::ResetPlayer();
@@ -1055,22 +1105,15 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
-						if(UI::Button("Stop playing as entity"))
-						{
-							GameState->PlayerEntityIndex = -1;
-						}
+            if(UI::Button("Stop playing as entity"))
+            {
+              GameState->PlayerEntityIndex = -1;
+            }
           }
         }
       }
     }
   }
-}
-
-char*
-BoneArrayToString(void* Data, int Index)
-{
-  Anim::bone* Bones = (Anim::bone*)Data;
-  return Bones[Index].Name;
 }
 
 void
@@ -1162,7 +1205,7 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
                .Transforms[GameState->AnimEditor.CurrentBone];
           mat4 Mat4Transform = TransformToGizmoMat4(Transform);
           UI::DragFloat3("Translation", &Transform->Translation.X, -INFINITY, INFINITY, 10.0f);
-          //UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
+          // UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
           UI::DragFloat3("Scale", &Transform->Scale.X, -INFINITY, INFINITY, 10.0f);
         }
       }
@@ -1390,7 +1433,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
       }
     }
-		UI::SameLine();
+    UI::SameLine();
     if(UI::Button("Export As New"))
     {
       struct tm* TimeInfo;
@@ -1401,7 +1444,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
       strftime(PathName, sizeof(PathName), "data/scenes/%H_%M_%S.scene", TimeInfo);
       ExportScene(GameState, PathName);
     }
-		UI::SameLine();
+    UI::SameLine();
     if(0 < GameState->Resources.ScenePathCount)
     {
       if(UI::Button("Export"))
@@ -1409,7 +1452,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
       }
     }
-		UI::NewLine();
+    UI::NewLine();
   }
 
   {

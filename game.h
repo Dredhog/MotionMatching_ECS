@@ -57,7 +57,7 @@ struct game_state
   camera Camera;
   camera PreviewCamera;
 
-	animation_set MMSet;
+	mm_animation_set MMSet;
 
   bool UseHotReloading;
 

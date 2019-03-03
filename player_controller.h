@@ -4,10 +4,11 @@
 #include "common.h"
 #include "camera.h"
 #include "motion_matching.h"
+#include "resource_manager.h"
 
 namespace Gameplay
 {
   void ResetPlayer();
-  void UpdatePlayer(entity* Player, const game_input* Input, const camera* Camera,
-                    const animation_set* MMSet);
+  void UpdatePlayer(entity* Player, Resource::resource_manager* Resources, const game_input* Input, const camera* Camera,
+                    const mm_animation_set* MMSet);
 }

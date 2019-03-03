@@ -42,8 +42,9 @@ Anim::UpdateController(Anim::animation_controller* Controller, float dt,
   {
     for(int i = 0; i < Controller->Skeleton->BoneCount; i++)
     {
-      Controller->OutputTransforms[i]       = {};
-      Controller->OutputTransforms[i].Scale = { 1, 1, 1 };
+      Controller->OutputTransforms[i]          = {};
+      Controller->OutputTransforms[i].Rotation = Math::QuatIdent();
+      Controller->OutputTransforms[i].Scale    = { 1, 1, 1 };
     }
   }
   ComputeBoneSpacePoses(Controller->BoneSpaceMatrices, Controller->OutputTransforms,
@@ -59,7 +60,7 @@ Anim::AppendAnimation(Anim::animation_controller* Controller, rid AnimationID)
 {
   assert(0 <= Controller->AnimStateCount &&
          Controller->AnimStateCount < ANIM_CONTROLLER_MAX_ANIM_COUNT);
-	SetAnimation(Controller, AnimationID, Controller->AnimStateCount);
+  SetAnimation(Controller, AnimationID, Controller->AnimStateCount);
   Controller->AnimStateCount++;
 }
 
@@ -155,12 +156,12 @@ Anim::AdditiveBlend(animation_controller* Controller, int AnimAInd, int AnimBInd
 }
 
 void
-Anim::LinearAnimationSample(animation_controller* Controller, int AnimIndex, float Time,
+Anim::LinearAnimationSample(Anim::animation_controller* Controller, int AnimIndex, float Time,
                             int ResultIndex)
 {
   assert(0 <= AnimIndex && AnimIndex < Controller->AnimStateCount);
   assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  animation* Animation = Controller->Animations[AnimIndex];
+  Anim::animation* Animation = Controller->Animations[AnimIndex];
   for(int k = 0; k < Animation->KeyframeCount - 1; k++)
   {
     if(Time <= Animation->SampleTimes[k + 1])
@@ -177,13 +178,63 @@ Anim::LinearAnimationSample(animation_controller* Controller, int AnimIndex, flo
 }
 
 void
+Anim::LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation,
+                            float Time)
+{
+  for(int k = 0; k < Animation->KeyframeCount - 1; k++)
+  {
+    if(Time <= Animation->SampleTimes[k + 1])
+    {
+      LerpTransforms(&Animation->Transforms[k * Animation->ChannelCount],
+                     &Animation->Transforms[(k + 1) * Animation->ChannelCount],
+                     Animation->ChannelCount,
+                     (Time - Animation->SampleTimes[k]) /
+                       (Animation->SampleTimes[k + 1] - Animation->SampleTimes[k]),
+                     OutputTransforms);
+      return;
+    }
+  }
+}
+
+float
+Anim::GetAnimDuration(const Anim::animation* Animation)
+{
+  assert(0 < Animation->KeyframeCount);
+  return Animation->SampleTimes[Animation->KeyframeCount - 1] - Animation->SampleTimes[0];
+}
+
+void
+Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat4 HipMatrix)
+{
+  mat4 RootMatrix = Math::Mat4Ident();
+  vec3 Up      = { 0, 1, 0 };
+  vec3 Right   = Math::Normalized(Math::Cross(Up, HipMatrix.Z));
+  vec3 Forward = Math::Cross(Right, Up);
+
+  mat4 Mat4Root = Math::Mat4Ident();
+  Mat4Root.T    = { HipMatrix.T.X, 0, HipMatrix.T.Z };
+  Mat4Root.Y    = Up;
+  Mat4Root.X    = Right;
+  Mat4Root.Z    = Forward;
+
+  if(OutRootMatrix)
+  {
+    *OutRootMatrix = RootMatrix;
+  }
+
+  if(OutInvRootMatrix)
+  {
+    *OutInvRootMatrix = Math::InvMat4(Mat4Root);
+  }
+}
+
+void
 Anim::ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms, int Count)
 {
   for(int i = 0; i < Count; i++)
   {
-    BoneSpaceMatrices[i] =
-      Math::MulMat4(Math::Mat4Translate(Transforms[i].Translation),
-                    Math::MulMat4(Math::Mat4Rotate(Transforms[i].Rotation), Math::Mat4Scale(1)));
+    BoneSpaceMatrices[i] = Math::MulMat4(Math::Mat4Translate(Transforms[i].Translation),
+                                         Math::Mat4Rotate(Transforms[i].Rotation));
   }
 }
 
@@ -203,7 +254,7 @@ void
 Anim::ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSpaceMatrices,
                                     const Anim::skeleton* Skeleton)
 {
-  // Assume LocalPoses are ordered from parent to child
+  // Assumes that LocalPoses are ordered from parent to child
   FinalPoseMatrices[0] = ModelSpaceMatrices[0];
   for(int i = 1; i < Skeleton->BoneCount; i++)
   {

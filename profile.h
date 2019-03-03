@@ -255,7 +255,7 @@ struct gpu_timer_event_autoclose_wrapper
 
 #define TIMED_BLOCK(ID) timer_event_autoclose_wrapper ID##__LINE__(TIMER_NAME_##ID)
 
-#define BEGIN_FRAME()                                                                              \
+#define BEGIN_TIMED_FRAME()                                                                              \
   for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)                                       \
   {                                                                                                \
     GPU_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][i] = {};                                    \
@@ -268,7 +268,7 @@ struct gpu_timer_event_autoclose_wrapper
   g_CurrentTimerEventCount                                            = 0;                         \
   GLOBAL_FRAME_ENDPOINT_TABLE[g_CurrentProfilerFrameIndex].FrameStart = _rdtsc();
 
-#define END_FRAME()                                                                                \
+#define END_TIMED_FRAME()                                                                                \
   assert(g_CurrentTimerEventCount <= PROFILE_MAX_TIMER_EVENTS_PER_FRAME);                          \
   assert(g_CurrentTimerEventDepth == 0);                                                           \
   GLOBAL_FRAME_ENDPOINT_TABLE[g_CurrentProfilerFrameIndex].FrameEnd = _rdtsc();                    \
@@ -313,8 +313,8 @@ struct gpu_timer_event_autoclose_wrapper
 
 #else
 
-#define BEGIN_FRAME()
-#define END_FRAME()
+#define BEGIN_TIMED_FRAME()
+#define END_TIMED_FRAME()
 #define BEGIN_TIMED_BLOCK(ID)
 #define END_TIMED_BLOCK(ID)
 #define PAUSE_PROFILE()

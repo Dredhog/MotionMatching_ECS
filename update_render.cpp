@@ -36,7 +36,7 @@ extern bool g_VisualizeContactManifold;
 
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
-  BEGIN_FRAME();
+  BEGIN_TIMED_FRAME();
 
   game_state* GameState = (game_state*)GameMemory.PersistentMemory;
   assert(GameMemory.HasBeenInitialized);
@@ -153,7 +153,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     entity* PlayerEntity = {};
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
-      Gameplay::UpdatePlayer(PlayerEntity, Input, &GameState->Camera, &GameState->MMSet);
+      Gameplay::UpdatePlayer(PlayerEntity, &GameState->Resources, Input, &GameState->Camera, &GameState->MMSet);
     }
   }
 
@@ -181,44 +181,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
       Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
 
-      // Todo(Lukas): remove most parts of this code as it is repeated multiple times in different
+      // TODO(Lukas): remove most parts of this code as it is repeated multiple times in different
       // locations
-      for(int i = 0; i < Controller->AnimStateCount; i++)
+      for(int a = 0; a < Controller->AnimStateCount; a++)
       {
-        const Anim::animation*       CurrentAnimation = Controller->Animations[i];
-        const Anim::animation_state* CurrentState     = &Controller->States[i];
+        const Anim::animation*       CurrentAnimation = Controller->Animations[a];
+        const Anim::animation_state* CurrentState     = &Controller->States[a];
 
-        // Transform current pose into the space of the root bone
-        mat4 Mat4InvRoot = Math::Mat4Ident();
-
-				if(GameState->MMTransformToRootSpace)
-        {
-          const int HipBoneIndex = 0;
-          mat4      Mat4Hip      = Controller->HierarchicalModelSpaceMatrices[HipBoneIndex];
-
-          vec3 Up      = { 0, 1, 0 };
-          vec3 Right   = Math::Normalized(Math::Cross(Up, Mat4Hip.Z));
-          vec3 Forward = Math::Cross(Right, Up);
-
-          mat4 Mat4Root = Math::Mat4Ident();
-          Mat4Root.T    = { Mat4Hip.T.X, 0, Mat4Hip.T.Z };
-          Mat4Root.Y    = Up;
-          Mat4Root.X    = Right;
-          Mat4Root.Z    = Forward;
-
-          Debug::PushGizmo(&GameState->Camera, &Mat4Root);
-          Mat4InvRoot = Math::InvMat4(Mat4Root);
-
-          for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
-          {
-            Controller->HierarchicalModelSpaceMatrices[b] =
-              Math::MulMat4(Math::InvMat4(Mat4Root), Controller->HierarchicalModelSpaceMatrices[b]);
-          }
-        }
-
-        const float AnimDuration =
-          (CurrentAnimation->SampleTimes[CurrentAnimation->KeyframeCount - 1] -
-           CurrentAnimation->SampleTimes[0]);
+        const float AnimDuration = Anim::GetAnimDuration(CurrentAnimation);
 
         // Compute the index of the keyframe left of the playhead
         int PrevKeyframeIndex = 0;
@@ -242,6 +212,22 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               break;
             }
           }
+        }
+
+        mat4 Mat4InvRoot = Math::Mat4Ident();
+
+        // Transform current pose into the space of the root bone
+				if(GameState->MMTransformToRootSpace)
+        {
+          mat4    Mat4Root;
+          int32_t HipBoneIndex = 0;
+
+          mat4 Mat4Hips = Anim::TransformToMat4(
+            CurrentAnimation
+              ->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount + HipBoneIndex]);
+
+          Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
+          Debug::PushGizmo(&GameState->Camera, &Mat4Root);
         }
 
         int FutureTrajectoryPointCount = 0;
@@ -271,7 +257,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                               { LocalHipPositionB.X, LocalHipPositionB.Y, LocalHipPositionB.Z, 1 })
               .XYZ;
 
-          vec3 HipPositionA =
+          /*vec3 HipPositionA =
             Math::MulMat4Vec4(CurrentEntityModelMatrix,
                               { LocalHipPositionA.X, LocalHipPositionA.Y, LocalHipPositionA.Z, 1 })
               .XYZ;
@@ -279,21 +265,36 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             Math::MulMat4Vec4(CurrentEntityModelMatrix,
                               { LocalHipPositionB.X, LocalHipPositionB.Y, LocalHipPositionB.Z, 1 })
               .XYZ;
+          Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });*/
+
           vec3 RootPositionA = Math::MulMat4Vec4(CurrentEntityModelMatrix,
                                                  { LocalHipPositionA.X, 0, LocalHipPositionA.Z, 1 })
                                  .XYZ;
           vec3 RootPositionB = Math::MulMat4Vec4(CurrentEntityModelMatrix,
                                                  { LocalHipPositionB.X, 0, LocalHipPositionB.Z, 1 })
                                  .XYZ;
-
-          //Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });
           Debug::PushLine(RootPositionA, RootPositionB, { 0, 1, 1, 1 });
+        }
+      }
+
+      if(GameState->MMTransformToRootSpace)
+      {
+        mat4    Mat4Root;
+        mat4    Mat4InvRoot;
+        int32_t HipBoneIndex = 0;
+        mat4    Mat4Hips     = Controller->HierarchicalModelSpaceMatrices[HipBoneIndex];
+
+        Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
+        for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
+        {
+          Controller->HierarchicalModelSpaceMatrices[b] =
+            Math::MulMat4(Mat4InvRoot, Controller->HierarchicalModelSpaceMatrices[b]);
         }
       }
 
       for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
       {
-        mat4 Mat4Bone = Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+        mat4 Mat4Bone = Math::MulMat4(Anim::TransformToMat4(GameState->Entities[e].Transform),
                                       Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[b],
                                                     Controller->Skeleton->Bones[b].BindPose));
         vec3 Position = Math::GetMat4Translation(Mat4Bone);
@@ -302,10 +303,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         {
           int  ParentIndex = Controller->Skeleton->Bones[b].ParentIndex;
           mat4 Mat4Parent =
-            Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+            Math::MulMat4(Anim::TransformToMat4(GameState->Entities[e].Transform),
                           Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[ParentIndex],
                                         Controller->Skeleton->Bones[ParentIndex].BindPose));
-          mat4 Mat4Root = Math::MulMat4(Anim::TransformToMat4(&GameState->Entities[e].Transform),
+          mat4 Mat4Root = Math::MulMat4(Anim::TransformToMat4(GameState->Entities[e].Transform),
                                         Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[0],
                                                       Controller->Skeleton->Bones[0].BindPose));
           vec3 ParentPosition = Math::GetMat4Translation(Mat4Parent);
@@ -458,5 +459,5 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   END_TIMED_BLOCK(Render);
   READ_GPU_QUERY_TIMERS();
-  END_FRAME();
+  END_TIMED_FRAME();
 }

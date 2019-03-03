@@ -203,7 +203,7 @@ AnimationEditorInteraction(game_state* GameState, const game_input* Input)
   for(int i = 0; i < GameState->AnimEditor.Skeleton->BoneCount; i++)
   {
     mat4 Mat4Bone =
-      Math::MulMat4(TransformToMat4(GameState->AnimEditor.Transform),
+      Math::MulMat4(TransformToMat4(*GameState->AnimEditor.Transform),
                     Math::MulMat4(GameState->AnimEditor.HierarchicalModelSpaceMatrices[i],
                                   GameState->AnimEditor.Skeleton->Bones[i].BindPose));
 
@@ -235,7 +235,7 @@ AnimationEditorInteraction(game_state* GameState, const game_input* Input)
   }
   if(GameState->AnimEditor.Skeleton)
   {
-    mat4 Mat4Bone = Math::MulMat4(TransformToMat4(GameState->AnimEditor.Transform),
+    mat4 Mat4Bone = Math::MulMat4(TransformToMat4(*GameState->AnimEditor.Transform),
                                   Math::MulMat4(GameState->AnimEditor.HierarchicalModelSpaceMatrices
                                                   [GameState->AnimEditor.CurrentBone],
                                                 GameState->AnimEditor.Skeleton

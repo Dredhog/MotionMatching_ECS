@@ -537,7 +537,7 @@ main(int ArgCount, char** Args)
               LocalTransform.Translation =
                 RescaleCoefficient * vec3{ BoneTranslation.x, BoneTranslation.y, BoneTranslation.z };
 
-              LocalBindPose = Anim::TransformToMat4(&LocalTransform);
+              LocalBindPose = Anim::TransformToMat4(LocalTransform);
             }
 
             int  ParentIndex = Skeleton.Bones[BoneIndex].ParentIndex;
@@ -607,7 +607,7 @@ main(int ArgCount, char** Args)
                                                    Channel->mRotationKeys[i].mValue.z };
 
 #ifdef USE_BIND_POSE
-          mat4 BoneParentSpaceAbsPose = Anim::TransformToMat4(&BoneParentSpaceAbsTransform);
+          mat4 BoneParentSpaceAbsPose = Anim::TransformToMat4(BoneParentSpaceAbsTransform);
           mat4 BindRelativeLocalBonePose =
             Math::MulMat4(InverseLocalBindPose, BoneParentSpaceAbsPose);
           Anim::transform BindRelativeLocalBoneTransform = {};
