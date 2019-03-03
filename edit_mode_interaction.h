@@ -49,17 +49,6 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
         glUniformMatrix4fv(glGetUniformLocation(EntityIDShaderID, "g_boneMatrices"), 1, GL_FALSE,
                            Mat4Zeros.e);
       }
-      if(GameState->SelectionMode == SELECT_Mesh)
-      {
-        Render::mesh* SelectedMesh = {};
-        if(GetSelectedMesh(GameState, &SelectedMesh))
-        {
-          glBindVertexArray(SelectedMesh->VAO);
-
-          glDrawElements(GL_TRIANGLES, SelectedMesh->IndiceCount, GL_UNSIGNED_INT, 0);
-          glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        }
-      }
       Render::model* CurrentModel = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
       for(int m = 0; m < CurrentModel->MeshCount; m++)
       {

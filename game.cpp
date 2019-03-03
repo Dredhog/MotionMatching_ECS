@@ -79,12 +79,14 @@ RegisterDebugModels(game_state* GameState)
   GameState->QuadModelID     = GameState->Resources.RegisterModel("data/built/debug_meshes.model");
   GameState->CubemapModelID  = GameState->Resources.RegisterModel("data/built/inverse_cube.model");
   GameState->SphereModelID   = GameState->Resources.RegisterModel("data/built/sphere.model");
+  GameState->LowPolySphereModelID   = GameState->Resources.RegisterModel("data/built/low_poly_sphere.model");
   GameState->UVSphereModelID = GameState->Resources.RegisterModel("data/built/uv_sphere.model");
   GameState->Resources.Models.AddReference(GameState->GizmoModelID);
   GameState->Resources.Models.AddReference(GameState->BoneDiamondModelID);
   GameState->Resources.Models.AddReference(GameState->QuadModelID);
   GameState->Resources.Models.AddReference(GameState->CubemapModelID);
   GameState->Resources.Models.AddReference(GameState->SphereModelID);
+  GameState->Resources.Models.AddReference(GameState->LowPolySphereModelID);
   GameState->Resources.Models.AddReference(GameState->UVSphereModelID);
   strcpy(GameState->R.Cubemap.Name, "data/textures/skybox/morning");
   strcpy(GameState->R.Cubemap.Format, "tga");

@@ -424,6 +424,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->TrajectoryLengthInTime = 1;
     GameState->TrajectorySampleCount  = 20;
     GameState->MMTransformToRootSpace = true;
+    GameState->PlayerSpeed            = 1.0f;
     GameState->MMSet                  = {};
   }
 

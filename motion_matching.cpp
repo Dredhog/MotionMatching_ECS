@@ -1,17 +1,6 @@
 #include "motion_matching.h"
 
-void
-FillFrameInfoBonePositionFields(mm_frame_info* OutInfo, const mat4* HierarchicalModelSpacePoses,
-                                const mat4& InvRootMatrix, const mm_format_info& FormatInfo)
-{
-  for(int i = 0; i < FormatInfo.ComparisonBoneIndices.Count; i++)
-  {
-    OutInfo->BonePs[i] =
-      Math::MulMat4(InvRootMatrix, HierarchicalModelSpacePoses[FormatInfo.ComparisonBoneIndices[i]])
-        .T;
-    OutInfo->BonePs[i].Y = 0;
-  }
-}
+#define MM_MAX_FRAME_INFO_COUNT 10 * 60 * 120
 
 // TODO(Lukas): move this to a propper part of memory, likely to the resource manager
 mm_frame_info g_MMStorageArray[MM_MAX_FRAME_INFO_COUNT];
@@ -30,10 +19,12 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, mm_animation_set* MM
   {
     const Anim::animation* Anim = Resources->GetAnimation(MMSet->AnimRIDs[a]);
     assert(Anim->ChannelCount == Skeleton->BoneCount);
+    const float AnimDuration  = Anim::GetAnimDuration(Anim);
+    const float FrameDuration = AnimDuration / (float)Anim->KeyframeCount;
 
     const float   PosSamplePeriod = MMSet->FormatInfo.TrajectoryTimeHorizon / float(MM_POINT_COUNT);
     const int32_t PosSamplingInterval =
-      (int32_t)((PosSamplePeriod / Anim::GetAnimDuration(Anim)) * Anim->KeyframeCount);
+      (int32_t)((PosSamplePeriod / AnimDuration) * Anim->KeyframeCount);
     const int32_t LookaheadKeyframeCount = PosSamplingInterval * MM_POINT_COUNT;
 
     int32_range CurrentRange = {};
@@ -45,7 +36,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, mm_animation_set* MM
 
     for(int i = 0; i < Anim->KeyframeCount - PosSamplingInterval; i++)
     {
-			int32_t FrameInfoIndex = CurrentRange.Start + i;
+      int32_t FrameInfoIndex = CurrentRange.Start + i;
       // TODO(Lukas) MAKE THIS USE A SAMPLING AND ADD A SAMPLING FREQUENCY TO MM_FORMAT_INFO SO THAT
       // ARBITRARILY SAMPLED ANIMATIONS COULD WORK
       const Anim::transform* LocalPoseTransforms = &Anim->Transforms[i * Anim->ChannelCount];
@@ -59,24 +50,40 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, mm_animation_set* MM
       mat4    HipMatrix = TempMatrices[HipIndex];
       Anim::GetRootAndInvRootMatrices(NULL, &InvRootMatrix, HipMatrix);
 
-      FillFrameInfoBonePositionFields(&MMSet->FrameInfos[FrameInfoIndex], TempMatrices, InvRootMatrix,
-                                      MMSet->FormatInfo);
+      {
+        // Fill Bone Positions
+        for(int b = 0; b < MMSet->FormatInfo.ComparisonBoneIndices.Count; b++)
+        {
+          MMSet->FrameInfos[FrameInfoIndex].BonePs[b] =
+            Math::MulMat4(InvRootMatrix, TempMatrices[MMSet->FormatInfo.ComparisonBoneIndices[b]])
+              .T;
+        }
+      }
+      // Fill Bone Trajectory Positions
       {
         // TODO(Lukas) MAKE THIS USE A SAMPLING AND ADD A SAMPLING FREQUENCY TO MM_FORMAT_INFO SO
         // THAT ARBITRARILY SAMPLED ANIMATIONS COULD WORK
         for(int p = 0; p < MM_POINT_COUNT; p++)
         {
           vec3 SamplePoint =
-            Anim->Transforms[(i + p * PosSamplingInterval) * Anim->ChannelCount + HipIndex]
+            Anim->Transforms[(i + (1 + p) * PosSamplingInterval) * Anim->ChannelCount + HipIndex]
               .Translation;
-          vec4 SamplePointHomog = { SamplePoint.X, 0, SamplePoint.Z, 1 };
+          vec4 SamplePointHomog = { SamplePoint, 1 };
           MMSet->FrameInfos[FrameInfoIndex].TrajectoryPs[p] =
             Math::MulMat4Vec4(InvRootMatrix, SamplePointHomog).XYZ;
+          MMSet->FrameInfos[FrameInfoIndex].TrajectoryPs[p].Y = 0;
         }
       }
     }
-    // Compute the velocities from the frame_info positions
+    // TODO(Lukas) there is an off-by-one error here and the last frame info BoneVs is not computed
+    // Compute the velocities from the frame_info position
+    for(int i = 0; i < Anim->KeyframeCount - PosSamplingInterval-1; i++)
     {
+			for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
+			{
+        MMSet->FrameInfos[i].BoneVs[b] =
+          (MMSet->FrameInfos[i + 1].BonePs[b] - MMSet->FrameInfos[i].BonePs[b]) / FrameDuration;
+      }
     }
   }
   MMSet->IsBuilt = true;
@@ -104,7 +111,6 @@ GetCurrentFrameGoal(const Anim::animation_controller* Controller, vec3 LocalVelo
                       Controller
                         ->HierarchicalModelSpaceMatrices[FormatInfo.ComparisonBoneIndices[b]])
           .T;
-      ResultInfo.BonePs[b].Y = 0;
     }
   }
   // TODO(Lukas) add computation for velocities
@@ -123,19 +129,22 @@ GetCurrentFrameGoal(const Anim::animation_controller* Controller, vec3 LocalVelo
 }
 
 float
-ComputeCost(const mm_frame_info& A, const mm_frame_info& B)
+ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float Responsiveness)
 {
-  float Cost = 0.0f;
+  float ShortTermCost = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
-    vec3 Temp = A.BonePs[b] - B.BonePs[b];
-    Cost += Math::Dot(Temp, Temp);
+    vec3 Diff = A.BonePs[b] - B.BonePs[b];
+    ShortTermCost += Math::Dot(Diff, Diff);
   }
+	float LongTermCost = 0.0f;
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
-    vec3 Temp = A.TrajectoryPs[p] - B.TrajectoryPs[p];
-    Cost += Math::Dot(Temp, Temp);
+    vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
+    LongTermCost += Math::Dot(Diff, Diff);
   }
+
+	float Cost = ShortTermCost + Responsiveness * LongTermCost;
   return Cost;
 }
 
@@ -152,7 +161,7 @@ MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, const mm_animati
   int32_t BestFrameInfoIndex = -1;
   for(int i = 0; i < MMSet->FrameInfoCount; i++)
   {
-    float CurrentCost = ComputeCost(Goal, MMSet->FrameInfos[i]);
+    float CurrentCost = ComputeCost(Goal, MMSet->FrameInfos[i], MMSet->FormatInfo.Responsiveness);
     if(CurrentCost < SmallestCost)
     {
       SmallestCost       = CurrentCost;
@@ -161,7 +170,6 @@ MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, const mm_animati
   }
 
   assert(BestFrameInfoIndex != -1);
-  *OutStartFrameIndex = BestFrameInfoIndex;
 
   for(int a = 0; a < MMSet->AnimFrameRanges.Count; a++)
   {
@@ -169,6 +177,7 @@ MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, const mm_animati
     if(CurrentRange.Start <= BestFrameInfoIndex && BestFrameInfoIndex < CurrentRange.End)
     {
       *OutAnimIndex = a;
+      *OutStartFrameIndex = BestFrameInfoIndex - CurrentRange.Start;
     }
   }
 

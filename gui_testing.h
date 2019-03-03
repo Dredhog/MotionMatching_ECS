@@ -377,6 +377,8 @@ namespace UI
       {
         UI::SliderFloat("Root Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0,
                         10);
+        UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
+        UI::SliderFloat("Responsiveness", &GameState->MMSet.FormatInfo.Responsiveness, 0, 10);
         UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2, 40);
 
         UI::Checkbox("Transform To Root Space", &GameState->MMTransformToRootSpace);

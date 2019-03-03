@@ -156,7 +156,7 @@ Debug::DrawWireframeSpheres(game_state* GameState)
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDisable(GL_DEPTH_TEST);
   glUseProgram(ColorShaderID);
-  Render::model* SphereModel = GameState->Resources.GetModel(GameState->SphereModelID);
+  Render::model* SphereModel = GameState->Resources.GetModel(GameState->LowPolySphereModelID);
   glBindVertexArray(SphereModel->Meshes[0]->VAO);
 
   // So as not to corrupt the position by the old bone data

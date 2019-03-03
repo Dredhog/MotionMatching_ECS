@@ -5,22 +5,22 @@
 #include "basic_data_structures.h"
 
 #define MM_POINT_COUNT 3
-#define MM_COMPARISON_BONE_COUNT 3
+#define MM_COMPARISON_BONE_COUNT 2
 #define MM_MAX_ANIM_COUNT 10
-#define MM_MAX_FRAME_INFO_COUNT 1 * 60 * 120
 
 struct mm_format_info
 {
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
   float                                          TrajectoryTimeHorizon;
+  float                                          Responsiveness;
 };
 
 struct mm_frame_info
 {
   vec3 TrajectoryPs[MM_POINT_COUNT];
   vec3 BonePs[MM_COMPARISON_BONE_COUNT];
+  vec3 BoneVs[MM_COMPARISON_BONE_COUNT];
   // vec2 Directions[MM_POINT_COUNT];
-  // vec3 BoneVs[MM_COMPARISON_BONE_COUNT];
 };
 
 struct int32_range

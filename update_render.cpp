@@ -153,7 +153,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     entity* PlayerEntity = {};
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
-      Gameplay::UpdatePlayer(PlayerEntity, &GameState->Resources, Input, &GameState->Camera, &GameState->MMSet);
+      Gameplay::UpdatePlayer(PlayerEntity, &GameState->Resources, Input, &GameState->Camera, &GameState->MMSet, GameState->PlayerSpeed);
     }
   }
 

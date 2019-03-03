@@ -8,3 +8,4 @@ msvs_build
 msvc_build
 .exrc
 *.swp
+core

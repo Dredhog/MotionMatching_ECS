@@ -9,7 +9,7 @@ all:
 	@./engine
 
 models:
-	@./build.sh
+	@./_build.sh
 
 animations:
 	@./build_anim.sh

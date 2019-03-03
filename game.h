@@ -63,6 +63,7 @@ struct game_state
 
   // Models
   rid SphereModelID;
+  rid LowPolySphereModelID;
   rid UVSphereModelID;
   rid QuadModelID;
   rid GizmoModelID;
@@ -87,6 +88,7 @@ struct game_state
   bool    MMTransformToRootSpace;
   rid     MMAnimationRIDs[MAX_MM_ANIMATION_COUNT];
   int32_t MMAnimationCount;
+  float   PlayerSpeed;
 
   // Fonts/text
   Text::font Font;
