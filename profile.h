@@ -1,8 +1,6 @@
 #pragma once
 
-#define DEBUG_PROFILING 1
-
-#if DEBUG_PROFILING
+#if defined(USE_DEBUG_PROFILING)
 
 // Windows perf counter header
 #if defined(__WIN32__) || defined(_WIN32) || defined(__WIN64__) || defined(_WIN64) || defined(WIN32)
@@ -182,8 +180,9 @@ struct timer_event_autoclose_wrapper
 
 #define FOR_ALL_NAMES(DO_FUNC)                                                                     \
   DO_FUNC(GeomPrePass)                                                                             \
-  DO_FUNC(Shadowmapping) DO_FUNC(VolumetricLighting) DO_FUNC(SSAO) DO_FUNC(RenderScene)            \
-    DO_FUNC(FXAA) DO_FUNC(PostProcessing) DO_FUNC(Bloom) DO_FUNC(MotionBlur) DO_FUNC(DepthOfField) \
+  DO_FUNC(Shadowmapping)                                                                           \
+  DO_FUNC(VolumetricLighting) DO_FUNC(SSAO) DO_FUNC(RenderScene) DO_FUNC(FXAA)                     \
+    DO_FUNC(PostProcessing) DO_FUNC(Bloom) DO_FUNC(MotionBlur) DO_FUNC(DepthOfField)               \
       DO_FUNC(FlipScreenbuffer)
 
 #define GENERATE_ENUM_NO_COMMA(Name) GPU_TIMER_##Name
@@ -255,7 +254,7 @@ struct gpu_timer_event_autoclose_wrapper
 
 #define TIMED_BLOCK(ID) timer_event_autoclose_wrapper ID##__LINE__(TIMER_NAME_##ID)
 
-#define BEGIN_TIMED_FRAME()                                                                              \
+#define BEGIN_TIMED_FRAME()                                                                        \
   for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)                                       \
   {                                                                                                \
     GPU_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][i] = {};                                    \
@@ -268,7 +267,7 @@ struct gpu_timer_event_autoclose_wrapper
   g_CurrentTimerEventCount                                            = 0;                         \
   GLOBAL_FRAME_ENDPOINT_TABLE[g_CurrentProfilerFrameIndex].FrameStart = _rdtsc();
 
-#define END_TIMED_FRAME()                                                                                \
+#define END_TIMED_FRAME()                                                                          \
   assert(g_CurrentTimerEventCount <= PROFILE_MAX_TIMER_EVENTS_PER_FRAME);                          \
   assert(g_CurrentTimerEventDepth == 0);                                                           \
   GLOBAL_FRAME_ENDPOINT_TABLE[g_CurrentProfilerFrameIndex].FrameEnd = _rdtsc();                    \
@@ -317,7 +316,13 @@ struct gpu_timer_event_autoclose_wrapper
 #define END_TIMED_FRAME()
 #define BEGIN_TIMED_BLOCK(ID)
 #define END_TIMED_BLOCK(ID)
+#define TIMED_BLOCK(ID)
 #define PAUSE_PROFILE()
 #define RESUME_PROFILE()
+
+#define INIT_GPU_TIMERS() ;
+#define BEGIN_GPU_TIMED_BLOCK(ID)
+#define END_GPU_TIMED_BLOCK(ID)
+#define READ_GPU_QUERY_TIMERS() ;
 
 #endif // DEGUB_PROFILING

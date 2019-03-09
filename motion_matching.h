@@ -6,7 +6,7 @@
 
 #define MM_POINT_COUNT 3
 #define MM_COMPARISON_BONE_COUNT 2
-#define MM_MAX_ANIM_COUNT 10
+#define MM_MAX_ANIM_COUNT 20
 
 struct mm_format_info
 {

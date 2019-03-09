@@ -1,0 +1,68 @@
+*Animation track definition structure and separation from skeleton bone count
+*Removal of RIDs from Anim::animation_controller
+*Anim::animation controller_memory leak
+*Bone selection entity selection
+*Motion matching for multiple entities
+*Motion matching for multiple entities
+*Sampling based MM info generation
+*MM search optimization
+*MM search optimization
+*MM Graph structure
+*MM Graph following
+*MM Graph creation tools
+*Joystick support
+*Animation mirroring in Anim::animation_state
+*RID management for animations
+*MM profile saving in a MMSet build agnostic way (probably only need 1 profile)
+*Current frame bone velocity calculation
+*Entity separation from Anim::animation_controller (no pointer in entity)
+
+*Unified Timeline Window template for UI with tick markers and scrooll to zoom in
+*Only reload assets after they have not been written to for some time (currently large models often update only partially)
+
+*Frustum culling when rendering
+*Sort meshe instances when rendering
+*Fix SSAO
+*Bloom is very slow and poor quality!!
+*Nonlinear depth of filed (+bokeh)
+*Separate entity UI from Physics UI (clean it up)
+*Rendering with multiple lights !!!
+*Spot lights
+
+*Multithreaded job system !!!
+
+*Better text solution !!!
+*More efficient file system update
+
+*Split Anim::transform from the one used by entities and game logic
+*Add hierarchical memory management
+*Add memory usage visualization
+*Remove dependence on static memory (make system singletons allocate it explicitly)
+*Make UI not be rendered via debug drawing facilities
+*Interactive gizmos
+*Measure ms instead of cycles in profiler !!!
+*non performance heavy GPU profiling
+*Hierarchical GPU profiling
+*GPU profile UI synchronized with CPU
+*Clean up profiling code (maybe put into a singleton)
+*Group support for profiling (visualization as well)
+*Multithreading
+*Bounding box limited UI button text
+*One or few unified APIs for framebuffer generation
+
+*Shader includes
+*Fix preview opacity
+*Add world independent controllable lights for preview
+*Change cubemap
+*Unified cubemap/environment map support
+
+*Trck down compilation slowdown causes
+*Builder animation framerate subsampling
+*Builder empty/repeated track removal
+
+*Fix invallid RID issues when selecting the empty element of a combo box
+*Add animation timeline
+*MM Animation editing tools
+*MM cost function visualization UI
+*MM cost function visualization UI
+*Add instancing for debug drawing

@@ -66,6 +66,7 @@ namespace UI
     if(s_ShowProfilerWindow)
     {
       UI::BeginWindow("Profiler Window", { 150, 500 }, { 1500, 500 });
+#ifdef USE_DEBUG_PROFILING
       {
         int PreviousFrameIndex =
           (g_CurrentProfilerFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) % PROFILE_MAX_FRAME_COUNT;
@@ -269,6 +270,7 @@ namespace UI
           }
         }
       }
+#endif //USE_DEBUG_PROFILING
       UI::EndWindow();
     }
 
