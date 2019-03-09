@@ -1,4 +1,5 @@
 #include "game.h"
+#include "debug_drawing.h"
 
 void
 AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
@@ -272,4 +273,50 @@ GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
   mat4 ModelMatrix = GetEntityModelMatrix(GameState, EntityIndex);
   mat4 MVPMatrix   = Math::MulMat4(GameState->Camera.VPMatrix, ModelMatrix);
   return MVPMatrix;
+}
+
+void
+DrawSkeleton(const Anim::animation_controller* C, mat4 MatModel, float JointSphereRadius,
+             bool UseBoneDiamonds)
+{
+  const mat4 Mat4Root = Math::MulMat4(MatModel, Math::MulMat4(C->HierarchicalModelSpaceMatrices[0],
+                                                              C->Skeleton->Bones[0].BindPose));
+  for(int b = 0; b < C->Skeleton->BoneCount; b++)
+  {
+    mat4 Mat4Bone = Math::MulMat4(MatModel, Math::MulMat4(C->HierarchicalModelSpaceMatrices[b],
+                                                          C->Skeleton->Bones[b].BindPose));
+    vec3 Position = Math::GetMat4Translation(Mat4Bone);
+
+    if(0 < b)
+    {
+      int  ParentIndex = C->Skeleton->Bones[b].ParentIndex;
+      mat4 Mat4Parent =
+        Math::MulMat4(MatModel, Math::MulMat4(C->HierarchicalModelSpaceMatrices[ParentIndex],
+                                              C->Skeleton->Bones[ParentIndex].BindPose));
+      vec3 ParentPosition = Math::GetMat4Translation(Mat4Parent);
+
+      if(UseBoneDiamonds)
+      {
+        float BoneLength    = Math::Length(Position - ParentPosition);
+        vec3  ParentToChild = Math::Normalized(Position - ParentPosition);
+
+        vec3 Forward = Math::Normalized(
+          Math::Cross(ParentToChild, { Mat4Root._11, Mat4Root._12, Mat4Root._13 }));
+        vec3 Right = Math::Normalized(Math::Cross(ParentToChild, Forward));
+
+        mat4 DiamondMatrix = Mat4Parent;
+
+        DiamondMatrix.X = Right;
+        DiamondMatrix.Y = ParentToChild;
+        DiamondMatrix.Z = Forward;
+
+        Debug::PushShadedBone(DiamondMatrix, BoneLength);
+      }
+      else
+      {
+        Debug::PushLine(Position, ParentPosition);
+      }
+    }
+    Debug::PushWireframeSphere(Position, JointSphereRadius);
+  }
 }

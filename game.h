@@ -89,6 +89,8 @@ struct game_state
   rid     MMAnimationRIDs[MAX_MM_ANIMATION_COUNT];
   int32_t MMAnimationCount;
   float   PlayerSpeed;
+	bool    DrawHipTrajectories;
+	bool    DrawRootTrajectories;
 
   // Fonts/text
   Text::font Font;
@@ -100,6 +102,7 @@ struct game_state
   bool  DrawDebugSpheres;
   bool  DrawShadowCascadeVolumes;
   bool  DrawTimeline;
+	bool  DrawActorMeshes;
   bool  IsAnimationPlaying;
   bool  IsEntityCreationMode;
   float BoneSphereRadius;
@@ -132,6 +135,8 @@ void GenerateShadowFramebuffer(uint32_t* FBO, uint32_t* Texture);
 void BindNextFramebuffer(uint32_t* FBOs, uint32_t* CurrentFramebuffer);
 void BindTextureAndSetNext(uint32_t* Textures, uint32_t* CurrentTexture);
 void DrawTextureToFramebuffer(uint32_t VAO);
+void     DrawSkeleton(const Anim::animation_controller* C, mat4 MatModel, float JoingSphereRadius,
+                      bool UseBoneDiamonds = true);
 
 //-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------
 

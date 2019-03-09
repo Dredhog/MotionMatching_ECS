@@ -323,6 +323,9 @@ namespace UI
             UI::Text("Hold ctrl when dragging to snap to whole values");
             UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1,
                            5);
+            UI::DragFloat4("Header Normal", &Style.Colors[UI::COLOR_HeaderNormal].X, 0, 1, 5);
+            UI::DragFloat4("Header Hovered", &Style.Colors[UI::COLOR_HeaderHovered].X, 0, 1, 5);
+            UI::DragFloat4("Header Pressed", &Style.Colors[UI::COLOR_HeaderPressed].X, 0, 1, 5);
             UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
             UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
             UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
@@ -373,14 +376,16 @@ namespace UI
 
     if(s_ShowMotionMatchingWindow)
     {
-      UI::BeginWindow("Motion Matching", { 670, 50 }, { 500, 380 });
+      UI::BeginWindow("Motion Matching", { 20, 20 }, { 500, 500 });
       {
-        UI::SliderFloat("Root Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0,
+        UI::SliderFloat("Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0,
                         10);
-        UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
-        UI::SliderFloat("Responsiveness", &GameState->MMSet.FormatInfo.Responsiveness, 0, 10);
         UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2, 40);
-
+        UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
+        UI::SliderFloat("Responsiveness", &GameState->MMSet.FormatInfo.Responsiveness, 0, 2);
+        UI::SliderFloat("BlendInTime", &GameState->MMSet.FormatInfo.BelndInTime, 0, 2);
+        UI::Checkbox("Show Root Trajectory", &GameState->DrawRootTrajectories);
+        UI::Checkbox("Show Hip Trajectory", &GameState->DrawHipTrajectories);
         UI::Checkbox("Transform To Root Space", &GameState->MMTransformToRootSpace);
         {
           static int32_t ActivePathIndex = 0;
@@ -1419,6 +1424,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
     UI::Checkbox("Draw Debug Lines", &GameState->DrawDebugLines);
     UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
+    UI::Checkbox("Draw Actor Meshes", &GameState->DrawActorMeshes);
     UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
     // UI::Checkbox("Timeline", &GameState->DrawTimeline);
   }

@@ -172,9 +172,10 @@ struct circular_stack
   {
 		assert(0 < m_Count);
 		int RemovedIndex = m_StartIndex;
-		m_StartIndex = (m_StartIndex - 1 + Capacity) % Capacity;
+    m_StartIndex     = (m_StartIndex + 1) % Capacity;
+    m_Count--;
 
-		return m_Entries[RemovedIndex];
+    return m_Entries[RemovedIndex];
   }
 
   T
@@ -185,12 +186,12 @@ struct circular_stack
 		return Result;
   }
 
-  T*
+  T
   Peek()
   {
 		assert(0 < m_Count);
-		int Index = (m_StartIndex + m_Count) % Capacity;
-		return m_Entries[Index];
+    int Index = (m_StartIndex + m_Count - 1) % Capacity;
+    return m_Entries[Index];
   }
 
   void

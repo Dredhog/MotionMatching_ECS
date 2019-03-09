@@ -337,6 +337,11 @@ SetGameStatePODFields(game_state* GameState)
     UpdateCameraDerivedFields(&GameState->PreviewCamera);
   }
 
+	//Post Processing
+	{
+		GameState->R.PPEffects |= POST_FXAA;
+	}
+
   {
     // SUN DATA
     {
@@ -411,6 +416,7 @@ SetGameStatePODFields(game_state* GameState)
   GameState->DrawGizmos               = true;
   GameState->DrawDebugLines           = true;
   GameState->DrawDebugSpheres         = true;
+  GameState->DrawActorMeshes          = false;
   GameState->DrawShadowCascadeVolumes = false;
   GameState->BoneSphereRadius         = 0.01f;
 
@@ -426,6 +432,13 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMTransformToRootSpace = true;
     GameState->PlayerSpeed            = 1.0f;
     GameState->MMSet                  = {};
+    GameState->MMSet.FormatInfo.Responsiveness        = 0.5f;
+    GameState->MMSet.FormatInfo.TrajectoryTimeHorizon = 1.0f;
+		GameState->MMSet.FormatInfo.BelndInTime = 0.2f;
+    GameState->MMSet.FormatInfo.ComparisonBoneIndices.Push(4);
+    GameState->MMSet.FormatInfo.ComparisonBoneIndices.Push(10);
+		GameState->DrawRootTrajectories = true;
+		GameState->DrawHipTrajectories = false;
   }
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;

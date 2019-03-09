@@ -68,17 +68,18 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
     {
         for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
         {
-          vec4 HomogLocalBonePos = { AnimGoal.BonePs[i].X, AnimGoal.BonePs[i].Y,
-                                     AnimGoal.BonePs[i].Z, 1 };
-          Debug::PushWireframeSphere(Math::MulMat4Vec4(ModelMatrix, HomogLocalBonePos).XYZ, 0.04f,
+          vec4 HomogLocalBonePos = { AnimGoal.BonePs[i], 1 };
+          Debug::PushWireframeSphere(Math::MulMat4Vec4(ModelMatrix, HomogLocalBonePos).XYZ, 0.02f,
                                      { 1, 0, 1, 1 });
         }
+        vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
         for(int i = 0; i < MM_POINT_COUNT; i++)
         {
-          vec4 HomogTrajectoryPointPos = { AnimGoal.TrajectoryPs[i].X, AnimGoal.TrajectoryPs[i].Y,
-                                           AnimGoal.TrajectoryPs[i].Z, 1 };
-          Debug::PushWireframeSphere(Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointPos).XYZ,
-                                     0.04f, { 0, 0, 1, 1 });
+          vec4 HomogTrajectoryPointP = { AnimGoal.TrajectoryPs[i], 1 };
+          vec3 WorldTrajectoryPointP  = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
+          Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 0, 1, 1 });
+          Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 0, 1, 1 });
+          PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
         }
     }
 
@@ -94,33 +95,78 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
           vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
           vec3 WorldVEnd = WorldBoneP + WorldBoneV;
 
-          Debug::PushWireframeSphere(WorldBoneP, 0.03f, { 1, 1, 0, 1 });
+          /*Debug::PushWireframeSphere(WorldBoneP, 0.01f, { 1, 1, 0, 1 });
           Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 1, 0, 1 });
-          Debug::PushWireframeSphere(WorldVEnd, 0.02f, { 1, 1, 0, 1 });
+          Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 1, 0, 1 });*/
         }
         vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
         for(int i = 0; i < MM_POINT_COUNT; i++)
         {
           vec4 HomogTrajectoryPointP = { LastMatch.TrajectoryPs[i], 1 };
-          vec3 WordTrajectoryPointP  = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
-          Debug::PushLine(PrevWorldTrajectoryPointP, WordTrajectoryPointP, { 0, 1, 0, 1 });
-          Debug::PushWireframeSphere(WordTrajectoryPointP, 0.05f, { 0, 1, 0, 1 });
-          PrevWorldTrajectoryPointP = WordTrajectoryPointP;
+          vec3 WorldTrajectoryPointP  = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
+          Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 1, 0, 1 });
+          Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 1, 0, 1 });
+          PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
         }
     }
 
-    if(Input->Space.EndedDown && Input->Space.EndedDown)
+    if(Input->MouseLeft.EndedDown)
     {
-        // TODO(Lukas) Match animation
-        int32_t NewAnimIndex;
-        int32_t StartFrameIndex;
-        float   BestCost = MotionMatch(&NewAnimIndex, &StartFrameIndex, MMSet, AnimGoal);
-        const Anim::animation* MatchedAnim = Resources->GetAnimation(MMSet->AnimRIDs[NewAnimIndex]);
-        const float AnimStartTime = (((float)StartFrameIndex) / MatchedAnim->KeyframeCount) *
-                                    Anim::GetAnimDuration(MatchedAnim);
-        LastMatch = MMSet->FrameInfos[MMSet->AnimFrameRanges[NewAnimIndex].Start + StartFrameIndex];
+      int32_t NewAnimIndex;
+      int32_t StartFrameIndex;
+      float   BestCost = MotionMatch(&NewAnimIndex, &StartFrameIndex, MMSet, AnimGoal);
+      const Anim::animation* MatchedAnim = Resources->GetAnimation(MMSet->AnimRIDs[NewAnimIndex]);
+      const float AnimStartTime          = (((float)StartFrameIndex) / MatchedAnim->KeyframeCount) *
+                                  Anim::GetAnimDuration(MatchedAnim);
+      LastMatch = MMSet->FrameInfos[MMSet->AnimFrameRanges[NewAnimIndex].Start + StartFrameIndex];
 
-        PlayAnimation(Player->AnimController, MMSet->AnimRIDs[NewAnimIndex], AnimStartTime, 0.2f);
+      PlayAnimation(Player->AnimController, MMSet->AnimRIDs[NewAnimIndex], AnimStartTime,
+                    MMSet->FormatInfo.BelndInTime);
+    }
+    ThirdPersonBelndFuncStopUnusedAnimations(Player->AnimController);
+
+    if(0 < g_BlendInfos.m_Count)
+    {
+      int              AnimationIndex = g_BlendInfos.PeekBack().AnimStateIndex;
+      Anim::animation* RootMotionAnim =
+        Resources->GetAnimation(Player->AnimController->AnimationIDs[AnimationIndex]);
+
+      float CurrentSampleTime = Anim::GetLoopedSampleTime(Player->AnimController, AnimationIndex,
+                                                          Player->AnimController->GlobalTimeSec);
+      float NextSampleTime =
+        ClampFloat(RootMotionAnim->SampleTimes[0], CurrentSampleTime + Input->dt,
+                   RootMotionAnim->SampleTimes[RootMotionAnim->KeyframeCount - 1]);
+
+      int             HipBoneIndex = 0;
+      Anim::transform CurrentHipTransform =
+        Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, CurrentSampleTime);
+      Anim::transform NextHipTransform =
+        Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, NextSampleTime);
+
+      mat4 Mat4Player = Anim::TransformToMat4(Player->Transform);
+      Mat4Player.T    = {};
+      {
+        mat4 Mat4CurrentHip = Anim::TransformToMat4(CurrentHipTransform);
+        mat4 Mat4CurrentRoot;
+        mat4 Mat4InvCurrentRoot;
+        Anim::GetRootAndInvRootMatrices(&Mat4CurrentRoot, &Mat4InvCurrentRoot, Mat4CurrentHip);
+        {
+          mat4 Mat4NextHip = Anim::TransformToMat4(NextHipTransform);
+          mat4 Mat4NextRoot;
+          Anim::GetRootAndInvRootMatrices(&Mat4NextRoot, NULL, Mat4NextHip);
+          {
+            // TODO(Lukas): Multiply by mat4InvPlayer on the left for more generality
+            mat4 Mat4DeltaRoot = Math::MulMat4(Mat4Player,Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot));
+            vec3 DeltaTranslaton = Mat4DeltaRoot.T;
+            quat DeltaRotation   = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
+            Player->Transform.Translation += DeltaTranslaton;
+            Player->Transform.Rotation = Player->Transform.Rotation * DeltaRotation;
+            Debug::PushLine(Player->Transform.Translation,
+                           Player->Transform.Translation + DeltaTranslaton, { 1, 0, 0, 1 });
+          }
+        }
+      }
+
     }
   }
 }

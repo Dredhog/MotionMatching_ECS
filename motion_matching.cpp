@@ -34,7 +34,8 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, mm_animation_set* MM
     assert(MMSet->FrameInfoCount < MM_MAX_FRAME_INFO_COUNT);
     MMSet->AnimFrameRanges.Push(CurrentRange);
 
-    for(int i = 0; i < Anim->KeyframeCount - PosSamplingInterval; i++)
+		//TODO(Lukas): Should remove first frame on export instead of skipping it at runtime
+    for(int i = 1; i < Anim->KeyframeCount - PosSamplingInterval; i++)
     {
       int32_t FrameInfoIndex = CurrentRange.Start + i;
       // TODO(Lukas) MAKE THIS USE A SAMPLING AND ADD A SAMPLING FREQUENCY TO MM_FORMAT_INFO SO THAT

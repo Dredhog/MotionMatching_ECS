@@ -4,6 +4,8 @@
 #include "linear_math/vector.h"
 #include "linear_math/distribution.h"
 
+//TODO(Lukas) make sure that animations references are properly managed
+
 #include "game.h"
 #include "mesh.h"
 #include "model.h"
@@ -175,8 +177,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       for(int i = 0; i < Controller->AnimStateCount; i++)
       {
-        assert(0 < Controller->AnimationIDs[i].Value);
-        Controller->Animations[i] = GameState->Resources.GetAnimation(Controller->AnimationIDs[i]);
+        Controller->Animations[i] =
+          (0 < Controller->AnimationIDs[i].Value)
+            ? GameState->Resources.GetAnimation(Controller->AnimationIDs[i])
+            : NULL;
       }
 
       Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
@@ -188,92 +192,108 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         const Anim::animation*       CurrentAnimation = Controller->Animations[a];
         const Anim::animation_state* CurrentState     = &Controller->States[a];
 
-        const float AnimDuration = Anim::GetAnimDuration(CurrentAnimation);
-
-        // Compute the index of the keyframe left of the playhead
-        int PrevKeyframeIndex = 0;
+        if(!CurrentAnimation)
         {
-          float SampleTime = CurrentState->PlaybackRateSec *
-                             (Controller->GlobalTimeSec - CurrentState->StartTimeSec);
-          if(CurrentState->Loop && AnimDuration < SampleTime)
-          {
-            SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
-          }
-          else if(AnimDuration < SampleTime)
-          {
-            SampleTime = AnimDuration;
-          }
+          continue;
+        }
 
-          for(int k = 0; k < CurrentAnimation->KeyframeCount - 1; k++)
+        if(GameState->DrawRootTrajectories || GameState->DrawHipTrajectories)
+        {
+          const float AnimDuration = Anim::GetAnimDuration(CurrentAnimation);
+
+          // Compute the index of the keyframe left of the playhead
+          int PrevKeyframeIndex = 0;
           {
-            if(SampleTime <= CurrentAnimation->SampleTimes[k + 1])
+            float SampleTime = CurrentState->PlaybackRateSec *
+                               (Controller->GlobalTimeSec - CurrentState->StartTimeSec);
+            if(CurrentState->Loop && AnimDuration < SampleTime)
             {
-              PrevKeyframeIndex = k;
-              break;
+              SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
+            }
+            else if(AnimDuration < SampleTime)
+            {
+              SampleTime = AnimDuration;
+            }
+
+            for(int k = 0; k < CurrentAnimation->KeyframeCount - 1; k++)
+            {
+              if(SampleTime <= CurrentAnimation->SampleTimes[k + 1])
+              {
+                PrevKeyframeIndex = k;
+                break;
+              }
             }
           }
-        }
 
-        mat4 Mat4InvRoot = Math::Mat4Ident();
+          mat4 Mat4InvRoot = Math::Mat4Ident();
 
-        // Transform current pose into the space of the root bone
-				if(GameState->MMTransformToRootSpace)
-        {
-          mat4    Mat4Root;
-          int32_t HipBoneIndex = 0;
+          // Transform current pose into the space of the root bone
+          if(GameState->MMTransformToRootSpace)
+          {
+            mat4    Mat4Root;
+            int32_t HipBoneIndex = 0;
 
-          mat4 Mat4Hips = Anim::TransformToMat4(
-            CurrentAnimation
-              ->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount + HipBoneIndex]);
+            mat4 Mat4Hips = Anim::TransformToMat4(
+              CurrentAnimation
+                ->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount + HipBoneIndex]);
 
-          Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
-          Debug::PushGizmo(&GameState->Camera, &Mat4Root);
-        }
+            Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
+            Debug::PushGizmo(&GameState->Camera, &Mat4Root);
+          }
 
-        int FutureTrajectoryPointCount = 0;
-        {
-          FutureTrajectoryPointCount = (int)(GameState->TrajectoryLengthInTime /
-                                             (AnimDuration / CurrentAnimation->KeyframeCount));
-        }
+          int FutureTrajectoryPointCount = 0;
+          {
+            FutureTrajectoryPointCount = (int)(GameState->TrajectoryLengthInTime /
+                                               (AnimDuration / CurrentAnimation->KeyframeCount));
+          }
 
-        int EndKeyframeIndex = MinInt32(PrevKeyframeIndex + FutureTrajectoryPointCount,
-                                        CurrentAnimation->KeyframeCount - 1);
-        int SamplePeriod =
-          (int)floorf(FutureTrajectoryPointCount / (float)GameState->TrajectorySampleCount);
-        for(int i = PrevKeyframeIndex; i < EndKeyframeIndex - SamplePeriod; i += SamplePeriod)
-        {
-          vec3 LocalHipPositionA =
-            CurrentAnimation->Transforms[0 + i * CurrentAnimation->ChannelCount].Translation;
-          vec3 LocalHipPositionB =
-            CurrentAnimation->Transforms[0 + (i + SamplePeriod) * CurrentAnimation->ChannelCount]
-              .Translation;
+          int EndKeyframeIndex = MinInt32(PrevKeyframeIndex + FutureTrajectoryPointCount,
+                                          CurrentAnimation->KeyframeCount - 1);
+          int SamplePeriod =
+            (int)floorf(FutureTrajectoryPointCount / (float)GameState->TrajectorySampleCount);
+          for(int i = PrevKeyframeIndex; i < EndKeyframeIndex - SamplePeriod; i += SamplePeriod)
+          {
+            vec3 LocalHipPositionA =
+              CurrentAnimation->Transforms[0 + i * CurrentAnimation->ChannelCount].Translation;
+            vec3 LocalHipPositionB =
+              CurrentAnimation->Transforms[0 + (i + SamplePeriod) * CurrentAnimation->ChannelCount]
+                .Translation;
 
-          LocalHipPositionA =
-            Math::MulMat4Vec4(Mat4InvRoot,
-                              { LocalHipPositionA.X, LocalHipPositionA.Y, LocalHipPositionA.Z, 1 })
-              .XYZ;
-          LocalHipPositionB =
-            Math::MulMat4Vec4(Mat4InvRoot,
-                              { LocalHipPositionB.X, LocalHipPositionB.Y, LocalHipPositionB.Z, 1 })
-              .XYZ;
+            LocalHipPositionA =
+              Math::MulMat4Vec4(Mat4InvRoot, { LocalHipPositionA.X, LocalHipPositionA.Y,
+                                               LocalHipPositionA.Z, 1 })
+                .XYZ;
+            LocalHipPositionB =
+              Math::MulMat4Vec4(Mat4InvRoot, { LocalHipPositionB.X, LocalHipPositionB.Y,
+                                               LocalHipPositionB.Z, 1 })
+                .XYZ;
 
-          /*vec3 HipPositionA =
-            Math::MulMat4Vec4(CurrentEntityModelMatrix,
-                              { LocalHipPositionA.X, LocalHipPositionA.Y, LocalHipPositionA.Z, 1 })
-              .XYZ;
-          vec3 HipPositionB =
-            Math::MulMat4Vec4(CurrentEntityModelMatrix,
-                              { LocalHipPositionB.X, LocalHipPositionB.Y, LocalHipPositionB.Z, 1 })
-              .XYZ;
-          Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });*/
+            if(GameState->DrawHipTrajectories)
+            {
+              vec3 HipPositionA = Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                                                    { LocalHipPositionA.X, LocalHipPositionA.Y,
+                                                      LocalHipPositionA.Z, 1 })
+                                    .XYZ;
+              vec3 HipPositionB = Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                                                    { LocalHipPositionB.X, LocalHipPositionB.Y,
+                                                      LocalHipPositionB.Z, 1 })
+                                    .XYZ;
+              Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });
+            }
 
-          vec3 RootPositionA = Math::MulMat4Vec4(CurrentEntityModelMatrix,
-                                                 { LocalHipPositionA.X, 0, LocalHipPositionA.Z, 1 })
-                                 .XYZ;
-          vec3 RootPositionB = Math::MulMat4Vec4(CurrentEntityModelMatrix,
-                                                 { LocalHipPositionB.X, 0, LocalHipPositionB.Z, 1 })
-                                 .XYZ;
-          Debug::PushLine(RootPositionA, RootPositionB, { 0, 1, 1, 1 });
+            if(GameState->DrawRootTrajectories)
+            {
+              vec3 RootPositionA =
+                Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                                  { LocalHipPositionA.X, 0, LocalHipPositionA.Z, 1 })
+                  .XYZ;
+              vec3 RootPositionB =
+                Math::MulMat4Vec4(CurrentEntityModelMatrix,
+                                  { LocalHipPositionB.X, 0, LocalHipPositionB.Z, 1 })
+                  .XYZ;
+              Debug::PushLine(RootPositionA, RootPositionB, { 0, 1, 1, 1 });
+            }
+          }
         }
       }
 
@@ -291,48 +311,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             Math::MulMat4(Mat4InvRoot, Controller->HierarchicalModelSpaceMatrices[b]);
         }
       }
-
-      for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
-      {
-        mat4 Mat4Bone = Math::MulMat4(Anim::TransformToMat4(GameState->Entities[e].Transform),
-                                      Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[b],
-                                                    Controller->Skeleton->Bones[b].BindPose));
-        vec3 Position = Math::GetMat4Translation(Mat4Bone);
-
-        if(0 < b)
-        {
-          int  ParentIndex = Controller->Skeleton->Bones[b].ParentIndex;
-          mat4 Mat4Parent =
-            Math::MulMat4(Anim::TransformToMat4(GameState->Entities[e].Transform),
-                          Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[ParentIndex],
-                                        Controller->Skeleton->Bones[ParentIndex].BindPose));
-          mat4 Mat4Root = Math::MulMat4(Anim::TransformToMat4(GameState->Entities[e].Transform),
-                                        Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[0],
-                                                      Controller->Skeleton->Bones[0].BindPose));
-          vec3 ParentPosition = Math::GetMat4Translation(Mat4Parent);
-
-#define USE_DIAMOND_VISUALIZATION 1
-#if USE_DIAMOND_VISUALIZATION
-          float BoneLength    = Math::Length(Position - ParentPosition);
-          vec3  ParentToChild = Math::Normalized(Position - ParentPosition);
-
-          vec3 Forward = Math::Normalized(
-            Math::Cross(ParentToChild, { Mat4Root._11, Mat4Root._12, Mat4Root._13 }));
-          vec3 Right = Math::Normalized(Math::Cross(ParentToChild, Forward));
-
-          mat4 DiamondMatrix = Mat4Parent;
-
-          DiamondMatrix.X = Right;
-          DiamondMatrix.Y = ParentToChild;
-          DiamondMatrix.Z = Forward;
-
-          Debug::PushShadedBone(DiamondMatrix, BoneLength);
-#else
-          Debug::PushLine(Position, ParentPosition);
-#endif
-        }
-        Debug::PushWireframeSphere(Position, GameState->BoneSphereRadius);
-      }
+      DrawSkeleton(Controller, GetEntityModelMatrix(GameState, e), GameState->BoneSphereRadius);
     }
   }
 
@@ -353,6 +332,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   for(int e = 0; e < GameState->EntityCount; e++)
   {
     Render::model* CurrentModel = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
+		if(!GameState->DrawActorMeshes && GameState->Entities[e].AnimController){
+			continue;
+		}
     for(int m = 0; m < CurrentModel->MeshCount; m++)
     {
       mesh_instance MeshInstance = {};

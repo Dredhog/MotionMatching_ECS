@@ -36,7 +36,7 @@ namespace Anim
     bool  Loop;
   };
 
-	//Note(Lukas): Move this to the asset/serialization system
+  // TODO(Lukas): Move this to the asset/serialization system
   struct animation_group
   {
     animation** Animations;
@@ -75,18 +75,22 @@ namespace Anim
   void StartAnimationAtGlobalTime(animation_controller*, int AnimationIndex, bool Loop = true,
                                   float LocalStartTime = 0.0f);
   void StartAnimationAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
-                                   bool Loop, float LocalStartTime);
-    /*void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
-                    int AnimationIndex, bool Loop = true);*/
-    // void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
+                                  bool Loop, float LocalStartTime);
+  /*void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
+                  int AnimationIndex, bool Loop = true);*/
+  // void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
 
-    // Blending and sampling facilities
+  // Blending and sampling facilities
   void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
-                        float T, Anim::transform* Out);
+                      float T, Anim::transform* Out);
   void AddTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
                      float T, Anim::transform* Out);
-  void LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation, float Time);
+  void LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation,
+                             float Time);
   void LinearAnimationSample(animation_controller*, int AnimAInd, float Time, int ResultIndex);
+  Anim::transform LinearAnimationBoneSample(const Anim::animation* Animation, int BoneIndex,
+                                            float Time);
+
   // Matrix palette generation
   void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,
                              int32_t Count);
@@ -96,7 +100,9 @@ namespace Anim
                                      const Anim::skeleton* Skeleton);
 
   // Helper functions
-  void GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRoot, mat4 HipMatrix);
+  float GetLoopedSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
+                            float GlobalTimeSec);
+  void  GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRoot, mat4 HipMatrix);
   float GetAnimDuration(const Anim::animation* Animation);
 
   inline mat4

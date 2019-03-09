@@ -13,6 +13,7 @@ struct mm_format_info
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
   float                                          TrajectoryTimeHorizon;
   float                                          Responsiveness;
+  float                                          BelndInTime;
 };
 
 struct mm_frame_info

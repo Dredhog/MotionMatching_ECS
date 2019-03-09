@@ -34,7 +34,7 @@ struct shader_def* AddShaderDef(int32_t ShaderType, rid ShaderRID, const char* S
 void AddParamDef(struct shader_def* ShaderDefPtr, const char* ParamName, const char* UniformName,
                  shader_param_def ParamDef);
 
-// asserts if if shader def is null
+// asserts if shader def is null
 int32_t     GetShaderType(const struct shader_def* ShaderDef);
 rid         GetShaderRID(const struct shader_def* ShaderDef);
 const char* GetShaderName(const struct shader_def* ShaderDef);

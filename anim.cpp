@@ -1,16 +1,14 @@
 #include "anim.h"
 
-void
-Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
-                         int OutputBlockIndex)
+float
+Anim::GetLoopedSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
+                    float GlobalTimeSec)
 {
-  assert(0 <= OutputBlockIndex && OutputBlockIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
-
   const animation_state* State     = &Controller->States[AnimationIndex];
   const animation*       Animation = Controller->Animations[AnimationIndex];
-  const float            AnimDuration =
-    (Animation->SampleTimes[Animation->KeyframeCount - 1] - Animation->SampleTimes[0]);
-  float SampleTime = State->PlaybackRateSec * (Controller->GlobalTimeSec - State->StartTimeSec);
+  const float            AnimDuration = GetAnimDuration(Animation);
+
+  float SampleTime = State->PlaybackRateSec * (GlobalTimeSec - State->StartTimeSec);
   if(State->Loop && AnimDuration < SampleTime)
   {
     SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
@@ -19,6 +17,15 @@ Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIn
   {
     SampleTime = AnimDuration;
   }
+  return SampleTime;
+}
+
+void
+Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
+                         int OutputBlockIndex)
+{
+  assert(0 <= OutputBlockIndex && OutputBlockIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
+  float SampleTime = Anim::GetLoopedSampleTime(Controller, AnimationIndex, Controller->GlobalTimeSec);
   LinearAnimationSample(Controller, AnimationIndex, SampleTime, OutputBlockIndex);
 }
 
@@ -156,44 +163,56 @@ Anim::AdditiveBlend(animation_controller* Controller, int AnimAInd, int AnimBInd
 }
 
 void
-Anim::LinearAnimationSample(Anim::animation_controller* Controller, int AnimIndex, float Time,
-                            int ResultIndex)
+GetKeyframeIndexAndInterpolant(int* K, float* T, const float* SampleTimes, int SampleCount,
+                               float Time)
 {
-  assert(0 <= AnimIndex && AnimIndex < Controller->AnimStateCount);
-  assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  Anim::animation* Animation = Controller->Animations[AnimIndex];
-  for(int k = 0; k < Animation->KeyframeCount - 1; k++)
+
+  for(int k = 0; k < SampleCount - 1; k++)
   {
-    if(Time <= Animation->SampleTimes[k + 1])
+    if(Time <= SampleTimes[k + 1])
     {
-      LerpTransforms(&Animation->Transforms[k * Animation->ChannelCount],
-                     &Animation->Transforms[(k + 1) * Animation->ChannelCount],
-                     Animation->ChannelCount,
-                     (Time - Animation->SampleTimes[k]) /
-                       (Animation->SampleTimes[k + 1] - Animation->SampleTimes[k]),
-                     &Controller->OutputTransforms[Animation->ChannelCount * ResultIndex]);
+      *K = k;
+      *T = (Time - SampleTimes[k]) / (SampleTimes[k + 1] - SampleTimes[k]);
       return;
     }
-  }
+	}
 }
 
 void
 Anim::LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation,
                             float Time)
 {
-  for(int k = 0; k < Animation->KeyframeCount - 1; k++)
-  {
-    if(Time <= Animation->SampleTimes[k + 1])
-    {
-      LerpTransforms(&Animation->Transforms[k * Animation->ChannelCount],
-                     &Animation->Transforms[(k + 1) * Animation->ChannelCount],
-                     Animation->ChannelCount,
-                     (Time - Animation->SampleTimes[k]) /
-                       (Animation->SampleTimes[k + 1] - Animation->SampleTimes[k]),
-                     OutputTransforms);
-      return;
-    }
-  }
+  int   k;
+  float t;
+  GetKeyframeIndexAndInterpolant(&k, &t, Animation->SampleTimes, Animation->KeyframeCount, Time);
+  LerpTransforms(&Animation->Transforms[k * Animation->ChannelCount],
+                 &Animation->Transforms[(k + 1) * Animation->ChannelCount], Animation->ChannelCount,
+                 t, OutputTransforms);
+}
+
+void
+Anim::LinearAnimationSample(Anim::animation_controller* Controller, int AnimIndex, float Time,
+                            int ResultIndex)
+{
+  assert(0 <= AnimIndex && AnimIndex < Controller->AnimStateCount);
+  assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
+  const Anim::animation* Animation = Controller->Animations[AnimIndex];
+  LinearAnimationSample(&Controller->OutputTransforms[Animation->ChannelCount * ResultIndex],
+                        Animation, Time);
+}
+
+Anim::transform
+Anim::LinearAnimationBoneSample(const Anim::animation* Animation, int BoneIndex, float Time)
+{
+  Anim::transform Result;
+  int             k;
+  float           t;
+  int             ChannelCount = 1;
+  GetKeyframeIndexAndInterpolant(&k, &t, Animation->SampleTimes, Animation->KeyframeCount, Time);
+  LerpTransforms(&Animation->Transforms[k * Animation->ChannelCount + BoneIndex],
+                 &Animation->Transforms[(k + 1) * Animation->ChannelCount + BoneIndex],
+                 ChannelCount, t, &Result);
+  return Result;
 }
 
 float
@@ -203,8 +222,8 @@ Anim::GetAnimDuration(const Anim::animation* Animation)
   return Animation->SampleTimes[Animation->KeyframeCount - 1] - Animation->SampleTimes[0];
 }
 
-void
-Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat4 HipMatrix)
+/*Anim::transform
+Anim::GetRootTransform(mat4* OutRootMatrix, mat4 HipMatrix)
 {
   mat4 RootMatrix = Math::Mat4Ident();
   vec3 Up      = { 0, 1, 0 };
@@ -220,6 +239,30 @@ Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat
   if(OutRootMatrix)
   {
     *OutRootMatrix = RootMatrix;
+  }
+
+  if(OutInvRootMatrix)
+  {
+    *OutInvRootMatrix = Math::InvMat4(Mat4Root);
+  }
+}*/
+
+void
+Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat4 HipMatrix)
+{
+  vec3 Up      = { 0, 1, 0 };
+  vec3 Right   = Math::Normalized(Math::Cross(Up, HipMatrix.Z));
+  vec3 Forward = Math::Cross(Right, Up);
+
+  mat4 Mat4Root = Math::Mat4Ident();
+  Mat4Root.T    = { HipMatrix.T.X, 0, HipMatrix.T.Z };
+  Mat4Root.Y    = Up;
+  Mat4Root.X    = Right;
+  Mat4Root.Z    = Forward;
+
+  if(OutRootMatrix)
+  {
+    *OutRootMatrix = Mat4Root;
   }
 
   if(OutInvRootMatrix)
