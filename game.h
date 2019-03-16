@@ -39,6 +39,22 @@ static const char* g_SelectionEnumStrings[SELECT_EnumCount] = { FOR_ALL_NAMES(GE
 #undef GENERATE_ENUM
 #undef GENERATE_STRING
 
+enum Component
+{
+  COMPONENT_Position,
+  COMPONENT_Rotation,
+  COMPONENT_Scale,
+  COMPONENT_MVPMatrix,
+  COMPONENT_MovementDelta,
+  COMPONENT_AnimController,
+  COMPONENT_RigidBody,
+  COMPONENT_ModelRenderer,
+  COMPONENT_InputController,
+  COMPONENT_TrajectoryController,
+  COMPONENT_MMData,
+  COMPONENT_MMAnimationGoal,
+};
+
 struct game_state
 {
   Memory::stack_allocator* PersistentMemStack;
@@ -60,6 +76,7 @@ struct game_state
 	mm_animation_set MMSet;
 
   bool UseHotReloading;
+  bool UpdatePathList;
 
   // Models
   rid SphereModelID;

@@ -52,22 +52,27 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     RegisterLoadInitialResources(GameState);
     SetGameStatePODFields(GameState);
 
-    if(!GameState->UseHotReloading)
+    if(!GameState->UpdatePathList)
     {
       TIMED_BLOCK(FilesystemUpdate);
       GameState->Resources.UpdateHardDriveAssetPathLists();
-      GameState->Resources.DeleteUnused();
-      GameState->Resources.ReloadModified();
     }
   }
 
   BEGIN_TIMED_BLOCK(Update)
-  if(GameState->UseHotReloading)
-  {
+	{
     TIMED_BLOCK(FilesystemUpdate);
-    GameState->Resources.UpdateHardDriveAssetPathLists();
-    GameState->Resources.DeleteUnused();
-    GameState->Resources.ReloadModified();
+    if(GameState->UpdatePathList)
+    {
+    	TIMED_BLOCK(UpdateHardDrivePathList);
+      GameState->Resources.UpdateHardDriveAssetPathLists();
+    }
+    if(GameState->UseHotReloading)
+    {
+    	TIMED_BLOCK(HotReloadAssets);
+      GameState->Resources.DeleteUnused();
+      GameState->Resources.ReloadModified();
+    }
   }
 
   if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)

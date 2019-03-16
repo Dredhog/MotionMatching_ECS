@@ -190,7 +190,7 @@ struct circular_stack
   Peek()
   {
 		assert(0 < m_Count);
-    int Index = (m_StartIndex + m_Count - 1) % Capacity;
+    int Index = (m_StartIndex + Capacity + (m_Count - 1)) % Capacity;
     return m_Entries[Index];
   }
 

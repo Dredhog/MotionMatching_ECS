@@ -50,64 +50,66 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
 
   if(Player->AnimController && 0 < MMSet->IsBuilt)
   {
-		assert(0 < MMSet->AnimRIDs.Count);
+    assert(0 < MMSet->AnimRIDs.Count);
     Player->AnimController->BlendFunc = ThirdPersonAnimationBlendFunction;
 
     mat4 ModelMatrix    = Anim::TransformToMat4(Player->Transform);
     mat4 InvModelMatrix = Math::InvMat4(ModelMatrix);
 
+    // if(CurrentBlendInfo.AnimationIndex
     mm_frame_info AnimGoal = {};
     {
       vec3 ModelSpaceVelocity =
-        Math::MulMat4Vec4(InvModelMatrix, vec4{ MMSet->FormatInfo.TrajectoryTimeHorizon * Dir * Speed, 0 })
+        Math::MulMat4Vec4(InvModelMatrix,
+                          vec4{ MMSet->FormatInfo.TrajectoryTimeHorizon * Dir * Speed, 0 })
           .XYZ;
       AnimGoal = GetCurrentFrameGoal(Player->AnimController, ModelSpaceVelocity, MMSet->FormatInfo);
     }
 
-    //Visualize the current goal
+    // Visualize the current goal
     {
-        for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
-        {
-          vec4 HomogLocalBonePos = { AnimGoal.BonePs[i], 1 };
-          Debug::PushWireframeSphere(Math::MulMat4Vec4(ModelMatrix, HomogLocalBonePos).XYZ, 0.02f,
-                                     { 1, 0, 1, 1 });
-        }
-        vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
-        for(int i = 0; i < MM_POINT_COUNT; i++)
-        {
-          vec4 HomogTrajectoryPointP = { AnimGoal.TrajectoryPs[i], 1 };
-          vec3 WorldTrajectoryPointP  = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
-          Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 0, 1, 1 });
-          Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 0, 1, 1 });
-          PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
-        }
+      for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
+      {
+        vec4 HomogLocalBonePos = { AnimGoal.BonePs[i], 1 };
+        Debug::PushWireframeSphere(Math::MulMat4Vec4(ModelMatrix, HomogLocalBonePos).XYZ, 0.02f,
+                                   { 1, 0, 1, 1 });
+      }
+      vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
+      for(int i = 0; i < MM_POINT_COUNT; i++)
+      {
+        vec4 HomogTrajectoryPointP = { AnimGoal.TrajectoryPs[i], 1 };
+        vec3 WorldTrajectoryPointP = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
+        Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 0, 1, 1 });
+        Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 0, 1, 1 });
+        PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
+      }
     }
 
     static mm_frame_info LastMatch = {};
-		
-    //Visualize the most recent current match
-    {
-        for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
-        {
-          vec4 HomogLocalBoneP = { LastMatch.BonePs[i], 1 };
-          vec3 WorldBoneP      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneP).XYZ;
-          vec4 HomogLocalBoneV = { LastMatch.BonePs[i], 0 };
-          vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
-          vec3 WorldVEnd = WorldBoneP + WorldBoneV;
 
-          /*Debug::PushWireframeSphere(WorldBoneP, 0.01f, { 1, 1, 0, 1 });
-          Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 1, 0, 1 });
-          Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 1, 0, 1 });*/
-        }
-        vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
-        for(int i = 0; i < MM_POINT_COUNT; i++)
-        {
-          vec4 HomogTrajectoryPointP = { LastMatch.TrajectoryPs[i], 1 };
-          vec3 WorldTrajectoryPointP  = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
-          Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 1, 0, 1 });
-          Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 1, 0, 1 });
-          PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
-        }
+    // Visualize the most recent match
+    {
+      for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
+      {
+        vec4 HomogLocalBoneP = { LastMatch.BonePs[i], 1 };
+        vec3 WorldBoneP      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneP).XYZ;
+        vec4 HomogLocalBoneV = { LastMatch.BonePs[i], 0 };
+        vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
+        vec3 WorldVEnd       = WorldBoneP + WorldBoneV;
+
+        /*Debug::PushWireframeSphere(WorldBoneP, 0.01f, { 1, 1, 0, 1 });
+        Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 1, 0, 1 });
+        Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 1, 0, 1 });*/
+      }
+      vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
+      for(int i = 0; i < MM_POINT_COUNT; i++)
+      {
+        vec4 HomogTrajectoryPointP = { LastMatch.TrajectoryPs[i], 1 };
+        vec3 WorldTrajectoryPointP = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
+        Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 1, 0, 1 });
+        Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 1, 0, 1 });
+        PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
+      }
     }
 
     if(Input->MouseLeft.EndedDown)
@@ -123,13 +125,17 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
       PlayAnimation(Player->AnimController, MMSet->AnimRIDs[NewAnimIndex], AnimStartTime,
                     MMSet->FormatInfo.BelndInTime);
     }
+
     ThirdPersonBelndFuncStopUnusedAnimations(Player->AnimController);
 
+    // Root motion
     if(0 < g_BlendInfos.m_Count)
     {
       int              AnimationIndex = g_BlendInfos.PeekBack().AnimStateIndex;
       Anim::animation* RootMotionAnim =
         Resources->GetAnimation(Player->AnimController->AnimationIDs[AnimationIndex]);
+			//TODO(Lukas): there should not be any fetching here, the data is known in advance
+      Player->AnimController->Animations[AnimationIndex] = RootMotionAnim;
 
       float CurrentSampleTime = Anim::GetLoopedSampleTime(Player->AnimController, AnimationIndex,
                                                           Player->AnimController->GlobalTimeSec);
@@ -156,17 +162,17 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
           Anim::GetRootAndInvRootMatrices(&Mat4NextRoot, NULL, Mat4NextHip);
           {
             // TODO(Lukas): Multiply by mat4InvPlayer on the left for more generality
-            mat4 Mat4DeltaRoot = Math::MulMat4(Mat4Player,Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot));
+            mat4 Mat4DeltaRoot =
+              Math::MulMat4(Mat4Player, Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot));
             vec3 DeltaTranslaton = Mat4DeltaRoot.T;
             quat DeltaRotation   = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
             Player->Transform.Translation += DeltaTranslaton;
             Player->Transform.Rotation = Player->Transform.Rotation * DeltaRotation;
             Debug::PushLine(Player->Transform.Translation,
-                           Player->Transform.Translation + DeltaTranslaton, { 1, 0, 0, 1 });
+                            Player->Transform.Translation + DeltaTranslaton, { 1, 0, 0, 1 });
           }
         }
       }
-
     }
   }
 }

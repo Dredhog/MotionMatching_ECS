@@ -1,3 +1,4 @@
+*Make builder properly regard the bind pose skeleton. Let multiple animations be retargeted to the same skeleton.
 *Animation track definition structure and separation from skeleton bone count
 *Removal of RIDs from Anim::animation_controller
 *Anim::animation controller_memory leak
@@ -66,3 +67,5 @@
 *MM cost function visualization UI
 *MM cost function visualization UI
 *Add instancing for debug drawing
+*Make the resource_hash_table an actual hash table!
+*Replace all printfs with a DEBUG_LOG macro for easy disabling and integration with internal console

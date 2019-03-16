@@ -19,7 +19,6 @@ namespace Memory
 
   struct heap_allocator
   {
-
     uint8_t*         m_Base;
     int32_t          m_Capacity;
     uint8_t*         m_Barrier;
@@ -38,7 +37,7 @@ namespace Memory
 
     uint8_t* GetBase() const;
     int32_t  GetTotalUsedSize() const;
-    int32_t  GetInterfalFragmentation() const;
+    int32_t  GetInternalFragmentation() const;
 
     int32_t          GetAllocationCount() const;
     allocation_info* GetAllocationInfos() const;

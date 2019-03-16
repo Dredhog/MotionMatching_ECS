@@ -7,7 +7,7 @@ void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
-             bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings);
+             bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings, bool& ShowECDData);
 
 char*
 PathArrayToString(void* Data, int Index)
@@ -49,8 +49,10 @@ namespace UI
       static bool s_ShowCameraSettings         = false;
       static bool s_ShowSceneSettings          = false;
       static bool s_ShowPostProcessingSettings = false;
+      static bool s_ShowECSData                = false;
 
       UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
+      UI::Checkbox("Update Path List", &GameState->UpdatePathList);
       UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
       UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
       UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
@@ -59,7 +61,7 @@ namespace UI
       MaterialGUI(GameState, s_ShowMaterialEditor);
       AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
       MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings,
-              s_ShowSceneSettings, s_ShowPostProcessingSettings);
+              s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowECSData);
     }
     UI::EndWindow();
 
@@ -949,11 +951,13 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
     entity* SelectedEntity = {};
     if(GetSelectedEntity(GameState, &SelectedEntity))
     {
+			UI::SameLine();
       if(UI::Button("Delete Entity"))
       {
         DeleteEntity(GameState, GameState->SelectedEntityIndex);
         GameState->SelectedEntityIndex = -1;
       }
+			UI::NewLine();
 
       Anim::transform* Transform = &SelectedEntity->Transform;
       UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10);
@@ -1222,11 +1226,50 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
   }
 }
 
+
+#pragma pack(2)
+struct  test_struct
+{
+  float    f;
+  float    f2;
+  double   d;
+  uint16_t u16;
+};
+
 // TODO(Lukas) Add bit mask checkbox to the UI API
 void
 MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet,
-        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings)
+        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings, bool& s_ShowECSData)
 {
+	if(UI::CollapsingHeader("ECS data", &s_ShowECSData))
+	{
+    char TempBuffer[50];
+
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(entity): %ld", sizeof(entity));
+    UI::Text(TempBuffer);
+
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(animation_controller): %ld",
+             sizeof(Anim::animation_controller));
+    UI::Text(TempBuffer);
+
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(test_struct)): %ld", sizeof(test_struct));
+    UI::Text(TempBuffer);
+    snprintf(TempBuffer, sizeof(TempBuffer), "alignof(test_struct)): %ld", alignof(test_struct));
+    UI::Text(TempBuffer);
+
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(material): %ld", sizeof(material));
+    UI::Text(TempBuffer);
+
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(Render::mesh): %ld", sizeof(Render::mesh));
+    UI::Text(TempBuffer);
+
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(Anim::transform): %ld",
+             sizeof(Anim::transform));
+    UI::Text(TempBuffer);
+
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(rigid_body): %ld", sizeof(rigid_body));
+    UI::Text(TempBuffer);
+  }
   if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))
   {
     UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
