@@ -81,6 +81,8 @@ namespace UI
   void EndPopupWindow();
 
   void  Dummy(float Width, float Height = 0);
+  // void  TextBox(const char* Text, Width = 0);
+  // void  Box(vec2 Size = {});
   float GetWindowWidth();
   float GetAvailableWidth();
   void  SameLine();

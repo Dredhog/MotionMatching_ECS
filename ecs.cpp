@@ -21,7 +21,6 @@ GetComponentAddress(const ecs_world* World, entity_storage_info EntityStorage,
                              ComponentInfo.Size);
 }
 
-
 // Note(Lukas) all of this data is known at compile time and could be cached
 bool
 DoesArchetypeMatchRequest(const archetype& Archetype, const archetype_request& Request)
@@ -220,7 +219,7 @@ DoesEntityExist(const ecs_world* World, entity_id EntityID)
 archetype*
 GetChunkArchetype(const ecs_world* World, const chunk* Chunk)
 {
-	return &World->Runtime->Archetypes[Chunk->Header.ArchetypeIndex];
+  return &World->Runtime->Archetypes[Chunk->Header.ArchetypeIndex];
 }
 
 chunk*
@@ -230,15 +229,10 @@ GetChunkAtIndex(ecs_runtime* Runtime, int32_t ChunkIndex)
   return Chunk;
 }
 
-// ChunkIndex == -1 && IndexInChunk == 0 means that entity is created but has no components
-// ChunkIndex == -1 && IndexInChunk == -1 means that has been destroyed
 void
-DestroyEntity(ecs_world* World, entity_id RemovedEntityID)
+RemoveEntityFromChunk(ecs_world* World, entity_storage_info RemovedEntity)
 {
-  assert(DoesEntityExist(World, RemovedEntityID));
-  entity_storage_info RemovedEntity = World->Entities[RemovedEntityID];
-
-	//If the entity is stored anywhere (has any components)
+  // If the entity is stored anywhere (has any components)
   if(RemovedEntity.ChunkIndex != -1)
   {
     chunk* Chunk = GetChunkAtIndex(World->Runtime, RemovedEntity.ChunkIndex);
@@ -249,8 +243,8 @@ DestroyEntity(ecs_world* World, entity_id RemovedEntityID)
 
     // Find the last chunk entity's ID
     // TODO(Lukas): Need a hash table for reverse lookup
-    int32_t LastEntityID = -1;
-    for(int i = 0; i < World->Entities.Count; i++)
+    entity_id LastEntityID = -1;
+    for(entity_id i = 0; i < World->Entities.Count; i++)
     {
       if(World->Entities[i].ChunkIndex == LastEntity.ChunkIndex &&
          World->Entities[i].IndexInChunk == LastEntity.IndexInChunk)
@@ -284,10 +278,10 @@ DestroyEntity(ecs_world* World, entity_id RemovedEntityID)
     Chunk->Header.EntityCount--;
 
     // If the chunk became empty - free it
-		
+
     if(Chunk->Header.EntityCount == 0)
-		{
-			chunk** PrevChunkPtrPtr = &Archetype->FirstChunk;
+    {
+      chunk** PrevChunkPtrPtr = &Archetype->FirstChunk;
       for(chunk* C = Archetype->FirstChunk; C != Chunk; C = C->Header.NextChunk)
       {
         PrevChunkPtrPtr = &C->Header.NextChunk;
@@ -297,20 +291,34 @@ DestroyEntity(ecs_world* World, entity_id RemovedEntityID)
       // If it was the only chunk, remove the archetype
       if(Archetype->FirstChunk == NULL)
       {
-				RemoveArchetype(World->Runtime, Archetype);
-			}
-			
-			//Free the memory
+        RemoveArchetype(World->Runtime, Archetype);
+      }
+
+      // Free the memory
       World->Runtime->ChunkHeap.Dealloc((uint8_t*)Chunk);
-		}
+    }
   }
+}
+
+// ChunkIndex == -1 && IndexInChunk == 0 means that entity is created but has no components
+// ChunkIndex == -1 && IndexInChunk == -1 means that has been destroyed
+void
+DestroyEntity(ecs_world* World, entity_id RemovedEntityID)
+{
+  assert(DoesEntityExist(World, RemovedEntityID));
+  entity_storage_info RemovedEntity = World->Entities[RemovedEntityID];
+
+  RemoveEntityFromChunk(World, RemovedEntity);
 
   World->Entities[RemovedEntityID] = { -1, -1 };
-  World->VacantEntityIndices.Push(RemovedEntityID);
 
   if(RemovedEntityID == World->Entities.Count - 1)
   {
     World->Entities.Pop();
+  }
+  else
+  {
+    World->VacantEntityIndices.Push(RemovedEntityID);
   }
 }
 
@@ -332,7 +340,8 @@ HasComponent(const ecs_world* World, entity_id EntityID, component_id ComponentI
 {
   assert(DoesEntityExist(World, EntityID));
   archetype* Archetype = GetEntityArchetype(World, EntityID);
-  return (GetComponentIndexInArchetype(*Archetype, ComponentID) == -1) ? false : true;
+  return (Archetype && (GetComponentIndexInArchetype(*Archetype, ComponentID) != -1)) ? true
+                                                                                      : false;
 }
 
 int32_t
@@ -342,8 +351,9 @@ GetChunkEntityCapacity(const ecs_runtime* Runtime, const archetype& Archetype)
   int32_t MaximalAlignmentOffset = 0;
   for(int i = 0; i < Archetype.ComponentTypes.Count; i++)
   {
-    ComponentSizeSum += Runtime->ComponentStructInfos[i].Size;
-    MaximalAlignmentOffset += Runtime->ComponentStructInfos[i].Alignment - 1;
+    ComponentSizeSum += Runtime->ComponentStructInfos[Archetype.ComponentTypes[i].ID].Size;
+    MaximalAlignmentOffset +=
+      Runtime->ComponentStructInfos[Archetype.ComponentTypes[i].ID].Alignment - 1;
   }
 
   int32_t EntityCapacity =
@@ -362,14 +372,16 @@ ComputeArchetypeComponentOffsets(archetype* Archetype, const ecs_runtime* Runtim
     component_struct_info ComponentStructInfo =
       Runtime->ComponentStructInfos[Archetype->ComponentTypes[i].ID];
 
-    uint32_t Alignment = Runtime->ComponentStructInfos[i].Alignment;
+    uint32_t Alignment = Runtime->ComponentStructInfos[Archetype->ComponentTypes[i].ID].Alignment;
     uint32_t AlignmentFixup =
       (Alignment - (uint32_t)((uint64_t)UnalignedPosition & ((uint64_t)Alignment - 1)));
 
     uint32_t AlignedPosition = UnalignedPosition + AlignmentFixup;
 
     Archetype->ComponentTypes[i].Offset = (uint16_t)AlignedPosition;
-    UnalignedPosition = AlignedPosition + EntityCapacity * Runtime->ComponentStructInfos[i].Size;
+    UnalignedPosition =
+      AlignedPosition +
+      EntityCapacity * Runtime->ComponentStructInfos[Archetype->ComponentTypes[i].ID].Size;
   }
 }
 
@@ -377,28 +389,27 @@ int32_t
 AddComponentWithoutLosingCanonicalForm(archetype* Archetype, component_id NewComponentID,
                                        const ecs_runtime* Runtime)
 {
-  const char* NewComponentName  = Runtime->ComponentNames[NewComponentID];
-  int32_t     NewComponentIndex = -1;
-  for(int i = 0; i < Runtime->ComponentNames.Count; i++) // Add to middle
+  const char*             NewComponentName   = Runtime->ComponentNames[NewComponentID];
+  component_id_and_offset NewComponentOffset = {};
+  NewComponentOffset.ID                      = NewComponentID;
+  int32_t NewComponentIndex                  = -1;
+  for(int i = 0; i < Archetype->ComponentTypes.Count; i++)
   {
-    int32_t cmp = strcmp(Runtime->ComponentNames[i], NewComponentName);
+    int32_t cmp =
+      strcmp(Runtime->ComponentNames[Archetype->ComponentTypes[i].ID], NewComponentName);
     assert(cmp != 0);
 
     if(cmp > 0)
     {
-      component_id_and_offset NewComponentOffset = {};
-      NewComponentOffset.ID                      = NewComponentID;
       Archetype->ComponentTypes.Insert(NewComponentOffset, i);
       NewComponentIndex = i;
       break;
     }
   }
-  if(NewComponentIndex == -1) // Add to end
+  if(NewComponentIndex == -1)
   {
-    component_id_and_offset NewComponentOffset = {};
-    NewComponentOffset.ID                      = NewComponentID;
+    NewComponentIndex = Archetype->ComponentTypes.Count;
     Archetype->ComponentTypes.Push(NewComponentOffset);
-    NewComponentIndex = Archetype->ComponentTypes.Count - 1;
   }
 
   ComputeArchetypeComponentOffsets(Archetype, Runtime);
@@ -417,6 +428,10 @@ RemoveComponentWithoutLosingCanonicalForm(archetype* Archetype, component_id Rem
       Archetype->ComponentTypes.Remove(i);
       break;
     }
+  }
+  if(Archetype->ComponentTypes.Count == 0)
+  {
+    return;
   }
   ComputeArchetypeComponentOffsets(Archetype, Runtime);
 }
@@ -443,8 +458,6 @@ AddArchetype(ecs_runtime* Runtime, const archetype& Archetype)
   return NewArchetype;
 }
 
-
-
 void
 RemoveArchetypeAtIndex(ecs_runtime* Runtime, int32_t RemoveIndex)
 {
@@ -454,7 +467,14 @@ RemoveArchetypeAtIndex(ecs_runtime* Runtime, int32_t RemoveIndex)
   assert(RemovedArchetype->FirstChunk == NULL);
   RemovedArchetype->ComponentTypes.Clear();
 
-  Runtime->VacantArchetypeIndices.Push(RemoveIndex);
+  if(RemoveIndex != Runtime->Archetypes.Count - 1)
+  {
+    Runtime->VacantArchetypeIndices.Push(RemoveIndex);
+  }
+  else
+  {
+    Runtime->Archetypes.Pop();
+  }
 }
 
 void
@@ -540,7 +560,6 @@ CopyMatchingComponentValues(ecs_world* World, entity_storage_info DstStorage,
       if(DstArchetype.ComponentTypes[i].ID == SrcArchetype.ComponentTypes[j].ID)
       {
         SrcStartIndex++;
-
         component_struct_info ComponentInfo =
           World->Runtime->ComponentStructInfos[DstArchetype.ComponentTypes[i].ID];
         uint8_t* DstComponentAddress =
@@ -556,6 +575,24 @@ CopyMatchingComponentValues(ecs_world* World, entity_storage_info DstStorage,
   }
 }
 
+archetype*
+GetMatchingArchetype(ecs_runtime* Runtime, const archetype& Archetype)
+{
+  archetype* MatchingArchetype = NULL;
+  for(int i = 0; i < Runtime->Archetypes.Count; i++)
+  {
+    if(Archetype.ComponentTypes.Count == Runtime->Archetypes[i].ComponentTypes.Count &&
+       Runtime->Archetypes[i].FirstChunk &&
+       memcmp(Archetype.ComponentTypes.Elements, Runtime->Archetypes[i].ComponentTypes.Elements,
+              Archetype.ComponentTypes.Count * sizeof(component_id_and_offset)) == 0)
+    {
+      MatchingArchetype = &Runtime->Archetypes[i];
+      break;
+    }
+  }
+  return MatchingArchetype;
+}
+
 void
 AddComponent(ecs_world* World, entity_id EntityID, component_id ComponentID)
 {
@@ -563,28 +600,25 @@ AddComponent(ecs_world* World, entity_id EntityID, component_id ComponentID)
   const archetype* PreviousArchetype = GetEntityArchetype(World, EntityID);
 
   archetype TempArchetype = {};
+  TempArchetype.ComponentTypes.Clear();
   if(PreviousArchetype) // If entity had any components
   {
     int32_t ComponentIndex = GetComponentIndexInArchetype(*PreviousArchetype, ComponentID);
     assert(ComponentIndex == -1 && "assert: trying to add a component for the second time");
-    TempArchetype = *PreviousArchetype;
+    TempArchetype.ComponentTypes = PreviousArchetype->ComponentTypes;
   }
 
   int32_t NewComponentIndex =
     AddComponentWithoutLosingCanonicalForm(&TempArchetype, ComponentID, World->Runtime);
 
-  const archetype* MatchedArchetype = NULL;
-  for(int i = 0; i < World->Runtime->Archetypes.Count; i++)
-  {
-    if(memcmp(&TempArchetype, &World->Runtime->Archetypes[i], sizeof(archetype)) == 0)
-    {
-      MatchedArchetype = &World->Runtime->Archetypes[i];
-      break;
-    }
-  }
+  archetype* MatchedArchetype = GetMatchingArchetype(World->Runtime, TempArchetype);
 
   archetype* NewArchetype = NULL;
-  if(!MatchedArchetype)
+  if(MatchedArchetype)
+  {
+    NewArchetype = MatchedArchetype;
+  }
+  else
   {
     NewArchetype = AddArchetype(World->Runtime, TempArchetype);
   }
@@ -608,20 +642,54 @@ AddComponent(ecs_world* World, entity_id EntityID, component_id ComponentID)
 
     memset(NewComponentAddress, 0, (size_t)ComponentInfo.Size);
   }
+
+  RemoveEntityFromChunk(World, World->Entities[EntityID]);
   World->Entities[EntityID] = NewEntityStorage;
 }
 
 void
 RemoveComponent(ecs_world* World, entity_id EntityID, component_id ComponentID)
 {
-  // TODO(Lukas) Finish this
   assert(DoesEntityExist(World, EntityID));
-  const archetype* OldArchetype = GetEntityArchetype(World, EntityID);
-  assert(OldArchetype && "assert: tryping to remove component from empty archetype");
+  const archetype* PreviousArchetype = GetEntityArchetype(World, EntityID);
 
-  int32_t ComponentIndex = GetComponentIndexInArchetype(*OldArchetype, ComponentID);
-  assert(ComponentIndex == -1 && "assert: trying to remove non-present component");
-  archetype TempArhcetype = *OldArchetype;
+  archetype TempArchetype = {};
+  TempArchetype.ComponentTypes.Clear();
+  if(PreviousArchetype) // If entity had any components
+  {
+    int32_t ComponentIndex = GetComponentIndexInArchetype(*PreviousArchetype, ComponentID);
+    assert(ComponentIndex != -1 && "assert: trying to remove a not-added component which");
+    TempArchetype.ComponentTypes = PreviousArchetype->ComponentTypes;
+  }
+
+  RemoveComponentWithoutLosingCanonicalForm(&TempArchetype, ComponentID, World->Runtime);
+
+  entity_storage_info NewEntityStorage = { -1, 0 };
+  if(0 < TempArchetype.ComponentTypes.Count)
+  {
+    archetype* MatchedArchetype = GetMatchingArchetype(World->Runtime, TempArchetype);
+
+    archetype* NewArchetype = NULL;
+    if(MatchedArchetype)
+    {
+      NewArchetype = MatchedArchetype;
+    }
+    else
+    {
+      NewArchetype = AddArchetype(World->Runtime, TempArchetype);
+    }
+
+    NewEntityStorage = CreateNewArchetypeInstance(World->Runtime, NewArchetype);
+
+    if(PreviousArchetype)
+    {
+      CopyMatchingComponentValues(World, NewEntityStorage, World->Entities[EntityID], *NewArchetype,
+                                  *PreviousArchetype);
+    }
+  }
+
+  RemoveEntityFromChunk(World, World->Entities[EntityID]);
+  World->Entities[EntityID] = NewEntityStorage;
 }
 
 void*

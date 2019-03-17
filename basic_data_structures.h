@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-template<typename T, int Capacity>
+template<typename T, int Capacity, typename IndexType = int32_t>
 struct fixed_stack
 {
   T   Elements[Capacity];
@@ -27,12 +27,12 @@ struct fixed_stack
   }
 
   void
-  Remove(int Index)
+  Remove(IndexType Index)
   {
     assert(0 < this->Count);
     assert(0 <= Index && Index < this->Count);
 
-    for(int i = Index; i < Count - 1; i++)
+    for(IndexType i = Index; i < Count - 1; i++)
     {
       this->Elements[i] = this->Elements[i + 1];
     }
@@ -40,28 +40,28 @@ struct fixed_stack
   }
 
   void
-  Insert(T NewElement, int Index)
+  Insert(T NewElement, IndexType Index)
   {
-    assert(this->Count <= 0 && this->Count < Capacity);
+    assert(0 <= this->Count && this->Count < Capacity);
     assert(0 <= Index && Index < this->Count);
-    this->Count++;
-
-    for(int i = this->Count - 1; Index < i; i++)
+    for(IndexType i = this->Count; Index < i; i--)
     {
       this->Elements[i] = this->Elements[i - 1];
     }
-		this->Elements[Index] = NewElement;
+
+    this->Count++;
+    this->Elements[Index] = NewElement;
   }
 
-	bool
-	Empty()
-	{
-		return Count == 0;
-	}
+  bool
+  Empty()
+  {
+    return Count == 0;
+  }
 
-	bool
-	Full()
-	{
+  bool
+  Full()
+  {
     return this->Count == Capacity;
   }
 
@@ -71,7 +71,6 @@ struct fixed_stack
     assert(0 < this->Count);
     return this->Elements[this->Count - 1];
   }
-
 
   void
   Resize(int NewSize)
@@ -88,13 +87,13 @@ struct fixed_stack
     return TempCount;
   }
 
-  T& operator[](int Index)
+  T& operator[](IndexType Index)
   {
     assert(0 <= Index && Index < Count);
     return this->Elements[Index];
   }
 
-  T operator[](int Index) const
+  T operator[](IndexType Index) const
   {
     assert(0 <= Index && Index < Count);
     return this->Elements[Index];
@@ -158,40 +157,40 @@ template<typename T, int Capacity>
 struct circular_stack
 {
   T   m_Entries[Capacity];
-	int m_StartIndex;
-	int m_Count;
+  int m_StartIndex;
+  int m_Count;
 
   void
   Push(const T& NewEntry)
   {
-		assert(0 <= m_Count && m_Count <= Capacity);
+    assert(0 <= m_Count && m_Count <= Capacity);
 
-		int WriteIndex = (m_StartIndex + m_Count) % Capacity;
-		if(m_Count == Capacity)
-		{
-			m_StartIndex = (m_StartIndex + 1) % Capacity;
-		}
-		else
-		{
-			m_Count++;
+    int WriteIndex = (m_StartIndex + m_Count) % Capacity;
+    if(m_Count == Capacity)
+    {
+      m_StartIndex = (m_StartIndex + 1) % Capacity;
     }
-		m_Entries[WriteIndex] = NewEntry;
+    else
+    {
+      m_Count++;
+    }
+    m_Entries[WriteIndex] = NewEntry;
   }
 
   T
   Pop()
   {
-		assert(0 < m_Count);
-		int RemovedIndex = (m_StartIndex + (m_Count - 1)) % Capacity;
-		m_Count--;
-		return m_Entries[RemovedIndex];
+    assert(0 < m_Count);
+    int RemovedIndex = (m_StartIndex + (m_Count - 1)) % Capacity;
+    m_Count--;
+    return m_Entries[RemovedIndex];
   }
 
   T
   PopBack()
   {
-		assert(0 < m_Count);
-		int RemovedIndex = m_StartIndex;
+    assert(0 < m_Count);
+    int RemovedIndex = m_StartIndex;
     m_StartIndex     = (m_StartIndex + 1) % Capacity;
     m_Count--;
 
@@ -201,15 +200,15 @@ struct circular_stack
   T
   PeekBack()
   {
-		assert(0 < m_Count);
-		T Result = m_Entries[m_StartIndex];
-		return Result;
+    assert(0 < m_Count);
+    T Result = m_Entries[m_StartIndex];
+    return Result;
   }
 
   T
   Peek()
   {
-		assert(0 < m_Count);
+    assert(0 < m_Count);
     int Index = (m_StartIndex + Capacity + (m_Count - 1)) % Capacity;
     return m_Entries[Index];
   }
@@ -223,30 +222,32 @@ struct circular_stack
 
   T operator[](int Index) const
   {
-		assert(Index < m_Count);
-		int SampleIndex = (m_StartIndex + Index) % Capacity;
-		return m_Entries[SampleIndex];
+    assert(Index < m_Count);
+    int SampleIndex = (m_StartIndex + Index) % Capacity;
+    return m_Entries[SampleIndex];
   }
 
-	bool
-	Full()
-	{
-		return m_Count == Capacity;
-	}
+  bool
+  Full()
+  {
+    return m_Count == Capacity;
+  }
 
-	bool
-	Empty()
-	{
-		return m_Count == 0;
-	}
+  bool
+  Empty()
+  {
+    return m_Count == 0;
+  }
 
-	int GetCount()
-	{
-		return m_Count;
-	}
+  int
+  GetCount()
+  {
+    return m_Count;
+  }
 
-	int GetCapacity()
-	{
-		return Capacity;
-	}
+  int
+  GetCapacity()
+  {
+    return Capacity;
+  }
 };

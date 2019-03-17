@@ -3,8 +3,6 @@
 #include "ecs_management.h"
 
 // Internal archetype API
-bool DoesEntityExist(const ecs_world* World, entity_id EntityID);
-
 bool DoesArchetypeMatchRequest(const archetype& Archetype, const archetype_request& Request);
 int32_t    GetArchetypeIndex(const ecs_runtime* Runtime, component_id* ComponentIDs,
                              int32_t ComponentCount);

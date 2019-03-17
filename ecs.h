@@ -42,6 +42,7 @@ void ExecuteECSJob(const ecs_world* World, const archetype_request* ArchetypeReq
                    ECS_JOB_FUNCTION_PARAMETERS(JobFunc));
 
 // Entity API
+bool      DoesEntityExist(const ecs_world* World, entity_id EntityID);
 entity_id CreateEntity(ecs_world* World);
 void      DestroyEntity(ecs_world* World, entity_id EntityID);
 

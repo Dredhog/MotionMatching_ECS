@@ -41,19 +41,16 @@ struct ecs_runtime
   fixed_stack<archetype, ECS_ARCHETYPE_MAX_COUNT> Archetypes;
   fixed_stack<int32_t, ECS_ARCHETYPE_MAX_COUNT>   VacantArchetypeIndices;
 
-  fixed_stack<const char*, ECS_COMPONENT_MAX_COUNT>           ComponentNames;
-  fixed_stack<component_struct_info, ECS_COMPONENT_MAX_COUNT> ComponentStructInfos;
+  fixed_stack<const char*, ECS_COMPONENT_MAX_COUNT, component_id>           ComponentNames;
+  fixed_stack<component_struct_info, ECS_COMPONENT_MAX_COUNT, component_id> ComponentStructInfos;
 
   Memory::heap_allocator ChunkHeap;
 };
 
-union entity_storage_info {
-  struct
-  {
-    int16_t ChunkIndex;
-    int16_t IndexInChunk;
-  };
-  int32_t NextFreeEntityIndex;
+struct entity_storage_info
+{
+	int16_t ChunkIndex;
+	int16_t IndexInChunk;
 };
 
 struct entity_command
@@ -68,8 +65,8 @@ struct ecs_world
 {
   ecs_runtime* Runtime;
 
-  fixed_stack<entity_storage_info, ECS_ENTITY_MAX_COUNT> Entities;
-  fixed_stack<entity_id, ECS_ENTITY_MAX_COUNT>           VacantEntityIndices;
+  fixed_stack<entity_storage_info, ECS_ENTITY_MAX_COUNT, entity_id> Entities;
+  fixed_stack<entity_id, ECS_ENTITY_MAX_COUNT, entity_id>           VacantEntityIndices;
 
   fixed_stack<entity_command, ECS_WORLD_ENTITY_COMMAND_BUFFER_CAPACITY> EntityCommands;
 };
