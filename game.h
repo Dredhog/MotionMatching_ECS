@@ -20,6 +20,7 @@
 #include "resource_manager.h"
 #include "dynamics.h"
 #include "motion_matching.h"
+#include "ecs_management.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
@@ -39,27 +40,10 @@ static const char* g_SelectionEnumStrings[SELECT_EnumCount] = { FOR_ALL_NAMES(GE
 #undef GENERATE_ENUM
 #undef GENERATE_STRING
 
-enum Component
-{
-  COMPONENT_Position,
-  COMPONENT_Rotation,
-  COMPONENT_Scale,
-  COMPONENT_MVPMatrix,
-  COMPONENT_MovementDelta,
-  COMPONENT_AnimController,
-  COMPONENT_RigidBody,
-  COMPONENT_ModelRenderer,
-  COMPONENT_InputController,
-  COMPONENT_TrajectoryController,
-  COMPONENT_MMData,
-  COMPONENT_MMAnimationGoal,
-};
-
 struct game_state
 {
   Memory::stack_allocator* PersistentMemStack;
   Memory::stack_allocator* TemporaryMemStack;
-  Memory::heap_allocator   HeapAllocator;
 
   render_data                     R;
   EditAnimation::animation_editor AnimEditor;
@@ -69,6 +53,9 @@ struct game_state
 
   Resource::resource_manager Resources;
   physics_world              Physics;
+
+  ecs_runtime* ECSRuntime;
+  ecs_world*   ECSWorld;
 
   camera Camera;
   camera PreviewCamera;

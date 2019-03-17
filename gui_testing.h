@@ -2,12 +2,14 @@
 #include "scene.h"
 #include "shader_def.h"
 #include "profile.h"
+#include <cstdlib>
 
 void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
-             bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings, bool& ShowECDData);
+             bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings,
+             bool& ShowECDData);
 
 char*
 PathArrayToString(void* Data, int Index)
@@ -21,6 +23,14 @@ BoneArrayToString(void* Data, int Index)
 {
   Anim::bone* Bones = (Anim::bone*)Data;
   return Bones[Index].Name;
+}
+
+int
+AllocationInfoComparison(const void* A, const void* B)
+{
+  Memory::allocation_info* AllocInfoA = (Memory::allocation_info*)A;
+  Memory::allocation_info* AllocInfoB = (Memory::allocation_info*)B;
+  return AllocInfoA->Base < AllocInfoB->Base;
 }
 
 namespace UI
@@ -72,11 +82,14 @@ namespace UI
       {
         int PreviousFrameIndex =
           (g_CurrentProfilerFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) % PROFILE_MAX_FRAME_COUNT;
-        static bool s_AllowCurrentFrameChoice     = false;
-        static bool s_ShowTimelineRegion          = false;
-        static bool s_ShowFrameSummaries          = false;
-        static bool s_ShowGPUFrameSummaries       = false;
-        static int  s_CurrentModifiableFrameIndex = 0;
+        static bool s_AllowCurrentFrameChoice      = false;
+        static bool s_ShowTimelineRegion           = false;
+        static bool s_ShowFrameSummaries           = false;
+        static bool s_ShowGPUFrameSummaries        = false;
+        static bool s_ShowEntityEditor             = true;
+        static bool s_ShowChunkMemoryVisualization = true;
+
+        static int s_CurrentModifiableFrameIndex = 0;
 
         bool Changed = s_AllowCurrentFrameChoice;
         UI::Checkbox("Inspect Specific Frame", &s_AllowCurrentFrameChoice);
@@ -170,8 +183,7 @@ namespace UI
             UI::PushStyleVar(UI::VAR_SpacingX, 0);
             UI::PushStyleVar(UI::VAR_SpacingY, 1);
             {
-              const float MaxProfileWidth  = (0.5f * s_TimelineZoom) * UI::GetWindowWidth();
-              const float StackBlockHeight = 20.0f;
+              const float MaxProfileWidth = (0.5f * s_TimelineZoom) * UI::GetWindowWidth();
               const frame_endpoints FrameCycleCounter =
                 GLOBAL_FRAME_ENDPOINT_TABLE[s_CurrentModifiableFrameIndex];
               const float BaselineCycleCount =
@@ -271,8 +283,167 @@ namespace UI
             UI::NewLine();
           }
         }
+        {
+          Memory::marker EntityEditorMemStart = GameState->TemporaryMemStack->GetMarker();
+          const int TempBufferCapacity = 64;
+          char*     TempBuffer = PushArray(GameState->TemporaryMemStack, TempBufferCapacity, char);
+
+          if(UI::CollapsingHeader("ECS Entity Editor", &s_ShowEntityEditor))
+          {
+            static int32_t SelectedEntityID;
+            if(1 < GameState->ECSWorld->Entities.Count)
+            {
+              UI::SliderInt("Selected Entity ID", &SelectedEntityID, 0,
+                            GameState->ECSWorld->Entities.Count - 1);
+            }
+            else
+            {
+              UI::NewLine();
+              SelectedEntityID = -1;
+            }
+
+            if(UI::Button("Create New Entity"))
+            {
+
+              SelectedEntityID = (int32_t)CreateEntity(GameState->ECSWorld);
+            }
+
+            if(SelectedEntityID != -1 && UI::Button("Destroy Entity"))
+            {
+              UI::SameLine();
+
+              DestroyEntity(GameState->ECSWorld, (entity_id)SelectedEntityID);
+              SelectedEntityID = -1;
+
+              UI::NewLine();
+            }
+
+            if(SelectedEntityID != -1)
+            {
+              static int32_t NewComponentID = -1;
+              UI::Combo("Component Type", (int32_t*)&NewComponentID,
+                        &GameState->ECSRuntime->ComponentNames.Elements,
+                        GameState->ECSRuntime->ComponentNames.Count, UI::StringArrayToString, 6,
+                        200);
+
+              if(NewComponentID != -1)
+              {
+                AddComponent(GameState->ECSWorld, (entity_id)SelectedEntityID, (component_id)NewComponentID);
+              }
+
+              snprintf(TempBuffer, TempBufferCapacity, "Chunk Index   : %d",
+                       GameState->ECSWorld->Entities[SelectedEntityID].ChunkIndex);
+              UI::Text(TempBuffer);
+              snprintf(TempBuffer, TempBufferCapacity, "Index In Chunk: %d",
+                       GameState->ECSWorld->Entities[SelectedEntityID].IndexInChunk);
+              UI::Text(TempBuffer);
+            }
+          }
+          if(UI::CollapsingHeader("Chunk Memory", &s_ShowChunkMemoryVisualization))
+          {
+            Memory::heap_allocator&  ChunkHeap      = GameState->ECSRuntime->ChunkHeap;
+            chunk*                   HeapBase       = (chunk*)ChunkHeap.GetBase();
+            Memory::allocation_info* RawAllocInfos  = ChunkHeap.GetAllocationInfos();
+            int32_t                  AllocInfoCount = ChunkHeap.GetAllocationCount();
+
+            Memory::allocation_info* SortedAllocInfos =
+              PushArray(GameState->TemporaryMemStack, AllocInfoCount, Memory::allocation_info);
+            memcpy(SortedAllocInfos, RawAllocInfos,
+                   AllocInfoCount * sizeof(Memory::allocation_info));
+            qsort(SortedAllocInfos, (size_t)AllocInfoCount, sizeof(Memory::allocation_info),
+                  &AllocationInfoComparison);
+
+            const float    ChunkWidthInPixels  = 20;
+            static int32_t SelectedChunkIndex  = -1;
+            static int32_t SelectedEntityIndex = -1;
+            bool           FoundSelected       = false;
+
+            int CurrentBoxIndex = 0;
+            for(int i = 0; i < AllocInfoCount; i++)
+            {
+              chunk*  Chunk      = (chunk*)SortedAllocInfos[i].Base;
+              int32_t ChunkIndex = (int32_t)(Chunk - HeapBase);
+
+              for(int j = CurrentBoxIndex; j < ChunkIndex; j++)
+              {
+                UI::Dummy(ChunkWidthInPixels);
+              }
+
+              snprintf(TempBuffer, TempBufferCapacity, "Chunk #%d", ChunkIndex);
+              {
+                const float* EventColor = &TIMER_UI_COLOR_TABLE[Chunk->Header.ArchetypeIndex][0];
+                UI::PushStyleColor(UI::COLOR_ButtonNormal,
+                                   vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
+                if(UI::Button(TempBuffer, ChunkWidthInPixels))
+                {
+                  SelectedEntityIndex = i;
+                }
+                UI::PopStyleColor();
+              }
+
+              CurrentBoxIndex++;
+              if(ChunkIndex == SelectedEntityIndex)
+              {
+                FoundSelected = true;
+              }
+
+              if(FoundSelected)
+              {
+                chunk*       Chunk  = (chunk*)SortedAllocInfos[i].Base;
+                chunk_header Header = Chunk->Header;
+
+                // Output Chunk details
+                {
+                  snprintf(TempBuffer, TempBufferCapacity, "Archetype Index : %d",
+                           Header.ArchetypeIndex);
+                  UI::Text(TempBuffer);
+
+                  snprintf(TempBuffer, TempBufferCapacity, "Entity Capacity : %d",
+                           Header.EntityCapacity);
+                  UI::Text(TempBuffer);
+
+                  snprintf(TempBuffer, TempBufferCapacity, "Entity Count    : %d",
+                           Header.EntityCount);
+                  UI::Text(TempBuffer);
+
+                  int32_t NextChunkIndex =
+                    (Header.NextChunk != 0) ? (int32_t)(Header.NextChunk - HeapBase) : -1;
+                  snprintf(TempBuffer, TempBufferCapacity, "Next Chunk Index: %d", NextChunkIndex);
+                  UI::Text(TempBuffer);
+                }
+
+                // Output archetype details
+                {
+                  UI::NewLine();
+
+                  archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
+                  for(int i = 0; i < Archetype->ComponentTypes.Count; i++)
+                  {
+                    component_id_and_offset ComponentOffset = Archetype->ComponentTypes[i];
+                    component_struct_info   ComopnentInfo =
+                      GameState->ECSRuntime->ComponentStructInfos[ComponentOffset.ID];
+
+                    UI::Text(GameState->ECSRuntime->ComponentNames[ComponentOffset.ID]);
+
+                    snprintf(TempBuffer, TempBufferCapacity,
+                             "ID: %d, Offset: %d; Size: %d; Alignment: %d", ComponentOffset.ID,
+                             ComponentOffset.Offset, ComopnentInfo.Size, ComopnentInfo.Alignment);
+                    UI::Text(TempBuffer);
+                    UI::NewLine();
+                  }
+                }
+              }
+              else
+              {
+                SelectedEntityIndex = -1;
+              }
+            }
+
+					}
+          GameState->TemporaryMemStack->FreeToMarker(EntityEditorMemStart);
+        }
       }
-#endif //USE_DEBUG_PROFILING
+#endif // USE_DEBUG_PROFILING
       UI::EndWindow();
     }
 
@@ -382,8 +553,7 @@ namespace UI
     {
       UI::BeginWindow("Motion Matching", { 20, 20 }, { 500, 500 });
       {
-        UI::SliderFloat("Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0,
-                        10);
+        UI::SliderFloat("Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0, 10);
         UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2, 40);
         UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
         UI::SliderFloat("Responsiveness", &GameState->MMSet.FormatInfo.Responsiveness, 0, 2);
@@ -426,7 +596,7 @@ namespace UI
           if(DeleteCurrent)
           {
             GameState->Resources.Animations.RemoveReference(GameState->MMSet.AnimRIDs[i]);
-            GameState->MMSet.AnimRIDs.Delete(i);
+            GameState->MMSet.AnimRIDs.Remove(i);
             i--;
           }
         }
@@ -455,7 +625,7 @@ namespace UI
           UI::NewLine();
           if(DeleteCurrent)
           {
-            GameState->MMSet.FormatInfo.ComparisonBoneIndices.Delete(i);
+            GameState->MMSet.FormatInfo.ComparisonBoneIndices.Remove(i);
           }
         }
 
@@ -951,13 +1121,13 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
     entity* SelectedEntity = {};
     if(GetSelectedEntity(GameState, &SelectedEntity))
     {
-			UI::SameLine();
+      UI::SameLine();
       if(UI::Button("Delete Entity"))
       {
         DeleteEntity(GameState, GameState->SelectedEntityIndex);
         GameState->SelectedEntityIndex = -1;
       }
-			UI::NewLine();
+      UI::NewLine();
 
       Anim::transform* Transform = &SelectedEntity->Transform;
       UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10);
@@ -1226,9 +1396,8 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
   }
 }
 
-
 #pragma pack(2)
-struct  test_struct
+struct test_struct
 {
   float    f;
   float    f2;
@@ -1239,10 +1408,11 @@ struct  test_struct
 // TODO(Lukas) Add bit mask checkbox to the UI API
 void
 MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet,
-        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings, bool& s_ShowECSData)
+        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings,
+        bool& s_ShowECSData)
 {
-	if(UI::CollapsingHeader("ECS data", &s_ShowECSData))
-	{
+  if(UI::CollapsingHeader("ECS data", &s_ShowECSData))
+  {
     char TempBuffer[50];
 
     snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(entity): %ld", sizeof(entity));

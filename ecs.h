@@ -1,7 +1,15 @@
 #pragma once
 #include "stdint.h"
 
-typedef uint8_t component_id;
+const int ECS_CHUNK_SIZE                           = 16 * 1024;
+const int ECS_ENTITY_MAX_COUNT                     = 200;
+const int ECS_WORLD_ENTITY_COMMAND_BUFFER_CAPACITY = 200;
+
+const int ECS_ARCHETYPE_COMPONENT_MAX_COUNT = 20;
+const int ECS_COMPONENT_MAX_COUNT           = 20;
+const int ECS_ARCHETYPE_MAX_COUNT           = 64;
+
+typedef int16_t component_id;
 typedef int16_t entity_id;
 struct ecs_world;
 
@@ -35,16 +43,17 @@ void ExecuteECSJob(const ecs_world* World, const archetype_request* ArchetypeReq
 
 // Entity API
 entity_id CreateEntity(ecs_world* World);
-entity_id DestroyEntity(ecs_world* World);
+void      DestroyEntity(ecs_world* World, entity_id EntityID);
 
-bool HasComponent(const ecs_world* World, entity_id Entity, component_id ComponentID);
-bool AddComponent(ecs_world* World, entity_id Entity, component_id ComponentID);
-bool RemoveComponent(ecs_world* World, entity_id Entity, component_id ComponentID);
+bool HasComponent(const ecs_world* World, entity_id EntityID, component_id ComponentID);
+void AddComponent(ecs_world* World, entity_id EntityID, component_id ComponentID);
+void RemoveComponent(ecs_world* World, entity_id EntityID, component_id ComponentID);
 
-bool GetComponent(ecs_world* World, entity_id Entity, component_id ComponentID);
+void* GetComponent(ecs_world* World, entity_id EntityID, component_id ComponentID);
 
-bool SetComponent_(ecs_world* World, entity_id Entity, const void* ComponentValue,
+void SetComponent_(ecs_world* World, entity_id EntityID, const void* ComponentValue,
                    uint16_t ComponentSize, component_id ComponentID);
+
 #define SetComponent(World, Entity, ComponentName, Value)                                          \
   static_assert(sizeof(ComponentName) == sizeof(Value),                                            \
                 "compile time assertions: SetComponent() ComponentName and Value mismatch");       \

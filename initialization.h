@@ -1,3 +1,28 @@
+#include "ecs_management.h"
+#include "component_table.h"
+#include "component_table.h"
+#include "misc.h"
+
+void
+InitializeECS(Memory::stack_allocator* PersistentMemStack, ecs_runtime** OutRuntime,
+              ecs_world** OutWorld, size_t TotalECSMemorySize)
+{
+  assert(OutRuntime && OutWorld);
+  int32_t ChunkMemorySize =
+    (int32_t)(TotalECSMemorySize - (sizeof(ecs_runtime) + sizeof(ecs_world)));
+  uint8_t*     ChunkMemory     = PersistentMemStack->AlignedAlloc(ChunkMemorySize, alignof(chunk));
+  ecs_runtime* Runtime         = PushStruct(PersistentMemStack, ecs_runtime);
+  ecs_world*   World           = PushStruct(PersistentMemStack, ecs_world);
+
+  InitializeChunkHeap(Runtime, ChunkMemory, ChunkMemorySize);
+  InitializeArchetypeAndComponentTables(Runtime, g_ComponentStructInfoTable, g_ComponentNameTable,
+                                        (int32_t)COMPONENT_Count);
+  InitializeWorld(World, Runtime);
+
+  *OutRuntime = Runtime;
+  *OutWorld   = World;
+}	
+
 void
 PartitionMemoryInitAllocators(game_memory* GameMemory, game_state* GameState)
 {
@@ -7,11 +32,11 @@ PartitionMemoryInitAllocators(game_memory* GameMemory, game_state* GameState)
                                         GameMemory->TemporaryMemorySize);
   assert(GameMemory->PersistentMemorySize > sizeof(game_state));
 
-  uint32_t AvailableSubsystemMemory = GameMemory->PersistentMemorySize - sizeof(game_state);
-  uint32_t PersistentStackSize      = (uint32_t)((float)AvailableSubsystemMemory * 0.3);
+  uint32_t TotalSubsystemMemorySize = GameMemory->PersistentMemorySize - sizeof(game_state);
+  uint32_t PersistentStackSize      = (uint32_t)((float)TotalSubsystemMemorySize * 0.3);
   uint8_t* PersistentStackStart     = (uint8_t*)GameMemory->PersistentMemory + sizeof(game_state);
 
-  uint32_t ResourceMemorySize = AvailableSubsystemMemory - PersistentStackSize;
+  uint32_t ResourceMemorySize = TotalSubsystemMemorySize - PersistentStackSize;
   uint8_t* ResouceMemoryStart = PersistentStackStart + PersistentStackSize;
 
   GameState->PersistentMemStack =
@@ -422,11 +447,10 @@ SetGameStatePODFields(game_state* GameState)
   GameState->BoneSphereRadius         = 0.01f;
 
   GameState->IsAnimationPlaying = false;
-  // GameState->EditorBoneRotationSpeed = 45.0f;
   GameState->CurrentMaterialID = { 0 };
   GameState->PlayerEntityIndex = -1;
 
-  // Motion Matchin
+  // Motion Matching
   {
     GameState->TrajectoryLengthInTime = 1;
     GameState->TrajectorySampleCount  = 20;

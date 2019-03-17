@@ -1,84 +1,45 @@
 #pragma once
 #include "ecs.h"
-#include "basic_data_structures.h"
-#include "heap_alloc.h"
+#include "ecs_management.h"
 
-const size_t ECS_CHUNK_SIZE                           = 16 * 1024;
-const int    ECS_ARCHETYPE_COMPONENT_MAX_COUNT        = 20;
-const int    ECS_COMPONENT_MAX_COUNT                  = 20;
-const int    ECS_MAX_NAME_SIZE                        = 32;
-const int    ECS_ARCHETYPE_MAX_COUNT                  = 64;
-const int    ECS_ENTITY_MAX_COUNT                     = 200;
-const int    ECS_WORLD_ENTITY_COMMAND_BUFFER_CAPACITY = 200;
+// Internal archetype API
+bool DoesEntityExist(const ecs_world* World, entity_id EntityID);
 
-struct chunk
-{
-  union {
-    struct
-    {
-      chunk*   NextChunk;
-      uint16_t ArchetypeIndex;
-      uint16_t EntityCapacity;
-      uint16_t EntityCount;
-    } Header;
-    uint8_t Memory[ECS_CHUNK_SIZE];
-  };
-};
+bool DoesArchetypeMatchRequest(const archetype& Archetype, const archetype_request& Request);
+int32_t    GetArchetypeIndex(const ecs_runtime* Runtime, component_id* ComponentIDs,
+                             int32_t ComponentCount);
+archetype* GetEntityArchetype(const ecs_world* World, entity_id EntityID);
+void CreateArchetype(ecs_runtime* Runtime, component_id* ComponentIDs, int32_t ComponentCount);
+void GetUsedComponents(
+  fixed_stack<component_id, ECS_ARCHETYPE_COMPONENT_MAX_COUNT>* OutUsedComponents,
+  const archetype_request&                                      ArchetypeRequest);
+uintptr_t  GetComponentOffset(const archetype& Archetype, component_id ComponentID);
+uint8_t*   GetComponentAddress(const chunk* Chunk, int32_t IndexInChunk, int32_t ComponentOffset,
+                               int32_t ComponentSize);
+uint8_t*   GetComponentAddress(const ecs_world* World, entity_storage_info EntityStorage,
+                               int32_t ComponentOffsetInChunk, component_struct_info ComponentInfo);
+archetype* GetEntityArchetype(const ecs_world* World, entity_id EntityID);
 
-struct component_id_and_offset
-{
-  component_id ID;
-  uint16_t     OffsetInBytes;
-};
+int32_t    GetChunkEntityCapacity(const ecs_runtime* Runtime, const archetype& Archetype);
+archetype* GetChunkArchetype(const ecs_world* World, const chunk* Chunk);
 
-struct archetype
-{
-  chunk*                                                                  FirstChunk;
-  fixed_stack<component_id_and_offset, ECS_ARCHETYPE_COMPONENT_MAX_COUNT> ComponentTypes;
-};
+int32_t GetComponentIndexInArchetype(const archetype& Archetype, component_id ComponentID);
+int32_t AddComponentWithoutLosingCanonicalForm(archetype* Archetype, component_id NewComponentID,
+                                               const ecs_runtime* Runtime);
+void RemoveComponentWithoutLosingCanonicalForm(archetype* Archetype, component_id RemoveComponentID,
+                                               const ecs_runtime* Runtime);
 
-struct component_struct_info
-{
-  uint8_t  Alignment;
-  uint16_t Size;
-};
+int32_t    GetArchetypeIndex(const ecs_runtime* Runtime, const archetype* Archetype);
+void       ComputeArchetypeComponentOffsets(archetype* Archetype, const ecs_runtime* Runtime);
+archetype* AddArchetype(ecs_runtime* Runtime, const archetype* Archetype);
+void       RemoveArchetypeAtIndex(ecs_runtime* Runtime, int32_t RemoveIndex);
+void RemoveArchetype(ecs_runtime* Runtime, archetype* Archetype);
 
-struct ecs_runtime
-{
-  fixed_stack<archetype, ECS_ARCHETYPE_COMPONENT_MAX_COUNT> Archetypes;
+int32_t GetChunkIndex(const ecs_runtime* Runtime, const chunk* C);
+chunk*  GetChunkAtIndex(ecs_runtime* Runtime, int32_t ChunkIndex);
 
-  fixed_stack<const char*, ECS_COMPONENT_MAX_COUNT>           ComponentNames;
-  fixed_stack<component_struct_info, ECS_COMPONENT_MAX_COUNT> ComponentStructInfos;
+entity_storage_info CreateNewArchetypeInstance(ecs_world* World, archetype* Archetype);
 
-	Memory::heap_allocator ChunkHeap;
-};
-
-struct entity_storage_info
-{
-  uint16_t ChunkIndex;
-  uint16_t IndexInChunk;
-};
-
-struct entity_command
-{
-  uint8_t*  Data;
-  entity_id Index;
-  uint16_t  Size;
-  uint16_t  Flags;
-};
-
-struct ecs_world
-{
-  entity_storage_info EntityStorateInfos[ECS_ENTITY_MAX_COUNT];
-  fixed_stack<entity_command, ECS_WORLD_ENTITY_COMMAND_BUFFER_CAPACITY> EntityCommands;
-};
-
-//Internal archetype API
-bool    DoesArchetypeMatchRequest(const archetype& Archetype, const archetype_request& Request);
-int32_t GetArchetypeIndex(const ecs_runtime* Runtime, component_id* ComponentIDs,
-                          int32_t ComponentCount);
-void    CreateArchetype(ecs_runtime* Runtime, component_id* ComponentIDs, int32_t ComponentCount);
-void    GetUsedComponents(
-     fixed_stack<component_id, ECS_ARCHETYPE_COMPONENT_MAX_COUNT>* OutUsedComponents,
-     const archetype_request&                                      ArchetypeRequest);
-uintptr_t GetComponentOffset(const archetype& Archetype, component_id ComponentID);
+void CopyMatchingComponentValues(ecs_world* World, entity_storage_info DstStorage,
+                                 entity_storage_info SrcStorage, const archetype& DstArchetype,
+                                 const archetype& SrcArchetype);

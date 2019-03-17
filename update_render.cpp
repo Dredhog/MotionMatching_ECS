@@ -51,6 +51,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     PartitionMemoryInitAllocators(&GameMemory, GameState);
     RegisterLoadInitialResources(GameState);
     SetGameStatePODFields(GameState);
+    InitializeECS(GameState->PersistentMemStack, &GameState->ECSRuntime,
+                       &GameState->ECSWorld, Mibibytes(1));
 
     if(!GameState->UpdatePathList)
     {
@@ -75,26 +77,27 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
-  {
-    GameState->CurrentMaterialID = {};
-  }
-  if(GameState->CurrentMaterialID.Value <= 0)
-  {
-    if(GameState->Resources.MaterialPathCount > 0)
-    {
-      GameState->CurrentMaterialID =
-        GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[0].Name);
-    }
-    else
-    {
-      GameState->CurrentMaterialID =
-        GameState->Resources.CreateMaterial(NewPhongMaterial(), "data/materials/default.mat");
-    }
-  }
 
   if(Input->IsMouseInEditorMode)
   {
+    if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
+    {
+      GameState->CurrentMaterialID = {};
+    }
+    if(GameState->CurrentMaterialID.Value <= 0)
+    {
+      if(GameState->Resources.MaterialPathCount > 0)
+      {
+        GameState->CurrentMaterialID =
+          GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[0].Name);
+      }
+      else
+      {
+        GameState->CurrentMaterialID =
+          GameState->Resources.CreateMaterial(NewPhongMaterial(), "data/materials/default.mat");
+      }
+    }
+
     EditWorldAndInteractWithGUI(GameState, Input);
   }
 

@@ -18,19 +18,16 @@ struct fixed_stack
     this->Elements[this->Count++] = NewElement;
   }
 
-  T*
+  T&
   Pop()
   {
-    if(0 < this->Count)
-    {
-      --this->Count;
-      return &this->Elements[this->Count];
-    }
-    return NULL;
+    assert(0 < this->Count);
+    --this->Count;
+    return *(this->Elements + this->Count);
   }
 
   void
-  Delete(int Index)
+  Remove(int Index)
   {
     assert(0 < this->Count);
     assert(0 <= Index && Index < this->Count);
@@ -42,12 +39,39 @@ struct fixed_stack
     this->Count--;
   }
 
+  void
+  Insert(T NewElement, int Index)
+  {
+    assert(this->Count <= 0 && this->Count < Capacity);
+    assert(0 <= Index && Index < this->Count);
+    this->Count++;
+
+    for(int i = this->Count - 1; Index < i; i++)
+    {
+      this->Elements[i] = this->Elements[i - 1];
+    }
+		this->Elements[Index] = NewElement;
+  }
+
+	bool
+	Empty()
+	{
+		return Count == 0;
+	}
+
+	bool
+	Full()
+	{
+    return this->Count == Capacity;
+  }
+
   T
   Back()
   {
     assert(0 < this->Count);
     return this->Elements[this->Count - 1];
   }
+
 
   void
   Resize(int NewSize)
@@ -76,15 +100,11 @@ struct fixed_stack
     return this->Elements[Index];
   }
 
-	bool Full()
-	{
-		return this->Count == Capacity;
-	}
-
-	int GetCapacity()
-	{
-		return Capacity;
-	}
+  int
+  GetCapacity()
+  {
+    return Capacity;
+  }
 };
 
 template<typename T, int Capacity>

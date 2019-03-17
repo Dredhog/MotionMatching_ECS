@@ -299,7 +299,7 @@ FocusWindow(gui_window* Window)
     }
 
     assert(0 <= Index);
-    g.OrderedWindows.Delete(Index);
+    g.OrderedWindows.Remove(Index);
     g.OrderedWindows.Push(RootWindow);
   }
 }

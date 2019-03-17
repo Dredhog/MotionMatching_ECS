@@ -1085,7 +1085,7 @@ UI::PopStyleVar()
   gui_context& g = *GetContext();
 
   assert(0 < g.StyleVarStack.Count);
-  style_var_memo Memo      = *g.StyleVarStack.Pop();
+  style_var_memo Memo      = g.StyleVarStack.Pop();
   g.Style.Vars[Memo.Index] = Memo.Value;
 }
 
@@ -1108,7 +1108,7 @@ UI::PopStyleColor()
   gui_context& g = *GetContext();
 
   assert(0 < g.StyleColorStack.Count);
-  style_color_memo Memo      = *g.StyleColorStack.Pop();
+  style_color_memo Memo      = g.StyleColorStack.Pop();
   g.Style.Colors[Memo.Index] = Memo.Color;
 }
 
