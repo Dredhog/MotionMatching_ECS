@@ -34,12 +34,14 @@ namespace Resource
     asset_diff DiffedAnimations[RESOURCE_MAX_COUNT];
     asset_diff DiffedMaterials[RESOURCE_MAX_COUNT];
     asset_diff DiffedTextures[RESOURCE_MAX_COUNT];
+    asset_diff DiffedScenes[RESOURCE_MAX_COUNT];
     asset_diff DiffedShaders[RESOURCE_MAX_COUNT];
 
     int32_t DiffedModelCount;
     int32_t DiffedAnimationCount;
     int32_t DiffedMaterialCount;
     int32_t DiffedTextureCount;
+    int32_t DiffedSceneCount;
     int32_t DiffedShaderCount;
 
     file_stat ModelStats[RESOURCE_MAX_COUNT];
@@ -124,6 +126,7 @@ namespace Resource
     void UpdateHardDriveAssetPathLists();
     void DeleteUnused();
     void ReloadModified();
+		void SortAllAssetDiffsPathsStats();
 
     void Create(uint8_t* Memory, uint32_t TotalMemorySize, Memory::stack_allocator* TemporaryStack);
     void SetDefaultShaderID(GLuint ShaderID);

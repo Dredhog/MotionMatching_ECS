@@ -3,7 +3,9 @@
 #include "material_io.h"
 #include "load_shader.h"
 #include "profile.h"
+#include "basic_data_structures.h"
 
+#include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -442,8 +444,9 @@ namespace Resource
       Platform::ReadPaths(this->DiffedAnimations, this->AnimationPaths, this->AnimationStats,
                           RESOURCE_MAX_COUNT, &this->AnimationPathCount, "data/animations", "anim");
     // Update scene paths
-    Platform::ReadPaths(this->DiffedMaterials, this->ScenePaths, this->SceneStats,
-                        RESOURCE_MAX_COUNT, &this->ScenePathCount, "data/scenes", "scene");
+    this->DiffedSceneCount =
+      Platform::ReadPaths(this->DiffedScenes, this->ScenePaths, this->SceneStats,
+                          RESOURCE_MAX_COUNT, &this->ScenePathCount, "data/scenes", "scene");
     // Update material paths
     this->DiffedMaterialCount =
       Platform::ReadPaths(this->DiffedMaterials, this->MaterialPaths, this->MaterialStats,
@@ -452,6 +455,56 @@ namespace Resource
     this->DiffedShaderCount =
       Platform::ReadPaths(this->DiffedShaders, this->ShaderPaths, this->ShaderStats,
                           RESOURCE_MAX_COUNT, &this->ShaderPathCount, "shaders", NULL);
+
+    this->SortAllAssetDiffsPathsStats();
+  }
+	struct diff_path_stat
+	{
+		asset_diff Diff;
+    path       Path;
+    file_stat  Stat;
+  };
+
+  int
+  DiffPathStatCmpFunc(const void* A, const void* B)
+  {
+    diff_path_stat* TupleA = (diff_path_stat*)A;
+    diff_path_stat* TupleB = (diff_path_stat*)B;
+
+    return strncmp(TupleA->Path.Name, TupleB->Path.Name, sizeof(path));
+  }
+
+  void
+  SortAssetInfoByPath(asset_diff* Diffs, path* Paths, file_stat* Stats, int32_t AssetCount)
+  {
+    fixed_stack<diff_path_stat, RESOURCE_MAX_COUNT> DiffPathStatArray;
+    DiffPathStatArray.Clear();
+    for(int i = 0; i < AssetCount; i++)
+    {
+      DiffPathStatArray.Push(diff_path_stat{ Diffs[i], Paths[i], Stats[i] });
+    }
+    qsort(DiffPathStatArray.Elements, AssetCount, sizeof(diff_path_stat), DiffPathStatCmpFunc);
+    for(int i = 0; i < AssetCount; i++)
+    {
+      Diffs[i] = DiffPathStatArray[i].Diff;
+      Paths[i] = DiffPathStatArray[i].Path;
+      Stats[i] = DiffPathStatArray[i].Stat;
+    }
+  }
+
+  void
+  resource_manager::SortAllAssetDiffsPathsStats()
+  {
+    SortAssetInfoByPath(this->DiffedModels, this->ModelPaths, this->ModelStats,
+                        this->ModelPathCount);
+    SortAssetInfoByPath(this->DiffedAnimations, this->AnimationPaths, this->AnimationStats,
+                        this->AnimationPathCount);
+    SortAssetInfoByPath(this->DiffedMaterials, this->MaterialPaths, this->MaterialStats,
+                        this->MaterialPathCount);
+    SortAssetInfoByPath(this->DiffedTextures, this->TexturePaths, this->TextureStats,
+                        this->TexturePathCount);
+    SortAssetInfoByPath(this->DiffedScenes, this->ScenePaths, this->SceneStats,
+                        this->ScenePathCount);
   }
 
   void

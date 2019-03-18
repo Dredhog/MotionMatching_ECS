@@ -285,15 +285,15 @@ namespace UI
         }
         {
           Memory::marker EntityEditorMemStart = GameState->TemporaryMemStack->GetMarker();
-          const int TempBufferCapacity = 64;
-          char*     TempBuffer = PushArray(GameState->TemporaryMemStack, TempBufferCapacity, char);
+          const int      TempBufferCapacity   = 64;
+          char* TempBuffer = PushArray(GameState->TemporaryMemStack, TempBufferCapacity, char);
 
           if(UI::CollapsingHeader("ECS Entity Editor", &s_ShowEntityEditor))
           {
             static int32_t SelectedEntityID = -1;
 
             UI::SliderInt("Selected Entity ID", &SelectedEntityID, 0,
-                          MaxInt32(1,GameState->ECSWorld->Entities.Count - 1));
+                          MaxInt32(1, GameState->ECSWorld->Entities.Count - 1));
 
             if(UI::Button("Create New Entity"))
             {
@@ -301,18 +301,18 @@ namespace UI
               SelectedEntityID = (int32_t)CreateEntity(GameState->ECSWorld);
             }
 
-						if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
-						{
-							UI::SameLine();
+            if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
+            {
+              UI::SameLine();
               if(UI::Button("Destroy Entity"))
               {
                 DestroyEntity(GameState->ECSWorld, (entity_id)SelectedEntityID);
                 SelectedEntityID = -1;
               }
-							UI::NewLine();
-						}
+              UI::NewLine();
+            }
 
-						if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
+            if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
             {
               static int32_t NewComponentID = -1;
 
@@ -392,9 +392,9 @@ namespace UI
 
               CurrentBoxIndex++;
             }
-						UI::NewLine();
+            UI::NewLine();
 
-            bool           FoundSelected      = false;
+            bool FoundSelected = false;
             for(int i = 0; i < AllocInfoCount; i++)
             {
               chunk*  Chunk      = (chunk*)SortedAllocInfos[i].Base;
@@ -429,17 +429,17 @@ namespace UI
                 snprintf(TempBuffer, TempBufferCapacity, "Next Chunk Index: %d", NextChunkIndex);
                 UI::Text(TempBuffer);
               }
-							
+
               // Visualize individual chunk
               {
-								const float TotalChunkWidth = UI::GetWindowWidth();
+                const float TotalChunkWidth = UI::GetWindowWidth();
                 const float PixelsPerByte   = TotalChunkWidth / (float)sizeof(chunk);
 
                 archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
 
                 UI::NewLine();
 
-                float CurrentPos = 0;
+                float CurrentPos  = 0;
                 float HeaderWidth = PixelsPerByte * (float)sizeof(chunk_header);
                 UI::Button("Header", HeaderWidth);
                 UI::SameLine();
@@ -462,7 +462,7 @@ namespace UI
                              ComponentWidth);
                   UI::SameLine();
                 }
-								UI::NewLine();
+                UI::NewLine();
               }
 
               // Output archetype details
@@ -470,7 +470,7 @@ namespace UI
                 UI::NewLine();
 
                 archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
-								
+
                 for(int i = 0; i < Archetype->ComponentTypes.Count; i++)
                 {
                   component_id_and_offset ComponentOffset = Archetype->ComponentTypes[i];
@@ -484,7 +484,6 @@ namespace UI
                            ComponentOffset.Offset, ComopnentInfo.Size, ComopnentInfo.Alignment);
                   UI::Text(TempBuffer);
                   UI::NewLine();
-									
                 }
               }
             }
