@@ -10,5 +10,5 @@ namespace Gameplay
 {
   void ResetPlayer();
   void UpdatePlayer(entity* Player, Resource::resource_manager* Resources, const game_input* Input,
-                    const camera* Camera, const mm_animation_set* MMSet, float Speed);
+                    const camera* Camera, const mm_controller_data* MMSet, float Speed);
 }

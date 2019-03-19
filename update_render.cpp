@@ -80,6 +80,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   if(Input->IsMouseInEditorMode)
   {
+    // TODO(LUkas) Move this material check to somewhere more appropriate
     if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
     {
       GameState->CurrentMaterialID = {};
@@ -163,7 +164,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     entity* PlayerEntity = {};
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
-      Gameplay::UpdatePlayer(PlayerEntity, &GameState->Resources, Input, &GameState->Camera, &GameState->MMSet, GameState->PlayerSpeed);
+      Gameplay::UpdatePlayer(PlayerEntity, &GameState->Resources, Input, &GameState->Camera,
+                             &GameState->MMData, GameState->PlayerSpeed);
     }
   }
 
@@ -249,22 +251,22 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             Debug::PushGizmo(&GameState->Camera, &Mat4Root);
           }
 
-          int FutureTrajectoryPointCount = 0;
-          {
-            FutureTrajectoryPointCount = (int)(GameState->TrajectoryLengthInTime /
-                                               (AnimDuration / CurrentAnimation->KeyframeCount));
-          }
+          int FutureTrajectoryPointCount =
+            (int)(GameState->TrajectoryDuration / (AnimDuration / CurrentAnimation->KeyframeCount));
 
           int EndKeyframeIndex = MinInt32(PrevKeyframeIndex + FutureTrajectoryPointCount,
                                           CurrentAnimation->KeyframeCount - 1);
-          int SamplePeriod =
-            (int)floorf(FutureTrajectoryPointCount / (float)GameState->TrajectorySampleCount);
+          int SamplePeriod     = MaxInt32(1, (int)floorf(FutureTrajectoryPointCount /
+                                                     (float)GameState->TrajectorySampleCount));
           for(int i = PrevKeyframeIndex; i < EndKeyframeIndex - SamplePeriod; i += SamplePeriod)
           {
+            int32_t HipBoneIndex = 0;
             vec3 LocalHipPositionA =
-              CurrentAnimation->Transforms[0 + i * CurrentAnimation->ChannelCount].Translation;
+              CurrentAnimation->Transforms[HipBoneIndex + i * CurrentAnimation->ChannelCount]
+                .Translation;
             vec3 LocalHipPositionB =
-              CurrentAnimation->Transforms[0 + (i + SamplePeriod) * CurrentAnimation->ChannelCount]
+              CurrentAnimation
+                ->Transforms[HipBoneIndex + (i + SamplePeriod) * CurrentAnimation->ChannelCount]
                 .Translation;
 
             LocalHipPositionA =
@@ -319,7 +321,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             Math::MulMat4(Mat4InvRoot, Controller->HierarchicalModelSpaceMatrices[b]);
         }
       }
-      DrawSkeleton(Controller, GetEntityModelMatrix(GameState, e), GameState->BoneSphereRadius);
+      DrawSkeleton(Controller->Skeleton, Controller->HierarchicalModelSpaceMatrices,
+                   GetEntityModelMatrix(GameState, e), GameState->BoneSphereRadius);
     }
   }
 

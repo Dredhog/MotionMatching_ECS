@@ -3,6 +3,8 @@
 #include "component_table.h"
 #include "misc.h"
 
+#define CACHE_LINE_SIZE 64
+
 void
 InitializeECS(Memory::stack_allocator* PersistentMemStack, ecs_runtime** OutRuntime,
               ecs_world** OutWorld, size_t TotalECSMemorySize)
@@ -10,7 +12,7 @@ InitializeECS(Memory::stack_allocator* PersistentMemStack, ecs_runtime** OutRunt
   assert(OutRuntime && OutWorld);
   int32_t ChunkMemorySize =
     (int32_t)(TotalECSMemorySize - (sizeof(ecs_runtime) + sizeof(ecs_world)));
-  uint8_t*     ChunkMemory     = PersistentMemStack->AlignedAlloc(ChunkMemorySize, alignof(chunk));
+  uint8_t*     ChunkMemory     = PersistentMemStack->AlignedAlloc(ChunkMemorySize, CACHE_LINE_SIZE);
   ecs_runtime* Runtime         = PushStruct(PersistentMemStack, ecs_runtime);
   ecs_world*   World           = PushStruct(PersistentMemStack, ecs_world);
 
@@ -452,17 +454,19 @@ SetGameStatePODFields(game_state* GameState)
 
   // Motion Matching
   {
-    GameState->TrajectoryLengthInTime = 1;
+    GameState->TrajectoryDuration = 1;
     GameState->TrajectorySampleCount  = 20;
     GameState->MMTransformToRootSpace = true;
     GameState->PlayerSpeed            = 1.0f;
-    GameState->MMSet                  = {};
-    GameState->MMSet.FormatInfo.Responsiveness        = 0.5f;
-    GameState->MMSet.FormatInfo.TrajectoryTimeHorizon = 1.0f;
-		GameState->MMSet.FormatInfo.BelndInTime = 0.2f;
-    GameState->MMSet.FormatInfo.ComparisonBoneIndices.Push(4);
-    GameState->MMSet.FormatInfo.ComparisonBoneIndices.Push(10);
-		GameState->DrawRootTrajectories = true;
+    GameState->MMData                                  = {};
+    GameState->MMParams.DynamicParams.Responsiveness         = 0.5f;
+    GameState->MMParams.DynamicParams.TrajectoryTimeHorizon = 1.0f;
+    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold = 0.0f;
+    GameState->MMParams.DynamicParams.BelndInTime = 0.2f;
+    GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(4);
+    GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(10);
+
+    GameState->DrawRootTrajectories = true;
 		GameState->DrawHipTrajectories = false;
   }
 

@@ -16,7 +16,7 @@ Gameplay::ResetPlayer()
 
 void
 Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
-                       const game_input* Input, const camera* Camera, const mm_controller_data* MMData,
+                       const game_input* Input, const camera* Camera, const mm_animation_set* MMSet,
                        float Speed)
 {
   vec3 CameraForward = Camera->Forward;
@@ -45,9 +45,9 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
     Dir = Math::Normalized(Dir);
   }
 
-  if(Player->AnimController && MMData->FrameInfos.IsValid())
+  if(Player->AnimController && MMSet->IsBuilt)
   {
-    assert(0 < MMData->Params.AnimRIDs.Count);
+    assert(0 < MMSet->AnimRIDs.Count);
     Player->AnimController->BlendFunc = ThirdPersonAnimationBlendFunction;
 
     mat4 ModelMatrix    = Anim::TransformToMat4(Player->Transform);
@@ -58,10 +58,9 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
     {
       vec3 ModelSpaceVelocity =
         Math::MulMat4Vec4(InvModelMatrix,
-                          vec4{ MMData->Params.DynamicParams.TrajectoryTimeHorizon * Dir * Speed,
-                                0 })
+                          vec4{ MMSet->FormatInfo.TrajectoryTimeHorizon * Dir * Speed, 0 })
           .XYZ;
-      AnimGoal = GetCurrentFrameGoal(Player->AnimController, ModelSpaceVelocity, MMData->Params);
+      AnimGoal = GetCurrentFrameGoal(Player->AnimController, ModelSpaceVelocity, MMSet->FormatInfo);
     }
 
     // Visualize the current goal
@@ -112,30 +111,26 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
 
     if(0.25f < Math::Length(Dir))
     {
-      int32_t NewAnimIndex;
-      int32_t StartFrameIndex;
-      float   BestCost = MotionMatch(&NewAnimIndex, &StartFrameIndex, MMData, AnimGoal);
-      const Anim::animation* MatchedAnim =
-        Resources->GetAnimation(MMData->Params.AnimRIDs[NewAnimIndex]);
+      int32_t NewAnimIndex; int32_t StartFrameIndex;
+      float BestCost = MotionMatch(&NewAnimIndex, &StartFrameIndex, MMSet, AnimGoal);
+      const Anim::animation* MatchedAnim = Resources->GetAnimation(MMSet->AnimRIDs[NewAnimIndex]);
       const float AnimStartTime          = (((float)StartFrameIndex) / MatchedAnim->KeyframeCount) *
                                   Anim::GetAnimDuration(MatchedAnim);
+      LastMatch = MMSet->FrameInfos[MMSet->AnimFrameRanges[NewAnimIndex].Start + StartFrameIndex];
 
       // Figure out if matched frame is sufficiently far away from the current to start a new
       // animation
-      int   ActiveStateIndex = (g_BlendInfos.Empty()) ? -1 : g_BlendInfos.PeekBack().AnimStateIndex;
-      float ActiveAnimLocalTime =
+      int ActiveStateIndex = (g_BlendInfos.Empty()) ? -1 : g_BlendInfos.PeekBack().AnimStateIndex;
+      int ActiveAnimLocalTime =
         (ActiveStateIndex != -1)
-          ? Anim::GetLoopedSampleTime(Player->AnimController, ActiveStateIndex,
-                                      Player->AnimController->GlobalTimeSec)
+          ? Anim::GetLoopedSampleTime(Player->AnimController, ActiveStateIndex)
           : 0;
 
-      if(Player->AnimController->AnimationIDs[ActiveStateIndex].Value !=
-           MMData->Params.AnimRIDs[NewAnimIndex].Value ||
-         AbsFloat(ActiveAnimLocalTime - AnimStartTime) >= MMData->Params.DynamicParams.MinTimeOffsetThreshold)
+      if(Player->AnimController->AnimationIDs[CurrentAnimaIndex] == MMSet->AnimRIDs[NewAnimIndex] &&
+         AbsFloat(ActiveAnimLocalTime - AnimStartTime) < MMSet->FormatInfo.TimeDifferenceThreshold)
       {
-        LastMatch = MMData->FrameInfos[MMData->AnimFrameRanges[NewAnimIndex].Start + StartFrameIndex];
-        PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[NewAnimIndex], AnimStartTime,
-                      MMData->Params.DynamicParams.BelndInTime);
+        PlayAnimation(Player->AnimController, MMSet->AnimRIDs[NewAnimIndex], AnimStartTime,
+                      MMSet->FormatInfo.BelndInTime);
       }
     }
 

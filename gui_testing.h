@@ -605,11 +605,14 @@ namespace UI
     {
       UI::BeginWindow("Motion Matching", { 20, 20 }, { 500, 500 });
       {
-        UI::SliderFloat("Trajectory Time Horizon (sec)", &GameState->TrajectoryLengthInTime, 0, 10);
+        UI::SliderFloat("Trajectory Duration (sec)", &GameState->TrajectoryDuration, 0, 10);
         UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2, 40);
         UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
-        UI::SliderFloat("Responsiveness", &GameState->MMSet.FormatInfo.Responsiveness, 0, 2);
-        UI::SliderFloat("BlendInTime", &GameState->MMSet.FormatInfo.BelndInTime, 0, 2);
+        UI::SliderFloat("Responsiveness", &GameState->MMParams.DynamicParams.Responsiveness, 0, 2);
+        UI::SliderFloat("BlendInTime", &GameState->MMParams.DynamicParams.BelndInTime, 0, 2);
+        UI::SliderFloat("Min Time Offset Threshold",
+                        &GameState->MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 2);
+
         UI::Checkbox("Show Root Trajectory", &GameState->DrawRootTrajectories);
         UI::Checkbox("Show Hip Trajectory", &GameState->DrawHipTrajectories);
         UI::Checkbox("Transform To Root Space", &GameState->MMTransformToRootSpace);
@@ -627,28 +630,28 @@ namespace UI
               GameState->Resources.AnimationPaths[ActivePathIndex].Name);
           }
 
-          if(UI::Button("Add Animation") && !GameState->MMSet.AnimRIDs.Full())
+          if(UI::Button("Add Animation") && !GameState->MMParams.AnimRIDs.Full())
           {
-            GameState->MMSet.AnimRIDs.Push(NewRID);
-            GameState->Resources.Animations.AddReference(NewRID);
+            GameState->MMParams.AnimRIDs.Push(NewRID);
           }
         }
+				//TODO(Lukas) Move this somewhere more obvious
+        GameState->MMData.Params.DynamicParams = GameState->MMParams.DynamicParams;
       }
       {
-        for(int i = 0; i < GameState->MMSet.AnimRIDs.Count; i++)
+        for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
         {
           bool DeleteCurrent = UI::Button("Delete", 0, i);
           UI::SameLine();
           {
             char* Path;
-            GameState->Resources.Animations.Get(GameState->MMSet.AnimRIDs[i], NULL, &Path);
+            GameState->Resources.Animations.Get(GameState->MMParams.AnimRIDs[i], NULL, &Path);
             UI::Text(Path);
           }
           UI::NewLine();
           if(DeleteCurrent)
           {
-            GameState->Resources.Animations.RemoveReference(GameState->MMSet.AnimRIDs[i]);
-            GameState->MMSet.AnimRIDs.Remove(i);
+            GameState->MMParams.AnimRIDs.Remove(i);
             i--;
           }
         }
@@ -660,38 +663,50 @@ namespace UI
         UI::Combo("Bone", &ActiveBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
                   SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
 
-        if(UI::Button("Add Bone") && !GameState->MMSet.FormatInfo.ComparisonBoneIndices.Full())
+        if(UI::Button("Add Bone") && !GameState->MMParams.FixedParams.ComparisonBoneIndices.Full())
         {
-          GameState->MMSet.FormatInfo.ComparisonBoneIndices.Push(ActiveBoneIndex);
+          GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
         }
 
-        for(int i = 0; i < GameState->MMSet.FormatInfo.ComparisonBoneIndices.Count; i++)
+        for(int i = 0; i < GameState->MMParams.FixedParams.ComparisonBoneIndices.Count; i++)
         {
           bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
           UI::SameLine();
           {
             UI::Text(SelectedEntity->AnimController->Skeleton
-                       ->Bones[GameState->MMSet.FormatInfo.ComparisonBoneIndices[i]]
+                       ->Bones[GameState->MMParams.FixedParams.ComparisonBoneIndices[i]]
                        .Name);
           }
           UI::NewLine();
           if(DeleteCurrent)
           {
-            GameState->MMSet.FormatInfo.ComparisonBoneIndices.Remove(i);
+            GameState->MMParams.FixedParams.ComparisonBoneIndices.Remove(i);
           }
         }
 
-        if(0 < GameState->MMSet.AnimRIDs.Count)
+        if(0 < GameState->MMParams.AnimRIDs.Count)
         {
-          UI::SliderFloat("Build MM data", &GameState->MMSet.FormatInfo.TrajectoryTimeHorizon, 0.0f,
-                          5.0f);
+          UI::SliderFloat("Trajectory Time Horizon",
+                          &GameState->MMParams.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
             if(UI::Button("Build MM data"))
             {
-              PrecomputeRuntimeMMData(GameState->TemporaryMemStack, &GameState->MMSet,
-                                      &GameState->Resources,
-                                      SelectedEntity->AnimController->Skeleton);
+              for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
+              {
+                GameState->Resources.Animations.AddReference(GameState->MMParams.AnimRIDs[i]);
+              }
+              for(int i = 0; GameState->MMData.FrameInfos.IsValid() &&
+                             i < GameState->MMData.Params.AnimRIDs.Count;
+                  i++)
+              {
+                GameState->Resources.Animations.RemoveReference(
+                  GameState->MMData.Params.AnimRIDs[i]);
+              }
+              GameState->MMData =
+                PrecomputeRuntimeMMData(GameState->TemporaryMemStack, &GameState->Resources,
+                                        GameState->MMParams,
+                                        SelectedEntity->AnimController->Skeleton);
             }
           }
         }
@@ -1513,8 +1528,11 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     UI::SliderFloat("Sun Z Angle", &GameState->R.Sun.RotationZ, 0.0f, 90.0f);
     UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.RotationY, -180, 180);
 
-    UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0,
-                  SHADOWMAP_CASCADE_COUNT - 1);
+		if(1 < SHADOWMAP_CASCADE_COUNT)
+		{
+      UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0,
+                    SHADOWMAP_CASCADE_COUNT - 1);
+    }
     UI::Checkbox("Display sun-perspective depth map", &GameState->R.DrawShadowMap);
     UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
     if(UI::Button("Recompute Directional Shadows"))

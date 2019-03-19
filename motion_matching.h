@@ -6,22 +6,35 @@
 
 #define MM_POINT_COUNT 3
 #define MM_COMPARISON_BONE_COUNT 2
-#define MM_MAX_ANIM_COUNT 20
+#define MM_ANIM_CAPACITY 35
 
-struct mm_format_info
+struct mm_fixed_params
 {
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
-  float                                          TrajectoryTimeHorizon;
-  float                                          Responsiveness;
-  float                                          BelndInTime;
+};
+
+struct mm_dynamic_params
+{
+  float TrajectoryTimeHorizon;
+  float Responsiveness;
+  float BelndInTime;
+  float MinTimeOffsetThreshold;
+};
+
+struct mm_matching_params
+{
+  fixed_stack<rid, MM_ANIM_CAPACITY> AnimRIDs;
+
+  mm_fixed_params   FixedParams;
+  mm_dynamic_params DynamicParams;
 };
 
 struct mm_frame_info
 {
   vec3 TrajectoryPs[MM_POINT_COUNT];
+  // float Directions[MM_POINT_COUNT];
   vec3 BonePs[MM_COMPARISON_BONE_COUNT];
   vec3 BoneVs[MM_COMPARISON_BONE_COUNT];
-  // vec2 Directions[MM_POINT_COUNT];
 };
 
 struct int32_range
@@ -30,22 +43,19 @@ struct int32_range
   int32_t End;
 };
 
-struct mm_animation_set
+struct mm_controller_data
 {
-  // Set through GUI
-  fixed_stack<rid, MM_MAX_ANIM_COUNT> AnimRIDs;
-  mm_format_info                      FormatInfo;
+  mm_matching_params Params;
 
-  // Precomputed data
-  bool                                        IsBuilt;
-  fixed_stack<int32_range, MM_MAX_ANIM_COUNT> AnimFrameRanges;
-  mm_frame_info*                              FrameInfos;
-  int32_t                                     FrameInfoCount;
+  fixed_stack<int32_range, MM_ANIM_CAPACITY> AnimFrameRanges;
+  array_handle<mm_frame_info>                FrameInfos;
 };
 
-mm_frame_info GetCurrentFrameGoal(const Anim::animation_controller* Controller, vec3 Velocity,
-                                  mm_format_info FormatInfo);
-void  PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, mm_animation_set* MMSet,
-                              Resource::resource_manager* Resources, const Anim::skeleton* Skeleton);
-float MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, const mm_animation_set* MMSet,
-                  mm_frame_info Goal);
+mm_frame_info      GetCurrentFrameGoal(const Anim::animation_controller* Controller, vec3 Velocity,
+                                       mm_matching_params Params);
+mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
+                                           Resource::resource_manager* Resources,
+                                           mm_matching_params          Params,
+                                           const Anim::skeleton*       Skeleton);
+float              MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex,
+                               const mm_controller_data* MMData, mm_frame_info Goal);

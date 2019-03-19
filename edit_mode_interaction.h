@@ -14,12 +14,6 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
   }
   */
 
-  // TODO(Lukas) Fix selection swapping bug,
-  // Recreation steps:
-  // Create sponza, enter mesh selection mode, create multimesh soldier, and two cubes,
-  // then select the fisrt cube and continue clicking on sponza
-  // Selection changes between first cube andsponza
-  // Selection
   if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
   {
     BEGIN_TIMED_BLOCK(SelectionDrawing);
@@ -222,6 +216,9 @@ AnimationEditorInteraction(game_state* GameState, const game_input* Input)
       Debug::PushWireframeSphere(Position, BoneSphereRadius);
     }
   }
+  DrawSkeleton(GameState->AnimEditor.Skeleton, GameState->AnimEditor.HierarchicalModelSpaceMatrices,
+               TransformToMat4(*GameState->AnimEditor.Transform), GameState->BoneSphereRadius,
+               false);
   if(GameState->AnimEditor.Skeleton)
   {
     mat4 Mat4Bone = Math::MulMat4(TransformToMat4(*GameState->AnimEditor.Transform),

@@ -60,7 +60,8 @@ struct game_state
   camera Camera;
   camera PreviewCamera;
 
-	mm_animation_set MMSet;
+  mm_matching_params MMParams;
+  mm_controller_data MMData;
 
   bool UseHotReloading;
   bool UpdatePathList;
@@ -87,7 +88,7 @@ struct game_state
   mat4    PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
 
   // Motion Matching
-  float   TrajectoryLengthInTime;
+  float   TrajectoryDuration;
   int     TrajectorySampleCount;
   bool    MMTransformToRootSpace;
   rid     MMAnimationRIDs[MAX_MM_ANIMATION_COUNT];
@@ -139,8 +140,8 @@ void GenerateShadowFramebuffer(uint32_t* FBO, uint32_t* Texture);
 void BindNextFramebuffer(uint32_t* FBOs, uint32_t* CurrentFramebuffer);
 void BindTextureAndSetNext(uint32_t* Textures, uint32_t* CurrentTexture);
 void DrawTextureToFramebuffer(uint32_t VAO);
-void     DrawSkeleton(const Anim::animation_controller* C, mat4 MatModel, float JoingSphereRadius,
-                      bool UseBoneDiamonds = true);
+void     DrawSkeleton(const Anim::skeleton* Skeleton, const mat4* HierarchicalModelSpaceMatrices,
+                      mat4 MatModel, float JointSphereRadius, bool UseBoneDiamonds = true);
 
 //-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------
 

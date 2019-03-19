@@ -1,20 +1,19 @@
 *Make builder properly regard the bind pose skeleton. Let multiple animations be retargeted to the same skeleton.
 *Animation track definition structure and separation from skeleton bone count
 *Removal of RIDs from Anim::animation_controller
-*Anim::animation controller_memory leak
+*Fix Anim::animation controller_memory leak
 *Bone selection entity selection
 *Motion matching for multiple entities
 *Motion matching for multiple entities
 *Sampling based MM info generation
 *MM search optimization
-*MM search optimization
-*MM Graph structure
-*MM Graph following
-*MM Graph creation tools
+*MM trajectory structure
+*MM trajectory following
+*MM trajectory creation tools
 *Joystick support
 *Animation mirroring in Anim::animation_state
 *RID management for animations
-*MM profile saving in a MMSet build agnostic way (probably only need 1 profile)
+*MM profile saving in a MMSet build agnostic way (might need one per MMSet)
 *Current frame bone velocity calculation
 *Entity separation from Anim::animation_controller (no pointer in entity)
 
@@ -22,8 +21,10 @@
 *Only reload assets after they have not been written to for some time (currently large models often update only partially)
 
 *Frustum culling when rendering
-*Sort meshe instances when rendering
+*Sort mesh instances when rendering
 *Fix SSAO
+*Fix tone mapping (currently colores are washed out and output is affected by FXAA)
+*Make FXAA work correctly with tonemapping (drop the assumption that inputs fall int [0, 1] range)
 *Bloom is very slow and poor quality!!
 *Nonlinear depth of filed (+bokeh)
 *Separate entity UI from Physics UI (clean it up)
@@ -60,11 +61,11 @@
 *Trck down compilation slowdown causes
 *Builder animation framerate subsampling
 *Builder empty/repeated track removal
+*Builder desired frame removal (or just 1-st as it stores bindpose in the CMU dataset)
 
 *Fix invallid RID issues when selecting the empty element of a combo box
 *Add animation timeline
 *MM Animation editing tools
-*MM cost function visualization UI
 *MM cost function visualization UI
 *Add instancing for debug drawing
 *Make the resource_hash_table an actual hash table!

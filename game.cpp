@@ -276,23 +276,23 @@ GetEntityMVPMatrix(game_state* GameState, int32_t EntityIndex)
 }
 
 void
-DrawSkeleton(const Anim::animation_controller* C, mat4 MatModel, float JointSphereRadius,
-             bool UseBoneDiamonds)
+DrawSkeleton(const Anim::skeleton* Skeleton, const mat4* HierarchicalModelSpaceMatrices,
+             mat4 MatModel, float JointSphereRadius, bool UseBoneDiamonds)
 {
-  const mat4 Mat4Root = Math::MulMat4(MatModel, Math::MulMat4(C->HierarchicalModelSpaceMatrices[0],
-                                                              C->Skeleton->Bones[0].BindPose));
-  for(int b = 0; b < C->Skeleton->BoneCount; b++)
+  const mat4 Mat4Root = Math::MulMat4(MatModel, Math::MulMat4(HierarchicalModelSpaceMatrices[0],
+                                                              Skeleton->Bones[0].BindPose));
+  for(int b = 0; b < Skeleton->BoneCount; b++)
   {
-    mat4 Mat4Bone = Math::MulMat4(MatModel, Math::MulMat4(C->HierarchicalModelSpaceMatrices[b],
-                                                          C->Skeleton->Bones[b].BindPose));
+    mat4 Mat4Bone = Math::MulMat4(MatModel, Math::MulMat4(HierarchicalModelSpaceMatrices[b],
+                                                          Skeleton->Bones[b].BindPose));
     vec3 Position = Math::GetMat4Translation(Mat4Bone);
 
     if(0 < b)
     {
-      int  ParentIndex = C->Skeleton->Bones[b].ParentIndex;
+      int  ParentIndex = Skeleton->Bones[b].ParentIndex;
       mat4 Mat4Parent =
-        Math::MulMat4(MatModel, Math::MulMat4(C->HierarchicalModelSpaceMatrices[ParentIndex],
-                                              C->Skeleton->Bones[ParentIndex].BindPose));
+        Math::MulMat4(MatModel, Math::MulMat4(HierarchicalModelSpaceMatrices[ParentIndex],
+                                              Skeleton->Bones[ParentIndex].BindPose));
       vec3 ParentPosition = Math::GetMat4Translation(Mat4Parent);
 
       if(UseBoneDiamonds)

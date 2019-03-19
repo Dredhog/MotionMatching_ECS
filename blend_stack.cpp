@@ -16,7 +16,7 @@ PlayAnimation(Anim::animation_controller* C, rid NewAnimRID, float LocalStartTim
   g_BlendInfos.Push(AnimBlend);
 
   Anim::SetAnimation(C, NewAnimRID, g_CurrentAnimStateIndex);
-  Anim::StartAnimationAtGlobalTime(C, g_CurrentAnimStateIndex, true, LocalStartTime);
+  Anim::StartAnimationAtGlobalTime(C, g_CurrentAnimStateIndex, false, LocalStartTime);
 
   C->AnimStateCount = g_BlendInfos.GetCapacity();
 
