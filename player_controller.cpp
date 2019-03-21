@@ -4,20 +4,23 @@
 #include "blend_stack.h"
 #include "debug_drawing.h"
 
-static float g_SpeedBlend = 0;
-
 const vec3 YAxis = { 0, 1, 0 };
 const vec3 ZAxis = { 0, 0, 1 };
 
 void
-Gameplay::ResetPlayer()
+Gameplay::ResetPlayer(entity* Player)
 {
+	if(Player->AnimController)
+	{
+    Player->AnimController->BlendFunc = NULL;
+  }
+	ResetBlendStack();
 }
 
 void
-Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
-                       const game_input* Input, const camera* Camera, const mm_controller_data* MMData,
-                       float Speed)
+Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
+                       Resource::resource_manager* Resources, const game_input* Input,
+                       const camera* Camera, const mm_controller_data* MMData, float Speed)
 {
   vec3 CameraForward = Camera->Forward;
   vec3 ViewForward   = Math::Normalized(vec3{ CameraForward.X, 0, CameraForward.Z });
@@ -50,10 +53,19 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
     assert(0 < MMData->Params.AnimRIDs.Count);
     Player->AnimController->BlendFunc = ThirdPersonAnimationBlendFunction;
 
+    if(g_BlendInfos.Empty())
+    {
+      int InitialAnimIndex = 0;
+			float StartTime = 0;
+      Player->AnimController->Animations[InitialAnimIndex] =
+        Resources->GetAnimation(MMData->Params.AnimRIDs[InitialAnimIndex]);
+      PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[InitialAnimIndex], StartTime,
+                    MMData->Params.DynamicParams.BelndInTime);
+    }
+
     mat4 ModelMatrix    = Anim::TransformToMat4(Player->Transform);
     mat4 InvModelMatrix = Math::InvMat4(ModelMatrix);
 
-    // if(CurrentBlendInfo.AnimationIndex
     mm_frame_info AnimGoal = {};
     {
       vec3 ModelSpaceVelocity =
@@ -61,16 +73,24 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
                           vec4{ MMData->Params.DynamicParams.TrajectoryTimeHorizon * Dir * Speed,
                                 0 })
           .XYZ;
-      AnimGoal = GetCurrentFrameGoal(Player->AnimController, ModelSpaceVelocity, MMData->Params);
+      int32_t CurrentAnimIndex = g_BlendInfos.Peek().AnimStateIndex;
+      AnimGoal = GetCurrentFrameGoal(TempAlocator, CurrentAnimIndex, Player->AnimController,
+                                     vec3{ 0, 0, 1 }, ModelSpaceVelocity, MMData->Params);
     }
 
     // Visualize the current goal
     {
       for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
       {
-        vec4 HomogLocalBonePos = { AnimGoal.BonePs[i], 1 };
-        Debug::PushWireframeSphere(Math::MulMat4Vec4(ModelMatrix, HomogLocalBonePos).XYZ, 0.02f,
-                                   { 1, 0, 1, 1 });
+        vec4 HomogLocalBoneP = { AnimGoal.BonePs[i], 1 };
+        vec3 WorldBoneP      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneP).XYZ;
+        vec4 HomogLocalBoneV = { AnimGoal.BoneVs[i], 0 };
+        vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
+        vec3 WorldVEnd       = WorldBoneP + WorldBoneV;
+
+        Debug::PushWireframeSphere(WorldBoneP, 0.02f, { 1, 0, 1, 1 });
+        Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 0, 1, 1 });
+        Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 0, 1, 1 });
       }
       vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
       for(int i = 0; i < MM_POINT_COUNT; i++)
@@ -91,13 +111,13 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
       {
         vec4 HomogLocalBoneP = { LastMatch.BonePs[i], 1 };
         vec3 WorldBoneP      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneP).XYZ;
-        vec4 HomogLocalBoneV = { LastMatch.BonePs[i], 0 };
+        vec4 HomogLocalBoneV = { LastMatch.BoneVs[i], 0 };
         vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
         vec3 WorldVEnd       = WorldBoneP + WorldBoneV;
 
-        /*Debug::PushWireframeSphere(WorldBoneP, 0.01f, { 1, 1, 0, 1 });
+        Debug::PushWireframeSphere(WorldBoneP, 0.01f, { 1, 1, 0, 1 });
         Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 1, 0, 1 });
-        Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 1, 0, 1 });*/
+        Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 1, 0, 1 });
       }
       vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
       for(int i = 0; i < MM_POINT_COUNT; i++)
@@ -133,6 +153,7 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
            MMData->Params.AnimRIDs[NewAnimIndex].Value ||
          AbsFloat(ActiveAnimLocalTime - AnimStartTime) >= MMData->Params.DynamicParams.MinTimeOffsetThreshold)
       {
+				//TODO(Lukas): there is an off by one error here when the first frame is skipped during the FrameInfo build
         LastMatch = MMData->FrameInfos[MMData->AnimFrameRanges[NewAnimIndex].Start + StartFrameIndex];
         PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[NewAnimIndex], AnimStartTime,
                       MMData->Params.DynamicParams.BelndInTime);
@@ -147,7 +168,7 @@ Gameplay::UpdatePlayer(entity* Player, Resource::resource_manager* Resources,
       int              AnimationIndex = g_BlendInfos.PeekBack().AnimStateIndex;
       Anim::animation* RootMotionAnim =
         Resources->GetAnimation(Player->AnimController->AnimationIDs[AnimationIndex]);
-      // TODO(Lukas): there should not be any fetching here, the data is known in advance
+      // TODO(Lukas): there should not be any fetching from RIDs here, the animations are known in advance
       Player->AnimController->Animations[AnimationIndex] = RootMotionAnim;
 
       float CurrentSampleTime = Anim::GetLoopedSampleTime(Player->AnimController, AnimationIndex,

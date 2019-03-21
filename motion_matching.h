@@ -16,7 +16,9 @@ struct mm_fixed_params
 struct mm_dynamic_params
 {
   float TrajectoryTimeHorizon;
-  float Responsiveness;
+  float PosCoefficient;
+  float VelCoefficient;
+  float TrajCoefficient;
   float BelndInTime;
   float MinTimeOffsetThreshold;
 };
@@ -51,8 +53,9 @@ struct mm_controller_data
   array_handle<mm_frame_info>                FrameInfos;
 };
 
-mm_frame_info      GetCurrentFrameGoal(const Anim::animation_controller* Controller, vec3 Velocity,
-                                       mm_matching_params Params);
+mm_frame_info      GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex,
+                                       const Anim::animation_controller* Controller, vec3 StartVelocity,
+                                       vec3 EndVelocity, mm_matching_params Params);
 mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
                                            Resource::resource_manager* Resources,
                                            mm_matching_params          Params,

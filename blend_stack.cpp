@@ -4,6 +4,12 @@
 circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos            = {};
 int g_CurrentAnimStateIndex = 0;
 
+void ResetBlendStack()
+{
+	g_CurrentAnimStateIndex = 0;
+  g_BlendInfos.Clear();
+}
+
 //TODO(Lukas): Remove assumption that playback rate is 1
 void
 PlayAnimation(Anim::animation_controller* C, rid NewAnimRID, float LocalStartTime,

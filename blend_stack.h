@@ -16,5 +16,6 @@ extern circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfo
 
 void PlayAnimation(Anim::animation_controller* C, rid NewAnimRID, float LocalStartTime,
                    float BlendInTime);
+void ResetBlendStack();
 void ThirdPersonAnimationBlendFunction(Anim::animation_controller* C);
 void ThirdPersonBelndFuncStopUnusedAnimations(Anim::animation_controller* C);

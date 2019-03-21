@@ -368,6 +368,11 @@ void
 RenderObjectSelectionHighlighting(game_state* GameState, entity* SelectedEntity)
 {
   TIMED_BLOCK(RenderSelection);
+  if(SelectedEntity->AnimController && !GameState->DrawActorMeshes)
+	{
+    return;
+	}
+
   // MESH SELECTION HIGHLIGHTING
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glDepthFunc(GL_LEQUAL);

@@ -161,11 +161,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   if(GameState->PlayerEntityIndex != -1)
   {
+    GameState->MMData.Params.DynamicParams = GameState->MMParams.DynamicParams;
     entity* PlayerEntity = {};
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
-      Gameplay::UpdatePlayer(PlayerEntity, &GameState->Resources, Input, &GameState->Camera,
-                             &GameState->MMData, GameState->PlayerSpeed);
+      Gameplay::UpdatePlayer(PlayerEntity, GameState->TemporaryMemStack, &GameState->Resources,
+                             Input, &GameState->Camera, &GameState->MMData, GameState->PlayerSpeed);
     }
   }
 
