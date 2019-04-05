@@ -16,12 +16,12 @@ timer_event_autoclose_wrapper::timer_event_autoclose_wrapper(int32_t BlockEnumVa
 {
   this->NameTableIndex = BlockEnumValue;
   this->IndexInFrame   = g_CurrentTimerEventCount;
-  GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount]
-    .StartCycleCount = __rdtsc();
-  GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount].EventDepth =
+  GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][this->IndexInFrame].StartCycleCount =
+    __rdtsc();
+  GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][this->IndexInFrame].EventDepth =
     g_CurrentTimerEventDepth;
-  GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount]
-    .NameTableIndex = this->NameTableIndex;
+  GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][this->IndexInFrame].NameTableIndex =
+    this->NameTableIndex;
   ++g_CurrentTimerEventCount;
   ++g_CurrentTimerEventDepth;
 }
@@ -32,12 +32,11 @@ timer_event_autoclose_wrapper::~timer_event_autoclose_wrapper()
     __rdtsc();
   GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][this->NameTableIndex].CycleCount +=
     GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][this->IndexInFrame].EndCycleCount -
-    GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount]
-      .StartCycleCount;
+    GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][this->IndexInFrame].StartCycleCount;
   GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][this->NameTableIndex].Calls++;
   --g_CurrentTimerEventDepth;
 }
 
 gpu_timer_event GPU_TIMER_EVENT_TABLE[PROFILE_MAX_FRAME_COUNT + 1][GPU_TIMER_EnumCount];
 uint32_t        GPU_QUERY_OBJECT_TABLE[GPU_TIMER_EnumCount];
-#endif //USE_DEBUG_PROFILING
+#endif // USE_DEBUG_PROFILING

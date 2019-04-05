@@ -68,14 +68,14 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
 
     mm_frame_info AnimGoal = {};
     {
-      vec3 ModelSpaceVelocity =
+      vec3 DesiredModelSpaceVelocity =
         Math::MulMat4Vec4(InvModelMatrix,
                           vec4{ MMData->Params.DynamicParams.TrajectoryTimeHorizon * Dir * Speed,
                                 0 })
           .XYZ;
       int32_t CurrentAnimIndex = g_BlendInfos.Peek().AnimStateIndex;
       AnimGoal = GetCurrentFrameGoal(TempAlocator, CurrentAnimIndex, Player->AnimController,
-                                     vec3{ 0, 0, 1 }, ModelSpaceVelocity, MMData->Params);
+                                     DesiredModelSpaceVelocity, MMData->Params);
     }
 
     // Visualize the current goal
@@ -130,14 +130,15 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
       }
     }
 
-    if(0.25f < Math::Length(Dir))
     {
       int32_t NewAnimIndex;
       int32_t StartFrameIndex;
-      float   BestCost = MotionMatch(&NewAnimIndex, &StartFrameIndex, MMData, AnimGoal);
+
+      mm_frame_info BestMatch = {};
+      float BestCost = MotionMatch(&NewAnimIndex, &StartFrameIndex, &BestMatch, MMData, AnimGoal);
       const Anim::animation* MatchedAnim =
         Resources->GetAnimation(MMData->Params.AnimRIDs[NewAnimIndex]);
-      const float AnimStartTime          = (((float)StartFrameIndex) / MatchedAnim->KeyframeCount) *
+      const float AnimStartTime = (((float)StartFrameIndex) / MatchedAnim->KeyframeCount) *
                                   Anim::GetAnimDuration(MatchedAnim);
 
       // Figure out if matched frame is sufficiently far away from the current to start a new
@@ -151,10 +152,12 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
 
       if(Player->AnimController->AnimationIDs[ActiveStateIndex].Value !=
            MMData->Params.AnimRIDs[NewAnimIndex].Value ||
-         AbsFloat(ActiveAnimLocalTime - AnimStartTime) >= MMData->Params.DynamicParams.MinTimeOffsetThreshold)
+         AbsFloat(ActiveAnimLocalTime - AnimStartTime) >=
+           MMData->Params.DynamicParams.MinTimeOffsetThreshold)
       {
-				//TODO(Lukas): there is an off by one error here when the first frame is skipped during the FrameInfo build
-        LastMatch = MMData->FrameInfos[MMData->AnimFrameRanges[NewAnimIndex].Start + StartFrameIndex];
+        // TODO(Lukas): there is an off by one error here when the first frame is skipped during the
+        // FrameInfo build
+        LastMatch = BestMatch;
         PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[NewAnimIndex], AnimStartTime,
                       MMData->Params.DynamicParams.BelndInTime);
       }

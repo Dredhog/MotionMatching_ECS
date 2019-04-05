@@ -2,15 +2,16 @@
 #include "misc.h"
 
 circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos            = {};
-int g_CurrentAnimStateIndex = 0;
+int                                                           g_CurrentAnimStateIndex = 0;
 
-void ResetBlendStack()
+void
+ResetBlendStack()
 {
-	g_CurrentAnimStateIndex = 0;
-  g_BlendInfos.Clear();
+  //g_CurrentAnimStateIndex = 0;
+  //g_BlendInfos.Clear();
 }
 
-//TODO(Lukas): Remove assumption that playback rate is 1
+// TODO(Lukas): Remove assumption that playback rate is 1
 void
 PlayAnimation(Anim::animation_controller* C, rid NewAnimRID, float LocalStartTime,
               float BlendInTime)
@@ -58,12 +59,12 @@ ThirdPersonBelndFuncStopUnusedAnimations(Anim::animation_controller* C)
       (C->GlobalTimeSec - g_BlendInfos[i].GlobalStartTime) / g_BlendInfos[i].Duration;
     if(1.0f <= UnclampedBlendAmount)
     {
-			for(int a = 0; a < i; a++)
-			{
+      for(int a = 0; a < i; a++)
+      {
         blend_in_info RemovedInfo                   = g_BlendInfos.PopBack();
         C->AnimationIDs[RemovedInfo.AnimStateIndex] = {};
-				C->Animations[RemovedInfo.AnimStateIndex]   = {};
-			}
+        C->Animations[RemovedInfo.AnimStateIndex]   = {};
+      }
       break;
     }
   }

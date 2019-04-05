@@ -113,8 +113,8 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
 
 mm_frame_info
 GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex,
-                    const Anim::animation_controller* Controller, vec3 StartVelocity,
-                    vec3 EndVelocity, mm_matching_params Params)
+                    const Anim::animation_controller* Controller, vec3 DesiredVelocity,
+                    mm_matching_params Params)
 {
   mm_frame_info  ResultInfo  = {};
   Memory::marker StackMarker = TempAlloc->GetMarker();
@@ -127,6 +127,12 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
     PushArray(TempAlloc, Controller->Skeleton->BoneCount, Anim::transform);
   mat4* TempMatrices = PushArray(TempAlloc, Controller->Skeleton->BoneCount, mat4);
 
+  vec3    StartVelocity;
+  mat4    CurrentRootMatrix;
+  mat4    InvCurrentRootMatrix;
+  mat4    NextRootMatrix;
+  mat4    InvNextRootMatrix;
+  int32_t HipIndex = 0;
   {
     // Sample the most recent animation's current frame
     {
@@ -137,17 +143,16 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
       ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Controller->Skeleton);
     }
-    mat4    RootMatrix;
-    mat4    InvRootMatrix;
-    int32_t HipIndex = 0;
-    Anim::GetRootAndInvRootMatrices(&RootMatrix, &InvRootMatrix, TempMatrices[HipIndex]);
+    Anim::GetRootAndInvRootMatrices(&CurrentRootMatrix, &InvCurrentRootMatrix,
+                                    TempMatrices[HipIndex]);
 
     // Store the current positions
     {
       for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
       {
         ResultInfo.BonePs[b] =
-          Math::MulMat4(InvRootMatrix, TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
+          Math::MulMat4(InvCurrentRootMatrix,
+                        TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
             .T;
       }
     }
@@ -169,19 +174,18 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
 
     // Compute bone linear velocities
     {
-      mat4    RootMatrix;
-      mat4    InvRootMatrix;
-      int32_t HipIndex = 0;
-      Anim::GetRootAndInvRootMatrices(&RootMatrix, &InvRootMatrix, TempMatrices[HipIndex]);
+      Anim::GetRootAndInvRootMatrices(&NextRootMatrix, &InvNextRootMatrix, TempMatrices[HipIndex]);
       for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
       {
         ResultInfo.BoneVs[b] =
-          (Math::MulMat4(InvRootMatrix, TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
+          (Math::MulMat4(InvNextRootMatrix,
+                         TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
              .T -
            ResultInfo.BonePs[b]) /
           Delta;
       }
     }
+    StartVelocity = Math::MulMat4(InvCurrentRootMatrix, NextRootMatrix).T / Delta;
   }
 
   // Extract desired sampled trajectory
@@ -202,7 +206,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
 
         float t = Elapsed / TimeHorizon;
 
-        CurrentVelocity = (1.0f - t) * StartVelocity + t * EndVelocity;
+        CurrentVelocity = (1.0f - t) * StartVelocity + t * DesiredVelocity;
       }
 
       ResultInfo.TrajectoryPs[p] = CurrentPoint;
@@ -243,8 +247,8 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
 }
 
 float
-MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, const mm_controller_data* MMData,
-            mm_frame_info Goal)
+MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* BestMatch,
+            const mm_controller_data* MMData, mm_frame_info Goal)
 {
   assert(OutAnimIndex && OutStartFrameIndex);
   assert(MMData);
@@ -275,6 +279,7 @@ MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, const mm_control
     {
       *OutAnimIndex = a;
       *OutStartFrameIndex = BestFrameInfoIndex - CurrentRange.Start + g_FirstMatchedFrameIndex;
+      *BestMatch          = MMData->FrameInfos[BestFrameInfoIndex];
     }
   }
 

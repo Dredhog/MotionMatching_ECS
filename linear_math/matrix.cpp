@@ -66,7 +66,7 @@ namespace Math
     return Result;
   }
 
-  inline mat4
+  mat4
   MulMat4(mat4 A, mat4 B)
   {
     mat4 Result;

@@ -459,7 +459,7 @@ main(int argc, char* argv[])
       assert("error: unable to initialize memory" && 0);
       GameMemory.TemporaryMemorySize  = 0;
       GameMemory.PersistentMemorySize = 0;
-      GameMemory.HasBeenInitialized   = true;
+      GameMemory.HasBeenInitialized   = false;
     }
   }
 

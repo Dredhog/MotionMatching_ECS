@@ -463,7 +463,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMParams.DynamicParams.VelCoefficient         = 1.0f;
     GameState->MMParams.DynamicParams.TrajCoefficient        = 1.0f;
     GameState->MMParams.DynamicParams.TrajectoryTimeHorizon  = 1.0f;
-    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold = 0.0f;
+    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold = 0.2f;
     GameState->MMParams.DynamicParams.BelndInTime            = 0.2f;
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(4);
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(10);

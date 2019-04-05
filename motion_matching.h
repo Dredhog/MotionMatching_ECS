@@ -54,11 +54,11 @@ struct mm_controller_data
 };
 
 mm_frame_info      GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex,
-                                       const Anim::animation_controller* Controller, vec3 StartVelocity,
-                                       vec3 EndVelocity, mm_matching_params Params);
+                                       const Anim::animation_controller* Controller,
+                                       vec3 DesiredVelocity, mm_matching_params Params);
 mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
                                            Resource::resource_manager* Resources,
                                            mm_matching_params          Params,
                                            const Anim::skeleton*       Skeleton);
-float              MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex,
-                               const mm_controller_data* MMData, mm_frame_info Goal);
+float MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* BestMatch,
+                  const mm_controller_data* MMData, mm_frame_info Goal);

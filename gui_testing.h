@@ -48,6 +48,11 @@ namespace UI
 
     UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
     {
+      {
+        //char TempBuffer[32];
+        //sprintf(TempBuffer, "dt: %.4f", Input->dt);
+        //UI::Text(TempBuffer);
+      }
       UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings,
                 SELECT_EnumCount, UI::StringArrayToString);
 
@@ -610,7 +615,8 @@ namespace UI
         UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
         UI::SliderFloat("Position Coefficient", &GameState->MMParams.DynamicParams.PosCoefficient,
                         0, 2);
-        UI::SliderFloat("Velocity Coefficient", &GameState->MMParams.DynamicParams.VelCoefficient, 0, 2);
+        UI::SliderFloat("Velocity Coefficient", &GameState->MMParams.DynamicParams.VelCoefficient,
+                        0, 2);
         UI::SliderFloat("Trajectory Coefficient",
                         &GameState->MMParams.DynamicParams.TrajCoefficient, 0, 2);
         UI::SliderFloat("BlendInTime", &GameState->MMParams.DynamicParams.BelndInTime, 0, 2);

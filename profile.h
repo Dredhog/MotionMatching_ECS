@@ -303,7 +303,7 @@ struct gpu_timer_event_autoclose_wrapper
     EndCycleCount##ID;                                                                             \
   GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][TIMER_NAME_##ID].CycleCount +=     \
     EndCycleCount##ID -                                                                            \
-    GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][g_CurrentTimerEventCount]          \
+    GLOBAL_FRAME_TIMER_EVENT_TABLE[g_CurrentProfilerFrameIndex][FrameEventIndex##ID]          \
       .StartCycleCount;                                                                            \
   GLOBAL_TIMER_FRAME_SUMMARY_TABLE[g_CurrentProfilerFrameIndex][TIMER_NAME_##ID].Calls++;          \
   --g_CurrentTimerEventDepth;
