@@ -143,7 +143,7 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
 
       // Figure out if matched frame is sufficiently far away from the current to start a new
       // animation
-      int   ActiveStateIndex = (g_BlendInfos.Empty()) ? -1 : g_BlendInfos.PeekBack().AnimStateIndex;
+      int   ActiveStateIndex = (g_BlendInfos.Empty()) ? -1 : g_BlendInfos.Peek().AnimStateIndex;
       float ActiveAnimLocalTime =
         (ActiveStateIndex != -1)
           ? Anim::GetLoopedSampleTime(Player->AnimController, ActiveStateIndex,
@@ -168,7 +168,7 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
     // Root motion
     if(0 < g_BlendInfos.m_Count)
     {
-      int              AnimationIndex = g_BlendInfos.PeekBack().AnimStateIndex;
+      int              AnimationIndex = g_BlendInfos.Peek().AnimStateIndex;
       Anim::animation* RootMotionAnim =
         Resources->GetAnimation(Player->AnimController->AnimationIDs[AnimationIndex]);
       // TODO(Lukas): there should not be any fetching from RIDs here, the animations are known in advance

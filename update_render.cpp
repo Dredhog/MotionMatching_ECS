@@ -33,6 +33,7 @@
 #include "rendering.h"
 #include "post_processing.h"
 
+//TODO remove these globals
 extern bool g_VisualizeContactPoints;
 extern bool g_VisualizeContactManifold;
 
@@ -448,8 +449,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   Debug::DrawQuads(GameState);
   Debug::ClearDrawArrays();
-  Text::ClearTextRequestCounts();
   END_TIMED_BLOCK(DebugDrawingSubmission);
+  Text::ClearTextRequestCounts();
 
   END_TIMED_BLOCK(Render);
   READ_GPU_QUERY_TIMERS();

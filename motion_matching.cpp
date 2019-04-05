@@ -1,5 +1,6 @@
 #include "motion_matching.h"
 #include "misc.h"
+#include "profile.h"
 
 #define MM_MAX_FRAME_INFO_COUNT 10 * 60 * 120
 
@@ -13,6 +14,7 @@ mm_controller_data
 PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_manager* Resources,
                         mm_matching_params Params, const Anim::skeleton* Skeleton)
 {
+  TIMED_BLOCK(BuildMotionSet);
   Memory::marker FuncStartMemoryMarker = TempAlloc->GetMarker();
   mat4*          TempMatrices = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
 
@@ -250,6 +252,7 @@ float
 MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* BestMatch,
             const mm_controller_data* MMData, mm_frame_info Goal)
 {
+	TIMED_BLOCK(MotionMatch);
   assert(OutAnimIndex && OutStartFrameIndex);
   assert(MMData);
   assert(MMData->FrameInfos.IsValid());

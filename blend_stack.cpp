@@ -1,8 +1,7 @@
 #include "blend_stack.h"
 #include "misc.h"
 
-circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos            = {};
-int                                                           g_CurrentAnimStateIndex = 0;
+circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos = {};
 
 void
 ResetBlendStack()
@@ -19,22 +18,22 @@ PlayAnimation(Anim::animation_controller* C, rid NewAnimRID, float LocalStartTim
   blend_in_info AnimBlend   = {};
   AnimBlend.Duration        = BlendInTime;
   AnimBlend.GlobalStartTime = C->GlobalTimeSec;
-  AnimBlend.AnimStateIndex  = g_CurrentAnimStateIndex;
+  AnimBlend.AnimStateIndex  = (g_BlendInfos.Empty()) ? 0
+                                                    : (g_BlendInfos.Peek().AnimStateIndex + 1) %
+                                                        ANIM_CONTROLLER_MAX_ANIM_COUNT;
   g_BlendInfos.Push(AnimBlend);
 
-  Anim::SetAnimation(C, NewAnimRID, g_CurrentAnimStateIndex);
-  Anim::StartAnimationAtGlobalTime(C, g_CurrentAnimStateIndex, false, LocalStartTime);
+  Anim::SetAnimation(C, NewAnimRID, AnimBlend.AnimStateIndex);
+  Anim::StartAnimationAtGlobalTime(C, AnimBlend.AnimStateIndex, false, LocalStartTime);
 
   C->AnimStateCount = g_BlendInfos.GetCapacity();
-
-  g_CurrentAnimStateIndex = (g_CurrentAnimStateIndex + 1) % g_BlendInfos.GetCapacity();
 }
 
 // Deferred execution inside of the animation system
 void
 ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
 {
-  if(0 < g_BlendInfos.m_Count)
+  if(!g_BlendInfos.Empty())
   {
     // In order from oldest to most recent
     Anim::SampleAtGlobalTime(C, g_BlendInfos[0].AnimStateIndex, 0);

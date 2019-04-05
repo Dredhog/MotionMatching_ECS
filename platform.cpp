@@ -381,7 +381,7 @@ Init(SDL_Window** Window)
     // window creation or input handling.
     *Window =
       SDL_CreateWindow("ngpe - Non general-purpose engine", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
-                       SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_ALLOW_HIGHDPI);
+                       SDL_WINDOW_OPENGL | /*SDL_WINDOW_FULLSCREEN |*/ SDL_WINDOW_ALLOW_HIGHDPI);
 
     if(!Window)
     {
@@ -489,6 +489,9 @@ main(int argc, char* argv[])
     {
       NewInput.dt *= SLOW_MOTION_COEFFICIENT;
     }
+#if 0
+    NewInput.dt = 1.0f/240;
+#endif
 
     GameUpdateAndRender(GameMemory, &NewInput);
 
