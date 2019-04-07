@@ -82,6 +82,75 @@ namespace Math
     return Result;
   }
 
+  inline float
+  ReciprocalSqrt(float x)
+  {
+    long  i;
+    float y, r;
+    y = x * 0.5f;
+    i = *(long*)(&x);
+    i = 0x5f3759df - (i >> 1);
+    r = *(float*)(&i);
+    r = r * (1.5f - r * r * y);
+    return r;
+  }
+
+  inline quat
+  Mat4ToQuat(const mat4& OriginalM)
+  {
+    quat         q;
+    const float* m = (float*)&OriginalM;
+    if(m[0 + 4 * 0] + m[1 + 4 * 1] + m[2 + 4 * 2] > 0.0f)
+    {
+      float t = +m[0 + 4 * 0] + m[1 + 4 * 1] + m[2 + 4 * 2] + 1.0f;
+      float s = ReciprocalSqrt(t) * 0.5f;
+
+      q.S = s * t;
+      q.V.Z = (m[0 + 4 * 1] - m[1 + 4 * 0]) * s;
+      q.V.Y = (m[2 + 4 * 0] - m[0 + 4 * 2]) * s;
+      q.V.X = (m[1 + 4 * 2] - m[2 + 4 * 1]) * s;
+    }
+    else if(m[0 + 4 * 0] > m[1 + 4 * 1] && m[0 + 4 * 0] > m[2 + 4 * 2])
+    {
+      float t = +m[0 + 4 * 0] - m[1 + 4 * 1] - m[2 + 4 * 2] + 1.0f;
+      float s = ReciprocalSqrt(t) * 0.5f;
+
+      q.V.X = s * t;
+      q.V.Y = (m[0 + 4 * 1] + m[1 + 4 * 0]) * s;
+      q.V.Z = (m[2 + 4 * 0] + m[0 + 4 * 2]) * s;
+      q.S = (m[1 + 4 * 2] - m[2 + 4 * 1]) * s;
+    }
+    else if(m[1 * 4 + 1] > m[2 * 4 + 2])
+    {
+      float t = -m[0 + 4 * 0] + m[1 + 4 * 1] - m[2 + 4 * 2] + 1.0f;
+      float s = ReciprocalSqrt(t) * 0.5f;
+
+      q.V.Y = s * t;
+      q.V.X = (m[0 + 4 * 1] + m[1 + 4 * 0]) * s;
+      q.S = (m[2 + 4 * 0] - m[0 + 4 * 2]) * s;
+      q.V.Z = (m[1 + 4 * 2] + m[2 + 4 * 1]) * s;
+    }
+    else
+    {
+      float t = -m[0 + 4 * 0] - m[1 + 4 * 1] + m[2 + 4 * 2] + 1.0f;
+      float s = ReciprocalSqrt(t) * 0.5f;
+
+      q.V.Z = s * t;
+      q.S = (m[0 + 4 * 1] - m[1 + 4 * 0]) * s;
+      q.V.X = (m[2 + 4 * 0] + m[0 + 4 * 2]) * s;
+      q.V.Y = (m[1 + 4 * 2] + m[2 + 4 * 1]) * s;
+    }
+    // Conjugation (hopefully this is enought for rotation quaternions :D)
+    q.V *= -1;
+    return q;
+  }
+
+  inline float
+  Length(quat Q)
+  {
+    return sqrtf(Q.S * Q.S + Q.i * Q.i + Q.j * Q.j + Q.k * Q.k);
+  }
+
   inline mat4
   Mat4Rotate(const quat& Q)
   {
@@ -139,7 +208,6 @@ namespace Math
     return EulerToQuat(Rotation.X, Rotation.Y, Rotation.Z);
   }
 
-
   inline vec3
   QuatToEuler(quat Q)
   {
@@ -165,12 +233,6 @@ namespace Math
     return Result;
   }
 
-  inline float
-  Length(quat Q)
-  {
-    return sqrtf(Q.S * Q.S + Q.i * Q.i + Q.j * Q.j + Q.k * Q.k);
-  }
-
   inline quat&
   Normalize(quat* Q)
   {
@@ -190,13 +252,14 @@ namespace Math
     return Result;
   }
 
-	inline quat QuatFromTo(vec3 From, vec3 To)
-	{
-		quat Result;
+  inline quat
+  QuatFromTo(vec3 From, vec3 To)
+  {
+    quat Result;
     Result.V = Math::Cross(From, To);
-		Result.S = Math::Length(From)*Math::Length(To) + Math::Dot(From, To);
-		Math::Normalize(&Result);
-		return Result;
+    Result.S = Math::Length(From) * Math::Length(To) + Math::Dot(From, To);
+    Math::Normalize(&Result);
+    return Result;
   }
 
   inline quat
@@ -205,7 +268,7 @@ namespace Math
     quat Result = {};
 
     // Compute the cosine of the angle between the two vectors.
-    float Dot = Math::Dot(Q0.V, Q1.V) + Q0.S*Q1.S;
+    float Dot = Math::Dot(Q0.V, Q1.V) + Q0.S * Q1.S;
 
     // If the dot product is negative, slerp won't take
     // the shorter path. Note that v1 and -v1 are equivalent when
@@ -219,7 +282,7 @@ namespace Math
       Dot = -Dot;
     }
     Result = (1.0f - t) * Q0 + t * Q1;
-		Normalize(&Result);
+    Normalize(&Result);
     return Result;
   }
 }

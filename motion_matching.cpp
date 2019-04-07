@@ -2,13 +2,15 @@
 #include "misc.h"
 #include "profile.h"
 
+#include <cfloat>
+
 #define MM_MAX_FRAME_INFO_COUNT 10 * 60 * 120
 
 // TODO(Lukas): move this to a propper part of memory, likely a seperate mm resource heap
 mm_frame_info g_MMStorageArray[MM_MAX_FRAME_INFO_COUNT];
 
 const int32_t g_FirstMatchedFrameIndex = 1;
-//Copy the velocity for the last frame
+// Copy the velocity for the last frame
 
 mm_controller_data
 PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_manager* Resources,
@@ -16,9 +18,9 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
 {
   TIMED_BLOCK(BuildMotionSet);
   Memory::marker FuncStartMemoryMarker = TempAlloc->GetMarker();
-  mat4*          TempMatrices = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
+  mat4*          TempMatrices          = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
 
-  mm_controller_data MMData = {}; //ZII
+  mm_controller_data MMData = {}; // ZII
   MMData.Params             = Params;
 
   stack_handle<mm_frame_info> FrameInfoStack = {};
@@ -95,8 +97,8 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       }
     }
 
-		if(0 < NewFrameInfoCount)
-		{
+    if(0 < NewFrameInfoCount)
+    {
       int32_t LastFrameIndex = NewFrameInfoCount - 1;
       // Copy the velocity for the last frame
       // Last frames data
@@ -114,7 +116,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
 }
 
 mm_frame_info
-GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex,
+GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
                     const Anim::animation_controller* Controller, vec3 DesiredVelocity,
                     mm_matching_params Params)
 {
@@ -122,7 +124,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
   Memory::marker StackMarker = TempAlloc->GetMarker();
 
   const Anim::animation* CurrentAnim = Controller->Animations[CurrentAnimIndex];
-  assert(Controller->Animations[CurrentAnimIndex]);
+  assert(CurrentAnim);
 
   // Allocate temporary transforms and matrices
   Anim::transform* TempTransforms =
@@ -190,6 +192,13 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
     StartVelocity = Math::MulMat4(InvCurrentRootMatrix, NextRootMatrix).T / Delta;
   }
 
+  if(Mirror)
+  {
+    vec3 MirrorMatDiagonal = { -1, 1, 1 };
+    MirrorGoalJoints(&ResultInfo, MirrorMatDiagonal, Params.FixedParams);
+    StartVelocity.X *= MirrorMatDiagonal.X;
+  }
+
   // Extract desired sampled trajectory
   {
     const float TimeHorizon = 1.0f;
@@ -219,6 +228,45 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
   return ResultInfo;
 }
 
+void
+MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal, const mm_fixed_params& Params)
+{
+  assert(AbsFloat(MirrorMatDiagonal.X) + AbsFloat(MirrorMatDiagonal.Y) +
+           AbsFloat(MirrorMatDiagonal.Z) ==
+         3.0f);
+  mat3          MirrorMatrix = Math::Mat3Scale(MirrorMatDiagonal);
+  mm_frame_info OriginalInfo = *InOutInfo;
+
+  // Mirror the bone positions and velocities
+  for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
+  {
+    int32_t MirrorIndex  = Params.MirroredComparisonIndexIndices[i];
+    InOutInfo->BonePs[i] = Math::MulMat3Vec3(MirrorMatrix, OriginalInfo.BonePs[MirrorIndex]);
+    InOutInfo->BoneVs[i] = Math::MulMat3Vec3(MirrorMatrix, OriginalInfo.BoneVs[MirrorIndex]);
+  }
+}
+
+mm_frame_info
+GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
+                     const mm_fixed_params& Params)
+{
+  mm_frame_info MirroredInfo = OriginalInfo;
+
+  assert(AbsFloat(MirrorMatDiagonal.X) + AbsFloat(MirrorMatDiagonal.Y) +
+           AbsFloat(MirrorMatDiagonal.Z) ==
+         3.0f);
+  MirrorGoalJoints(&MirroredInfo, MirrorMatDiagonal, Params);
+
+  mat3 MirrorMatrix = Math::Mat3Scale(MirrorMatDiagonal);
+  // Mirror the trajectory positions
+  for(int i = 0; i < MM_POINT_COUNT; i++)
+  {
+    MirroredInfo.TrajectoryPs[i] = Math::MulMat3Vec3(MirrorMatrix, OriginalInfo.TrajectoryPs[i]);
+  }
+
+  return MirroredInfo;
+}
+
 float
 ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float VelCoef,
             float TrajCoef)
@@ -227,7 +275,7 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 Diff = A.BonePs[b] - B.BonePs[b];
-    PosDiffSum +=  Math::Dot(Diff, Diff);
+    PosDiffSum += Math::Dot(Diff, Diff);
   }
 
   float VelDiffSum = 0.0f;
@@ -237,39 +285,42 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
     VelDiffSum += Math::Dot(VelDiff, VelDiff);
   }
 
-	float TrajDiffSum = 0.0f;
+  float TrajDiffSum = 0.0f;
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
     vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
     TrajDiffSum += Math::Dot(Diff, Diff);
   }
 
-  float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajDiffSum * TrajDiffSum;
+  float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum;
   return Cost;
 }
 
 float
-MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* BestMatch,
+MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* OutBestMatch,
             const mm_controller_data* MMData, mm_frame_info Goal)
 {
-	TIMED_BLOCK(MotionMatch);
+  TIMED_BLOCK(MotionMatch);
   assert(OutAnimIndex && OutStartFrameIndex);
   assert(MMData);
   assert(MMData->FrameInfos.IsValid());
 
-  // TODO(Lukas) Change this number to float infinity
-  float   SmallestCost       = 100000000;
+  mm_frame_info MirroredGoal = GetMirroredFrameGoal(Goal, { -1, 1, 1 }, MMData->Params.FixedParams);
+
+  float   SmallestCost       = FLT_MAX;
   int32_t BestFrameInfoIndex = -1;
   for(int i = 0; i < MMData->FrameInfos.Count; i++)
   {
-    float CurrentCost =
-      ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.PosCoefficient,
-                  MMData->Params.DynamicParams.VelCoefficient,
-                  MMData->Params.DynamicParams.TrajCoefficient);
-    if(CurrentCost < SmallestCost)
     {
-      SmallestCost       = CurrentCost;
-      BestFrameInfoIndex = i;
+      float CurrentCost =
+        ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.PosCoefficient,
+                    MMData->Params.DynamicParams.VelCoefficient,
+                    MMData->Params.DynamicParams.TrajCoefficient);
+      if(CurrentCost < SmallestCost)
+      {
+        SmallestCost       = CurrentCost;
+        BestFrameInfoIndex = i;
+      }
     }
   }
 
@@ -280,11 +331,74 @@ MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* B
     int32_range CurrentRange = MMData->AnimFrameRanges[a];
     if(CurrentRange.Start <= BestFrameInfoIndex && BestFrameInfoIndex < CurrentRange.End)
     {
-      *OutAnimIndex = a;
+      *OutAnimIndex       = a;
       *OutStartFrameIndex = BestFrameInfoIndex - CurrentRange.Start + g_FirstMatchedFrameIndex;
-      *BestMatch          = MMData->FrameInfos[BestFrameInfoIndex];
+      *OutBestMatch       = MMData->FrameInfos[BestFrameInfoIndex];
     }
   }
+
+  return SmallestCost;
+}
+
+float
+MotionMatchWithMirrors(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex,
+                       mm_frame_info* OutBestMatch, bool* OutMatchedMirrored,
+                       const mm_controller_data* MMData, mm_frame_info Goal)
+{
+  TIMED_BLOCK(MotionMatch);
+  assert(OutAnimIndex && OutStartFrameIndex);
+  assert(MMData);
+  assert(MMData->FrameInfos.IsValid());
+
+  mm_frame_info MirroredGoal = GetMirroredFrameGoal(Goal, { -1, 1, 1 }, MMData->Params.FixedParams);
+
+  // TODO(Lukas) Change this number to FLT_MAX
+  float   SmallestCost       = FLT_MAX;
+  int32_t BestFrameInfoIndex = -1;
+  bool    MatchIsMirrored    = false;
+  for(int i = 0; i < MMData->FrameInfos.Count; i++)
+  {
+    {
+      float CurrentCost =
+        ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.PosCoefficient,
+                    MMData->Params.DynamicParams.VelCoefficient,
+                    MMData->Params.DynamicParams.TrajCoefficient);
+      if(CurrentCost < SmallestCost)
+      {
+        SmallestCost       = CurrentCost;
+        BestFrameInfoIndex = i;
+        MatchIsMirrored    = false;
+      }
+    }
+
+    {
+      float MirroredCost = ComputeCost(MirroredGoal, MMData->FrameInfos[i],
+                                       MMData->Params.DynamicParams.PosCoefficient,
+                                       MMData->Params.DynamicParams.VelCoefficient,
+                                       MMData->Params.DynamicParams.TrajCoefficient);
+
+      if(MirroredCost < SmallestCost)
+      {
+        SmallestCost       = MirroredCost;
+        BestFrameInfoIndex = i;
+        MatchIsMirrored    = true;
+      }
+    }
+  }
+
+  assert(BestFrameInfoIndex != -1);
+
+  for(int a = 0; a < MMData->AnimFrameRanges.Count; a++)
+  {
+    int32_range CurrentRange = MMData->AnimFrameRanges[a];
+    if(CurrentRange.Start <= BestFrameInfoIndex && BestFrameInfoIndex < CurrentRange.End)
+    {
+      *OutAnimIndex       = a;
+      *OutStartFrameIndex = BestFrameInfoIndex - CurrentRange.Start + g_FirstMatchedFrameIndex;
+      *OutBestMatch       = MMData->FrameInfos[BestFrameInfoIndex];
+    }
+  }
+  *OutMatchedMirrored = MatchIsMirrored;
 
   return SmallestCost;
 }

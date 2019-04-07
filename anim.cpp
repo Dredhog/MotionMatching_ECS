@@ -1,11 +1,12 @@
 #include "anim.h"
+#include "misc.h"
 
 float
 Anim::GetLoopedSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
-                    float GlobalTimeSec)
+                          float GlobalTimeSec)
 {
-  const animation_state* State     = &Controller->States[AnimationIndex];
-  const animation*       Animation = Controller->Animations[AnimationIndex];
+  const animation_state* State        = &Controller->States[AnimationIndex];
+  const animation*       Animation    = Controller->Animations[AnimationIndex];
   const float            AnimDuration = GetAnimDuration(Animation);
 
   float SampleTime = State->PlaybackRateSec * (GlobalTimeSec - State->StartTimeSec);
@@ -22,11 +23,89 @@ Anim::GetLoopedSampleTime(const Anim::animation_controller* Controller, int Anim
 
 void
 Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
-                         int OutputBlockIndex)
+                         int OutputBlockIndex, const Anim::skeleton_mirror_info* MirrorInfo)
 {
   assert(0 <= OutputBlockIndex && OutputBlockIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
-  float SampleTime = Anim::GetLoopedSampleTime(Controller, AnimationIndex, Controller->GlobalTimeSec);
-  LinearAnimationSample(Controller, AnimationIndex, SampleTime, OutputBlockIndex);
+  float SampleTime =
+    Anim::GetLoopedSampleTime(Controller, AnimationIndex, Controller->GlobalTimeSec);
+  if(MirrorInfo)
+  {
+    LinearMirroredAnimationSample(Controller, AnimationIndex, SampleTime, OutputBlockIndex,
+                                  MirrorInfo);
+  }
+  else
+  {
+    LinearAnimationSample(Controller, AnimationIndex, SampleTime, OutputBlockIndex);
+  }
+}
+
+void
+Anim::LinearMirroredAnimationSample(Anim::animation_controller* Controller, int AnimIndex,
+                                    float Time, int ResultIndex,
+                                    const skeleton_mirror_info* MirrorInfo)
+{
+  assert(0 <= AnimIndex && AnimIndex < Controller->AnimStateCount);
+  assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
+  const Anim::animation* Animation = Controller->Animations[AnimIndex];
+  LinearMirroredAnimationSample(&Controller
+                                   ->OutputTransforms[Animation->ChannelCount * ResultIndex],
+                                Controller->ModelSpaceMatrices, Controller->Skeleton, Animation,
+                                Time, MirrorInfo);
+}
+
+void
+Anim::LinearMirroredAnimationSample(Anim::transform* OutputTransforms, mat4* TempMatrices,
+                                    const skeleton* Skeleton, const Anim::animation* Animation,
+                                    float Time, const Anim::skeleton_mirror_info* MirrorInfo)
+{
+  assert(OutputTransforms);
+  assert(TempMatrices);
+  assert(Skeleton);
+  Anim::LinearAnimationSample(OutputTransforms, Animation, Time);
+
+  // Compute the skeleton skinning matrices
+  ComputeBoneSpacePoses(TempMatrices, OutputTransforms, Skeleton->BoneCount);
+  ComputeModelSpacePoses(TempMatrices, TempMatrices, Skeleton);
+
+#if 1
+  assert(MirrorInfo);
+  assert(AbsFloat(MirrorInfo->MirrorBasisScales.X) + AbsFloat(MirrorInfo->MirrorBasisScales.Y) +
+           AbsFloat(MirrorInfo->MirrorBasisScales.Z) ==
+         3.0f);
+
+  mat4 MirrorMatrix = Math::Mat4Scale(MirrorInfo->MirrorBasisScales);
+  // Mirror the matrices and put them into their appropriate places
+  for(int i = 0; i < MirrorInfo->BoneCount; i++)
+  {
+    int a = MirrorInfo->BoneMirrorIndices[i].a;
+    int b = MirrorInfo->BoneMirrorIndices[i].b;
+
+    mat4 MatA = TempMatrices[a];
+
+    mat4 MatB = TempMatrices[b];
+
+    // Mirror a
+    MatA = Math::MulMat4(MirrorMatrix, MatA);
+    // Mirror b
+    MatB = Math::MulMat4(MirrorMatrix, MatB);
+
+    // Undo the handedness change
+    MatA.X *= MirrorInfo->MirrorBasisScales.X;
+    MatA.Y *= MirrorInfo->MirrorBasisScales.Y;
+    MatA.Z *= MirrorInfo->MirrorBasisScales.Z;
+
+    MatB.X *= MirrorInfo->MirrorBasisScales.X;
+    MatB.Y *= MirrorInfo->MirrorBasisScales.Y;
+    MatB.Z *= MirrorInfo->MirrorBasisScales.Z;
+
+    // Store back to the matrix array
+    TempMatrices[a] = MatB;
+    TempMatrices[b] = MatA;
+  }
+#endif
+
+  InverseComputeModelSpacePoses(TempMatrices, TempMatrices, Skeleton);
+  InverseComputeBoneSpacePoses(OutputTransforms, TempMatrices, Animation->ChannelCount);
 }
 
 void
@@ -175,7 +254,7 @@ GetKeyframeIndexAndInterpolant(int* K, float* T, const float* SampleTimes, int S
       *T = (Time - SampleTimes[k]) / (SampleTimes[k + 1] - SampleTimes[k]);
       return;
     }
-	}
+  }
 }
 
 void
@@ -222,31 +301,6 @@ Anim::GetAnimDuration(const Anim::animation* Animation)
   return Animation->SampleTimes[Animation->KeyframeCount - 1] - Animation->SampleTimes[0];
 }
 
-/*Anim::transform
-Anim::GetRootTransform(mat4* OutRootMatrix, mat4 HipMatrix)
-{
-  mat4 RootMatrix = Math::Mat4Ident();
-  vec3 Up      = { 0, 1, 0 };
-  vec3 Right   = Math::Normalized(Math::Cross(Up, HipMatrix.Z));
-  vec3 Forward = Math::Cross(Right, Up);
-
-  mat4 Mat4Root = Math::Mat4Ident();
-  Mat4Root.T    = { HipMatrix.T.X, 0, HipMatrix.T.Z };
-  Mat4Root.Y    = Up;
-  Mat4Root.X    = Right;
-  Mat4Root.Z    = Forward;
-
-  if(OutRootMatrix)
-  {
-    *OutRootMatrix = RootMatrix;
-  }
-
-  if(OutInvRootMatrix)
-  {
-    *OutInvRootMatrix = Math::InvMat4(Mat4Root);
-  }
-}*/
-
 void
 Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat4 HipMatrix)
 {
@@ -282,6 +336,19 @@ Anim::ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Tran
 }
 
 void
+Anim::InverseComputeBoneSpacePoses(Anim::transform* Transforms, const mat4* BoneSpaceMatrices,
+                                   int Count)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    // Extract bone space translation
+    Transforms[i].Rotation    = Math::Mat4ToQuat(BoneSpaceMatrices[i]);
+    Transforms[i].Translation = BoneSpaceMatrices[i].T;
+    Transforms[i].Scale       = { 1, 1, 1 };
+  }
+}
+
+void
 Anim::ComputeModelSpacePoses(mat4* ModelSpaceMatrices, const mat4* BoneSpaceMatrices,
                              const Anim::skeleton* Skeleton)
 {
@@ -290,6 +357,18 @@ Anim::ComputeModelSpacePoses(mat4* ModelSpaceMatrices, const mat4* BoneSpaceMatr
     const Anim::bone* Bone = Skeleton->Bones + i;
     ModelSpaceMatrices[i] =
       Math::MulMat4(Bone->BindPose, Math::MulMat4(BoneSpaceMatrices[i], Bone->InverseBindPose));
+  }
+}
+
+void
+Anim::InverseComputeModelSpacePoses(mat4* BoneSpaceMatrices, const mat4* ModelSpaceMatrices,
+                                    const Anim::skeleton* Skeleton)
+{
+  for(int i = 0; i < Skeleton->BoneCount; i++)
+  {
+    const Anim::bone* Bone = Skeleton->Bones + i;
+    BoneSpaceMatrices[i] =
+      Math::MulMat4(Bone->InverseBindPose, Math::MulMat4(ModelSpaceMatrices[i], Bone->BindPose));
   }
 }
 
@@ -305,3 +384,18 @@ Anim::ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSp
       Math::MulMat4(FinalPoseMatrices[Skeleton->Bones[i].ParentIndex], ModelSpaceMatrices[i]);
   }
 }
+
+/*
+void
+Anim::InverseComputeFinalHierarchicalPoses(mat4* ModelSpaceMatrices, const mat4* FinalPoseMatrices,
+                                           const Anim::skeleton* Skeleton)
+{
+  // Assumes that LocalPoses are ordered from parent to child
+  ModelSpaceMatrices[0] = FinalPoseMatrices[0];
+  for(int i = Skeleton->BoneCount - 1; 1 <= i; i--)
+  {
+    ModelSpaceMatrices[i] =
+      Math::MulMat4(Math::InvMat4(FinalPoseMatrices[Skeleton->Bones[i].ParentIndex]),
+                    FinalPoseMatrices[i]);
+  }
+}*/

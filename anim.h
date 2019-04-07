@@ -43,6 +43,19 @@ namespace Anim
     int32_t     AnimationCount;
   };
 
+  struct int32_pair
+  {
+    int32_t a;
+    int32_t b;
+  };
+
+  struct skeleton_mirror_info
+  {
+    int32_pair BoneMirrorIndices[SKELETON_MAX_BONE_COUNT];
+    int32_t    BoneCount;
+    vec3       MirrorBasisScales;
+  };
+
   struct animation_controller
   {
     skeleton*       Skeleton;
@@ -61,7 +74,8 @@ namespace Anim
   };
 
   // Sampling / Blending
-  void SampleAtGlobalTime(animation_controller*, int AnimationIndex, int OutputBlockIndex);
+  void SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
+                          int OutputBlockIndex, const skeleton_mirror_info* MirrorInfo = NULL);
   void LinearBlend(animation_controller*, int AnimA, int AnimB, float t, int ResultInd);
   void AdditiveBlend(animation_controller*, int AnimBase, int AnimAdd, float t, int ResultInd);
   void UpdateController(animation_controller*, float dt,
@@ -76,9 +90,6 @@ namespace Anim
                                   float LocalStartTime = 0.0f);
   void StartAnimationAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
                                   bool Loop, float LocalStartTime);
-  /*void SetLooping(animation_controller*, Anim::animation_controller* AnimController,
-                  int AnimationIndex, bool Loop = true);*/
-  // void SetPlaybackRate(animation_controller*, int32_t Index, float Rate);
 
   // Blending and sampling facilities
   void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
@@ -88,6 +99,12 @@ namespace Anim
   void LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation,
                              float Time);
   void LinearAnimationSample(animation_controller*, int AnimAInd, float Time, int ResultIndex);
+  void LinearMirroredAnimationSample(Anim::transform* OutputTransforms, mat4* TempMatrices,
+                                     const skeleton* Skeleton, const Anim::animation* Animation,
+                                     float Time, const Anim::skeleton_mirror_info* MirrorInfo);
+  void LinearMirroredAnimationSample(Anim::animation_controller* Controller, int AnimIndex,
+                                     float Time, int ResultIndex,
+                                     const skeleton_mirror_info* MirrorInfo);
   Anim::transform LinearAnimationBoneSample(const Anim::animation* Animation, int BoneIndex,
                                             float Time);
 
@@ -97,6 +114,10 @@ namespace Anim
   void ComputeModelSpacePoses(mat4* ModelSpacePoses, const mat4* BoneSpaceMatrices,
                               const Anim::skeleton* Skeleton);
   void ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSpaceMatrices,
+                                     const Anim::skeleton* Skeleton);
+  void InverseComputeBoneSpacePoses(Anim::transform* Transforms, const mat4* BoneSpaceMatrices,
+                                    int Count);
+  void InverseComputeModelSpacePoses(mat4* BoneSpaceMatrices, const mat4* ModelSpaceMatrices,
                                      const Anim::skeleton* Skeleton);
 
   // Helper functions

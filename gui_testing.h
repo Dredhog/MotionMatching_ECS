@@ -3,6 +3,7 @@
 #include "shader_def.h"
 #include "profile.h"
 #include <cstdlib>
+#include "blend_stack.h"
 
 void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
@@ -610,8 +611,8 @@ namespace UI
     {
       UI::BeginWindow("Motion Matching", { 20, 20 }, { 500, 500 });
       {
-        UI::SliderFloat("Trajectory Duration (sec)", &GameState->TrajectoryDuration, 0, 10);
-        UI::SliderInt("Trajectory Sample Count", &GameState->TrajectorySampleCount, 2, 40);
+        UI::SliderFloat("Trajectory Duration (sec)", &GameState->MMDebug.TrajectoryDuration, 0, 10);
+        UI::SliderInt("Trajectory Sample Count", &GameState->MMDebug.TrajectorySampleCount, 2, 40);
         UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
         UI::SliderFloat("Position Coefficient", &GameState->MMParams.DynamicParams.PosCoefficient,
                         0, 2);
@@ -623,9 +624,21 @@ namespace UI
         UI::SliderFloat("Min Time Offset Threshold",
                         &GameState->MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 2);
 
-        UI::Checkbox("Show Root Trajectory", &GameState->DrawRootTrajectories);
-        UI::Checkbox("Show Hip Trajectory", &GameState->DrawHipTrajectories);
-        UI::Checkbox("Transform To Root Space", &GameState->MMTransformToRootSpace);
+        UI::Checkbox("Match MirroredAnimations",
+                     &GameState->MMParams.DynamicParams.MatchMirroredAnimations);
+				UI::Text("Debug Display");
+        UI::Checkbox("Show Root Trajectory", &GameState->MMDebug.ShowRootTrajectories);
+        UI::Checkbox("Show Hip Trajectory", &GameState->MMDebug.ShowHipTrajectories);
+        UI::Checkbox("Preview In Root Space", &GameState->MMDebug.PreviewInRootSpace);
+        UI::Text("Current Goal");
+        UI::Checkbox("Show Current Goal", &GameState->MMDebug.CurrentGoal.ShowTrajectory);
+        UI::Checkbox("Show Current Positions", &GameState->MMDebug.CurrentGoal.ShowBonePositions);
+        UI::Checkbox("Show Current Velocities", &GameState->MMDebug.CurrentGoal.ShowBoneVelocities);
+        UI::Text("Matched Goal");
+        UI::Checkbox("Show Matched Goal", &GameState->MMDebug.MatchedGoal.ShowTrajectory);
+        UI::Checkbox("Show Matched Positions", &GameState->MMDebug.MatchedGoal.ShowBonePositions);
+        UI::Checkbox("Show Matched Velocities", &GameState->MMDebug.MatchedGoal.ShowBoneVelocities);
+
         {
           static int32_t ActivePathIndex = 0;
           UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
@@ -718,10 +731,40 @@ namespace UI
                                         GameState->MMParams,
                                         SelectedEntity->AnimController->Skeleton);
             }
-
+						
           }
+
+					char TempBuffer[32];
+          sprintf(TempBuffer, "g_BlendInfos.m_Count: %d", g_BlendInfos.m_Count);
+          UI::Text(TempBuffer);
         }
       }
+#if 0
+			{
+				static vec3 R = {};
+        static vec3 T = {};
+
+        UI::DragFloat3("Test Rotation (euler)", (float*)&R, -INFINITY, INFINITY, 5);
+        quat Q = Math::EulerToQuat(R);
+        UI::DragFloat4("Test Rotation  (quat)", (float*)&Q, -INFINITY, INFINITY, 5);
+        UI::DragFloat3("Test Translation", (float*)&T, -INFINITY, INFINITY, 5);
+
+        mat4 OriginalMatrix = Math::MulMat4(Math::Mat4Translate(T), Math::Mat4Rotate(Q));
+				UI::Text("(Original Matrix)^T");
+        UI::DragFloat4("X_h", (float*)&OriginalMatrix.X_h, -INFINITY, INFINITY, 5);
+        UI::DragFloat4("Y_h", (float*)&OriginalMatrix.Y_h, -INFINITY, INFINITY, 5);
+        UI::DragFloat4("Z_h", (float*)&OriginalMatrix.Z_h, -INFINITY, INFINITY, 5);
+        UI::DragFloat4("T_h", (float*)&OriginalMatrix.T_h, -INFINITY, INFINITY, 5);
+
+        quat ExtractedQ = Math::Mat4ToQuat(OriginalMatrix);
+        vec3 ExtractedT = OriginalMatrix.T;
+        vec3 ExtractedR = Math::QuatToEuler(ExtractedQ);
+
+        UI::DragFloat3("Extracted Rotation (euler)", (float*)&ExtractedR, -INFINITY, INFINITY, 5);
+        UI::DragFloat4("Extracted Rotation  (quat)", (float*)&ExtractedQ, -INFINITY, INFINITY, 5);
+        UI::DragFloat3("Extracted Translation", (float*)&ExtractedT, -INFINITY, INFINITY, 5);
+			}
+#endif
       UI::EndWindow();
     }
 
@@ -1299,7 +1342,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 UI::Button("Delete Anim. Controller"))
 
         {
-          // Note(Lukas): MEMORY LEAK!!!!!! The AnimController and its arrays are still on the
+          // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimController and its arrays are still on the
           // persistent stack
           RemoveAnimationReferences(&GameState->Resources, SelectedEntity->AnimController);
           SelectedEntity->AnimController = 0;

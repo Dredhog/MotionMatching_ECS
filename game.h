@@ -60,8 +60,11 @@ struct game_state
   camera Camera;
   camera PreviewCamera;
 
+  // Motion Matching
   mm_matching_params MMParams;
   mm_controller_data MMData;
+  mm_debug_settings  MMDebug;
+  float   PlayerSpeed;
 
   bool UseHotReloading;
   bool UpdatePathList;
@@ -86,16 +89,6 @@ struct game_state
   int32_t SelectedMeshIndex;
   int32_t PlayerEntityIndex;
   mat4    PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
-
-  // Motion Matching
-  float   TrajectoryDuration;
-  int     TrajectorySampleCount;
-  bool    MMTransformToRootSpace;
-  rid     MMAnimationRIDs[MAX_MM_ANIMATION_COUNT];
-  int32_t MMAnimationCount;
-  float   PlayerSpeed;
-	bool    DrawHipTrajectories;
-	bool    DrawRootTrajectories;
 
   // Fonts/text
   Text::font Font;

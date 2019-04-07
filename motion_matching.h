@@ -11,6 +11,7 @@
 struct mm_fixed_params
 {
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
+  fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> MirroredComparisonIndexIndices;
 };
 
 struct mm_dynamic_params
@@ -21,6 +22,7 @@ struct mm_dynamic_params
   float TrajCoefficient;
   float BelndInTime;
   float MinTimeOffsetThreshold;
+  bool  MatchMirroredAnimations;
 };
 
 struct mm_matching_params
@@ -39,6 +41,25 @@ struct mm_frame_info
   vec3 BoneVs[MM_COMPARISON_BONE_COUNT];
 };
 
+struct mm_info_debug_settings
+{
+  bool ShowTrajectory;
+  bool ShowBonePositions;
+  bool ShowBoneVelocities;
+};
+
+struct mm_debug_settings
+{
+  float TrajectoryDuration;
+  int   TrajectorySampleCount;
+  bool  ShowHipTrajectories;
+  bool  ShowRootTrajectories;
+  bool  PreviewInRootSpace;
+
+  mm_info_debug_settings CurrentGoal;
+  mm_info_debug_settings MatchedGoal;
+};
+
 struct int32_range
 {
   int32_t Start;
@@ -54,11 +75,18 @@ struct mm_controller_data
 };
 
 mm_frame_info      GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex,
-                                       const Anim::animation_controller* Controller,
+                                       bool Mirror, const Anim::animation_controller* Controller,
                                        vec3 DesiredVelocity, mm_matching_params Params);
+void               MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal,
+                                    const mm_fixed_params& Params);
+mm_frame_info      GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
+                                        const mm_fixed_params& Params);
 mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
                                            Resource::resource_manager* Resources,
                                            mm_matching_params          Params,
                                            const Anim::skeleton*       Skeleton);
-float MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* BestMatch,
+float MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* OutBestMatch,
                   const mm_controller_data* MMData, mm_frame_info Goal);
+float MotionMatchWithMirrors(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex,
+                             mm_frame_info* OutBestMatch, bool* OutMatchedMirrored,
+                             const mm_controller_data* MMData, mm_frame_info Goal);

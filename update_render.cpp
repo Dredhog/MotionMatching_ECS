@@ -123,6 +123,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // Copy rigid body from entity (Mainly needed when loading scenes)
         GameState->Physics.RigidBodies[i] = GameState->Entities[i].RigidBody;
 
+        if(FloatsEqualByThreshold(Math::Length(GameState->Entities[i].Transform.Rotation), 0.0f,
+                                  0.0001f))
+        {
+          GameState->Entities[i].Transform.Rotation = Math::QuatIdent();
+        }
+        else
+        {
+          Math::Normalize(&GameState->Entities[i].Transform.Rotation);
+        }
+
         GameState->Physics.RigidBodies[i].q = GameState->Entities[i].Transform.Rotation;
         GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.Translation;
 
@@ -167,7 +177,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
       Gameplay::UpdatePlayer(PlayerEntity, GameState->TemporaryMemStack, &GameState->Resources,
-                             Input, &GameState->Camera, &GameState->MMData, GameState->PlayerSpeed);
+                             Input, &GameState->Camera, &GameState->MMData, &GameState->MMDebug,
+                             GameState->PlayerSpeed);
     }
   }
 
@@ -209,7 +220,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           continue;
         }
 
-        if(GameState->DrawRootTrajectories || GameState->DrawHipTrajectories)
+        if(GameState->MMDebug.ShowRootTrajectories || GameState->MMDebug.ShowHipTrajectories)
         {
           const float AnimDuration = Anim::GetAnimDuration(CurrentAnimation);
 
@@ -240,7 +251,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           mat4 Mat4InvRoot = Math::Mat4Ident();
 
           // Transform current pose into the space of the root bone
-          if(GameState->MMTransformToRootSpace)
+          if(GameState->MMDebug.PreviewInRootSpace)
           {
             mat4    Mat4Root;
             int32_t HipBoneIndex = 0;
@@ -253,13 +264,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             Debug::PushGizmo(&GameState->Camera, &Mat4Root);
           }
 
-          int FutureTrajectoryPointCount =
-            (int)(GameState->TrajectoryDuration / (AnimDuration / CurrentAnimation->KeyframeCount));
+          int FutureTrajectoryPointCount = (int)(GameState->MMDebug.TrajectoryDuration /
+                                                 (AnimDuration / CurrentAnimation->KeyframeCount));
 
           int EndKeyframeIndex = MinInt32(PrevKeyframeIndex + FutureTrajectoryPointCount,
                                           CurrentAnimation->KeyframeCount - 1);
           int SamplePeriod     = MaxInt32(1, (int)floorf(FutureTrajectoryPointCount /
-                                                     (float)GameState->TrajectorySampleCount));
+                                                     (float)GameState->MMDebug.TrajectorySampleCount));
           for(int i = PrevKeyframeIndex; i < EndKeyframeIndex - SamplePeriod; i += SamplePeriod)
           {
             int32_t HipBoneIndex = 0;
@@ -280,7 +291,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                                LocalHipPositionB.Z, 1 })
                 .XYZ;
 
-            if(GameState->DrawHipTrajectories)
+            if(GameState->MMDebug.ShowHipTrajectories)
             {
               vec3 HipPositionA = Math::MulMat4Vec4(CurrentEntityModelMatrix,
                                                     { LocalHipPositionA.X, LocalHipPositionA.Y,
@@ -293,7 +304,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });
             }
 
-            if(GameState->DrawRootTrajectories)
+            if(GameState->MMDebug.ShowRootTrajectories)
             {
               vec3 RootPositionA =
                 Math::MulMat4Vec4(CurrentEntityModelMatrix,
@@ -309,7 +320,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
       }
 
-      if(GameState->MMTransformToRootSpace)
+      if(GameState->MMDebug.PreviewInRootSpace)
       {
         mat4    Mat4Root;
         mat4    Mat4InvRoot;

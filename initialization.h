@@ -454,22 +454,34 @@ SetGameStatePODFields(game_state* GameState)
 
   // Motion Matching
   {
-    GameState->TrajectoryDuration                            = 1;
-    GameState->TrajectorySampleCount                         = 20;
-    GameState->MMTransformToRootSpace                        = true;
-    GameState->PlayerSpeed                                   = 1.0f;
-    GameState->MMData                                        = {};
-    GameState->MMParams.DynamicParams.PosCoefficient         = 1.0f;
-    GameState->MMParams.DynamicParams.VelCoefficient         = 1.0f;
-    GameState->MMParams.DynamicParams.TrajCoefficient        = 1.0f;
-    GameState->MMParams.DynamicParams.TrajectoryTimeHorizon  = 1.0f;
-    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold = 0.2f;
-    GameState->MMParams.DynamicParams.BelndInTime            = 0.2f;
+    GameState->PlayerSpeed = 1.0f;
+
+    GameState->MMDebug                       = {};
+    GameState->MMDebug.TrajectoryDuration    = 1;
+    GameState->MMDebug.TrajectorySampleCount = 20;
+    GameState->MMDebug.PreviewInRootSpace    = true;
+    GameState->MMDebug.ShowRootTrajectories  = false;
+    GameState->MMDebug.ShowHipTrajectories   = false;
+
+    GameState->MMDebug.CurrentGoal.ShowTrajectory = true;
+    GameState->MMDebug.MatchedGoal.ShowTrajectory = true;
+    GameState->MMDebug.CurrentGoal.ShowBonePositions = true;
+    GameState->MMDebug.MatchedGoal.ShowBonePositions = true;
+
+    GameState->MMData                                         = {};
+    GameState->MMParams.DynamicParams.PosCoefficient          = 1.0f;
+    GameState->MMParams.DynamicParams.VelCoefficient          = 1.0f;
+    GameState->MMParams.DynamicParams.TrajCoefficient         = 1.0f;
+    GameState->MMParams.DynamicParams.TrajectoryTimeHorizon   = 1.0f;
+    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold  = 0.2f;
+    GameState->MMParams.DynamicParams.BelndInTime             = 0.2f;
+    GameState->MMParams.DynamicParams.MatchMirroredAnimations = false;
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(4);
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(10);
+    // TODO(Lukas) add this to the UI or get this data from the skeleton
+    GameState->MMParams.FixedParams.MirroredComparisonIndexIndices.Push(1);
+    GameState->MMParams.FixedParams.MirroredComparisonIndexIndices.Push(0);
 
-    GameState->DrawRootTrajectories = true;
-    GameState->DrawHipTrajectories  = false;
   }
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;

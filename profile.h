@@ -74,6 +74,7 @@ enum
   TIMER_NAME_HotReloadAssets,
   TIMER_NAME_MotionMatch,
   TIMER_NAME_BuildMotionSet,
+  TIMER_NAME_UpdatePlayer,
   TIMER_NAME_Count,
 };
 
@@ -129,6 +130,7 @@ const char TIMER_NAME_TABLE[][TIMER_NAME_Count] = {
   "HotReloadAssets",
   "MotionMatch",
   "BuildMotionSet",
+	"UpdatePlayer",
 };
 
 const float TIMER_UI_COLOR_TABLE[TIMER_NAME_Count][3] =
