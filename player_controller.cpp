@@ -171,6 +171,8 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
 			}
       const Anim::animation* MatchedAnim =
         Resources->GetAnimation(MMData->Params.AnimRIDs[NewAnimIndex]);
+      // TODO(Lukas): there is an off by one error here when the first frame is skipped during the
+      // FrameInfo build
       const float AnimStartTime = (((float)StartFrameIndex) / MatchedAnim->KeyframeCount) *
                                   Anim::GetAnimDuration(MatchedAnim);
 
@@ -195,8 +197,6 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
           BestMatch = GetMirroredFrameGoal(BestMatch, { -1, 1, 1 }, MMData->Params.FixedParams);
         }
         LastMatch = BestMatch;
-        // TODO(Lukas): there is an off by one error here when the first frame is skipped during the
-        // FrameInfo build
         PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[NewAnimIndex], AnimStartTime,
                       MMData->Params.DynamicParams.BelndInTime, BetMatchWasMirror);
       }

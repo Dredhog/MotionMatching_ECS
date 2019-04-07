@@ -9,5 +9,5 @@ for i in $dst_dir/*.anim $dst_dir/*.actor; do
 done
 
 for i in $src_dir*.bvh; do
-  $build $i $dst_dir`basename $i .bvh` '--animation' '--root_bone' 'Hips' '--scale' '0.056444'
+  $build $i $dst_dir`basename $i .bvh` '--animation' '--root_bone' 'Hips' '--scale' '0.056444' '--undersample_period' '10'
 done

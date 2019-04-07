@@ -289,8 +289,16 @@ CalculateTotalModelSize(const aiScene* Scene)
   return SafeTruncateUint64(Total);
 }
 
+int
+GetSubsampledKeyframeCount(int OriginalKeyframeCount, int UndersamplingPeriod)
+{
+  assert(OriginalKeyframeCount > 0);
+  return ((OriginalKeyframeCount - 1) / UndersamplingPeriod) + 1;
+}
+
 int32_t
-CalculateTotalAnimationGroupSize(const aiScene* Scene, const Anim::skeleton* Skeleton)
+CalculateTotalAnimationGroupSize(const aiScene* Scene, const Anim::skeleton* Skeleton,
+                                 int UndersamplePeriod)
 {
   int64_t Total = 0;
 
@@ -300,10 +308,11 @@ CalculateTotalAnimationGroupSize(const aiScene* Scene, const Anim::skeleton* Ske
   {
     aiAnimation* Animation = Scene->mAnimations[i];
 
+    int KeyframeCount = GetSubsampledKeyframeCount(Animation->mChannels[0]->mNumRotationKeys, UndersamplePeriod);
+
     Total += sizeof(Anim::animation);
-    Total +=
-      sizeof(Anim::transform) * Skeleton->BoneCount * Animation->mChannels[0]->mNumRotationKeys;
-    Total += sizeof(float) * Animation->mChannels[0]->mNumRotationKeys;
+    Total += sizeof(Anim::transform) * Skeleton->BoneCount * KeyframeCount;
+    Total += sizeof(float) * KeyframeCount;
   }
 
   return SafeTruncateUint64(Total);
@@ -312,8 +321,8 @@ CalculateTotalAnimationGroupSize(const aiScene* Scene, const Anim::skeleton* Ske
 void
 PrintUsage()
 {
-  printf(
-    "usage:\nbuilder input_file output_name [--root_bone name] [--scale value] --model | --actor | --animation\n");
+  printf("usage:\nbuilder input_file output_name [--root_bone name] [--scale value] "
+         "[--undersample_period period] --model | --actor | --animation\n");
 }
 
 int
@@ -328,6 +337,7 @@ main(int ArgCount, char** Args)
   bool BuildAnimation = false;
 
   float RescaleCoefficient = 1.0f;
+  int   UndersamplePeriod  = 1;
 
   const char* RootBoneName = "root";
   // Process command line arguments
@@ -396,6 +406,19 @@ main(int ArgCount, char** Args)
           return 1;
         }
       }
+      else if(strcmp(Args[ArgIndex], "--undersample_period") == 0)
+      {
+        if(ArgIndex + 1 < ArgCount)
+        {
+          UndersamplePeriod = (int)atoi(Args[ArgIndex + 1]);
+          ++ArgIndex;
+        }
+        else
+        {
+          PrintUsage();
+          return 1;
+        }
+      }
       else
       {
         PrintUsage();
@@ -440,7 +463,7 @@ main(int ArgCount, char** Args)
   // Determine file size on disk
   int32_t TotalModelFileSize = CalculateTotalModelSize(Scene);
   int32_t TotalActorFileSize = TotalModelFileSize + SafeTruncateUint64(sizeof(Skeleton));
-  int32_t TotalAnimFileSize  = CalculateTotalAnimationGroupSize(Scene, &Skeleton);
+  int32_t TotalAnimFileSize  = CalculateTotalAnimationGroupSize(Scene, &Skeleton, UndersamplePeriod);
 
   int32_t MaximumAssetSize =
     (TotalActorFileSize > TotalAnimFileSize) ? TotalActorFileSize : TotalAnimFileSize;
@@ -508,7 +531,7 @@ main(int ArgCount, char** Args)
 
       Anim::animation* Animation = PushStruct(&Allocator, Anim::animation);
       AnimGroup->Animations[a]   = Animation;
-      Animation->KeyframeCount   = AssimpAnimation->mChannels[0]->mNumRotationKeys;
+      Animation->KeyframeCount   = GetSubsampledKeyframeCount(AssimpAnimation->mChannels[0]->mNumRotationKeys, UndersamplePeriod);
 
       Animation->Transforms =
         PushArray(&Allocator, Animation->KeyframeCount * Skeleton.BoneCount, Anim::transform);
@@ -535,7 +558,8 @@ main(int ArgCount, char** Args)
               LocalTransform.Rotation        = { BoneQuat.w, BoneQuat.x, BoneQuat.y, BoneQuat.z };
               LocalTransform.Scale           = { BoneScale.x, BoneScale.y, BoneScale.z };
               LocalTransform.Translation =
-                RescaleCoefficient * vec3{ BoneTranslation.x, BoneTranslation.y, BoneTranslation.z };
+                RescaleCoefficient *
+                vec3{ BoneTranslation.x, BoneTranslation.y, BoneTranslation.z };
 
               LocalBindPose = Anim::TransformToMat4(LocalTransform);
             }
@@ -586,8 +610,10 @@ main(int ArgCount, char** Args)
           Math::InvMat4(Math::MulMat4(ParentInverseBindPose, Skeleton.Bones[BoneIndex].BindPose));
 #endif
 
-        for(int i = 0; i < Channel->mNumRotationKeys; i++)
+        for(int i = 0; i < Channel->mNumRotationKeys; i += UndersamplePeriod)
         {
+          int IndexInNewAnim = i / UndersamplePeriod;
+
           Anim::transform BoneParentSpaceAbsTransform = {};
           int             TranslationKeyIndex         = (b == 0) ? i : 0;
           BoneParentSpaceAbsTransform.Translation.X =
@@ -601,10 +627,10 @@ main(int ArgCount, char** Args)
           BoneParentSpaceAbsTransform.Scale.Y = Channel->mScalingKeys[0].mValue.y;
           BoneParentSpaceAbsTransform.Scale.Z = Channel->mScalingKeys[0].mValue.z;
 
-          BoneParentSpaceAbsTransform.Rotation = { Channel->mRotationKeys[i].mValue.w,
-                                                   Channel->mRotationKeys[i].mValue.x,
-                                                   Channel->mRotationKeys[i].mValue.y,
-                                                   Channel->mRotationKeys[i].mValue.z };
+          BoneParentSpaceAbsTransform.Rotation.S   = Channel->mRotationKeys[i].mValue.w;
+          BoneParentSpaceAbsTransform.Rotation.V.X = Channel->mRotationKeys[i].mValue.x;
+          BoneParentSpaceAbsTransform.Rotation.V.Y = Channel->mRotationKeys[i].mValue.y;
+          BoneParentSpaceAbsTransform.Rotation.V.Z = Channel->mRotationKeys[i].mValue.z;
 
 #ifdef USE_BIND_POSE
           mat4 BoneParentSpaceAbsPose = Anim::TransformToMat4(BoneParentSpaceAbsTransform);
@@ -644,11 +670,11 @@ main(int ArgCount, char** Args)
           Anim::transform BindRelativeLocalBoneTransform = BoneParentSpaceAbsTransform;
 #endif // USE_BIND_POSE
 
-          Animation->Transforms[i * Skeleton.BoneCount + BoneIndex] =
+          Animation->Transforms[IndexInNewAnim * Skeleton.BoneCount + BoneIndex] =
             BindRelativeLocalBoneTransform;
 
           // Note: continuous overwriting with the same data
-          Animation->SampleTimes[i] =
+          Animation->SampleTimes[IndexInNewAnim] =
             (float)(Channel->mRotationKeys[i].mTime / AssimpAnimation->mTicksPerSecond);
         }
       }
