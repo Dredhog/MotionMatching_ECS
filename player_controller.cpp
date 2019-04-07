@@ -11,11 +11,11 @@ const vec3 ZAxis = { 0, 0, 1 };
 void
 Gameplay::ResetPlayer(entity* Player)
 {
-	if(Player->AnimController)
-	{
+  if(Player->AnimController)
+  {
     Player->AnimController->BlendFunc = NULL;
   }
-	ResetBlendStack();
+  ResetBlendStack();
 }
 
 void
@@ -24,7 +24,8 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
                        const camera* Camera, const mm_controller_data* MMData,
                        const mm_debug_settings* MMDebug, float Speed)
 {
-	TIMED_BLOCK(UpdatePlayer);
+  TIMED_BLOCK(UpdatePlayer);
+  assert(Player->AnimController);
   vec3 CameraForward = Camera->Forward;
   vec3 ViewForward   = Math::Normalized(vec3{ CameraForward.X, 0, CameraForward.Z });
   vec3 ViewRight     = Math::Cross(ViewForward, YAxis);
@@ -51,15 +52,15 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
     Dir = Math::Normalized(Dir);
   }
 
-  if(Player->AnimController && MMData->FrameInfos.IsValid())
+  if(MMData->FrameInfos.IsValid())
   {
     assert(0 < MMData->Params.AnimRIDs.Count);
     Player->AnimController->BlendFunc = ThirdPersonAnimationBlendFunction;
 
     if(g_BlendInfos.Empty())
     {
-      int InitialAnimIndex = 0;
-			float StartTime = 0;
+      int   InitialAnimIndex = 0;
+      float StartTime        = 0;
       bool  PlayMirrored     = false;
       Player->AnimController->Animations[InitialAnimIndex] =
         Resources->GetAnimation(MMData->Params.AnimRIDs[InitialAnimIndex]);
@@ -129,19 +130,19 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
         vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
         vec3 WorldVEnd       = WorldBoneP + WorldBoneV;
 
-				if(MMDebug->MatchedGoal.ShowBonePositions)
-				{
+        if(MMDebug->MatchedGoal.ShowBonePositions)
+        {
           Debug::PushWireframeSphere(WorldBoneP, 0.01f, { 1, 1, 0, 1 });
         }
-				if(MMDebug->MatchedGoal.ShowBoneVelocities)
-				{
+        if(MMDebug->MatchedGoal.ShowBoneVelocities)
+        {
           Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 1, 0, 1 });
           Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 1, 0, 1 });
         }
       }
       vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
-			if(MMDebug->MatchedGoal.ShowTrajectory)
-			{
+      if(MMDebug->MatchedGoal.ShowTrajectory)
+      {
         for(int i = 0; i < MM_POINT_COUNT; i++)
         {
           vec4 HomogTrajectoryPointP = { LastMatch.TrajectoryPs[i], 1 };
@@ -152,53 +153,49 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
         }
       }
     }
-		
+
     {
       int32_t NewAnimIndex;
-      int32_t StartFrameIndex;
+      float   NewAnimStartTime;
+      bool    NewAnimIsMirrored = false;
 
       mm_frame_info BestMatch         = {};
-      bool          BetMatchWasMirror = false;
-      float         BestCost          = FLT_MAX;
       if(!MMData->Params.DynamicParams.MatchMirroredAnimations)
       {
-        MotionMatch(&NewAnimIndex, &StartFrameIndex, &BestMatch, MMData, AnimGoal);
+        MotionMatch(&NewAnimIndex, &NewAnimStartTime, &BestMatch, MMData, AnimGoal);
       }
       else
       {
-        MotionMatchWithMirrors(&NewAnimIndex, &StartFrameIndex, &BestMatch, &BetMatchWasMirror, MMData,
-                    AnimGoal);
-			}
+        MotionMatchWithMirrors(&NewAnimIndex, &NewAnimStartTime, &BestMatch, &NewAnimIsMirrored,
+                               MMData, AnimGoal);
+      }
+
+      // TODO(Lukas) Prefetch and store all used animations in an array at build time
       const Anim::animation* MatchedAnim =
         Resources->GetAnimation(MMData->Params.AnimRIDs[NewAnimIndex]);
-      // TODO(Lukas): there is an off by one error here when the first frame is skipped during the
-      // FrameInfo build
-      const float AnimStartTime = (((float)StartFrameIndex) / MatchedAnim->KeyframeCount) *
-                                  Anim::GetAnimDuration(MatchedAnim);
 
-      // Figure out if matched frame is sufficiently far away from the current to start a new
-      // animation
       int   ActiveStateIndex = (g_BlendInfos.Empty()) ? -1 : g_BlendInfos.Peek().AnimStateIndex;
       float ActiveAnimLocalTime =
         (ActiveStateIndex != -1)
-          ? Anim::GetLoopedSampleTime(Player->AnimController, ActiveStateIndex,
-                                      Player->AnimController->GlobalTimeSec)
+          ? Anim::GetLocalSampleTime(Player->AnimController, ActiveStateIndex,
+                                     Player->AnimController->GlobalTimeSec)
           : 0;
 
+      // Figure out if matched frame is sufficiently far away from the current to start a new
+      // animation
       if(Player->AnimController->AnimationIDs[ActiveStateIndex].Value !=
            MMData->Params.AnimRIDs[NewAnimIndex].Value ||
-         (AbsFloat(ActiveAnimLocalTime - AnimStartTime) >=
+         (AbsFloat(ActiveAnimLocalTime - NewAnimStartTime) >=
             MMData->Params.DynamicParams.MinTimeOffsetThreshold &&
-          BetMatchWasMirror == g_BlendInfos.Peek().Mirror) ||
-         BetMatchWasMirror != g_BlendInfos.Peek().Mirror)
+          NewAnimIsMirrored == g_BlendInfos.Peek().Mirror) ||
+         NewAnimIsMirrored != g_BlendInfos.Peek().Mirror)
       {
-        if(BetMatchWasMirror)
-        {
-          BestMatch = GetMirroredFrameGoal(BestMatch, { -1, 1, 1 }, MMData->Params.FixedParams);
-        }
-        LastMatch = BestMatch;
-        PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[NewAnimIndex], AnimStartTime,
-                      MMData->Params.DynamicParams.BelndInTime, BetMatchWasMirror);
+        LastMatch = (NewAnimIsMirrored)
+                      ? GetMirroredFrameGoal(BestMatch, { -1, 1, 1 }, MMData->Params.FixedParams)
+                      : BestMatch;
+        PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[NewAnimIndex],
+                      NewAnimStartTime, MMData->Params.DynamicParams.BelndInTime,
+                      NewAnimIsMirrored);
       }
     }
 
@@ -215,8 +212,8 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
       // advance
       Player->AnimController->Animations[AnimationIndex] = RootMotionAnim;
 
-      float CurrentSampleTime = Anim::GetLoopedSampleTime(Player->AnimController, AnimationIndex,
-                                                          Player->AnimController->GlobalTimeSec);
+      float CurrentSampleTime = Anim::GetLocalSampleTime(Player->AnimController, AnimationIndex,
+                                                         Player->AnimController->GlobalTimeSec);
       float NextSampleTime =
         ClampFloat(RootMotionAnim->SampleTimes[0], CurrentSampleTime + Input->dt,
                    RootMotionAnim->SampleTimes[RootMotionAnim->KeyframeCount - 1]);
@@ -226,7 +223,6 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
         Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, CurrentSampleTime);
       Anim::transform NextHipTransform =
         Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, NextSampleTime);
-
 
       mat4 Mat4Player = Anim::TransformToMat4(Player->Transform);
       Mat4Player.T    = {};
@@ -245,7 +241,7 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
               Math::MulMat4(Mat4Player, Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot));
             vec3 DeltaTranslaton = Mat4DeltaRoot.T;*/
             mat4 Mat4LocalRootDelta = Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot);
-            quat DeltaRotation   = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
+            quat DeltaRotation      = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
             if(MirrorRootMotion)
             {
               Mat4LocalRootDelta = Math::MulMat4(Math::Mat4Scale(-1, 1, 1), Mat4LocalRootDelta);

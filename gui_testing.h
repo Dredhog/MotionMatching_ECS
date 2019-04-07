@@ -45,7 +45,7 @@ namespace UI
     static bool s_ShowDemoWindow           = false;
     static bool s_ShowPhysicsWindow        = false;
     static bool s_ShowProfilerWindow       = false;
-    static bool s_ShowMotionMatchingWindow = false;
+    static bool s_ShowMotionMatchingWindow = true;
 
     UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
     {
@@ -58,7 +58,7 @@ namespace UI
                 SELECT_EnumCount, UI::StringArrayToString);
 
       static bool s_ShowMaterialEditor         = false;
-      static bool s_ShowEntityTools            = false;
+      static bool s_ShowEntityTools            = true;
       static bool s_ShowAnimationEditor        = false;
       static bool s_ShowLightSettings          = false;
       static bool s_ShowDisplaySet             = false;
@@ -609,7 +609,7 @@ namespace UI
 
     if(s_ShowMotionMatchingWindow)
     {
-      UI::BeginWindow("Motion Matching", { 20, 20 }, { 500, 500 });
+      UI::BeginWindow("Motion Matching", { 100, 20 }, { 700, 700 });
       {
         UI::SliderFloat("Trajectory Duration (sec)", &GameState->MMDebug.TrajectoryDuration, 0, 10);
         UI::SliderInt("Trajectory Sample Count", &GameState->MMDebug.TrajectorySampleCount, 2, 40);
@@ -639,6 +639,8 @@ namespace UI
         UI::Checkbox("Show Matched Positions", &GameState->MMDebug.MatchedGoal.ShowBonePositions);
         UI::Checkbox("Show Matched Velocities", &GameState->MMDebug.MatchedGoal.ShowBoneVelocities);
 
+        UI::SliderFloat("Metadata Sampling Frequency",
+                        &GameState->MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
         {
           static int32_t ActivePathIndex = 0;
           UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,

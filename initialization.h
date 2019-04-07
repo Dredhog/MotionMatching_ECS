@@ -463,25 +463,25 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.ShowRootTrajectories  = false;
     GameState->MMDebug.ShowHipTrajectories   = false;
 
-    GameState->MMDebug.CurrentGoal.ShowTrajectory = true;
-    GameState->MMDebug.MatchedGoal.ShowTrajectory = true;
+    GameState->MMDebug.CurrentGoal.ShowTrajectory    = true;
+    GameState->MMDebug.MatchedGoal.ShowTrajectory    = true;
     GameState->MMDebug.CurrentGoal.ShowBonePositions = true;
     GameState->MMDebug.MatchedGoal.ShowBonePositions = true;
 
-    GameState->MMData                                         = {};
-    GameState->MMParams.DynamicParams.PosCoefficient          = 1.0f;
-    GameState->MMParams.DynamicParams.VelCoefficient          = 1.0f;
-    GameState->MMParams.DynamicParams.TrajCoefficient         = 1.0f;
-    GameState->MMParams.DynamicParams.TrajectoryTimeHorizon   = 1.0f;
-    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold  = 0.2f;
-    GameState->MMParams.DynamicParams.BelndInTime             = 0.2f;
-    GameState->MMParams.DynamicParams.MatchMirroredAnimations = false;
+    GameState->MMData                                           = {};
+    GameState->MMParams.DynamicParams.PosCoefficient            = 1.0f;
+    GameState->MMParams.DynamicParams.VelCoefficient            = 1.0f;
+    GameState->MMParams.DynamicParams.TrajCoefficient           = 1.0f;
+    GameState->MMParams.DynamicParams.TrajectoryTimeHorizon     = 1.0f;
+    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold    = 0.2f;
+    GameState->MMParams.DynamicParams.BelndInTime               = 0.2f;
+    GameState->MMParams.DynamicParams.MatchMirroredAnimations   = false;
+    GameState->MMParams.FixedParams.MetadataSamplingFrequency   = 60.0f;
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(4);
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(10);
     // TODO(Lukas) add this to the UI or get this data from the skeleton
     GameState->MMParams.FixedParams.MirroredComparisonIndexIndices.Push(1);
     GameState->MMParams.FixedParams.MirroredComparisonIndexIndices.Push(0);
-
   }
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;

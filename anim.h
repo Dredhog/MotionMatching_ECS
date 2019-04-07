@@ -121,8 +121,8 @@ namespace Anim
                                      const Anim::skeleton* Skeleton);
 
   // Helper functions
-  float GetLoopedSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
-                            float GlobalTimeSec);
+  float GetLocalSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
+                           float GlobalTimeSec);
   void  GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRoot, mat4 HipMatrix);
   float GetAnimDuration(const Anim::animation* Animation);
 

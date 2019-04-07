@@ -2,8 +2,8 @@
 #include "misc.h"
 
 float
-Anim::GetLoopedSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
-                          float GlobalTimeSec)
+Anim::GetLocalSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
+                         float GlobalTimeSec)
 {
   const animation_state* State        = &Controller->States[AnimationIndex];
   const animation*       Animation    = Controller->Animations[AnimationIndex];
@@ -27,7 +27,7 @@ Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIn
 {
   assert(0 <= OutputBlockIndex && OutputBlockIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
   float SampleTime =
-    Anim::GetLoopedSampleTime(Controller, AnimationIndex, Controller->GlobalTimeSec);
+    Anim::GetLocalSampleTime(Controller, AnimationIndex, Controller->GlobalTimeSec);
   if(MirrorInfo)
   {
     LinearMirroredAnimationSample(Controller, AnimationIndex, SampleTime, OutputBlockIndex,

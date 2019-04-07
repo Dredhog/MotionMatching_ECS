@@ -12,6 +12,8 @@ struct mm_fixed_params
 {
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> MirroredComparisonIndexIndices;
+
+  float MetadataSamplingFrequency;
 };
 
 struct mm_dynamic_params
@@ -60,8 +62,9 @@ struct mm_debug_settings
   mm_info_debug_settings MatchedGoal;
 };
 
-struct int32_range
+struct mm_frame_info_range
 {
+  float   StartTimeInAnim;
   int32_t Start;
   int32_t End;
 };
@@ -70,8 +73,8 @@ struct mm_controller_data
 {
   mm_matching_params Params;
 
-  fixed_stack<int32_range, MM_ANIM_CAPACITY> AnimFrameRanges;
-  array_handle<mm_frame_info>                FrameInfos;
+  fixed_stack<mm_frame_info_range, MM_ANIM_CAPACITY> AnimFrameInfoRanges;
+  array_handle<mm_frame_info>                        FrameInfos;
 };
 
 mm_frame_info      GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex,
@@ -85,8 +88,8 @@ mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc
                                            Resource::resource_manager* Resources,
                                            mm_matching_params          Params,
                                            const Anim::skeleton*       Skeleton);
-float MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* OutBestMatch,
+float MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
                   const mm_controller_data* MMData, mm_frame_info Goal);
-float MotionMatchWithMirrors(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex,
+float MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime,
                              mm_frame_info* OutBestMatch, bool* OutMatchedMirrored,
                              const mm_controller_data* MMData, mm_frame_info Goal);

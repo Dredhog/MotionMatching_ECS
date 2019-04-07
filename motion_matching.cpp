@@ -9,7 +9,7 @@
 // TODO(Lukas): move this to a propper part of memory, likely a seperate mm resource heap
 mm_frame_info g_MMStorageArray[MM_MAX_FRAME_INFO_COUNT];
 
-const int32_t g_FirstMatchedFrameIndex = 1;
+const int32_t g_SkipFrameCount = 1;
 // Copy the velocity for the last frame
 
 mm_controller_data
@@ -17,44 +17,53 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
                         mm_matching_params Params, const Anim::skeleton* Skeleton)
 {
   TIMED_BLOCK(BuildMotionSet);
-  Memory::marker FuncStartMemoryMarker = TempAlloc->GetMarker();
-  mat4*          TempMatrices          = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
+  // Alloc temp memory for matrices
+  Memory::marker   FuncStartMemoryMarker = TempAlloc->GetMarker();
+  mat4*            TempMatrices          = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
+  Anim::transform* TempTransforms = PushArray(TempAlloc, Skeleton->BoneCount, Anim::transform);
 
   mm_controller_data MMData = {}; // ZII
   MMData.Params             = Params;
 
+  // Initialize the frame info stack
   stack_handle<mm_frame_info> FrameInfoStack = {};
   FrameInfoStack.Init(g_MMStorageArray, 0, sizeof(g_MMStorageArray));
 
+  // Loop over all animations in the set
   for(int a = 0; a < Params.AnimRIDs.Count; a++)
   {
     const Anim::animation* Anim = Resources->GetAnimation(Params.AnimRIDs[a]);
     assert(Anim->ChannelCount == Skeleton->BoneCount);
+    assert(1 < Anim->KeyframeCount);
     const float AnimDuration  = Anim::GetAnimDuration(Anim);
-    const float FrameDuration = AnimDuration / (float)Anim->KeyframeCount;
+    const float FrameDuration = AnimDuration / float(Anim->KeyframeCount);
 
-    const float PosSamplePeriod =
+    const float PositionSamplePeriod =
       Params.DynamicParams.TrajectoryTimeHorizon / float(MM_POINT_COUNT);
-    const int32_t PosSamplingInterval =
-      (int32_t)((PosSamplePeriod / AnimDuration) * Anim->KeyframeCount);
-    const int32_t LookaheadKeyframeCount = PosSamplingInterval * MM_POINT_COUNT;
 
     const int32_t NewFrameInfoCount =
-      MaxInt32(0, (Anim->KeyframeCount - g_FirstMatchedFrameIndex) - LookaheadKeyframeCount);
+      int32_t(MaxFloat(0.0f, ((AnimDuration - Params.DynamicParams.TrajectoryTimeHorizon) *
+                              Params.FixedParams.MetadataSamplingFrequency)));
 
-    int32_range CurrentRange = { FrameInfoStack.Count, FrameInfoStack.Count + NewFrameInfoCount };
+    const float AnimStartSkipTime = Anim->SampleTimes[0] + FrameDuration * float(g_SkipFrameCount);
+
+    mm_frame_info_range CurrentRange = {};
+    {
+      CurrentRange.StartTimeInAnim = AnimStartSkipTime;
+      CurrentRange.Start           = FrameInfoStack.Count;
+      CurrentRange.End             = FrameInfoStack.Count + NewFrameInfoCount;
+    }
     FrameInfoStack.Expand(NewFrameInfoCount);
-    MMData.AnimFrameRanges.Push(CurrentRange);
+    MMData.AnimFrameInfoRanges.Push(CurrentRange);
 
     for(int i = 0; i < NewFrameInfoCount; i++)
     {
-      int32_t FrameInfoIndex = CurrentRange.Start + i;
-      int32_t FrameIndex     = i + g_FirstMatchedFrameIndex;
-      // TODO(Lukas) MAKE THIS USE A SAMPLING AND ADD A SAMPLING FREQUENCY TO MM_FORMAT_INFO SO THAT
-      // ARBITRARILY SAMPLED ANIMATIONS COULD WORK
-      const Anim::transform* LocalTransforms = &Anim->Transforms[FrameIndex * Anim->ChannelCount];
+      int32_t FrameInfoIndex    = CurrentRange.Start + i;
+      float   CurrentSampleTime = CurrentRange.StartTimeInAnim +
+                                float(i) * (1.0f / Params.FixedParams.MetadataSamplingFrequency);
+      Anim::LinearAnimationSample(TempTransforms, Anim, CurrentSampleTime);
 
-      ComputeBoneSpacePoses(TempMatrices, LocalTransforms, Anim->ChannelCount);
+      ComputeBoneSpacePoses(TempMatrices, TempTransforms, Anim->ChannelCount);
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Skeleton);
       ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Skeleton);
 
@@ -75,11 +84,10 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       // ANIMATIONS COULD WORK
       for(int p = 0; p < MM_POINT_COUNT; p++)
       {
-        vec3 SamplePoint =
-          Anim
-            ->Transforms[(FrameIndex + (1 + p) * PosSamplingInterval) * Anim->ChannelCount +
-                         HipIndex]
-            .Translation;
+        Anim::transform SampleHipTransform =
+          Anim::LinearAnimationBoneSample(Anim, HipIndex,
+                                          CurrentSampleTime + (p + 1) * PositionSamplePeriod);
+        vec3 SamplePoint      = SampleHipTransform.Translation;
         vec4 SamplePointHomog = { SamplePoint, 1 };
         FrameInfoStack[FrameInfoIndex].TrajectoryPs[p] =
           Math::MulMat4Vec4(InvRootMatrix, SamplePointHomog).XYZ;
@@ -93,7 +101,8 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
       {
         FrameInfoStack[i].BoneVs[b] =
-          (FrameInfoStack[i + 1].BonePs[b] - FrameInfoStack[i].BonePs[b]) / FrameDuration;
+          (FrameInfoStack[i + 1].BonePs[b] - FrameInfoStack[i].BonePs[b]) *
+          MMData.Params.FixedParams.MetadataSamplingFrequency;
       }
     }
 
@@ -141,7 +150,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
     // Sample the most recent animation's current frame
     {
       float LocalTime =
-        GetLoopedSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec);
+        GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec);
       Anim::LinearAnimationSample(TempTransforms, CurrentAnim, LocalTime);
       ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
@@ -169,7 +178,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
     // Sample the most recent animation's next frame
     {
       float LocalTimeWithDelta =
-        GetLoopedSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec + Delta);
+        GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec + Delta);
       Anim::LinearAnimationSample(TempTransforms, CurrentAnim, LocalTimeWithDelta);
       ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
@@ -297,11 +306,11 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
 }
 
 float
-MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* OutBestMatch,
+MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
             const mm_controller_data* MMData, mm_frame_info Goal)
 {
   TIMED_BLOCK(MotionMatch);
-  assert(OutAnimIndex && OutStartFrameIndex);
+  assert(OutAnimIndex && OutLocalStartTime);
   assert(MMData);
   assert(MMData->FrameInfos.IsValid());
 
@@ -326,14 +335,16 @@ MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* O
 
   assert(BestFrameInfoIndex != -1);
 
-  for(int a = 0; a < MMData->AnimFrameRanges.Count; a++)
+  for(int a = 0; a < MMData->AnimFrameInfoRanges.Count; a++)
   {
-    int32_range CurrentRange = MMData->AnimFrameRanges[a];
+    mm_frame_info_range CurrentRange = MMData->AnimFrameInfoRanges[a];
     if(CurrentRange.Start <= BestFrameInfoIndex && BestFrameInfoIndex < CurrentRange.End)
     {
-      *OutAnimIndex       = a;
-      *OutStartFrameIndex = BestFrameInfoIndex - CurrentRange.Start + g_FirstMatchedFrameIndex;
-      *OutBestMatch       = MMData->FrameInfos[BestFrameInfoIndex];
+      *OutAnimIndex = a;
+      *OutLocalStartTime =
+        CurrentRange.StartTimeInAnim + (BestFrameInfoIndex - CurrentRange.Start) /
+                                         MMData->Params.FixedParams.MetadataSamplingFrequency;
+      *OutBestMatch = MMData->FrameInfos[BestFrameInfoIndex];
     }
   }
 
@@ -341,18 +352,17 @@ MotionMatch(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex, mm_frame_info* O
 }
 
 float
-MotionMatchWithMirrors(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex,
-                       mm_frame_info* OutBestMatch, bool* OutMatchedMirrored,
-                       const mm_controller_data* MMData, mm_frame_info Goal)
+MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
+                       bool* OutMatchedMirrored, const mm_controller_data* MMData,
+                       mm_frame_info Goal)
 {
   TIMED_BLOCK(MotionMatch);
-  assert(OutAnimIndex && OutStartFrameIndex);
+  assert(OutAnimIndex && OutLocalStartTime);
   assert(MMData);
   assert(MMData->FrameInfos.IsValid());
 
   mm_frame_info MirroredGoal = GetMirroredFrameGoal(Goal, { -1, 1, 1 }, MMData->Params.FixedParams);
 
-  // TODO(Lukas) Change this number to FLT_MAX
   float   SmallestCost       = FLT_MAX;
   int32_t BestFrameInfoIndex = -1;
   bool    MatchIsMirrored    = false;
@@ -388,14 +398,16 @@ MotionMatchWithMirrors(int32_t* OutAnimIndex, int32_t* OutStartFrameIndex,
 
   assert(BestFrameInfoIndex != -1);
 
-  for(int a = 0; a < MMData->AnimFrameRanges.Count; a++)
+  for(int a = 0; a < MMData->AnimFrameInfoRanges.Count; a++)
   {
-    int32_range CurrentRange = MMData->AnimFrameRanges[a];
+    mm_frame_info_range CurrentRange = MMData->AnimFrameInfoRanges[a];
     if(CurrentRange.Start <= BestFrameInfoIndex && BestFrameInfoIndex < CurrentRange.End)
     {
-      *OutAnimIndex       = a;
-      *OutStartFrameIndex = BestFrameInfoIndex - CurrentRange.Start + g_FirstMatchedFrameIndex;
-      *OutBestMatch       = MMData->FrameInfos[BestFrameInfoIndex];
+      *OutAnimIndex = a;
+      *OutLocalStartTime =
+        CurrentRange.StartTimeInAnim + (BestFrameInfoIndex - CurrentRange.Start) /
+                                         MMData->Params.FixedParams.MetadataSamplingFrequency;
+      *OutBestMatch = MMData->FrameInfos[BestFrameInfoIndex];
     }
   }
   *OutMatchedMirrored = MatchIsMirrored;
