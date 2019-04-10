@@ -104,6 +104,13 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
           (FrameInfoStack[i + 1].BonePs[b] - FrameInfoStack[i].BonePs[b]) *
           MMData.Params.FixedParams.MetadataSamplingFrequency;
       }
+			
+      for(int p = 0; p < MM_POINT_COUNT; p++)
+      {
+        FrameInfoStack[i].TrajectoryVs[p] =
+          Math::Length(FrameInfoStack[i + 1].TrajectoryPs[p] - FrameInfoStack[i].TrajectoryPs[p]) *
+          MMData.Params.FixedParams.MetadataSamplingFrequency;
+      }
     }
 
     if(0 < NewFrameInfoCount)
@@ -116,6 +123,11 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
         FrameInfoStack[LastFrameIndex].BoneVs[b] =
           (0 < LastFrameIndex) ? FrameInfoStack[LastFrameIndex - 1].BoneVs[b] : vec3{ 0, 0, 0 };
       }
+      /*for(int p = 0; p < MM_POINT_COUNT; p++)
+      {
+        FrameInfoStack[LastFrameIndex].TrajectoryVs[p] =
+          (0 < LastFrameIndex) ? FrameInfoStack[LastFrameIndex - 1].TrajectoryVs[p] : 0.0f;
+      }*/
     }
   }
   MMData.FrameInfos = FrameInfoStack.GetArrayHandle();
@@ -230,6 +242,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
       }
 
       ResultInfo.TrajectoryPs[p] = CurrentPoint;
+      ResultInfo.TrajectoryVs[p] = Math::Length(CurrentVelocity);
     }
   }
 
@@ -278,7 +291,7 @@ GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
 
 float
 ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float VelCoef,
-            float TrajCoef)
+            float TrajCoef, float TrajVCoef)
 {
   float PosDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
@@ -295,13 +308,18 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
   }
 
   float TrajDiffSum = 0.0f;
+  float TrajVDiffSum = 0.0f;
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
     vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
     TrajDiffSum += Math::Dot(Diff, Diff);
+		float VDiff = A.TrajectoryVs[p] - B.TrajectoryVs[p];
+    TrajVDiffSum += VDiff * VDiff;
   }
 
-  float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum;
+  float Cost =
+    PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum + TrajVCoef * TrajVDiffSum;
+
   return Cost;
 }
 
@@ -322,9 +340,10 @@ MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutB
   {
     {
       float CurrentCost =
-        ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.PosCoefficient,
-                    MMData->Params.DynamicParams.VelCoefficient,
-                    MMData->Params.DynamicParams.TrajCoefficient);
+        ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.BonePCoefficient,
+                    MMData->Params.DynamicParams.BoneVCoefficient,
+                    MMData->Params.DynamicParams.TrajPCoefficient,
+                    MMData->Params.DynamicParams.TrajVCoefficient);
       if(CurrentCost < SmallestCost)
       {
         SmallestCost       = CurrentCost;
@@ -370,9 +389,10 @@ MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame
   {
     {
       float CurrentCost =
-        ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.PosCoefficient,
-                    MMData->Params.DynamicParams.VelCoefficient,
-                    MMData->Params.DynamicParams.TrajCoefficient);
+        ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.BonePCoefficient,
+                    MMData->Params.DynamicParams.BoneVCoefficient,
+                    MMData->Params.DynamicParams.TrajPCoefficient,
+                    MMData->Params.DynamicParams.TrajVCoefficient);
       if(CurrentCost < SmallestCost)
       {
         SmallestCost       = CurrentCost;
@@ -383,9 +403,10 @@ MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame
 
     {
       float MirroredCost = ComputeCost(MirroredGoal, MMData->FrameInfos[i],
-                                       MMData->Params.DynamicParams.PosCoefficient,
-                                       MMData->Params.DynamicParams.VelCoefficient,
-                                       MMData->Params.DynamicParams.TrajCoefficient);
+                                       MMData->Params.DynamicParams.BonePCoefficient,
+                                       MMData->Params.DynamicParams.BoneVCoefficient,
+                                       MMData->Params.DynamicParams.TrajPCoefficient,
+                                       MMData->Params.DynamicParams.TrajVCoefficient);
 
       if(MirroredCost < SmallestCost)
       {

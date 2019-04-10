@@ -614,12 +614,14 @@ namespace UI
         UI::SliderFloat("Trajectory Duration (sec)", &GameState->MMDebug.TrajectoryDuration, 0, 10);
         UI::SliderInt("Trajectory Sample Count", &GameState->MMDebug.TrajectorySampleCount, 2, 40);
         UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
-        UI::SliderFloat("Position Coefficient", &GameState->MMParams.DynamicParams.PosCoefficient,
+        UI::SliderFloat("Bone Position Influence", &GameState->MMParams.DynamicParams.BonePCoefficient,
                         0, 2);
-        UI::SliderFloat("Velocity Coefficient", &GameState->MMParams.DynamicParams.VelCoefficient,
+        UI::SliderFloat("Bone Velocity Influence", &GameState->MMParams.DynamicParams.BoneVCoefficient,
                         0, 2);
-        UI::SliderFloat("Trajectory Coefficient",
-                        &GameState->MMParams.DynamicParams.TrajCoefficient, 0, 2);
+        UI::SliderFloat("Trajectory Position Influence",
+                        &GameState->MMParams.DynamicParams.TrajPCoefficient, 0, 2);
+        UI::SliderFloat("Trajectory Velocity Influence",
+                        &GameState->MMParams.DynamicParams.TrajVCoefficient, 0, 2);
         UI::SliderFloat("BlendInTime", &GameState->MMParams.DynamicParams.BelndInTime, 0, 2);
         UI::SliderFloat("Min Time Offset Threshold",
                         &GameState->MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 2);
@@ -665,6 +667,21 @@ namespace UI
         for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
         {
           bool DeleteCurrent = UI::Button("Delete", 0, i);
+					if(!DeleteCurrent)
+					{
+            entity* SelectedEntity = {};
+            if(GetSelectedEntity(GameState, &SelectedEntity))
+            {
+              if(SelectedEntity->AnimController)
+              {
+                UI::SameLine();
+                if(UI::Button("Preview", 0, i))
+                {
+                  Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+                }
+              }
+            }
+          }
           UI::SameLine();
           {
             char* Path;
@@ -721,7 +738,7 @@ namespace UI
               }
               if(GameState->MMData.FrameInfos.IsValid())
               {
-                Gameplay::ResetPlayer(SelectedEntity);
+                Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
                 for(int i = 0; i < GameState->MMData.Params.AnimRIDs.Count; i++)
                 {
                   GameState->Resources.Animations.RemoveReference(
@@ -1362,32 +1379,17 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           {
             if(GameState->CurrentAnimationID.Value > 0)
             {
+              Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
               if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount ==
                  SelectedModel->Skeleton->BoneCount)
               {
-                if(SelectedEntity->AnimController->AnimStateCount == 0)
-                {
-                  SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
-                  SelectedEntity->AnimController->AnimStateCount  = 1;
+                assert(SelectedEntity->AnimController->AnimStateCount == 0);
 
-                  GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
-                }
-                else
-                {
-                  if(SelectedEntity->AnimController->BlendFunc != NULL)
-                  {
-                    SelectedEntity->AnimController->BlendFunc = NULL;
-                    GameState->Resources.Animations.RemoveReference(
-                      SelectedEntity->AnimController->AnimationIDs[0]);
-                  }
-                  SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
-                  GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
-                }
+                SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
+                SelectedEntity->AnimController->AnimStateCount  = 1;
+
+                GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
                 Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
-              }
-              else if(SelectedEntity->AnimController->AnimStateCount != 0)
-              {
-                StopAnimation(SelectedEntity->AnimController, 0);
               }
             }
             GameState->PlayerEntityIndex = -1;
@@ -1411,14 +1413,14 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
           if(UI::Button("Play as entity"))
           {
-            Gameplay::ResetPlayer(SelectedEntity);
+            Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
             GameState->PlayerEntityIndex = GameState->SelectedEntityIndex;
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
             if(UI::Button("Stop playing as entity"))
             {
-              Gameplay::ResetPlayer(SelectedEntity);
+              Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
               GameState->PlayerEntityIndex = -1;
             }
           }

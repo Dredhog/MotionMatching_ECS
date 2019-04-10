@@ -19,9 +19,10 @@ struct mm_fixed_params
 struct mm_dynamic_params
 {
   float TrajectoryTimeHorizon;
-  float PosCoefficient;
-  float VelCoefficient;
-  float TrajCoefficient;
+  float BonePCoefficient;
+  float BoneVCoefficient;
+  float TrajPCoefficient;
+  float TrajVCoefficient;
   float BelndInTime;
   float MinTimeOffsetThreshold;
   bool  MatchMirroredAnimations;
@@ -37,8 +38,10 @@ struct mm_matching_params
 
 struct mm_frame_info
 {
-  vec3 TrajectoryPs[MM_POINT_COUNT];
-  // float Directions[MM_POINT_COUNT];
+  vec3  TrajectoryPs[MM_POINT_COUNT];
+  float TrajectoryVs[MM_POINT_COUNT];
+  float FacingAngles[MM_POINT_COUNT];
+
   vec3 BonePs[MM_COMPARISON_BONE_COUNT];
   vec3 BoneVs[MM_COMPARISON_BONE_COUNT];
 };

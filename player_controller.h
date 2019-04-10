@@ -8,7 +8,8 @@
 
 namespace Gameplay
 {
-  void ResetPlayer(entity* Player);
+  void ResetPlayer(entity* Player, Resource::resource_manager* Resources,
+                   const mm_controller_data* MMData);
   void UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
                     Resource::resource_manager* Resources, const game_input* Input,
                     const camera* Camera, const mm_controller_data* MMData,

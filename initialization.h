@@ -468,15 +468,16 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.CurrentGoal.ShowBonePositions = true;
     GameState->MMDebug.MatchedGoal.ShowBonePositions = true;
 
-    GameState->MMData                                           = {};
-    GameState->MMParams.DynamicParams.PosCoefficient            = 1.0f;
-    GameState->MMParams.DynamicParams.VelCoefficient            = 1.0f;
-    GameState->MMParams.DynamicParams.TrajCoefficient           = 1.0f;
-    GameState->MMParams.DynamicParams.TrajectoryTimeHorizon     = 1.0f;
-    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold    = 0.2f;
-    GameState->MMParams.DynamicParams.BelndInTime               = 0.2f;
-    GameState->MMParams.DynamicParams.MatchMirroredAnimations   = false;
-    GameState->MMParams.FixedParams.MetadataSamplingFrequency   = 60.0f;
+    GameState->MMData                                         = {};
+    GameState->MMParams.DynamicParams.BonePCoefficient        = 1.0f;
+    GameState->MMParams.DynamicParams.BoneVCoefficient        = 0.02f;
+    GameState->MMParams.DynamicParams.TrajPCoefficient        = 0.06f;
+    GameState->MMParams.DynamicParams.TrajVCoefficient        = 0.0f;
+    GameState->MMParams.DynamicParams.TrajectoryTimeHorizon   = 1.0f;
+    GameState->MMParams.DynamicParams.MinTimeOffsetThreshold  = 0.2f;
+    GameState->MMParams.DynamicParams.BelndInTime             = 0.2f;
+    GameState->MMParams.DynamicParams.MatchMirroredAnimations = false;
+    GameState->MMParams.FixedParams.MetadataSamplingFrequency = 60.0f;
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(4);
     GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(10);
     // TODO(Lukas) add this to the UI or get this data from the skeleton

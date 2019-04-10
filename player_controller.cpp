@@ -1,6 +1,5 @@
 #include "player_controller.h"
 #include "math.h"
-#include "motion_matching.h"
 #include "blend_stack.h"
 #include "debug_drawing.h"
 #include "profile.h"
@@ -9,12 +8,37 @@ const vec3 YAxis = { 0, 1, 0 };
 const vec3 ZAxis = { 0, 0, 1 };
 
 void
-Gameplay::ResetPlayer(entity* Player)
+Gameplay::ResetPlayer(entity* Player, Resource::resource_manager* Resources,
+                      const mm_controller_data* MMData)
 {
-  if(Player->AnimController)
+  assert(Player->AnimController);
+  assert(MMData);
+
+  Player->AnimController->BlendFunc = NULL;
+  for(int i = 0; i < Player->AnimController->AnimStateCount; i++)
   {
-    Player->AnimController->BlendFunc = NULL;
+    if(Player->AnimController->AnimationIDs[i].Value != 0)
+    {
+
+      bool AnimIsUsedByMMData = false;
+      for(int j = 0; MMData->FrameInfos.IsValid() && j < MMData->Params.AnimRIDs.Count; j++)
+      {
+        if(Player->AnimController->AnimationIDs[i].Value == MMData->Params.AnimRIDs[j].Value)
+        {
+          AnimIsUsedByMMData = true;
+          break;
+        }
+      }
+      if(!AnimIsUsedByMMData)
+      {
+        Resources->Animations.RemoveReference(Player->AnimController->AnimationIDs[i]);
+      }
+      Player->AnimController->AnimationIDs[i] = {};
+      Player->AnimController->States[i]       = {};
+      Player->AnimController->Animations[i]   = NULL;
+    }
   }
+  Player->AnimController->AnimStateCount = 0;
   ResetBlendStack();
 }
 
@@ -159,7 +183,7 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
       float   NewAnimStartTime;
       bool    NewAnimIsMirrored = false;
 
-      mm_frame_info BestMatch         = {};
+      mm_frame_info BestMatch = {};
       if(!MMData->Params.DynamicParams.MatchMirroredAnimations)
       {
         MotionMatch(&NewAnimIndex, &NewAnimStartTime, &BestMatch, MMData, AnimGoal);

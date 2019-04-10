@@ -5,7 +5,7 @@ circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos = {};
 
 void ResetBlendStack()
 {
-	//TODO(Lukas) Implement this
+  g_BlendInfos.Clear();
 }
 
 // TODO(Lukas): Remove assumption that playback rate is 1
