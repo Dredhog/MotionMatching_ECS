@@ -68,9 +68,10 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Skeleton);
 
       mat4    InvRootMatrix;
+      mat4    RootMatrix;
       int32_t HipIndex  = 0;
       mat4    HipMatrix = TempMatrices[HipIndex];
-      Anim::GetRootAndInvRootMatrices(NULL, &InvRootMatrix, HipMatrix);
+      Anim::GetRootAndInvRootMatrices(&RootMatrix, &InvRootMatrix, HipMatrix);
 
       // Fill Bone Positions
       for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
@@ -87,11 +88,20 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
         Anim::transform SampleHipTransform =
           Anim::LinearAnimationBoneSample(Anim, HipIndex,
                                           CurrentSampleTime + (p + 1) * PositionSamplePeriod);
-        vec3 SamplePoint      = SampleHipTransform.Translation;
-        vec4 SamplePointHomog = { SamplePoint, 1 };
+        // TODO(Lukas) this should actually get the root for this point
+        mat4 CurrentHipMatrix   = Anim::TransformToMat4(SampleHipTransform);
+        vec3 SamplePoint        = SampleHipTransform.Translation;
+        vec4 SamplePointHomog   = { SamplePoint, 1 };
         FrameInfoStack[FrameInfoIndex].TrajectoryPs[p] =
           Math::MulMat4Vec4(InvRootMatrix, SamplePointHomog).XYZ;
+
         FrameInfoStack[FrameInfoIndex].TrajectoryPs[p].Y = 0;
+
+        vec3  InitialXAxis = Math::Normalized({ RootMatrix.X.X, 0, RootMatrix.X.Z });
+        vec3  PointXAxis   = Math::Normalized({ CurrentHipMatrix.X.X, 0, CurrentHipMatrix.X.Z });
+        float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
+        float AbsAngle     = acosf(Math::Dot(InitialXAxis, PointXAxis));
+        FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
       }
     }
 
@@ -284,6 +294,7 @@ GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
   for(int i = 0; i < MM_POINT_COUNT; i++)
   {
     MirroredInfo.TrajectoryPs[i] = Math::MulMat3Vec3(MirrorMatrix, OriginalInfo.TrajectoryPs[i]);
+    MirroredInfo.TrajectoryAngles[i] *= -1;
   }
 
   return MirroredInfo;

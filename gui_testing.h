@@ -634,10 +634,14 @@ namespace UI
         UI::Checkbox("Preview In Root Space", &GameState->MMDebug.PreviewInRootSpace);
         UI::Text("Current Goal");
         UI::Checkbox("Show Current Goal", &GameState->MMDebug.CurrentGoal.ShowTrajectory);
+        UI::Checkbox("Show Current Goal Directions",
+                     &GameState->MMDebug.CurrentGoal.ShowTrajectoryAngles);
         UI::Checkbox("Show Current Positions", &GameState->MMDebug.CurrentGoal.ShowBonePositions);
         UI::Checkbox("Show Current Velocities", &GameState->MMDebug.CurrentGoal.ShowBoneVelocities);
         UI::Text("Matched Goal");
         UI::Checkbox("Show Matched Goal", &GameState->MMDebug.MatchedGoal.ShowTrajectory);
+        UI::Checkbox("Show Matched Goal Directions",
+                     &GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles);
         UI::Checkbox("Show Matched Positions", &GameState->MMDebug.MatchedGoal.ShowBonePositions);
         UI::Checkbox("Show Matched Velocities", &GameState->MMDebug.MatchedGoal.ShowBoneVelocities);
 

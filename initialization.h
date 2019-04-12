@@ -463,10 +463,12 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.ShowRootTrajectories  = false;
     GameState->MMDebug.ShowHipTrajectories   = false;
 
-    GameState->MMDebug.CurrentGoal.ShowTrajectory    = true;
-    GameState->MMDebug.MatchedGoal.ShowTrajectory    = true;
-    GameState->MMDebug.CurrentGoal.ShowBonePositions = true;
-    GameState->MMDebug.MatchedGoal.ShowBonePositions = true;
+    GameState->MMDebug.CurrentGoal.ShowTrajectory       = true;
+    GameState->MMDebug.MatchedGoal.ShowTrajectory       = true;
+    GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = false;
+    GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = false;
+    GameState->MMDebug.CurrentGoal.ShowBonePositions    = true;
+    GameState->MMDebug.MatchedGoal.ShowBonePositions    = true;
 
     GameState->MMData                                         = {};
     GameState->MMParams.DynamicParams.BonePCoefficient        = 1.0f;

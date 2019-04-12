@@ -40,7 +40,7 @@ struct mm_frame_info
 {
   vec3  TrajectoryPs[MM_POINT_COUNT];
   float TrajectoryVs[MM_POINT_COUNT];
-  float FacingAngles[MM_POINT_COUNT];
+  float TrajectoryAngles[MM_POINT_COUNT];
 
   vec3 BonePs[MM_COMPARISON_BONE_COUNT];
   vec3 BoneVs[MM_COMPARISON_BONE_COUNT];
@@ -49,6 +49,7 @@ struct mm_frame_info
 struct mm_info_debug_settings
 {
   bool ShowTrajectory;
+  bool ShowTrajectoryAngles;
   bool ShowBonePositions;
   bool ShowBoneVelocities;
 };
