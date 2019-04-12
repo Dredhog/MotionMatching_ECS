@@ -135,9 +135,19 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
         {
           vec4 HomogTrajectoryPointP = { AnimGoal.TrajectoryPs[i], 1 };
           vec3 WorldTrajectoryPointP = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
-          Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 0, 1, 1 });
-          Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 0, 1, 1 });
-          PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
+					{
+            Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 0, 1, 1 });
+            Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 0, 1, 1 });
+            PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
+          }
+          if(MMDebug->CurrentGoal.ShowTrajectoryAngles)
+          {
+            vec4 ModelSpaceFacingDirection = { sinf(AnimGoal.TrajectoryAngles[i]), 0,
+                                               cosf(AnimGoal.TrajectoryAngles[i]), 0 };
+            vec3 WorldSpaceFacingDirection =
+              Math::MulMat4Vec4(ModelMatrix, ModelSpaceFacingDirection).XYZ;
+            Debug::PushLine(WorldTrajectoryPointP, WorldTrajectoryPointP + WorldSpaceFacingDirection);
+          }
         }
       }
     }

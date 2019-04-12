@@ -671,7 +671,7 @@ namespace UI
         for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
         {
           bool DeleteCurrent = UI::Button("Delete", 0, i);
-					if(!DeleteCurrent)
+					/*if(!DeleteCurrent)
 					{
             entity* SelectedEntity = {};
             if(GetSelectedEntity(GameState, &SelectedEntity))
@@ -685,7 +685,7 @@ namespace UI
                 }
               }
             }
-          }
+          }*/
           UI::SameLine();
           {
             char* Path;
@@ -1419,6 +1419,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           {
             Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
             GameState->PlayerEntityIndex = GameState->SelectedEntityIndex;
+            GameState->MMDebug.PreviewInRootSpace = true;
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {

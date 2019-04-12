@@ -253,6 +253,13 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
 
       ResultInfo.TrajectoryPs[p] = CurrentPoint;
       ResultInfo.TrajectoryVs[p] = Math::Length(CurrentVelocity);
+			{
+        vec3  InitialXAxis = Math::Normalized(StartVelocity);
+        vec3  PointXAxis   = Math::Normalized(CurrentVelocity);
+        float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
+        float AbsAngle     = acosf(Math::Dot(InitialXAxis, PointXAxis));
+        ResultInfo.TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
+      }
     }
   }
 
