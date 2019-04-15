@@ -237,7 +237,7 @@ void
 GetKeyframeIndexAndInterpolant(int* K, float* T, const float* SampleTimes, int SampleCount,
                                float Time)
 {
-
+  Time = ClampFloat(SampleTimes[0], Time, SampleTimes[SampleCount - 1]);
   for(int k = 0; k < SampleCount - 1; k++)
   {
     if(Time <= SampleTimes[k + 1])

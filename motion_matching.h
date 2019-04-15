@@ -23,6 +23,7 @@ struct mm_dynamic_params
   float BoneVCoefficient;
   float TrajPCoefficient;
   float TrajVCoefficient;
+  float TrajAngleCoefficient;
   float BelndInTime;
   float MinTimeOffsetThreshold;
   bool  MatchMirroredAnimations;

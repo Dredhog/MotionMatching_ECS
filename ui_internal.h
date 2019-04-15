@@ -243,7 +243,7 @@ PushClipQuad(gui_window* Window, const vec3& Position, const vec3& Size, bool In
   rect         ClipRect = NewRect(Position, Position + Size);
   if(0 < g.ClipRectStack.Count && IntersectWithPrevious)
   {
-    ClipRect.Clip(g.ClipRectStack.Back());
+    ClipRect.Clip(g.ClipRectStack.Peek());
   }
   g.ClipRectStack.Push(ClipRect);
 
@@ -471,7 +471,7 @@ IsHovered(const rect& BB, ui_id ID)
     gui_window* Window = GetCurrentWindow();
     if(Window == g.HoveredWindow && IsWindowHoverable(Window))
     {
-      rect TestRect = BB.GetIntersection(g.ClipRectStack.Back());
+      rect TestRect = BB.GetIntersection(g.ClipRectStack.Peek());
       if((g.ActiveID == 0 || g.ActiveID == ID) && IsMouseInsideRect(TestRect))
       {
         return true;
@@ -530,7 +530,7 @@ TestIfVisible(const rect& Rect)
 {
   // gui_window& Window   = *GetCurrentWindow();
   gui_context& g        = *GetContext();
-  rect         ClipRect = g.ClipRectStack.Back();
+  rect         ClipRect = g.ClipRectStack.Peek();
   return Rect.Intersects(ClipRect);
 }
 

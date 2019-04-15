@@ -2,9 +2,9 @@
 void
 EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
 {
-  BEGIN_TIMED_BLOCK(Editor);
+  TIMED_BLOCK(Editor);
   // GUI
-  UI::TestGui(GameState, Input);
+  TestGui(GameState, Input);
 
   /* // ANIMATION TIMELINE
   if(GameState->SelectionMode == SELECT_Bone && GameState->DrawTimeline &&
@@ -16,7 +16,7 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
 
   if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)
   {
-    BEGIN_TIMED_BLOCK(SelectionDrawing);
+    TIMED_BLOCK(SelectionDrawing);
     // Draw entities to ID buffer
     // SORT_MESH_INSTANCES(ByEntity);
     glDisable(GL_BLEND);
@@ -70,14 +70,12 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
     GameState->SelectedEntityIndex = (uint32_t)IDColor[0];
     GameState->SelectedMeshIndex   = (uint32_t)IDColor[1];
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    END_TIMED_BLOCK(SelectionDrawing);
   }
 
   // Entity creation
-  if(GameState->IsEntityCreationMode && Input->MouseLeft.EndedDown && Input->MouseLeft.Changed)
+  if(GameState->IsEntityCreationMode && Input->MouseLeft.EndedDown && Input->MouseLeft.Changed &&  GameState->CurrentModelID.Value != 0)
   {
-    BEGIN_TIMED_BLOCK(EntityCreation);
+    	TIMED_BLOCK(EntityCreation);
 
     GameState->IsEntityCreationMode = false;
     vec3 RayDir =
@@ -85,7 +83,7 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
                            GameState->Camera.ProjectionMatrix, GameState->Camera.ViewMatrix);
     raycast_result RaycastResult =
       RayIntersectPlane(GameState->Camera.Position, RayDir, {}, { 0, 1, 0 });
-    if(RaycastResult.Success && GameState->CurrentModelID.Value != 0)
+    if(RaycastResult.Success)
     {
       Anim::transform NewTransform = {};
       NewTransform.Rotation        = Math::QuatIdent();
@@ -103,9 +101,29 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
       }
       AddEntity(GameState, GameState->CurrentModelID, MaterialIDs, NewTransform);
     }
-    END_TIMED_BLOCK(EntityCreation);
   }
-  END_TIMED_BLOCK(Editor);
+	// Waypoint creation
+  else if(GameState->TrajectorySystem.IsWaypointPlacementMode && Input->MouseLeft.EndedDown &&
+          Input->MouseLeft.Changed)
+  {
+    vec3 RayDir =
+      GetRayDirFromScreenP({ Input->NormMouseX, Input->NormMouseY },
+                           GameState->Camera.ProjectionMatrix, GameState->Camera.ViewMatrix);
+    raycast_result RaycastResult =
+      RayIntersectPlane(GameState->Camera.Position, RayDir, {}, { 0, 1, 0 });
+    if(RaycastResult.Success)
+		{
+      waypoint NewWaypoint = {
+        .Position = RaycastResult.IntersectP,
+        .Facing   = 0.0f,
+        .Velocity = 1.0f,
+      };
+			assert(GameState->TrajectorySystem.SelectedSplineIndex != -1);
+      GameState->TrajectorySystem.Splines[GameState->TrajectorySystem.SelectedSplineIndex]
+        .Waypoints.Push(NewWaypoint);
+      GameState->TrajectorySystem.IsWaypointPlacementMode = false;
+    }
+	}
 }
 
 void

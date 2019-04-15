@@ -257,7 +257,7 @@ struct fixed_stack
   }
 
   T
-  Back()
+  Peek()
   {
     assert(0 < this->Count);
     return this->Elements[this->Count - 1];
@@ -275,6 +275,14 @@ struct fixed_stack
   {
     int TempCount = this->Count;
     this->Count   = 0;
+    return TempCount;
+  }
+
+  int
+  HardClear()
+  {
+    int TempCount = this->Count;
+    memset(this->Elements, 0, this->Count * sizeof(T));
     return TempCount;
   }
 

@@ -10,7 +10,7 @@ void EntityGUI(game_state* GameState, bool& ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
              bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings,
-             bool& ShowECDData);
+             bool& ShowECDData, bool& ShowTrajectorySettings);
 
 char*
 PathArrayToString(void* Data, int Index)
@@ -34,118 +34,115 @@ AllocationInfoComparison(const void* A, const void* B)
   return AllocInfoA->Base > AllocInfoB->Base;
 }
 
-namespace UI
+void
+TestGui(game_state* GameState, const game_input* Input)
 {
-  void
-  TestGui(game_state* GameState, const game_input* Input)
+  BEGIN_TIMED_BLOCK(GUI);
+  UI::BeginFrame(GameState, Input);
+
+  static bool s_ShowDemoWindow           = false;
+  static bool s_ShowPhysicsWindow        = false;
+  static bool s_ShowProfilerWindow       = false;
+  static bool s_ShowMotionMatchingWindow = true;
+
+  UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
   {
-    BEGIN_TIMED_BLOCK(GUI);
-    UI::BeginFrame(GameState, Input);
-
-    static bool s_ShowDemoWindow           = false;
-    static bool s_ShowPhysicsWindow        = false;
-    static bool s_ShowProfilerWindow       = false;
-    static bool s_ShowMotionMatchingWindow = true;
-
-    UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
     {
-      {
-        //char TempBuffer[32];
-        //sprintf(TempBuffer, "dt: %.4f", Input->dt);
-        //UI::Text(TempBuffer);
-      }
-      UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings,
-                SELECT_EnumCount, UI::StringArrayToString);
-
-      static bool s_ShowMaterialEditor         = false;
-      static bool s_ShowEntityTools            = true;
-      static bool s_ShowAnimationEditor        = false;
-      static bool s_ShowLightSettings          = false;
-      static bool s_ShowDisplaySet             = false;
-      static bool s_ShowCameraSettings         = false;
-      static bool s_ShowSceneSettings          = false;
-      static bool s_ShowPostProcessingSettings = false;
-      static bool s_ShowECSData                = false;
-
-      UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
-      UI::Checkbox("Update Path List", &GameState->UpdatePathList);
-      UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
-      UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
-      UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
-      UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
-      EntityGUI(GameState, s_ShowEntityTools);
-      MaterialGUI(GameState, s_ShowMaterialEditor);
-      AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
-      MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings,
-              s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowECSData);
+      // char TempBuffer[32];
+      // sprintf(TempBuffer, "dt: %.4f", Input->dt);
+      // UI::Text(TempBuffer);
     }
-    UI::EndWindow();
+    UI::Combo("Selection mode", (int32_t*)&GameState->SelectionMode, g_SelectionEnumStrings,
+              SELECT_EnumCount, UI::StringArrayToString);
 
-    if(s_ShowProfilerWindow)
-    {
-      UI::BeginWindow("Profiler Window", { 150, 500 }, { 1500, 500 });
+    static bool s_ShowMaterialEditor         = false;
+    static bool s_ShowEntityTools            = true;
+    static bool s_ShowAnimationEditor        = false;
+    static bool s_ShowLightSettings          = false;
+    static bool s_ShowDisplaySet             = false;
+    static bool s_ShowCameraSettings         = false;
+    static bool s_ShowSceneSettings          = false;
+    static bool s_ShowPostProcessingSettings = false;
+    static bool s_ShowECSData                = false;
+    static bool s_ShowTrajectorySetting      = false;
+
+    UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
+    UI::Checkbox("Update Path List", &GameState->UpdatePathList);
+    UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
+    UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
+    UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+    UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
+    EntityGUI(GameState, s_ShowEntityTools);
+    MaterialGUI(GameState, s_ShowMaterialEditor);
+    AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
+    MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings,
+            s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowECSData, s_ShowTrajectorySetting);
+  }
+  UI::EndWindow();
+
+  if(s_ShowProfilerWindow)
+  {
+    UI::BeginWindow("Profiler Window", { 150, 500 }, { 1500, 500 });
 #ifdef USE_DEBUG_PROFILING
+    {
+      int PreviousFrameIndex =
+        (g_CurrentProfilerFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) % PROFILE_MAX_FRAME_COUNT;
+      static bool s_AllowCurrentFrameChoice      = false;
+      static bool s_ShowTimelineRegion           = false;
+      static bool s_ShowFrameSummaries           = false;
+      static bool s_ShowGPUFrameSummaries        = false;
+      static bool s_ShowEntityEditor             = true;
+      static bool s_ShowChunkMemoryVisualization = true;
+
+      static int s_CurrentModifiableFrameIndex = 0;
+
+      bool Changed = s_AllowCurrentFrameChoice;
+      UI::Checkbox("Inspect Specific Frame", &s_AllowCurrentFrameChoice);
+      Changed = Changed != s_AllowCurrentFrameChoice;
+      if(s_AllowCurrentFrameChoice)
       {
-        int PreviousFrameIndex =
-          (g_CurrentProfilerFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) % PROFILE_MAX_FRAME_COUNT;
-        static bool s_AllowCurrentFrameChoice      = false;
-        static bool s_ShowTimelineRegion           = false;
-        static bool s_ShowFrameSummaries           = false;
-        static bool s_ShowGPUFrameSummaries        = false;
-        static bool s_ShowEntityEditor             = true;
-        static bool s_ShowChunkMemoryVisualization = true;
+        UI::SameLine();
+        if(UI::Button("Previous Frame"))
+        {
+          s_CurrentModifiableFrameIndex =
+            (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) % PROFILE_MAX_FRAME_COUNT;
+        }
+        UI::SameLine();
+        if(UI::Button("Next Frame"))
+        {
+          s_CurrentModifiableFrameIndex =
+            (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT + 1) % PROFILE_MAX_FRAME_COUNT;
+        }
+        UI::NewLine();
+      }
 
-        static int s_CurrentModifiableFrameIndex = 0;
+      s_CurrentModifiableFrameIndex =
+        (s_AllowCurrentFrameChoice) ? s_CurrentModifiableFrameIndex : PreviousFrameIndex;
 
-        bool Changed = s_AllowCurrentFrameChoice;
-        UI::Checkbox("Inspect Specific Frame", &s_AllowCurrentFrameChoice);
-        Changed = Changed != s_AllowCurrentFrameChoice;
+      if(Changed)
+      {
         if(s_AllowCurrentFrameChoice)
         {
-          UI::SameLine();
-          if(UI::Button("Previous Frame"))
-          {
-            s_CurrentModifiableFrameIndex =
-              (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT - 1) %
-              PROFILE_MAX_FRAME_COUNT;
-          }
-          UI::SameLine();
-          if(UI::Button("Next Frame"))
-          {
-            s_CurrentModifiableFrameIndex =
-              (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT + 1) %
-              PROFILE_MAX_FRAME_COUNT;
-          }
-          UI::NewLine();
-        }
-
-        s_CurrentModifiableFrameIndex =
-          (s_AllowCurrentFrameChoice) ? s_CurrentModifiableFrameIndex : PreviousFrameIndex;
-
-        if(Changed)
-        {
-          if(s_AllowCurrentFrameChoice)
-          {
-            s_CurrentModifiableFrameIndex = PreviousFrameIndex;
-            PAUSE_PROFILE();
-          }
-          else
-          {
-            RESUME_PROFILE();
-          }
-        }
-
-        if(s_AllowCurrentFrameChoice)
-        {
-          UI::SliderInt("Current Frame", &s_CurrentModifiableFrameIndex, 0,
-                        PROFILE_MAX_FRAME_COUNT - 1);
+          s_CurrentModifiableFrameIndex = PreviousFrameIndex;
+          PAUSE_PROFILE();
         }
         else
         {
-          // int temp = g_CurrentProfilerFrameIndex;
-          // UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
-          // g_CurrentProfilerFrameIndex = temp;
+          RESUME_PROFILE();
         }
+      }
+
+      if(s_AllowCurrentFrameChoice)
+      {
+        UI::SliderInt("Current Frame", &s_CurrentModifiableFrameIndex, 0,
+                      PROFILE_MAX_FRAME_COUNT - 1);
+      }
+      else
+      {
+        // int temp = g_CurrentProfilerFrameIndex;
+        // UI::SliderInt("Current Frame", &PreviousFrameIndex, 0, PROFILE_MAX_FRAME_COUNT-1);
+        // g_CurrentProfilerFrameIndex = temp;
+      }
 
 #if 0
 				{
@@ -168,600 +165,594 @@ namespace UI
 					}
 				}
 #else
-        static int s_BlockIndexForSummary = 0;
+      static int s_BlockIndexForSummary = 0;
 
-        if(UI::CollapsingHeader("Frame Timeline", &s_ShowTimelineRegion))
+      if(UI::CollapsingHeader("Frame Timeline", &s_ShowTimelineRegion))
+      {
+        static float s_TimelineZoom = 1;
+        UI::SliderFloat("Timeline Zoom", &s_TimelineZoom, 0, 10);
+
+        float AvailableWidth = UI::GetAvailableWidth();
+        float ChildPadding   = 30.0f;
+        UI::Dummy(ChildPadding);
+        UI::SameLine();
+
+        UI::PushStyleColor(UI::COLOR_WindowBackground, vec4{ 0.4f, 0.4f, 0.5f, 0.3f });
+        UI::BeginChildWindow("Profile Timeline Window", { AvailableWidth - ChildPadding * 2, 200 });
         {
-          static float s_TimelineZoom = 1;
-          UI::SliderFloat("Timeline Zoom", &s_TimelineZoom, 0, 10);
-
-          float AvailableWidth = UI::GetAvailableWidth();
-          float ChildPadding   = 30.0f;
-          UI::Dummy(ChildPadding);
-          UI::SameLine();
-
-          UI::PushStyleColor(UI::COLOR_WindowBackground, vec4{ 0.4f, 0.4f, 0.5f, 0.3f });
-          UI::BeginChildWindow("Profile Timeline Window",
-                               { AvailableWidth - ChildPadding * 2, 200 });
+          UI::PushStyleVar(UI::VAR_BoxPaddingX, 1);
+          UI::PushStyleVar(UI::VAR_BoxPaddingY, 1);
+          UI::PushStyleVar(UI::VAR_SpacingX, 0);
+          UI::PushStyleVar(UI::VAR_SpacingY, 1);
           {
-            UI::PushStyleVar(UI::VAR_BoxPaddingX, 1);
-            UI::PushStyleVar(UI::VAR_BoxPaddingY, 1);
-            UI::PushStyleVar(UI::VAR_SpacingX, 0);
-            UI::PushStyleVar(UI::VAR_SpacingY, 1);
+            const float           MaxProfileWidth = (0.5f * s_TimelineZoom) * UI::GetWindowWidth();
+            const frame_endpoints FrameCycleCounter =
+              GLOBAL_FRAME_ENDPOINT_TABLE[s_CurrentModifiableFrameIndex];
+            const float BaselineCycleCount =
+              5e6; //(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
+            for(int j = 0; j < 5; j++)
             {
-              const float MaxProfileWidth = (0.5f * s_TimelineZoom) * UI::GetWindowWidth();
-              const frame_endpoints FrameCycleCounter =
-                GLOBAL_FRAME_ENDPOINT_TABLE[s_CurrentModifiableFrameIndex];
-              const float BaselineCycleCount =
-                5e6; //(float)(FrameCycleCounter.FrameEnd - FrameCycleCounter.FrameStart);
-              for(int j = 0; j < 5; j++)
+              float CurrentHorizontalPosition = 0.0f;
+              for(int i = 0;
+                  i < GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
               {
-                float CurrentHorizontalPosition = 0.0f;
-                for(int i = 0;
-                    i < GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex]; i++)
+                timer_event CurrentEvent =
+                  GLOBAL_FRAME_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
+                if(CurrentEvent.EventDepth == j)
                 {
-                  timer_event CurrentEvent =
-                    GLOBAL_FRAME_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i];
-                  if(CurrentEvent.EventDepth == j)
-                  {
-                    float EventWidth =
-                      (MaxProfileWidth / BaselineCycleCount) *
-                      (float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
-                    float EventLeft = (MaxProfileWidth / BaselineCycleCount) *
-                                      (CurrentEvent.StartCycleCount - FrameCycleCounter.FrameStart);
+                  float EventWidth =
+                    (MaxProfileWidth / BaselineCycleCount) *
+                    (float)(CurrentEvent.EndCycleCount - CurrentEvent.StartCycleCount);
+                  float EventLeft = (MaxProfileWidth / BaselineCycleCount) *
+                                    (CurrentEvent.StartCycleCount - FrameCycleCounter.FrameStart);
 
-                    const float* EventColor = &TIMER_UI_COLOR_TABLE[CurrentEvent.NameTableIndex][0];
-                    UI::PushStyleColor(UI::COLOR_ButtonNormal,
-                                       vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
+                  const float* EventColor = &TIMER_UI_COLOR_TABLE[CurrentEvent.NameTableIndex][0];
+                  UI::PushStyleColor(UI::COLOR_ButtonNormal,
+                                     vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
+                  {
+                    float DummyWidth = EventLeft - CurrentHorizontalPosition;
+                    UI::Dummy(EventLeft - CurrentHorizontalPosition);
+                    UI::SameLine();
+                    if(UI::Button(TIMER_NAME_TABLE[CurrentEvent.NameTableIndex], EventWidth))
                     {
-                      float DummyWidth = EventLeft - CurrentHorizontalPosition;
-                      UI::Dummy(EventLeft - CurrentHorizontalPosition);
-                      UI::SameLine();
-                      if(UI::Button(TIMER_NAME_TABLE[CurrentEvent.NameTableIndex], EventWidth))
-                      {
-                        s_BlockIndexForSummary = CurrentEvent.NameTableIndex;
-                      }
-                      UI::SameLine();
-                      CurrentHorizontalPosition += DummyWidth + EventWidth;
+                      s_BlockIndexForSummary = CurrentEvent.NameTableIndex;
                     }
-                    UI::PopStyleColor();
+                    UI::SameLine();
+                    CurrentHorizontalPosition += DummyWidth + EventWidth;
                   }
+                  UI::PopStyleColor();
                 }
-                UI::NewLine();
-              }
-            }
-            UI::PopStyleVar();
-            UI::PopStyleVar();
-            UI::PopStyleVar();
-            UI::PopStyleVar();
-          }
-          UI::EndChildWindow();
-          UI::PopStyleColor();
-          UI::NewLine();
-          {
-            {
-              UI::Text(TIMER_NAME_TABLE[s_BlockIndexForSummary]);
-              UI::SameLine();
-              {
-                char CountBuffer[40];
-                sprintf(CountBuffer, ": %lu",
-                        GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex]
-                                                        [s_BlockIndexForSummary]
-                                                          .CycleCount);
-                UI::Text(CountBuffer);
               }
               UI::NewLine();
             }
           }
+          UI::PopStyleVar();
+          UI::PopStyleVar();
+          UI::PopStyleVar();
+          UI::PopStyleVar();
         }
-#endif
-
-        if(UI::CollapsingHeader("Frame Event Summaries", &s_ShowFrameSummaries))
+        UI::EndChildWindow();
+        UI::PopStyleColor();
+        UI::NewLine();
         {
-          for(int i = 0; i < ArrayCount(TIMER_NAME_TABLE); i++)
           {
-            UI::Text(TIMER_NAME_TABLE[i]);
+            UI::Text(TIMER_NAME_TABLE[s_BlockIndexForSummary]);
             UI::SameLine();
             {
               char CountBuffer[40];
               sprintf(CountBuffer, ": %lu",
-                      GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][i]
-                        .CycleCount);
+                      GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex]
+                                                      [s_BlockIndexForSummary]
+                                                        .CycleCount);
               UI::Text(CountBuffer);
             }
             UI::NewLine();
           }
         }
+      }
+#endif
 
-        if(UI::CollapsingHeader("GPU Frame Event Summaries", &s_ShowGPUFrameSummaries))
+      if(UI::CollapsingHeader("Frame Event Summaries", &s_ShowFrameSummaries))
+      {
+        for(int i = 0; i < ArrayCount(TIMER_NAME_TABLE); i++)
         {
-          for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)
+          UI::Text(TIMER_NAME_TABLE[i]);
+          UI::SameLine();
           {
-            UI::Text(GPU_TIMER_NAME_TABLE[i]);
+            char CountBuffer[40];
+            sprintf(CountBuffer, ": %lu",
+                    GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
+            UI::Text(CountBuffer);
+          }
+          UI::NewLine();
+        }
+      }
+
+      if(UI::CollapsingHeader("GPU Frame Event Summaries", &s_ShowGPUFrameSummaries))
+      {
+        for(int i = 0; i < ARRAY_COUNT(GPU_TIMER_NAME_TABLE); i++)
+        {
+          UI::Text(GPU_TIMER_NAME_TABLE[i]);
+          UI::SameLine();
+          {
+            char CountBuffer[40];
+            sprintf(CountBuffer, ": %fms",
+                    GPU_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i].ElapsedTime /
+                      (float)1e6);
+            UI::Text(CountBuffer);
+          }
+          UI::NewLine();
+        }
+      }
+      {
+        Memory::marker EntityEditorMemStart = GameState->TemporaryMemStack->GetMarker();
+        const int      TempBufferCapacity   = 64;
+        char* TempBuffer = PushArray(GameState->TemporaryMemStack, TempBufferCapacity, char);
+
+        if(UI::CollapsingHeader("ECS Entity Editor", &s_ShowEntityEditor))
+        {
+          static int32_t SelectedEntityID = -1;
+
+          UI::SliderInt("Selected Entity ID", &SelectedEntityID, 0,
+                        MaxInt32(1, GameState->ECSWorld->Entities.Count - 1));
+
+          if(UI::Button("Create New Entity"))
+          {
+
+            SelectedEntityID = (int32_t)CreateEntity(GameState->ECSWorld);
+          }
+
+          if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
+          {
             UI::SameLine();
+            if(UI::Button("Destroy Entity"))
             {
-              char CountBuffer[40];
-              sprintf(CountBuffer, ": %fms",
-                      GPU_TIMER_EVENT_TABLE[s_CurrentModifiableFrameIndex][i].ElapsedTime /
-                        (float)1e6);
-              UI::Text(CountBuffer);
+              DestroyEntity(GameState->ECSWorld, (entity_id)SelectedEntityID);
+              SelectedEntityID = -1;
             }
             UI::NewLine();
           }
-        }
-        {
-          Memory::marker EntityEditorMemStart = GameState->TemporaryMemStack->GetMarker();
-          const int      TempBufferCapacity   = 64;
-          char* TempBuffer = PushArray(GameState->TemporaryMemStack, TempBufferCapacity, char);
 
-          if(UI::CollapsingHeader("ECS Entity Editor", &s_ShowEntityEditor))
+          if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
           {
-            static int32_t SelectedEntityID = -1;
+            static int32_t NewComponentID = -1;
 
-            UI::SliderInt("Selected Entity ID", &SelectedEntityID, 0,
-                          MaxInt32(1, GameState->ECSWorld->Entities.Count - 1));
-
-            if(UI::Button("Create New Entity"))
+            if(NewComponentID != -1)
             {
+              if(!HasComponent(GameState->ECSWorld, (entity_id)SelectedEntityID,
+                               (component_id)NewComponentID))
+              {
+                if(UI::Button("Add Component   "))
+                {
 
-              SelectedEntityID = (int32_t)CreateEntity(GameState->ECSWorld);
+                  AddComponent(GameState->ECSWorld, (entity_id)SelectedEntityID,
+                               (component_id)NewComponentID);
+                }
+              }
+              else if(UI::Button("Remove Component"))
+              {
+                RemoveComponent(GameState->ECSWorld, (entity_id)SelectedEntityID,
+                                (component_id)NewComponentID);
+              }
             }
 
-            if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
+            UI::Combo("Component Type", (int32_t*)&NewComponentID,
+                      &GameState->ECSRuntime->ComponentNames.Elements,
+                      GameState->ECSRuntime->ComponentNames.Count, UI::StringArrayToString, 6, 200);
+
+            snprintf(TempBuffer, TempBufferCapacity, "Chunk Index   : %d",
+                     GameState->ECSWorld->Entities[(entity_id)SelectedEntityID].ChunkIndex);
+            UI::Text(TempBuffer);
+            snprintf(TempBuffer, TempBufferCapacity, "Index In Chunk: %d",
+                     GameState->ECSWorld->Entities[(entity_id)SelectedEntityID].IndexInChunk);
+            UI::Text(TempBuffer);
+          }
+        }
+        if(UI::CollapsingHeader("Chunk Memory", &s_ShowChunkMemoryVisualization))
+        {
+          Memory::heap_allocator&  ChunkHeap      = GameState->ECSRuntime->ChunkHeap;
+          chunk*                   HeapBase       = (chunk*)ChunkHeap.GetBase();
+          Memory::allocation_info* RawAllocInfos  = ChunkHeap.GetAllocationInfos();
+          int32_t                  AllocInfoCount = ChunkHeap.GetAllocationCount();
+
+          Memory::allocation_info* SortedAllocInfos =
+            PushArray(GameState->TemporaryMemStack, AllocInfoCount, Memory::allocation_info);
+          memcpy(SortedAllocInfos, RawAllocInfos, AllocInfoCount * sizeof(Memory::allocation_info));
+          qsort(SortedAllocInfos, (size_t)AllocInfoCount, sizeof(Memory::allocation_info),
+                &AllocationInfoComparison);
+
+          const float    ChunkWidthInPixels = 150;
+          static int32_t SelectedChunkIndex = -1;
+
+          int CurrentBoxIndex = 0;
+          for(int i = 0; i < AllocInfoCount; i++)
+          {
+            chunk*  Chunk      = (chunk*)SortedAllocInfos[i].Base;
+            int32_t ChunkIndex = (int32_t)(Chunk - HeapBase);
+
+            for(int j = CurrentBoxIndex; j < ChunkIndex; j++)
             {
+              UI::Dummy(ChunkWidthInPixels);
               UI::SameLine();
-              if(UI::Button("Destroy Entity"))
+            }
+
+            snprintf(TempBuffer, TempBufferCapacity, "Chunk #%d", ChunkIndex);
+            {
+              const float* EventColor = &TIMER_UI_COLOR_TABLE[Chunk->Header.ArchetypeIndex][0];
+              UI::PushStyleColor(UI::COLOR_ButtonNormal,
+                                 vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
+              if(UI::Button(TempBuffer, ChunkWidthInPixels))
               {
-                DestroyEntity(GameState->ECSWorld, (entity_id)SelectedEntityID);
-                SelectedEntityID = -1;
+                SelectedChunkIndex = ChunkIndex;
+              }
+              UI::SameLine();
+              UI::PopStyleColor();
+            }
+
+            CurrentBoxIndex++;
+          }
+          UI::NewLine();
+
+          bool FoundSelected = false;
+          for(int i = 0; i < AllocInfoCount; i++)
+          {
+            chunk*  Chunk      = (chunk*)SortedAllocInfos[i].Base;
+            int32_t ChunkIndex = (int32_t)(Chunk - HeapBase);
+            if(ChunkIndex == SelectedChunkIndex)
+            {
+              FoundSelected = true;
+            }
+          }
+
+          if(FoundSelected)
+          {
+            chunk*       Chunk  = &HeapBase[SelectedChunkIndex];
+            chunk_header Header = Chunk->Header;
+
+            // Output Chunk details
+            {
+              snprintf(TempBuffer, TempBufferCapacity, "Archetype Index : %d",
+                       Header.ArchetypeIndex);
+              UI::Text(TempBuffer);
+
+              snprintf(TempBuffer, TempBufferCapacity, "Entity Capacity : %d",
+                       Header.EntityCapacity);
+              UI::Text(TempBuffer);
+
+              snprintf(TempBuffer, TempBufferCapacity, "Entity Count    : %d", Header.EntityCount);
+              UI::Text(TempBuffer);
+
+              int32_t NextChunkIndex =
+                (Header.NextChunk != 0) ? (int32_t)(Header.NextChunk - HeapBase) : -1;
+              snprintf(TempBuffer, TempBufferCapacity, "Next Chunk Index: %d", NextChunkIndex);
+              UI::Text(TempBuffer);
+            }
+
+            // Visualize individual chunk
+            {
+              const float TotalChunkWidth = UI::GetWindowWidth();
+              const float PixelsPerByte   = TotalChunkWidth / (float)sizeof(chunk);
+
+              archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
+
+              UI::NewLine();
+
+              float CurrentPos  = 0;
+              float HeaderWidth = PixelsPerByte * (float)sizeof(chunk_header);
+              UI::Button("Header", HeaderWidth);
+              UI::SameLine();
+              CurrentPos += HeaderWidth;
+              for(int i = 0; i < Archetype->ComponentTypes.Count; i++)
+              {
+                component_id_and_offset ComponentOffset = Archetype->ComponentTypes[i];
+                component_struct_info   ComponentInfo =
+                  GameState->ECSRuntime->ComponentStructInfos[ComponentOffset.ID];
+
+                float ComponentOffsetInPixels = PixelsPerByte * (float)ComponentOffset.Offset;
+                float AlignmentWidth          = ComponentOffsetInPixels - CurrentPos;
+
+								UI::Dummy(AlignmentWidth);
+                UI::SameLine();
+
+                float ComponentWidth =
+                  PixelsPerByte * (float)(Header.EntityCount * ComponentInfo.Size);
+                UI::Button(GameState->ECSRuntime->ComponentNames[ComponentOffset.ID],
+                           ComponentWidth);
+                UI::SameLine();
               }
               UI::NewLine();
             }
 
-            if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
+            // Output archetype details
             {
-              static int32_t NewComponentID = -1;
+              UI::NewLine();
 
-              if(NewComponentID != -1)
+              archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
+
+              for(int i = 0; i < Archetype->ComponentTypes.Count; i++)
               {
-                if(!HasComponent(GameState->ECSWorld, (entity_id)SelectedEntityID,
-                                 (component_id)NewComponentID))
-                {
-                  if(UI::Button("Add Component   "))
-                  {
+                component_id_and_offset ComponentOffset = Archetype->ComponentTypes[i];
+                component_struct_info   ComopnentInfo =
+                  GameState->ECSRuntime->ComponentStructInfos[ComponentOffset.ID];
 
-                    AddComponent(GameState->ECSWorld, (entity_id)SelectedEntityID,
-                                 (component_id)NewComponentID);
-                  }
-                }
-                else if(UI::Button("Remove Component"))
-                {
-                  RemoveComponent(GameState->ECSWorld, (entity_id)SelectedEntityID,
-                                  (component_id)NewComponentID);
-                }
+                UI::Text(GameState->ECSRuntime->ComponentNames[ComponentOffset.ID]);
+
+                snprintf(TempBuffer, TempBufferCapacity,
+                         "ID: %d, Offset: %d; Size: %d; Alignment: %d", ComponentOffset.ID,
+                         ComponentOffset.Offset, ComopnentInfo.Size, ComopnentInfo.Alignment);
+                UI::Text(TempBuffer);
+                UI::NewLine();
               }
-
-              UI::Combo("Component Type", (int32_t*)&NewComponentID,
-                        &GameState->ECSRuntime->ComponentNames.Elements,
-                        GameState->ECSRuntime->ComponentNames.Count, UI::StringArrayToString, 6,
-                        200);
-
-              snprintf(TempBuffer, TempBufferCapacity, "Chunk Index   : %d",
-                       GameState->ECSWorld->Entities[(entity_id)SelectedEntityID].ChunkIndex);
-              UI::Text(TempBuffer);
-              snprintf(TempBuffer, TempBufferCapacity, "Index In Chunk: %d",
-                       GameState->ECSWorld->Entities[(entity_id)SelectedEntityID].IndexInChunk);
-              UI::Text(TempBuffer);
             }
           }
-          if(UI::CollapsingHeader("Chunk Memory", &s_ShowChunkMemoryVisualization))
+          else
           {
-            Memory::heap_allocator&  ChunkHeap      = GameState->ECSRuntime->ChunkHeap;
-            chunk*                   HeapBase       = (chunk*)ChunkHeap.GetBase();
-            Memory::allocation_info* RawAllocInfos  = ChunkHeap.GetAllocationInfos();
-            int32_t                  AllocInfoCount = ChunkHeap.GetAllocationCount();
-
-            Memory::allocation_info* SortedAllocInfos =
-              PushArray(GameState->TemporaryMemStack, AllocInfoCount, Memory::allocation_info);
-            memcpy(SortedAllocInfos, RawAllocInfos,
-                   AllocInfoCount * sizeof(Memory::allocation_info));
-            qsort(SortedAllocInfos, (size_t)AllocInfoCount, sizeof(Memory::allocation_info),
-                  &AllocationInfoComparison);
-
-            const float    ChunkWidthInPixels = 150;
-            static int32_t SelectedChunkIndex = -1;
-
-            int CurrentBoxIndex = 0;
-            for(int i = 0; i < AllocInfoCount; i++)
-            {
-              chunk*  Chunk      = (chunk*)SortedAllocInfos[i].Base;
-              int32_t ChunkIndex = (int32_t)(Chunk - HeapBase);
-
-              for(int j = CurrentBoxIndex; j < ChunkIndex; j++)
-              {
-                UI::Dummy(ChunkWidthInPixels);
-                UI::SameLine();
-              }
-
-              snprintf(TempBuffer, TempBufferCapacity, "Chunk #%d", ChunkIndex);
-              {
-                const float* EventColor = &TIMER_UI_COLOR_TABLE[Chunk->Header.ArchetypeIndex][0];
-                UI::PushStyleColor(UI::COLOR_ButtonNormal,
-                                   vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
-                if(UI::Button(TempBuffer, ChunkWidthInPixels))
-                {
-                  SelectedChunkIndex = ChunkIndex;
-                }
-                UI::SameLine();
-                UI::PopStyleColor();
-              }
-
-              CurrentBoxIndex++;
-            }
-            UI::NewLine();
-
-            bool FoundSelected = false;
-            for(int i = 0; i < AllocInfoCount; i++)
-            {
-              chunk*  Chunk      = (chunk*)SortedAllocInfos[i].Base;
-              int32_t ChunkIndex = (int32_t)(Chunk - HeapBase);
-              if(ChunkIndex == SelectedChunkIndex)
-              {
-                FoundSelected = true;
-              }
-            }
-
-            if(FoundSelected)
-            {
-              chunk*       Chunk  = &HeapBase[SelectedChunkIndex];
-              chunk_header Header = Chunk->Header;
-
-              // Output Chunk details
-              {
-                snprintf(TempBuffer, TempBufferCapacity, "Archetype Index : %d",
-                         Header.ArchetypeIndex);
-                UI::Text(TempBuffer);
-
-                snprintf(TempBuffer, TempBufferCapacity, "Entity Capacity : %d",
-                         Header.EntityCapacity);
-                UI::Text(TempBuffer);
-
-                snprintf(TempBuffer, TempBufferCapacity, "Entity Count    : %d",
-                         Header.EntityCount);
-                UI::Text(TempBuffer);
-
-                int32_t NextChunkIndex =
-                  (Header.NextChunk != 0) ? (int32_t)(Header.NextChunk - HeapBase) : -1;
-                snprintf(TempBuffer, TempBufferCapacity, "Next Chunk Index: %d", NextChunkIndex);
-                UI::Text(TempBuffer);
-              }
-
-              // Visualize individual chunk
-              {
-                const float TotalChunkWidth = UI::GetWindowWidth();
-                const float PixelsPerByte   = TotalChunkWidth / (float)sizeof(chunk);
-
-                archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
-
-                UI::NewLine();
-
-                float CurrentPos  = 0;
-                float HeaderWidth = PixelsPerByte * (float)sizeof(chunk_header);
-                UI::Button("Header", HeaderWidth);
-                UI::SameLine();
-                CurrentPos += HeaderWidth;
-                for(int i = 0; i < Archetype->ComponentTypes.Count; i++)
-                {
-                  component_id_and_offset ComponentOffset = Archetype->ComponentTypes[i];
-                  component_struct_info   ComponentInfo =
-                    GameState->ECSRuntime->ComponentStructInfos[ComponentOffset.ID];
-
-                  float ComponentOffsetInPixels = PixelsPerByte * (float)ComponentOffset.Offset;
-                  float AlignmentWidth          = ComponentOffsetInPixels - CurrentPos;
-
-                  Dummy(AlignmentWidth);
-                  UI::SameLine();
-
-                  float ComponentWidth =
-                    PixelsPerByte * (float)(Header.EntityCount * ComponentInfo.Size);
-                  UI::Button(GameState->ECSRuntime->ComponentNames[ComponentOffset.ID],
-                             ComponentWidth);
-                  UI::SameLine();
-                }
-                UI::NewLine();
-              }
-
-              // Output archetype details
-              {
-                UI::NewLine();
-
-                archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
-
-                for(int i = 0; i < Archetype->ComponentTypes.Count; i++)
-                {
-                  component_id_and_offset ComponentOffset = Archetype->ComponentTypes[i];
-                  component_struct_info   ComopnentInfo =
-                    GameState->ECSRuntime->ComponentStructInfos[ComponentOffset.ID];
-
-                  UI::Text(GameState->ECSRuntime->ComponentNames[ComponentOffset.ID]);
-
-                  snprintf(TempBuffer, TempBufferCapacity,
-                           "ID: %d, Offset: %d; Size: %d; Alignment: %d", ComponentOffset.ID,
-                           ComponentOffset.Offset, ComopnentInfo.Size, ComopnentInfo.Alignment);
-                  UI::Text(TempBuffer);
-                  UI::NewLine();
-                }
-              }
-            }
-            else
-            {
-              SelectedChunkIndex = -1;
-            }
+            SelectedChunkIndex = -1;
           }
-          GameState->TemporaryMemStack->FreeToMarker(EntityEditorMemStart);
         }
+        GameState->TemporaryMemStack->FreeToMarker(EntityEditorMemStart);
       }
+    }
 #endif // USE_DEBUG_PROFILING
-      UI::EndWindow();
-    }
+    UI::EndWindow();
+  }
 
-    if(s_ShowPhysicsWindow)
+  if(s_ShowPhysicsWindow)
+  {
+    UI::BeginWindow("Physics Window", { 150, 50 }, { 500, 380 });
     {
-      UI::BeginWindow("Physics Window", { 150, 50 }, { 500, 380 });
-      {
-        physics_params&   Params   = GameState->Physics.Params;
-        physics_switches& Switches = GameState->Physics.Switches;
-        UI::Checkbox("Simulating Dynamics", &Switches.SimulateDynamics);
-        UI::SliderInt("Iteration Count", &Params.PGSIterationCount, 0, 250);
-        UI::SliderFloat("Beta", &Params.Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
-        Switches.PerformDynamicsStep = UI::Button("Step Dynamics");
-        UI::Checkbox("Gravity", &Switches.UseGravity);
-        UI::Checkbox("Friction", &Switches.SimulateFriction);
-        UI::SliderFloat("Mu", &Params.Mu, 0.0f, 1.0f);
+      physics_params&   Params   = GameState->Physics.Params;
+      physics_switches& Switches = GameState->Physics.Switches;
+      UI::Checkbox("Simulating Dynamics", &Switches.SimulateDynamics);
+      UI::SliderInt("Iteration Count", &Params.PGSIterationCount, 0, 250);
+      UI::SliderFloat("Beta", &Params.Beta, 0.0f, 1.0f / (FRAME_TIME_MS / 1000.0f));
+      Switches.PerformDynamicsStep = UI::Button("Step Dynamics");
+      UI::Checkbox("Gravity", &Switches.UseGravity);
+      UI::Checkbox("Friction", &Switches.SimulateFriction);
+      UI::SliderFloat("Mu", &Params.Mu, 0.0f, 1.0f);
 
-        UI::Checkbox("Draw Omega    (green)", &Switches.VisualizeOmega);
-        UI::Checkbox("Draw V        (yellow)", &Switches.VisualizeV);
-        UI::Checkbox("Draw Fc       (red)", &Switches.VisualizeFc);
-        UI::Checkbox("Draw Friction (green)", &Switches.VisualizeFriction);
-        UI::Checkbox("Draw Fc Comopnents     (Magenta)", &Switches.VisualizeFcComponents);
-        UI::Checkbox("Draw Contact Points    (while)", &Switches.VisualizeContactPoints);
-        UI::Checkbox("Draw Contact Manifolds (blue/red)", &Switches.VisualizeContactManifold);
-        UI::DragFloat3("Net Force Start", &Params.ExternalForceStart.X, -INFINITY, INFINITY, 5);
-        UI::DragFloat3("Net Force Vector", &Params.ExternalForce.X, -INFINITY, INFINITY, 5);
-        UI::Checkbox("Apply Force", &Switches.ApplyExternalForce);
-        UI::Checkbox("Apply Torque", &Switches.ApplyExternalTorque);
-      }
-      UI::EndWindow();
+      UI::Checkbox("Draw Omega    (green)", &Switches.VisualizeOmega);
+      UI::Checkbox("Draw V        (yellow)", &Switches.VisualizeV);
+      UI::Checkbox("Draw Fc       (red)", &Switches.VisualizeFc);
+      UI::Checkbox("Draw Friction (green)", &Switches.VisualizeFriction);
+      UI::Checkbox("Draw Fc Comopnents     (Magenta)", &Switches.VisualizeFcComponents);
+      UI::Checkbox("Draw Contact Points    (while)", &Switches.VisualizeContactPoints);
+      UI::Checkbox("Draw Contact Manifolds (blue/red)", &Switches.VisualizeContactManifold);
+      UI::DragFloat3("Net Force Start", &Params.ExternalForceStart.X, -INFINITY, INFINITY, 5);
+      UI::DragFloat3("Net Force Vector", &Params.ExternalForce.X, -INFINITY, INFINITY, 5);
+      UI::Checkbox("Apply Force", &Switches.ApplyExternalForce);
+      UI::Checkbox("Apply Torque", &Switches.ApplyExternalTorque);
     }
+    UI::EndWindow();
+  }
 
-    if(s_ShowDemoWindow)
+  if(s_ShowDemoWindow)
+  {
+    UI::BeginWindow("window A", { 670, 50 }, { 500, 380 });
     {
-      UI::BeginWindow("window A", { 670, 50 }, { 500, 380 });
-      {
-        static int         s_CurrentItem = -1;
-        static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
+      static int         s_CurrentItem = -1;
+      static const char* s_Items[]     = { "Cat", "Rat", "Hat", "Pat", "meet", "with", "dad" };
 
-        static bool s_ShowDemo = true;
-        if(UI::CollapsingHeader("Demo", &s_ShowDemo))
+      static bool s_ShowDemo = true;
+      if(UI::CollapsingHeader("Demo", &s_ShowDemo))
+      {
+        static bool s_Checkbox0 = false;
+        static bool s_Checkbox1 = false;
+
         {
-          static bool s_Checkbox0 = false;
-          static bool s_Checkbox1 = false;
+					UI::gui_style& Style     = *UI::GetStyle();
+          int32_t    Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
+          UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
+          Style.Vars[UI::VAR_BorderThickness] = Thickness;
 
-          {
-            gui_style& Style     = *UI::GetStyle();
-            int32_t    Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
-            UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
-            Style.Vars[UI::VAR_BorderThickness] = Thickness;
-
-            UI::Text("Hold ctrl when dragging to snap to whole values");
-            UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1,
-                           5);
-            UI::DragFloat4("Header Normal", &Style.Colors[UI::COLOR_HeaderNormal].X, 0, 1, 5);
-            UI::DragFloat4("Header Hovered", &Style.Colors[UI::COLOR_HeaderHovered].X, 0, 1, 5);
-            UI::DragFloat4("Header Pressed", &Style.Colors[UI::COLOR_HeaderPressed].X, 0, 1, 5);
-            UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
-            UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
-            UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
-            UI::SliderFloat("Vertical Spacing", &Style.Vars[UI::VAR_SpacingY], 0, 10);
-            UI::SliderFloat("Internal Spacing", &Style.Vars[UI::VAR_InternalSpacing], 0, 10);
-          }
-          UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
-          int StartIndex = 3;
-          UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
-                    ARRAY_SIZE(s_Items) - StartIndex);
-          UI::NewLine();
-
-          char TempBuff[30];
-          snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
-          UI::Text(TempBuff);
-
-          snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX,
-                   Input->MouseScreenY);
-          UI::Text(TempBuff);
-          snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
-                   Input->NormMouseY);
-          UI::Text(TempBuff);
-          snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
-          UI::Text(TempBuff);
-
-          UI::Checkbox("Show Image", &s_Checkbox0);
-          if(s_Checkbox0)
-          {
-            UI::SameLine();
-            UI::Checkbox("Put image in frame", &s_Checkbox1);
-            UI::NewLine();
-            if(s_Checkbox1)
-            {
-              UI::BeginChildWindow("Image frame", { 300, 170 });
-            }
-
-            UI::Image("material preview", GameState->IDTexture, { 400, 220 });
-
-            if(s_Checkbox1)
-            {
-              UI::EndChildWindow();
-            }
-          }
+          UI::Text("Hold ctrl when dragging to snap to whole values");
+          UI::DragFloat4("Window background", &Style.Colors[UI::COLOR_WindowBackground].X, 0, 1, 5);
+          UI::DragFloat4("Header Normal", &Style.Colors[UI::COLOR_HeaderNormal].X, 0, 1, 5);
+          UI::DragFloat4("Header Hovered", &Style.Colors[UI::COLOR_HeaderHovered].X, 0, 1, 5);
+          UI::DragFloat4("Header Pressed", &Style.Colors[UI::COLOR_HeaderPressed].X, 0, 1, 5);
+          UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
+          UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
+          UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
+          UI::SliderFloat("Vertical Spacing", &Style.Vars[UI::VAR_SpacingY], 0, 10);
+          UI::SliderFloat("Internal Spacing", &Style.Vars[UI::VAR_InternalSpacing], 0, 10);
         }
-      }
-      UI::EndWindow();
-    }
+        UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
+        int StartIndex = 3;
+        UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
+                  ARRAY_SIZE(s_Items) - StartIndex);
+        UI::NewLine();
 
-    if(s_ShowMotionMatchingWindow)
-    {
-      UI::BeginWindow("Motion Matching", { 100, 20 }, { 700, 700 });
-      {
-        UI::SliderFloat("Trajectory Duration (sec)", &GameState->MMDebug.TrajectoryDuration, 0, 10);
-        UI::SliderInt("Trajectory Sample Count", &GameState->MMDebug.TrajectorySampleCount, 2, 40);
-        UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
-        UI::SliderFloat("Bone Position Influence", &GameState->MMParams.DynamicParams.BonePCoefficient,
-                        0, 2);
-        UI::SliderFloat("Bone Velocity Influence", &GameState->MMParams.DynamicParams.BoneVCoefficient,
-                        0, 2);
-        UI::SliderFloat("Trajectory Position Influence",
-                        &GameState->MMParams.DynamicParams.TrajPCoefficient, 0, 2);
-        UI::SliderFloat("Trajectory Velocity Influence",
-                        &GameState->MMParams.DynamicParams.TrajVCoefficient, 0, 2);
-        UI::SliderFloat("BlendInTime", &GameState->MMParams.DynamicParams.BelndInTime, 0, 2);
-        UI::SliderFloat("Min Time Offset Threshold",
-                        &GameState->MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 2);
+        char TempBuff[30];
+        snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
+        UI::Text(TempBuff);
 
-        UI::Checkbox("Match MirroredAnimations",
-                     &GameState->MMParams.DynamicParams.MatchMirroredAnimations);
-				UI::Text("Debug Display");
-        UI::Checkbox("Show Root Trajectory", &GameState->MMDebug.ShowRootTrajectories);
-        UI::Checkbox("Show Hip Trajectory", &GameState->MMDebug.ShowHipTrajectories);
-        UI::Checkbox("Preview In Root Space", &GameState->MMDebug.PreviewInRootSpace);
-        UI::Text("Current Goal");
-        UI::Checkbox("Show Current Goal", &GameState->MMDebug.CurrentGoal.ShowTrajectory);
-        UI::Checkbox("Show Current Goal Directions",
-                     &GameState->MMDebug.CurrentGoal.ShowTrajectoryAngles);
-        UI::Checkbox("Show Current Positions", &GameState->MMDebug.CurrentGoal.ShowBonePositions);
-        UI::Checkbox("Show Current Velocities", &GameState->MMDebug.CurrentGoal.ShowBoneVelocities);
-        UI::Text("Matched Goal");
-        UI::Checkbox("Show Matched Goal", &GameState->MMDebug.MatchedGoal.ShowTrajectory);
-        UI::Checkbox("Show Matched Goal Directions",
-                     &GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles);
-        UI::Checkbox("Show Matched Positions", &GameState->MMDebug.MatchedGoal.ShowBonePositions);
-        UI::Checkbox("Show Matched Velocities", &GameState->MMDebug.MatchedGoal.ShowBoneVelocities);
+        snprintf(TempBuff, sizeof(TempBuff), "Mouse Screen: { %d, %d }", Input->MouseScreenX,
+                 Input->MouseScreenY);
+        UI::Text(TempBuff);
+        snprintf(TempBuff, sizeof(TempBuff), "Mouse Normal: { %.1f, %.1f }", Input->NormMouseX,
+                 Input->NormMouseY);
+        UI::Text(TempBuff);
+        snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
+        UI::Text(TempBuff);
 
-        UI::SliderFloat("Metadata Sampling Frequency",
-                        &GameState->MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
+        UI::Checkbox("Show Image", &s_Checkbox0);
+        if(s_Checkbox0)
         {
-          static int32_t ActivePathIndex = 0;
-          UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
-                    GameState->Resources.AnimationPathCount, PathArrayToString);
-          rid NewRID = { 0 };
-          if(GameState->Resources.AnimationPathCount > 0 &&
-             !GameState->Resources
-                .GetAnimationPathRID(&NewRID,
-                                     GameState->Resources.AnimationPaths[ActivePathIndex].Name))
-          {
-            NewRID = GameState->Resources.RegisterAnimation(
-              GameState->Resources.AnimationPaths[ActivePathIndex].Name);
-          }
-
-          if(UI::Button("Add Animation") && !GameState->MMParams.AnimRIDs.Full())
-          {
-            GameState->MMParams.AnimRIDs.Push(NewRID);
-          }
-        }
-      }
-      {
-        for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
-        {
-          bool DeleteCurrent = UI::Button("Delete", 0, i);
-					/*if(!DeleteCurrent)
-					{
-            entity* SelectedEntity = {};
-            if(GetSelectedEntity(GameState, &SelectedEntity))
-            {
-              if(SelectedEntity->AnimController)
-              {
-                UI::SameLine();
-                if(UI::Button("Preview", 0, i))
-                {
-                  Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
-                }
-              }
-            }
-          }*/
           UI::SameLine();
-          {
-            char* Path;
-            GameState->Resources.Animations.Get(GameState->MMParams.AnimRIDs[i], NULL, &Path);
-            UI::Text(Path);
-          }
+          UI::Checkbox("Put image in frame", &s_Checkbox1);
           UI::NewLine();
-          if(DeleteCurrent)
+          if(s_Checkbox1)
           {
-            GameState->MMParams.AnimRIDs.Remove(i);
-            i--;
+            UI::BeginChildWindow("Image frame", { 300, 170 });
+          }
+
+          UI::Image("material preview", GameState->IDTexture, { 400, 220 });
+
+          if(s_Checkbox1)
+          {
+            UI::EndChildWindow();
           }
         }
       }
-      entity* SelectedEntity = {};
-      if(GetSelectedEntity(GameState, &SelectedEntity) && SelectedEntity->AnimController)
+    }
+    UI::EndWindow();
+  }
+
+  if(s_ShowMotionMatchingWindow)
+  {
+    UI::BeginWindow("Motion Matching", { 100, 20 }, { 700, 700 });
+    {
+      UI::SliderFloat("Trajectory Duration (sec)", &GameState->MMDebug.TrajectoryDuration, 0, 10);
+      UI::SliderInt("Trajectory Sample Count", &GameState->MMDebug.TrajectorySampleCount, 2, 40);
+      UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
+      UI::SliderFloat("Bone Position Influence",
+                      &GameState->MMParams.DynamicParams.BonePCoefficient, 0, 5);
+      UI::SliderFloat("Bone Velocity Influence",
+                      &GameState->MMParams.DynamicParams.BoneVCoefficient, 0, 5);
+      UI::SliderFloat("Trajectory Position Influence",
+                      &GameState->MMParams.DynamicParams.TrajPCoefficient, 0, 1);
+      UI::SliderFloat("Trajectory Velocity Influence",
+                      &GameState->MMParams.DynamicParams.TrajVCoefficient, 0, 1);
+      UI::SliderFloat("Trajectory Angle Influence",
+                      &GameState->MMParams.DynamicParams.TrajAngleCoefficient, 0, 1);
+      UI::SliderFloat("BlendInTime", &GameState->MMParams.DynamicParams.BelndInTime, 0, 1);
+      UI::SliderFloat("Min Time Offset Threshold",
+                      &GameState->MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 1);
+
+      UI::Checkbox("Match MirroredAnimations",
+                   &GameState->MMParams.DynamicParams.MatchMirroredAnimations);
+      UI::Text("Debug Display");
+      UI::Checkbox("Show Root Trajectory", &GameState->MMDebug.ShowRootTrajectories);
+      UI::Checkbox("Show Hip Trajectory", &GameState->MMDebug.ShowHipTrajectories);
+      UI::Checkbox("Preview In Root Space", &GameState->MMDebug.PreviewInRootSpace);
+      UI::Text("Current Goal");
+      UI::Checkbox("Show Current Goal", &GameState->MMDebug.CurrentGoal.ShowTrajectory);
+      UI::Checkbox("Show Current Goal Directions",
+                   &GameState->MMDebug.CurrentGoal.ShowTrajectoryAngles);
+      UI::Checkbox("Show Current Positions", &GameState->MMDebug.CurrentGoal.ShowBonePositions);
+      UI::Checkbox("Show Current Velocities", &GameState->MMDebug.CurrentGoal.ShowBoneVelocities);
+      UI::Text("Matched Goal");
+      UI::Checkbox("Show Matched Goal", &GameState->MMDebug.MatchedGoal.ShowTrajectory);
+      UI::Checkbox("Show Matched Goal Directions",
+                   &GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles);
+      UI::Checkbox("Show Matched Positions", &GameState->MMDebug.MatchedGoal.ShowBonePositions);
+      UI::Checkbox("Show Matched Velocities", &GameState->MMDebug.MatchedGoal.ShowBoneVelocities);
+
+      UI::SliderFloat("Metadata Sampling Frequency",
+                      &GameState->MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
       {
-        static int32_t ActiveBoneIndex = 0;
-        UI::Combo("Bone", &ActiveBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
-                  SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
-
-        if(UI::Button("Add Bone") && !GameState->MMParams.FixedParams.ComparisonBoneIndices.Full())
+        static int32_t ActivePathIndex = 0;
+        UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
+                  GameState->Resources.AnimationPathCount, PathArrayToString);
+        rid NewRID = { 0 };
+        if(GameState->Resources.AnimationPathCount > 0 &&
+           !GameState->Resources
+              .GetAnimationPathRID(&NewRID,
+                                   GameState->Resources.AnimationPaths[ActivePathIndex].Name))
         {
-          GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
+          NewRID = GameState->Resources.RegisterAnimation(
+            GameState->Resources.AnimationPaths[ActivePathIndex].Name);
         }
 
-        for(int i = 0; i < GameState->MMParams.FixedParams.ComparisonBoneIndices.Count; i++)
+        if(UI::Button("Add Animation") && !GameState->MMParams.AnimRIDs.Full())
         {
-          bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
-          UI::SameLine();
-          {
-            UI::Text(SelectedEntity->AnimController->Skeleton
-                       ->Bones[GameState->MMParams.FixedParams.ComparisonBoneIndices[i]]
-                       .Name);
-          }
-          UI::NewLine();
-          if(DeleteCurrent)
-          {
-            GameState->MMParams.FixedParams.ComparisonBoneIndices.Remove(i);
-          }
+          GameState->MMParams.AnimRIDs.Push(NewRID);
         }
-
-        if(0 < GameState->MMParams.AnimRIDs.Count)
+      }
+    }
+    {
+      for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
+      {
+        bool DeleteCurrent = UI::Button("Delete", 0, i);
+        /*if(!DeleteCurrent)
         {
-          UI::SliderFloat("Trajectory Time Horizon",
-                          &GameState->MMParams.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
-          if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
+          entity* SelectedEntity = {};
+          if(GetSelectedEntity(GameState, &SelectedEntity))
           {
-            if(UI::Button("Build MM data"))
+            if(SelectedEntity->AnimController)
             {
-              for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
-              {
-                GameState->Resources.Animations.AddReference(GameState->MMParams.AnimRIDs[i]);
-              }
-              if(GameState->MMData.FrameInfos.IsValid())
+              UI::SameLine();
+              if(UI::Button("Preview", 0, i))
               {
                 Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
-                for(int i = 0; i < GameState->MMData.Params.AnimRIDs.Count; i++)
-                {
-                  GameState->Resources.Animations.RemoveReference(
-                    GameState->MMData.Params.AnimRIDs[i]);
-                }
               }
-              GameState->MMData =
-                PrecomputeRuntimeMMData(GameState->TemporaryMemStack, &GameState->Resources,
-                                        GameState->MMParams,
-                                        SelectedEntity->AnimController->Skeleton);
             }
-						
           }
-
-					char TempBuffer[32];
-          sprintf(TempBuffer, "g_BlendInfos.m_Count: %d", g_BlendInfos.m_Count);
-          UI::Text(TempBuffer);
+        }*/
+        UI::SameLine();
+        {
+          char* Path;
+          GameState->Resources.Animations.Get(GameState->MMParams.AnimRIDs[i], NULL, &Path);
+          UI::Text(Path);
+        }
+        UI::NewLine();
+        if(DeleteCurrent)
+        {
+          GameState->MMParams.AnimRIDs.Remove(i);
+          i--;
         }
       }
+    }
+    entity* SelectedEntity = {};
+    if(GetSelectedEntity(GameState, &SelectedEntity) && SelectedEntity->AnimController)
+    {
+      static int32_t ActiveBoneIndex = 0;
+      UI::Combo("Bone", &ActiveBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
+                SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
+
+      if(UI::Button("Add Bone") && !GameState->MMParams.FixedParams.ComparisonBoneIndices.Full())
+      {
+        GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
+      }
+
+      for(int i = 0; i < GameState->MMParams.FixedParams.ComparisonBoneIndices.Count; i++)
+      {
+        bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
+        UI::SameLine();
+        {
+          UI::Text(SelectedEntity->AnimController->Skeleton
+                     ->Bones[GameState->MMParams.FixedParams.ComparisonBoneIndices[i]]
+                     .Name);
+        }
+        UI::NewLine();
+        if(DeleteCurrent)
+        {
+          GameState->MMParams.FixedParams.ComparisonBoneIndices.Remove(i);
+        }
+      }
+
+      if(0 < GameState->MMParams.AnimRIDs.Count)
+      {
+        UI::SliderFloat("Trajectory Time Horizon",
+                        &GameState->MMParams.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
+        if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
+        {
+          if(UI::Button("Build MM data"))
+          {
+            for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
+            {
+              GameState->Resources.Animations.AddReference(GameState->MMParams.AnimRIDs[i]);
+            }
+            if(GameState->MMData.FrameInfos.IsValid())
+            {
+              Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+              for(int i = 0; i < GameState->MMData.Params.AnimRIDs.Count; i++)
+              {
+                GameState->Resources.Animations.RemoveReference(
+                  GameState->MMData.Params.AnimRIDs[i]);
+              }
+            }
+            GameState->MMData = PrecomputeRuntimeMMData(GameState->TemporaryMemStack,
+                                                        &GameState->Resources, GameState->MMParams,
+                                                        SelectedEntity->AnimController->Skeleton);
+          }
+        }
+
+        char TempBuffer[32];
+        sprintf(TempBuffer, "g_BlendInfos.m_Count: %d", g_BlendInfos.m_Count);
+        UI::Text(TempBuffer);
+      }
+    }
 #if 0
 			{
 				static vec3 R = {};
@@ -788,12 +779,11 @@ namespace UI
         UI::DragFloat3("Extracted Translation", (float*)&ExtractedT, -INFINITY, INFINITY, 5);
 			}
 #endif
-      UI::EndWindow();
-    }
-
-    UI::EndFrame();
-    END_TIMED_BLOCK(GUI);
+    UI::EndWindow();
   }
+
+  UI::EndFrame();
+  END_TIMED_BLOCK(GUI);
 }
 
 void
@@ -1365,8 +1355,8 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 UI::Button("Delete Anim. Controller"))
 
         {
-          // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimController and its arrays are still on the
-          // persistent stack
+          // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimController and its arrays are still on
+          // the persistent stack
           RemoveAnimationReferences(&GameState->Resources, SelectedEntity->AnimController);
           SelectedEntity->AnimController = 0;
         }
@@ -1418,7 +1408,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           if(UI::Button("Play as entity"))
           {
             Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
-            GameState->PlayerEntityIndex = GameState->SelectedEntityIndex;
+            GameState->PlayerEntityIndex          = GameState->SelectedEntityIndex;
             GameState->MMDebug.PreviewInRootSpace = true;
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
@@ -1545,7 +1535,7 @@ struct test_struct
 void
 MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet,
         bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings,
-        bool& s_ShowECSData)
+        bool& s_ShowECSData, bool& s_ShowTrajectorySettings)
 {
   if(UI::CollapsingHeader("ECS data", &s_ShowECSData))
   {
@@ -1576,6 +1566,109 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(rigid_body): %ld", sizeof(rigid_body));
     UI::Text(TempBuffer);
   }
+  if(UI::CollapsingHeader("Trajectory settings", &s_ShowTrajectorySettings))
+  {
+    if(!GameState->TrajectorySystem.Splines.Full())
+    {
+      if(UI::Button("Create Spline"))
+      {
+        GameState->TrajectorySystem.Splines.Push({});
+        GameState->TrajectorySystem.SelectedSplineIndex =
+          GameState->TrajectorySystem.Splines.Count - 1;
+				GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+      }
+    }
+    else
+    {
+      UI::Dummy(0, 20);
+    }
+    // Loop over
+    int DeleteSplineIndex = -1;
+    for(int i = 0; i < GameState->TrajectorySystem.Splines.Count; i++)
+    {
+      UI::Text("Spline");
+      UI::SameLine();
+      if(UI::Button("Delete", 0, 512 + i))
+      {
+        DeleteSplineIndex                                 = i;
+        GameState->TrajectorySystem.SelectedSplineIndex   = -1;
+        GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+      }
+      else
+      {
+        UI::SameLine();
+        bool IsCurrentSplineSelected = i == GameState->TrajectorySystem.SelectedSplineIndex;
+        if(IsCurrentSplineSelected)
+        {
+          UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 1, 0.2f, 0.2f, 1 });
+          UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 1, 0.5f, 0.5f, 1 });
+        }
+
+        if(UI::Button("Select", 0, 512 + i))
+        {
+          if(GameState->TrajectorySystem.SelectedSplineIndex != i)
+          {
+            GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+          }
+          GameState->TrajectorySystem.SelectedSplineIndex = i;
+        }
+        if(IsCurrentSplineSelected)
+        {
+          UI::PopStyleColor();
+          UI::PopStyleColor();
+        }
+        UI::NewLine();
+      }
+    }
+    if(DeleteSplineIndex != -1)
+    {
+      GameState->TrajectorySystem.Splines.Remove(DeleteSplineIndex);
+    }
+    int CurrentSplineIndex  = GameState->TrajectorySystem.SelectedSplineIndex;
+    int DeleteWaypointIndex = -1;
+    for(int i = 0; CurrentSplineIndex != -1 &&
+                   i < GameState->TrajectorySystem.Splines[CurrentSplineIndex].Waypoints.Count;
+        i++)
+    {
+      UI::Text("Waypoint");
+      UI::SameLine();
+      if(UI::Button("Delete", 0, 1024 + i))
+      {
+        DeleteWaypointIndex                               = i;
+        GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+      }
+      else
+      {
+        UI::SameLine();
+        bool IsCurrentWaypointsSelected = i == GameState->TrajectorySystem.SelectedWaypointIndex;
+        if(IsCurrentWaypointsSelected)
+        {
+          UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.2f, 0.2f, 1, 1 });
+          UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 0.5f, 0.5f, 1, 1 });
+        }
+        if(UI::Button("Select", 0, 1024 + i))
+        {
+          GameState->TrajectorySystem.SelectedWaypointIndex = i;
+        }
+        if(IsCurrentWaypointsSelected)
+        {
+          UI::PopStyleColor();
+          UI::PopStyleColor();
+        }
+        UI::NewLine();
+      }
+    }
+    if(DeleteWaypointIndex != -1)
+    {
+      GameState->TrajectorySystem.Splines[CurrentSplineIndex].Waypoints.Remove(DeleteWaypointIndex);
+    }
+    if(CurrentSplineIndex != -1 &&
+       !GameState->TrajectorySystem.Splines[CurrentSplineIndex].Waypoints.Full() &&
+       UI::Button("Place New Waypoint"))
+    {
+      GameState->TrajectorySystem.IsWaypointPlacementMode = true;
+    }
+  }
   if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))
   {
     UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
@@ -1597,8 +1690,8 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     UI::SliderFloat("Sun Z Angle", &GameState->R.Sun.RotationZ, 0.0f, 90.0f);
     UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.RotationY, -180, 180);
 
-		if(1 < SHADOWMAP_CASCADE_COUNT)
-		{
+    if(1 < SHADOWMAP_CASCADE_COUNT)
+    {
       UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0,
                     SHADOWMAP_CASCADE_COUNT - 1);
     }

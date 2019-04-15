@@ -398,7 +398,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
   }
 
   // Find parent and root windows
-  Window->ParentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Back() : NULL;
+  Window->ParentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Peek() : NULL;
   assert(!(Window->Flags & WINDOW_IsChildWindow) || Window->ParentWindow != NULL);
   g.CurrentWindowStack.Push(Window);
 
@@ -440,7 +440,7 @@ UI::BeginWindow(const char* Name, vec3 InitialPosition, vec3 Size, window_flags_
                (Window->Flags & WINDOW_IsChildWindow) &&
                  !(Window->Flags & (WINDOW_Popup | WINDOW_Combo)));
   Window->ClippedSizeRect = NewRect(Window->Position, Window->Position + Size); // used for hovering
-  Window->ClippedSizeRect.Clip(g.ClipRectStack.Back());                         // used for hovering
+  Window->ClippedSizeRect.Clip(g.ClipRectStack.Peek());                         // used for hovering
   DrawBox(Window->Position, Window->Size, _GetGUIColor(WindowBackground),
           _GetGUIColor(WindowBorder));
 
@@ -537,7 +537,7 @@ UI::EndWindow()
   g.ClipRectStack.Pop();*/
 
   g.CurrentWindowStack.Pop();
-  g.CurrentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Back() : NULL;
+  g.CurrentWindow = (0 < g.CurrentWindowStack.Count) ? g.CurrentWindowStack.Peek() : NULL;
 }
 
 void

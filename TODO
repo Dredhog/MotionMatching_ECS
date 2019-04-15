@@ -4,7 +4,6 @@
 *Fix Anim::animation controller_memory leak
 *Bone selection entity selection
 *Motion matching for multiple entities
-*Motion matching for multiple entities
 *Sampling based MM info generation
 *MM search optimization
 *MM trajectory structure

@@ -100,8 +100,10 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
         vec3  InitialXAxis = Math::Normalized({ RootMatrix.X.X, 0, RootMatrix.X.Z });
         vec3  PointXAxis   = Math::Normalized({ CurrentHipMatrix.X.X, 0, CurrentHipMatrix.X.Z });
         float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
-        float AbsAngle     = acosf(Math::Dot(InitialXAxis, PointXAxis));
+        float AbsAngle     = acosf(ClampFloat(-1.0f, Math::Dot(InitialXAxis, PointXAxis), 1.0f));
         FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
+        assert(!isnan(FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p]));
+        assert(AbsFloat(FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p]) <= 2.0f *M_PI);
       }
     }
 
@@ -257,7 +259,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
         vec3  InitialXAxis = Math::Normalized(StartVelocity);
         vec3  PointXAxis   = Math::Normalized(CurrentVelocity);
         float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
-        float AbsAngle     = acosf(Math::Dot(InitialXAxis, PointXAxis));
+        float AbsAngle     = acosf(ClampFloat(-1.0f, Math::Dot(InitialXAxis, PointXAxis), 1.0f));
         ResultInfo.TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
       }
     }
@@ -309,7 +311,7 @@ GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
 
 float
 ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float VelCoef,
-            float TrajCoef, float TrajVCoef)
+            float TrajCoef, float TrajVCoef, float TrajAngleCoef)
 {
   float PosDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
@@ -325,18 +327,27 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
     VelDiffSum += Math::Dot(VelDiff, VelDiff);
   }
 
-  float TrajDiffSum = 0.0f;
+  float TrajDiffSum  = 0.0f;
   float TrajVDiffSum = 0.0f;
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
     vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
     TrajDiffSum += Math::Dot(Diff, Diff);
-		float VDiff = A.TrajectoryVs[p] - B.TrajectoryVs[p];
+    float VDiff = A.TrajectoryVs[p] - B.TrajectoryVs[p];
     TrajVDiffSum += VDiff * VDiff;
   }
 
-  float Cost =
-    PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum + TrajVCoef * TrajVDiffSum;
+  float TrajDirDiffSum = 0.0f;
+  for(int p = 0; p < MM_POINT_COUNT; p++)
+  {
+    vec2 DirA = { sinf(A.TrajectoryAngles[p]), cosf(A.TrajectoryAngles[p]) };
+    vec2 DirB = { sinf(B.TrajectoryAngles[p]), cosf(B.TrajectoryAngles[p]) };
+    vec2 Diff = DirA - DirB;
+    TrajDirDiffSum += Math::Dot(Diff, Diff);
+  }
+
+  float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum +
+               TrajVCoef * TrajVDiffSum + TrajAngleCoef * TrajDirDiffSum;
 
   return Cost;
 }
@@ -350,8 +361,6 @@ MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutB
   assert(MMData);
   assert(MMData->FrameInfos.IsValid());
 
-  mm_frame_info MirroredGoal = GetMirroredFrameGoal(Goal, { -1, 1, 1 }, MMData->Params.FixedParams);
-
   float   SmallestCost       = FLT_MAX;
   int32_t BestFrameInfoIndex = -1;
   for(int i = 0; i < MMData->FrameInfos.Count; i++)
@@ -361,7 +370,8 @@ MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutB
         ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.BonePCoefficient,
                     MMData->Params.DynamicParams.BoneVCoefficient,
                     MMData->Params.DynamicParams.TrajPCoefficient,
-                    MMData->Params.DynamicParams.TrajVCoefficient);
+                    MMData->Params.DynamicParams.TrajVCoefficient,
+                    MMData->Params.DynamicParams.TrajAngleCoefficient);
       if(CurrentCost < SmallestCost)
       {
         SmallestCost       = CurrentCost;
@@ -410,7 +420,8 @@ MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame
         ComputeCost(Goal, MMData->FrameInfos[i], MMData->Params.DynamicParams.BonePCoefficient,
                     MMData->Params.DynamicParams.BoneVCoefficient,
                     MMData->Params.DynamicParams.TrajPCoefficient,
-                    MMData->Params.DynamicParams.TrajVCoefficient);
+                    MMData->Params.DynamicParams.TrajVCoefficient,
+                    MMData->Params.DynamicParams.TrajAngleCoefficient);
       if(CurrentCost < SmallestCost)
       {
         SmallestCost       = CurrentCost;
@@ -424,7 +435,8 @@ MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame
                                        MMData->Params.DynamicParams.BonePCoefficient,
                                        MMData->Params.DynamicParams.BoneVCoefficient,
                                        MMData->Params.DynamicParams.TrajPCoefficient,
-                                       MMData->Params.DynamicParams.TrajVCoefficient);
+                                       MMData->Params.DynamicParams.TrajVCoefficient,
+                                       MMData->Params.DynamicParams.TrajAngleCoefficient);
 
       if(MirroredCost < SmallestCost)
       {

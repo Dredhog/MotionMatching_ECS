@@ -49,7 +49,9 @@ ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
   TestMirrorInfo.BoneMirrorIndices[8] = { 14, 14 };
   TestMirrorInfo.BoneMirrorIndices[9] = { 15, 15 };
   TestMirrorInfo.BoneMirrorIndices[10] = { 16, 16 };
-  TestMirrorInfo.BoneCount             = 11;
+  TestMirrorInfo.BoneMirrorIndices[11] = { 17, 17 };
+  TestMirrorInfo.BoneMirrorIndices[12] = { 18, 18 };
+  TestMirrorInfo.BoneCount             = 13;
 
   if(!g_BlendInfos.Empty())
   {

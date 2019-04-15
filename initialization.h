@@ -435,6 +435,14 @@ SetGameStatePODFields(game_state* GameState)
     }
   }
 
+  // Trajectory system
+  {
+    GameState->TrajectorySystem.Splines.HardClear();
+    GameState->TrajectorySystem.IsWaypointPlacementMode = false;
+    GameState->TrajectorySystem.SelectedSplineIndex     = -1;
+    GameState->TrajectorySystem.SelectedWaypointIndex   = -1;
+  }
+
   GameState->UseHotReloading = true;
   GameState->UpdatePathList  = false;
 
@@ -463,6 +471,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.ShowRootTrajectories  = false;
     GameState->MMDebug.ShowHipTrajectories   = false;
 
+
     GameState->MMDebug.CurrentGoal.ShowTrajectory       = true;
     GameState->MMDebug.MatchedGoal.ShowTrajectory       = true;
     GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = false;
@@ -475,6 +484,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMParams.DynamicParams.BoneVCoefficient        = 0.02f;
     GameState->MMParams.DynamicParams.TrajPCoefficient        = 0.06f;
     GameState->MMParams.DynamicParams.TrajVCoefficient        = 0.0f;
+    GameState->MMParams.DynamicParams.TrajAngleCoefficient    = 0.0f;
     GameState->MMParams.DynamicParams.TrajectoryTimeHorizon   = 1.0f;
     GameState->MMParams.DynamicParams.MinTimeOffsetThreshold  = 0.2f;
     GameState->MMParams.DynamicParams.BelndInTime             = 0.2f;

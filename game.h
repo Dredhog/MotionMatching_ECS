@@ -21,6 +21,7 @@
 #include "dynamics.h"
 #include "motion_matching.h"
 #include "ecs_management.h"
+#include "trajectory.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
@@ -59,6 +60,8 @@ struct game_state
 
   camera Camera;
   camera PreviewCamera;
+
+  trajectory_system TrajectorySystem;
 
   // Motion Matching
   mm_matching_params MMParams;
