@@ -66,10 +66,10 @@ Debug::PushWireframeSphere(vec3 Position, float Radius, vec4 Color)
 }
 
 void
-Debug::PushGizmo(const camera* Camera, const mat4* GizmoBase, vec3 Scale)
+Debug::PushGizmo(const camera* Camera, mat4 GizmoBase, vec3 Scale)
 {
   assert(0 <= g_GizmoCount && g_GizmoCount < GIZMO_MAX_COUNT);
-  mat4  MVMatrix   = Math::MulMat4(Camera->ViewMatrix, *GizmoBase);
+  mat4  MVMatrix   = Math::MulMat4(Camera->ViewMatrix, GizmoBase);
   mat4  MVPMatrix  = Math::MulMat4(Camera->ProjectionMatrix, MVMatrix);
   float GizmoDepth = Math::GetTranslationVec3(MVMatrix).Z;
 
@@ -139,6 +139,8 @@ Debug::DrawGizmos(game_state* GameState)
                        g_GizmoMatrices[g].e);
     glUniform3fv(glGetUniformLocation(GizmoShaderID, "scale"), 1, (float*)&g_GizmoScales[g]);
     glUniform1f(glGetUniformLocation(GizmoShaderID, "depth"), g_GizmoDepths[g]);
+    glUniform1f(glGetUniformLocation(GizmoShaderID, "gizmo_scale_factor"),
+                GameState->R.GizmoScaleFactor);
     for(int i = 0; i < GizmoModel->MeshCount; i++)
     {
       glBindVertexArray(GizmoModel->Meshes[i]->VAO);

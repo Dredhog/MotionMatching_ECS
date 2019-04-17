@@ -47,6 +47,19 @@ MinInt32(int32_t A, int32_t B)
 }
 
 inline int32_t
+ArgMin(float a, float b, float c)
+{
+  if(a < b)
+  {
+    return (a < c) ? 0 : 2;
+  }
+  else
+  {
+    return (b < c) ? 1 : 2;
+  }
+}
+
+inline int32_t
 MaxInt32(int32_t A, int32_t B)
 {
   if(A > B)

@@ -24,7 +24,7 @@ namespace Debug
 {
   void PushTopLeftQuad(vec3 Position, float Width, float Height, vec4 Color);
   void PushTopLeftTexturedQuad(int32_t TextureID, vec3 Position, float Width, float Height);
-  void PushGizmo(const camera* Camera, const mat4* GizmoBase, vec3 Scale = { 1, 1, 1 });
+  void PushGizmo(const camera* Camera, mat4 GizmoBase, vec3 Scale = { 1, 1, 1 });
   void PushShadedBone(mat4 GlobalBonePose, float Length);
   void PushWireframeSphere(vec3 Position, float Radius, vec4 Color = vec4{ 1, 0, 0, 1 });
   void PushLine(vec3 PointA, vec3 PointB, vec4 Color = { 1, 0, 0, 1 });

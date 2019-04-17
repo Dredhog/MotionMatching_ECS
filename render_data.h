@@ -424,6 +424,8 @@ struct render_data
   float FogGradient;
   float FogColor;
 
+  float GizmoScaleFactor;
+
   // Geometry/Depth FrameBuffer
   uint32_t GBufferFBO;
   uint32_t GBufferVelocityTexID;

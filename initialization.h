@@ -394,6 +394,8 @@ SetGameStatePODFields(game_state* GameState)
     GameState->R.LightAmbientColor  = { 0.2f, 0.2f, 0.2f };
     GameState->R.ShowLightPosition  = false;
 
+    GameState->R.GizmoScaleFactor = 0.13f;
+
     // SSAO
     {
       GameState->R.RenderSSAO         = false;

@@ -206,7 +206,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if(GameState->R.ShowLightPosition)
   {
     mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);
-    Debug::PushGizmo(&GameState->Camera, &Mat4LightPosition);
+    Debug::PushGizmo(&GameState->Camera, Mat4LightPosition);
   }
 
   GameState->R.CumulativeTime += Input->dt;
@@ -282,7 +282,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 ->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount + HipBoneIndex]);
 
             Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
-            Debug::PushGizmo(&GameState->Camera, &Mat4Root);
+            Debug::PushGizmo(&GameState->Camera, Mat4Root);
           }
 
           int FutureTrajectoryPointCount = (int)(GameState->MMDebug.TrajectoryDuration /
