@@ -123,24 +123,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         // Copy rigid body from entity (Mainly needed when loading scenes)
         GameState->Physics.RigidBodies[i] = GameState->Entities[i].RigidBody;
 
-        if(FloatsEqualByThreshold(Math::Length(GameState->Entities[i].Transform.Rotation), 0.0f,
-                                  0.0001f))
+        if(FloatsEqualByThreshold(Math::Length(GameState->Entities[i].Transform.R), 0.0f, 0.0001f))
         {
-          GameState->Entities[i].Transform.Rotation = Math::QuatIdent();
+          GameState->Entities[i].Transform.R = Math::QuatIdent();
         }
         else
         {
-          Math::Normalize(&GameState->Entities[i].Transform.Rotation);
+          Math::Normalize(&GameState->Entities[i].Transform.R);
         }
 
-        GameState->Physics.RigidBodies[i].q = GameState->Entities[i].Transform.Rotation;
-        GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.Translation;
+        GameState->Physics.RigidBodies[i].q = GameState->Entities[i].Transform.R;
+        GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.T;
 
         GameState->Physics.RigidBodies[i].R =
-          Math::Mat4ToMat3(Math::Mat4Rotate(GameState->Entities[i].Transform.Rotation));
+          Math::Mat4ToMat3(Math::Mat4Rotate(GameState->Entities[i].Transform.R));
 
         GameState->Physics.RigidBodies[i].Mat4Scale =
-          Math::Mat4Scale(GameState->Entities[i].Transform.Scale);
+          Math::Mat4Scale(GameState->Entities[i].Transform.S);
 
         GameState->Physics.RigidBodies[i].Collider =
           GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
@@ -165,8 +164,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     for(int i = 0; i < GameState->EntityCount; i++)
     {
       GameState->Entities[i].RigidBody             = GameState->Physics.RigidBodies[i];
-      GameState->Entities[i].Transform.Rotation    = GameState->Physics.RigidBodies[i].q;
-      GameState->Entities[i].Transform.Translation = GameState->Physics.RigidBodies[i].X;
+      GameState->Entities[i].Transform.R    = GameState->Physics.RigidBodies[i].q;
+      GameState->Entities[i].Transform.T = GameState->Physics.RigidBodies[i].X;
     }
   }
 
@@ -277,7 +276,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             mat4    Mat4Root;
             int32_t HipBoneIndex = 0;
 
-            mat4 Mat4Hips = Anim::TransformToMat4(
+            mat4 Mat4Hips = TransformToMat4(
               CurrentAnimation
                 ->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount + HipBoneIndex]);
 
@@ -295,13 +294,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           for(int i = PrevKeyframeIndex; i < EndKeyframeIndex - SamplePeriod; i += SamplePeriod)
           {
             int32_t HipBoneIndex = 0;
-            vec3 LocalHipPositionA =
-              CurrentAnimation->Transforms[HipBoneIndex + i * CurrentAnimation->ChannelCount]
-                .Translation;
+            vec3    LocalHipPositionA =
+              CurrentAnimation->Transforms[HipBoneIndex + i * CurrentAnimation->ChannelCount].T;
             vec3 LocalHipPositionB =
               CurrentAnimation
                 ->Transforms[HipBoneIndex + (i + SamplePeriod) * CurrentAnimation->ChannelCount]
-                .Translation;
+                .T;
 
             LocalHipPositionA =
               Math::MulMat4Vec4(Mat4InvRoot, { LocalHipPositionA.X, LocalHipPositionA.Y,

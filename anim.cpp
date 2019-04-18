@@ -54,7 +54,7 @@ Anim::LinearMirroredAnimationSample(Anim::animation_controller* Controller, int 
 }
 
 void
-Anim::LinearMirroredAnimationSample(Anim::transform* OutputTransforms, mat4* TempMatrices,
+Anim::LinearMirroredAnimationSample(transform* OutputTransforms, mat4* TempMatrices,
                                     const skeleton* Skeleton, const Anim::animation* Animation,
                                     float Time, const Anim::skeleton_mirror_info* MirrorInfo)
 {
@@ -128,9 +128,9 @@ Anim::UpdateController(Anim::animation_controller* Controller, float dt,
   {
     for(int i = 0; i < Controller->Skeleton->BoneCount; i++)
     {
-      Controller->OutputTransforms[i]          = {};
-      Controller->OutputTransforms[i].Rotation = Math::QuatIdent();
-      Controller->OutputTransforms[i].Scale    = { 1, 1, 1 };
+      Controller->OutputTransforms[i]   = {};
+      Controller->OutputTransforms[i].R = Math::QuatIdent();
+      Controller->OutputTransforms[i].S = { 1, 1, 1 };
     }
   }
   ComputeBoneSpacePoses(Controller->BoneSpaceMatrices, Controller->OutputTransforms,
@@ -182,28 +182,28 @@ Anim::StopAnimation(Anim::animation_controller* Controller, int AnimationIndex)
 }
 
 void
-Anim::LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
-                     float T, Anim::transform* Out)
+Anim::LerpTransforms(const transform* InA, const transform* InB, int TransformCount, float T,
+                     transform* Out)
 {
   float KoefA = (1.0f - T);
   float KoefB = T;
   for(int i = 0; i < TransformCount; i++)
   {
-    Out[i].Translation = KoefA * InA[i].Translation + KoefB * InB[i].Translation;
-    Out[i].Rotation    = Math::QuatLerp(InA[i].Rotation, InB[i].Rotation, T);
-    Out[i].Scale       = KoefA * InA[i].Scale + KoefB * InB[i].Scale;
+    Out[i].T = KoefA * InA[i].T + KoefB * InB[i].T;
+    Out[i].R = Math::QuatLerp(InA[i].R, InB[i].R, T);
+    Out[i].S = KoefA * InA[i].S + KoefB * InB[i].S;
   }
 }
 
 void
-Anim::AddTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
-                    float T, Anim::transform* Out)
+Anim::AddTransforms(const transform* InA, const transform* InB, int TransformCount, float T,
+                    transform* Out)
 {
   for(int i = 0; i < TransformCount; i++)
   {
-    Out[i].Translation = InA[i].Translation + InB[i].Translation * T;
-    Out[i].Rotation    = InA[i].Rotation + InB[i].Rotation * T;
-    // Out[i].Scale       = InA[i].Scale + InB[i].Scale * T;
+    Out[i].T = InA[i].T + InB[i].T * T;
+    Out[i].R = InA[i].R + InB[i].R * T;
+    // Out[i].S       = InA[i].S + InB[i].S * T;
   }
 }
 
@@ -250,7 +250,7 @@ GetKeyframeIndexAndInterpolant(int* K, float* T, const float* SampleTimes, int S
 }
 
 void
-Anim::LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation,
+Anim::LinearAnimationSample(transform* OutputTransforms, const Anim::animation* Animation,
                             float Time)
 {
   int   k;
@@ -272,13 +272,13 @@ Anim::LinearAnimationSample(Anim::animation_controller* Controller, int AnimInde
                         Animation, Time);
 }
 
-Anim::transform
+transform
 Anim::LinearAnimationBoneSample(const Anim::animation* Animation, int BoneIndex, float Time)
 {
-  Anim::transform Result;
-  int             k;
-  float           t;
-  int             ChannelCount = 1;
+  transform Result;
+  int       k;
+  float     t;
+  int       ChannelCount = 1;
   GetKeyframeIndexAndInterpolant(&k, &t, Animation->SampleTimes, Animation->KeyframeCount, Time);
   LerpTransforms(&Animation->Transforms[k * Animation->ChannelCount + BoneIndex],
                  &Animation->Transforms[(k + 1) * Animation->ChannelCount + BoneIndex],
@@ -318,25 +318,24 @@ Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat
 }
 
 void
-Anim::ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms, int Count)
+Anim::ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const transform* Transforms, int Count)
 {
   for(int i = 0; i < Count; i++)
   {
-    BoneSpaceMatrices[i] = Math::MulMat4(Math::Mat4Translate(Transforms[i].Translation),
-                                         Math::Mat4Rotate(Transforms[i].Rotation));
+    BoneSpaceMatrices[i] =
+      Math::MulMat4(Math::Mat4Translate(Transforms[i].T), Math::Mat4Rotate(Transforms[i].R));
   }
 }
 
 void
-Anim::InverseComputeBoneSpacePoses(Anim::transform* Transforms, const mat4* BoneSpaceMatrices,
-                                   int Count)
+Anim::InverseComputeBoneSpacePoses(transform* Transforms, const mat4* BoneSpaceMatrices, int Count)
 {
   for(int i = 0; i < Count; i++)
   {
     // Extract bone space translation
-    Transforms[i].Rotation    = Math::Mat4ToQuat(BoneSpaceMatrices[i]);
-    Transforms[i].Translation = BoneSpaceMatrices[i].T;
-    Transforms[i].Scale       = { 1, 1, 1 };
+    Transforms[i].R = Math::Mat4ToQuat(BoneSpaceMatrices[i]);
+    Transforms[i].T = BoneSpaceMatrices[i].T;
+    Transforms[i].S = { 1, 1, 1 };
   }
 }
 

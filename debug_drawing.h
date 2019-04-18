@@ -46,9 +46,8 @@ namespace Debug
 }
 
 inline mat4
-TransformToGizmoMat4(const Anim::transform* Transform)
+TransformToGizmoMat4(const transform* Transform)
 {
-  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->Translation),
-                              Math::Mat4Rotate(Transform->Rotation));
+  mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform->T), Math::Mat4Rotate(Transform->R));
   return Result;
 }

@@ -38,7 +38,6 @@ void
 TestGui(game_state* GameState, const game_input* Input)
 {
   BEGIN_TIMED_BLOCK(GUI);
-  UI::BeginFrame(GameState, Input);
 
   static bool s_ShowDemoWindow           = false;
   static bool s_ShowPhysicsWindow        = false;
@@ -782,7 +781,6 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::EndWindow();
   }
 
-  UI::EndFrame();
   END_TIMED_BLOCK(GUI);
 }
 
@@ -1263,10 +1261,10 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       }
       UI::NewLine();
 
-      Anim::transform* Transform = &SelectedEntity->Transform;
-      UI::DragFloat3("Translation", (float*)&Transform->Translation, -INFINITY, INFINITY, 10);
+      transform* Transform = &SelectedEntity->Transform;
+      UI::DragFloat3("Translation", (float*)&Transform->T, -INFINITY, INFINITY, 10);
       // UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
-      UI::DragFloat3("Scale", (float*)&Transform->Scale, -INFINITY, INFINITY, 10.0f);
+      UI::DragFloat3("Scale", (float*)&Transform->S, -INFINITY, INFINITY, 10.0f);
 
       // Rigid Body
       {
@@ -1342,7 +1340,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           SelectedEntity->AnimController->OutputTransforms =
             PushArray(GameState->PersistentMemStack,
                       ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * SelectedModel->Skeleton->BoneCount,
-                      Anim::transform);
+                      transform);
           SelectedEntity->AnimController->BoneSpaceMatrices =
             PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
           SelectedEntity->AnimController->ModelSpaceMatrices =
@@ -1509,13 +1507,13 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
             EditAnimation::EditBoneAtIndex(&GameState->AnimEditor, ActiveBoneIndex);
           }
 
-          Anim::transform* Transform =
+          transform* Transform =
             &GameState->AnimEditor.Keyframes[GameState->AnimEditor.CurrentKeyframe]
                .Transforms[GameState->AnimEditor.CurrentBone];
           mat4 Mat4Transform = TransformToGizmoMat4(Transform);
-          UI::DragFloat3("Translation", &Transform->Translation.X, -INFINITY, INFINITY, 10.0f);
+          UI::DragFloat3("Translation", &Transform->T.X, -INFINITY, INFINITY, 10.0f);
           // UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
-          UI::DragFloat3("Scale", &Transform->Scale.X, -INFINITY, INFINITY, 10.0f);
+          UI::DragFloat3("Scale", &Transform->S.X, -INFINITY, INFINITY, 10.0f);
         }
       }
     }
@@ -1559,8 +1557,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(Render::mesh): %ld", sizeof(Render::mesh));
     UI::Text(TempBuffer);
 
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(Anim::transform): %ld",
-             sizeof(Anim::transform));
+    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(transform): %ld", sizeof(transform));
     UI::Text(TempBuffer);
 
     snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(rigid_body): %ld", sizeof(rigid_body));
@@ -1915,6 +1912,8 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     sprintf(TempBuffer, "ActiveID: %u", UI::GetActiveID());
     UI::Text(TempBuffer);
     sprintf(TempBuffer, "HotID: %u", UI::GetHotID());
+    UI::Text(TempBuffer);
+    sprintf(TempBuffer, "Selected Entity Index: %d", GameState->SelectedEntityIndex);
     UI::Text(TempBuffer);
   }
 }

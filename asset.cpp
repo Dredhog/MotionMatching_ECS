@@ -48,7 +48,7 @@ void
 Asset::PackAnimation(Anim::animation* Animation)
 {
   uint64_t Base          = (uint64_t)Animation;
-  Animation->Transforms  = (Anim::transform*)((uint64_t)Animation->Transforms - Base);
+  Animation->Transforms  = (transform*)((uint64_t)Animation->Transforms - Base);
   Animation->SampleTimes = (float*)((uint64_t)Animation->SampleTimes - Base);
 }
 
@@ -56,7 +56,7 @@ void
 Asset::UnpackAnimation(Anim::animation* Animation)
 {
   uint64_t Base          = (uint64_t)Animation;
-  Animation->Transforms  = (Anim::transform*)((uint64_t)Animation->Transforms + Base);
+  Animation->Transforms  = (transform*)((uint64_t)Animation->Transforms + Base);
   Animation->SampleTimes = (float*)((uint64_t)Animation->SampleTimes + Base);
 }
 
@@ -117,12 +117,11 @@ Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
       AnimGroup->Animations[a]->SampleTimes[k] -= AnimEditor->SampleTimes[0];
     }
 
-    AnimGroup->Animations[a]->Transforms =
-      PushArray(Alloc, AnimationTransformCount, Anim::transform);
+    AnimGroup->Animations[a]->Transforms = PushArray(Alloc, AnimationTransformCount, transform);
     for(int k = 0; k < KeyframeCount; k++)
     {
       memcpy(&AnimGroup->Animations[a]->Transforms[k * ChannelCount],
-             AnimEditor->Keyframes[k].Transforms, ChannelCount * sizeof(Anim::transform));
+             AnimEditor->Keyframes[k].Transforms, ChannelCount * sizeof(transform));
     }
   }
 

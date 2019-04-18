@@ -111,6 +111,12 @@ namespace UI
   void Image(const char* Name, int32_t TextureID, vec3 Size);
   void Text(const char* Text);
 
+  void MoveGizmo(transform* Transform, bool UseLocalAxes = false);
+  void MoveGizmo(vec3* Position);
+  void PlaneGizmo(transform* Transform, int32_t PlaneIndex);
+  void PlaneGizmo(transform* Position, vec3 PlaneNormal);
+  //void PlaneGizmo(transform* Position, parametric_plane);
+
   uint32_t GetActiveID();
   uint32_t GetHotID();
 

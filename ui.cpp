@@ -687,7 +687,7 @@ UI::Button(const char* Label, float Width, int UniqueID)
   gui_window&  Window = *GetCurrentWindow();
 
   ui_id ID = Window.GetID(Label);
-	ID = IDHash(&ID, sizeof(ui_id*), (uint32_t)UniqueID);
+  ID       = IDHash(&ID, sizeof(ui_id*), (uint32_t)UniqueID);
 
   vec3 Size;
   int  LabelWidth, LabelHeight;
@@ -1210,4 +1210,247 @@ UI::Text(const char* Text)
     return;
   }
   DrawText({ TextRect.MinP.X, TextRect.MinP.Y + Size.Y }, Text);
+}
+#include "intersection_testing.h"
+
+void
+_MoveAxis()
+{
+}
+
+void _MovePlane(parametric_plane) {}
+
+float
+GetGizmoScale(vec3 Position)
+{
+  gui_context& g = *GetContext();
+  return g.GameState->R.GizmoScaleFactor * Math::Length(Position - g.GameState->Camera.Position);
+}
+
+void
+_MoveAxes(vec3* Position, const vec3 InputAxes[3])
+{
+  vec3 Axes[3] = { InputAxes[0], InputAxes[1], InputAxes[2] };
+
+  gui_context& g = *GetContext();
+
+  ui_id ID = { IDHash(&Position, sizeof(Position), 0) };
+
+  float GizmoScale = GetGizmoScale(*Position);
+
+  float AxisRadius = 0.08f * GizmoScale;
+  float AxisWorldLength = 0.85f * GizmoScale;
+
+  static parametric_plane AxisPlane = {};
+  static float            InitialU  = 0.0f;
+
+  vec3 RayDir =
+    GetRayDirFromScreenP({ g.Input->NormMouseX, g.Input->NormMouseY },
+                         g.GameState->Camera.ProjectionMatrix, g.GameState->Camera.ViewMatrix);
+  vec3 RayOrig = g.GameState->Camera.Position + RayDir * g.GameState->Camera.NearClipPlane;
+
+  if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+  {
+    float DistXOrig;
+    float DistYOrig;
+    float DistZOrig;
+    float HitDistX = MinDistRaySegment(&DistXOrig, RayOrig, RayDir, *Position,
+                                       *Position + AxisWorldLength * Axes[0]);
+    float HitDistY = MinDistRaySegment(&DistYOrig, RayOrig, RayDir, *Position,
+                                       *Position + AxisWorldLength * Axes[1]);
+    float HitDistZ = MinDistRaySegment(&DistZOrig, RayOrig, RayDir, *Position,
+                                       *Position + AxisWorldLength * Axes[2]);
+
+    if(MinFloat(HitDistX, MinFloat(HitDistY, HitDistZ)) < AxisRadius)
+    {
+      int   AxisIndex     = -1;
+      float MinOrigToAxis = FLT_MAX;
+      if(HitDistX < AxisRadius && DistXOrig < MinOrigToAxis)
+      {
+        AxisIndex     = 0;
+        MinOrigToAxis = DistXOrig;
+      }
+      if(HitDistY < AxisRadius && DistYOrig < MinOrigToAxis)
+      {
+        AxisIndex     = 1;
+        MinOrigToAxis = DistYOrig;
+      }
+      if(HitDistZ < AxisRadius && DistZOrig < MinOrigToAxis)
+      {
+        AxisIndex     = 2;
+        MinOrigToAxis = DistZOrig;
+      }
+
+      assert(AxisIndex != -1);
+      AxisPlane.u = Axes[AxisIndex];
+      vec3 tempV  = Math::Cross(AxisPlane.u, RayDir);
+      AxisPlane.n = Math::Normalized(Math::Cross(AxisPlane.u, tempV));
+      AxisPlane.o = *Position;
+
+      // TestRayAxis(NULL, &InitialT, RayOrig, RayDir, *Position, ActiveAxis, AxisRadius);
+      if(IntersectRayParametricPlane(&InitialU, RayOrig, RayDir, AxisPlane))
+      {
+        SetHot(ID);
+        if(ID == g.HotID)
+        {
+          SetActive(ID, NULL);
+        }
+      }
+    }
+  }
+  else if(g.Input->MouseLeft.EndedDown && ID == g.ActiveID)
+  {
+    // TestRayAxis(NULL, &CurrentT, RayOrig, RayDir, InitialP, ActiveAxis, AxisRadius);
+    float CurrentU;
+    if(IntersectRayParametricPlane(&CurrentU, RayOrig, RayDir, AxisPlane))
+    {
+      vec3 ClosestPOnAxis = AxisPlane.o + CurrentU * AxisPlane.u;
+      Debug::PushWireframeSphere(ClosestPOnAxis, AxisRadius);
+      *Position = AxisPlane.o + (CurrentU - InitialU) * AxisPlane.u;
+
+      // Snap To Grid
+      if(g.Input->LeftCtrl.EndedDown)
+      {
+        float AbsoluteU = Math::Dot(*Position, AxisPlane.u);
+        float RoundedAbsoluteU = roundf(AbsoluteU);
+        float CorrectionU      = RoundedAbsoluteU - AbsoluteU;
+        *Position += CorrectionU * AxisPlane.u;
+      }
+    }
+    else
+    {
+      *Position = AxisPlane.o;
+    }
+  }
+  else if(!g.Input->MouseLeft.EndedDown && ID == g.ActiveID)
+  {
+    SetActive(0, NULL);
+  }
+
+  Debug::PushGizmo(&g.GameState->Camera, Math::Mat4Translate(*Position));
+}
+
+void
+_MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f)
+{
+  gui_context& g = *GetContext();
+  ui_id ID = { IDHash(&Position, sizeof(Position), 2) };
+
+  vec3 Axes[3] = { InputAxes[0], InputAxes[1], InputAxes[2] };
+
+  // Variables stored between calls of the funtion (Only used when ID == g.ActiveID)
+  static parametric_plane ActivePlane;
+  static int              ActivePlaneIndex;
+  static float            InitialU;
+  static float            InitialV;
+
+  float GizmoScale      = GetGizmoScale(*Position);
+  float PlaneWorldWidth = GizmoScale * PlaneQuadWidth;
+
+  // Flipping the axes to face the camera
+  vec3 GizmoToCamera = g.GameState->Camera.Position - *Position;
+  for(int i = 0; i < 3; i++)
+  {
+    if(Math::Dot(GizmoToCamera, Axes[i]) < 0)
+    {
+      Axes[i] *= -1;
+    }
+  }
+
+  vec3 RayDir =
+    GetRayDirFromScreenP({ g.Input->NormMouseX, g.Input->NormMouseY },
+                         g.GameState->Camera.ProjectionMatrix, g.GameState->Camera.ViewMatrix);
+  vec3 RayOrig = g.GameState->Camera.Position + RayDir * g.GameState->Camera.NearClipPlane;
+  if(g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+  {
+
+    for(int i = 0; i < 3; i++)
+    {
+      // Construct the plane
+      ActivePlane.o = *Position;
+      ActivePlane.u = Axes[(i + 1) % 3];
+      ActivePlane.v = Axes[(i + 2) % 3];
+
+      if(IntersectRayParametricPlane(&InitialU, &InitialV, RayOrig, RayDir, ActivePlane, 0.0f,
+                                     PlaneWorldWidth))
+      {
+        SetHot(ID);
+        if(g.HotID == ID)
+        {
+          SetActive(ID, NULL);
+          ActivePlaneIndex = i;
+          break;
+        }
+      }
+    }
+  }
+  else if(g.Input->MouseLeft.EndedDown && ID == g.ActiveID)
+  {
+    float CurrentU;
+    float CurrentV;
+    if(IntersectRayParametricPlane(&CurrentU, &CurrentV, RayOrig, RayDir, ActivePlane, -FLT_MAX,
+                                   FLT_MAX))
+    {
+      *Position = ActivePlane.o + (CurrentU - InitialU) * ActivePlane.u +
+                  (CurrentV - InitialV) * ActivePlane.v;
+      // Snap to grid
+      if(g.Input->LeftCtrl.EndedDown)
+      {
+        vec3  Normal           = Math::Cross(ActivePlane.u, ActivePlane.v);
+        float GizmoSpacePos[3] = { Math::Dot(*Position, ActivePlane.u),
+                                   Math::Dot(*Position, ActivePlane.v),
+                                   Math::Dot(*Position, Normal) };
+
+        GizmoSpacePos[0] = roundf(GizmoSpacePos[0]);
+        GizmoSpacePos[1] = roundf(GizmoSpacePos[1]);
+
+        *Position = GizmoSpacePos[0] * ActivePlane.u + GizmoSpacePos[1] * ActivePlane.v +
+                    GizmoSpacePos[2] * Normal;
+      }
+    }
+  }
+  else if(ID == g.ActiveID)
+  {
+    SetActive(0, NULL);
+  }
+
+  // Draw the planes
+  vec4 PlaneColors[3] = { { 0, 0, 1, 1 }, { 1, 0, 0, 1 }, { 0, 1, 0, 1 } };
+  for(int i = 0; i < 3; i++)
+  {
+    if(ID != g.ActiveID || (ID == g.ActiveID && i == ActivePlaneIndex))
+    {
+      int IndA = (i + 1) % 3;
+      int IndB = (i + 2) % 3;
+
+      vec3 PtAxisA  = *Position + PlaneWorldWidth * Axes[IndA];
+      vec3 PtAxisB  = *Position + PlaneWorldWidth * Axes[IndB];
+      vec3 PtCorner = *Position + PlaneWorldWidth * (Axes[IndA] + Axes[IndB]);
+      Debug::PushLine(*Position, PtAxisA, PlaneColors[i]);
+      Debug::PushLine(*Position, PtAxisB, PlaneColors[i]);
+      Debug::PushLine(PtAxisA, PtCorner, PlaneColors[i]);
+      Debug::PushLine(PtAxisB, PtCorner, PlaneColors[i]);
+    }
+  }
+}
+
+void
+UI::MoveGizmo(transform* Transform, bool UseLocalAxes)
+{
+  assert(!UseLocalAxes);
+
+  vec3 Axes[3];
+  if(!UseLocalAxes)
+  {
+    Axes[0] = { 1, 0, 0 };
+    Axes[1] = { 0, 1, 0 };
+    Axes[2] = { 0, 0, 1 };
+  }
+  else
+  {
+    assert(0 && "PleaseImplementLocalMoveGizmoAxes");
+  }
+
+  _MovePlanes(&Transform->T, Axes);
+  _MoveAxes(&Transform->T, Axes);
 }

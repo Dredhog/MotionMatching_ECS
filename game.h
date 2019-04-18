@@ -141,7 +141,7 @@ void     DrawSkeleton(const Anim::skeleton* Skeleton, const mat4* HierarchicalMo
 
 //-----------------------ENTITY RELATED UTILITY FUNCTIONS---------------------------
 
-void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform);
+void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, transform Transform);
 bool DeleteEntity(game_state* GameState, int32_t Index);
 void RemoveAnimationReferences(Resource::resource_manager* Resources,
                                Anim::animation_controller* Controller);

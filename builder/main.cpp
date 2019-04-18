@@ -308,10 +308,11 @@ CalculateTotalAnimationGroupSize(const aiScene* Scene, const Anim::skeleton* Ske
   {
     aiAnimation* Animation = Scene->mAnimations[i];
 
-    int KeyframeCount = GetSubsampledKeyframeCount(Animation->mChannels[0]->mNumRotationKeys, UndersamplePeriod);
+    int KeyframeCount =
+      GetSubsampledKeyframeCount(Animation->mChannels[0]->mNumRotationKeys, UndersamplePeriod);
 
     Total += sizeof(Anim::animation);
-    Total += sizeof(Anim::transform) * Skeleton->BoneCount * KeyframeCount;
+    Total += sizeof(transform) * Skeleton->BoneCount * KeyframeCount;
     Total += sizeof(float) * KeyframeCount;
   }
 
@@ -463,7 +464,7 @@ main(int ArgCount, char** Args)
   // Determine file size on disk
   int32_t TotalModelFileSize = CalculateTotalModelSize(Scene);
   int32_t TotalActorFileSize = TotalModelFileSize + SafeTruncateUint64(sizeof(Skeleton));
-  int32_t TotalAnimFileSize  = CalculateTotalAnimationGroupSize(Scene, &Skeleton, UndersamplePeriod);
+  int32_t TotalAnimFileSize = CalculateTotalAnimationGroupSize(Scene, &Skeleton, UndersamplePeriod);
 
   int32_t MaximumAssetSize =
     (TotalActorFileSize > TotalAnimFileSize) ? TotalActorFileSize : TotalAnimFileSize;
@@ -531,10 +532,12 @@ main(int ArgCount, char** Args)
 
       Anim::animation* Animation = PushStruct(&Allocator, Anim::animation);
       AnimGroup->Animations[a]   = Animation;
-      Animation->KeyframeCount   = GetSubsampledKeyframeCount(AssimpAnimation->mChannels[0]->mNumRotationKeys, UndersamplePeriod);
+      Animation->KeyframeCount =
+        GetSubsampledKeyframeCount(AssimpAnimation->mChannels[0]->mNumRotationKeys,
+                                   UndersamplePeriod);
 
       Animation->Transforms =
-        PushArray(&Allocator, Animation->KeyframeCount * Skeleton.BoneCount, Anim::transform);
+        PushArray(&Allocator, Animation->KeyframeCount * Skeleton.BoneCount, transform);
       Animation->SampleTimes = PushArray(&Allocator, Animation->KeyframeCount, float);
 
       // Build the skeleton bind pose
@@ -554,14 +557,14 @@ main(int ArgCount, char** Args)
 
             mat4 LocalBindPose = {};
             {
-              Anim::transform LocalTransform = {};
-              LocalTransform.Rotation        = { BoneQuat.w, BoneQuat.x, BoneQuat.y, BoneQuat.z };
-              LocalTransform.Scale           = { BoneScale.x, BoneScale.y, BoneScale.z };
-              LocalTransform.Translation =
-                RescaleCoefficient *
-                vec3{ BoneTranslation.x, BoneTranslation.y, BoneTranslation.z };
+              transform LocalTransform = {};
 
-              LocalBindPose = Anim::TransformToMat4(LocalTransform);
+              LocalTransform.R = { BoneQuat.w, BoneQuat.x, BoneQuat.y, BoneQuat.z };
+              LocalTransform.S = { BoneScale.x, BoneScale.y, BoneScale.z };
+              LocalTransform.T = RescaleCoefficient *
+                                 vec3{ BoneTranslation.x, BoneTranslation.y, BoneTranslation.z };
+
+              LocalBindPose = TransformToMat4(LocalTransform);
             }
 
             int  ParentIndex = Skeleton.Bones[BoneIndex].ParentIndex;
@@ -614,29 +617,29 @@ main(int ArgCount, char** Args)
         {
           int IndexInNewAnim = i / UndersamplePeriod;
 
-          Anim::transform BoneParentSpaceAbsTransform = {};
-          int             TranslationKeyIndex         = (b == 0) ? i : 0;
-          BoneParentSpaceAbsTransform.Translation.X =
+          transform BoneParentSpaceAbsTransform = {};
+          int       TranslationKeyIndex         = (b == 0) ? i : 0;
+          BoneParentSpaceAbsTransform.T.X =
             RescaleCoefficient * Channel->mPositionKeys[TranslationKeyIndex].mValue.x;
-          BoneParentSpaceAbsTransform.Translation.Y =
+          BoneParentSpaceAbsTransform.T.Y =
             RescaleCoefficient * Channel->mPositionKeys[TranslationKeyIndex].mValue.y;
-          BoneParentSpaceAbsTransform.Translation.Z =
+          BoneParentSpaceAbsTransform.T.Z =
             RescaleCoefficient * Channel->mPositionKeys[TranslationKeyIndex].mValue.z;
 
-          BoneParentSpaceAbsTransform.Scale.X = Channel->mScalingKeys[0].mValue.x;
-          BoneParentSpaceAbsTransform.Scale.Y = Channel->mScalingKeys[0].mValue.y;
-          BoneParentSpaceAbsTransform.Scale.Z = Channel->mScalingKeys[0].mValue.z;
+          BoneParentSpaceAbsTransform.S.X = Channel->mScalingKeys[0].mValue.x;
+          BoneParentSpaceAbsTransform.S.Y = Channel->mScalingKeys[0].mValue.y;
+          BoneParentSpaceAbsTransform.S.Z = Channel->mScalingKeys[0].mValue.z;
 
-          BoneParentSpaceAbsTransform.Rotation.S   = Channel->mRotationKeys[i].mValue.w;
-          BoneParentSpaceAbsTransform.Rotation.V.X = Channel->mRotationKeys[i].mValue.x;
-          BoneParentSpaceAbsTransform.Rotation.V.Y = Channel->mRotationKeys[i].mValue.y;
-          BoneParentSpaceAbsTransform.Rotation.V.Z = Channel->mRotationKeys[i].mValue.z;
+          BoneParentSpaceAbsTransform.R.S   = Channel->mRotationKeys[i].mValue.w;
+          BoneParentSpaceAbsTransform.R.V.X = Channel->mRotationKeys[i].mValue.x;
+          BoneParentSpaceAbsTransform.R.V.Y = Channel->mRotationKeys[i].mValue.y;
+          BoneParentSpaceAbsTransform.R.V.Z = Channel->mRotationKeys[i].mValue.z;
 
 #ifdef USE_BIND_POSE
           mat4 BoneParentSpaceAbsPose = Anim::TransformToMat4(BoneParentSpaceAbsTransform);
           mat4 BindRelativeLocalBonePose =
             Math::MulMat4(InverseLocalBindPose, BoneParentSpaceAbsPose);
-          Anim::transform BindRelativeLocalBoneTransform = {};
+          transform BindRelativeLocalBoneTransform = {};
           {
             BindRelativeLocalBoneTransform.Translation =
               Math::GetMat4Translation(BindRelativeLocalBonePose);
@@ -667,7 +670,7 @@ main(int ArgCount, char** Args)
             }
           }
 #else  // USE_BIND_POSE
-          Anim::transform BindRelativeLocalBoneTransform = BoneParentSpaceAbsTransform;
+          transform BindRelativeLocalBoneTransform = BoneParentSpaceAbsTransform;
 #endif // USE_BIND_POSE
 
           Animation->Transforms[IndexInNewAnim * Skeleton.BoneCount + BoneIndex] =

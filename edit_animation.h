@@ -11,7 +11,7 @@ static const float KEYFRAME_MIN_TIME_DIFFERENCE_APART = 1.0f/121.0f;
 
 struct editor_keyframe
 {
-  Anim::transform Transforms[SKELETON_MAX_BONE_COUNT];
+  transform Transforms[SKELETON_MAX_BONE_COUNT];
 };
 
 namespace EditAnimation
@@ -23,7 +23,7 @@ namespace EditAnimation
     editor_keyframe  ClipboardKeyframe;
     float            SampleTimes[ANIM_EDITOR_MAX_KEYFRAME_COUNT];
     Anim::skeleton*  Skeleton;
-    Anim::transform* Transform;
+    transform*       Transform;
     int32_t          EntityIndex;
 
     mat4 BoneSpaceMatrices[SKELETON_MAX_BONE_COUNT];
@@ -36,8 +36,7 @@ namespace EditAnimation
     int32_t CurrentBone;
   };
 
-  void LerpTransforms(Anim::transform* Result, const Anim::transform* A, float t,
-                      const Anim::transform* B);
+  void LerpTransforms(transform* Result, const transform* A, float t, const transform* B);
   void LerpKeyframes(editor_keyframe* Result, const editor_keyframe* A, float t,
                      const editor_keyframe* B, int ChannelCount);
   void ClampedLinearKeyframeSample(animation_editor* Editor, float Time, editor_keyframe* Result);

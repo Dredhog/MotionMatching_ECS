@@ -18,9 +18,9 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
 {
   TIMED_BLOCK(BuildMotionSet);
   // Alloc temp memory for matrices
-  Memory::marker   FuncStartMemoryMarker = TempAlloc->GetMarker();
-  mat4*            TempMatrices          = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
-  Anim::transform* TempTransforms = PushArray(TempAlloc, Skeleton->BoneCount, Anim::transform);
+  Memory::marker FuncStartMemoryMarker = TempAlloc->GetMarker();
+  mat4*          TempMatrices          = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
+  transform*     TempTransforms        = PushArray(TempAlloc, Skeleton->BoneCount, transform);
 
   mm_controller_data MMData = {}; // ZII
   MMData.Params             = Params;
@@ -63,7 +63,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
                                 float(i) * (1.0f / Params.FixedParams.MetadataSamplingFrequency);
       Anim::LinearAnimationSample(TempTransforms, Anim, CurrentSampleTime);
 
-      ComputeBoneSpacePoses(TempMatrices, TempTransforms, Anim->ChannelCount);
+			Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Anim->ChannelCount);
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Skeleton);
       ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Skeleton);
 
@@ -85,13 +85,13 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       // ANIMATIONS COULD WORK
       for(int p = 0; p < MM_POINT_COUNT; p++)
       {
-        Anim::transform SampleHipTransform =
+        transform SampleHipTransform =
           Anim::LinearAnimationBoneSample(Anim, HipIndex,
                                           CurrentSampleTime + (p + 1) * PositionSamplePeriod);
         // TODO(Lukas) this should actually get the root for this point
-        mat4 CurrentHipMatrix   = Anim::TransformToMat4(SampleHipTransform);
-        vec3 SamplePoint        = SampleHipTransform.Translation;
-        vec4 SamplePointHomog   = { SamplePoint, 1 };
+        mat4 CurrentHipMatrix = TransformToMat4(SampleHipTransform);
+        vec3 SamplePoint      = SampleHipTransform.T;
+        vec4 SamplePointHomog = { SamplePoint, 1 };
         FrameInfoStack[FrameInfoIndex].TrajectoryPs[p] =
           Math::MulMat4Vec4(InvRootMatrix, SamplePointHomog).XYZ;
 
@@ -103,7 +103,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
         float AbsAngle     = acosf(ClampFloat(-1.0f, Math::Dot(InitialXAxis, PointXAxis), 1.0f));
         FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
         assert(!isnan(FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p]));
-        assert(AbsFloat(FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p]) <= 2.0f *M_PI);
+        assert(AbsFloat(FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p]) <= 2.0f * M_PI);
       }
     }
 
@@ -116,7 +116,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
           (FrameInfoStack[i + 1].BonePs[b] - FrameInfoStack[i].BonePs[b]) *
           MMData.Params.FixedParams.MetadataSamplingFrequency;
       }
-			
+
       for(int p = 0; p < MM_POINT_COUNT; p++)
       {
         FrameInfoStack[i].TrajectoryVs[p] =
@@ -160,9 +160,8 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
   assert(CurrentAnim);
 
   // Allocate temporary transforms and matrices
-  Anim::transform* TempTransforms =
-    PushArray(TempAlloc, Controller->Skeleton->BoneCount, Anim::transform);
-  mat4* TempMatrices = PushArray(TempAlloc, Controller->Skeleton->BoneCount, mat4);
+  transform* TempTransforms = PushArray(TempAlloc, Controller->Skeleton->BoneCount, transform);
+  mat4*      TempMatrices   = PushArray(TempAlloc, Controller->Skeleton->BoneCount, mat4);
 
   vec3    StartVelocity;
   mat4    CurrentRootMatrix;
@@ -173,12 +172,11 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
   {
     // Sample the most recent animation's current frame
     {
-      float LocalTime =
-        GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec);
+      float LocalTime = GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec);
       Anim::LinearAnimationSample(TempTransforms, CurrentAnim, LocalTime);
-      ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
-      ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
-      ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Controller->Skeleton);
+			Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
+			Anim::ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
+      Anim::ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Controller->Skeleton);
     }
     Anim::GetRootAndInvRootMatrices(&CurrentRootMatrix, &InvCurrentRootMatrix,
                                     TempMatrices[HipIndex]);
@@ -204,7 +202,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
       float LocalTimeWithDelta =
         GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec + Delta);
       Anim::LinearAnimationSample(TempTransforms, CurrentAnim, LocalTimeWithDelta);
-      ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
+      Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
       ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Controller->Skeleton);
     }
@@ -255,7 +253,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
 
       ResultInfo.TrajectoryPs[p] = CurrentPoint;
       ResultInfo.TrajectoryVs[p] = Math::Length(CurrentVelocity);
-			{
+      {
         vec3  InitialXAxis = Math::Normalized(StartVelocity);
         vec3  PointXAxis   = Math::Normalized(CurrentVelocity);
         float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;

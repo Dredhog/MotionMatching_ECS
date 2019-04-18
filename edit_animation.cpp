@@ -3,17 +3,16 @@
 #include "entity.h"
 
 void
-EditAnimation::LerpTransforms(Anim::transform* Result, const Anim::transform* A, float t,
-                              const Anim::transform* B)
+EditAnimation::LerpTransforms(transform* Result, const transform* A, float t, const transform* B)
 {
   if(!(0.0f <= t && t <= 1))
   {
     printf("t: %f\n", (double)t);
     assert(0 <= t && t <= 1);
   }
-  Result->Translation = A->Translation * (1 - t) + B->Translation * t;
-  Result->Rotation    = Math::QuatLerp(A->Rotation, B->Rotation, t);
-  Result->Scale       = A->Scale * (1 - t) + B->Scale * t;
+  Result->T = A->T * (1 - t) + B->T * t;
+  Result->R = Math::QuatLerp(A->R, B->R, t);
+  Result->S = A->S * (1 - t) + B->S * t;
 }
 
 void
@@ -169,7 +168,7 @@ EditAnimation::InsertIdleKeyframeAtTime(animation_editor* Editor, float Time)
   editor_keyframe IdleKeyframe = {};
   for(int i = 0; i < Editor->Skeleton->BoneCount; i++)
   {
-    IdleKeyframe.Transforms[i].Scale = { 1, 1, 1 };
+    IdleKeyframe.Transforms[i].S = { 1, 1, 1 };
   }
   InsertKeyframeAtTime(Editor, &IdleKeyframe, Time);
 }
@@ -299,7 +298,7 @@ EditAnimation::EditAnimation(animation_editor* Editor, const Anim::animation* An
   for(int k = 0; k < Animation->KeyframeCount; k++)
   {
     memcpy(Editor->Keyframes[k].Transforms, &Animation->Transforms[k * Animation->ChannelCount],
-           sizeof(Anim::transform) * Animation->ChannelCount);
+           sizeof(transform) * Animation->ChannelCount);
   }
 
   memset(Editor->BoneSpaceMatrices, 0, sizeof(mat4) * SKELETON_MAX_BONE_COUNT);

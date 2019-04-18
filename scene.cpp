@@ -236,7 +236,9 @@ ImportScene(game_state* GameState, const char* Path)
 
       assert(Model->Skeleton);
       GameState->Entities[e].AnimController->Skeleton           = Model->Skeleton;
-      GameState->Entities[e].AnimController->OutputTransforms   = PushArray(GameState->PersistentMemStack, ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * Model->Skeleton->BoneCount, Anim::transform);
+      GameState->Entities[e].AnimController->OutputTransforms =
+        PushArray(GameState->PersistentMemStack,
+                  ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * Model->Skeleton->BoneCount, transform);
       GameState->Entities[e].AnimController->BoneSpaceMatrices  = PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
       GameState->Entities[e].AnimController->ModelSpaceMatrices = PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
       GameState->Entities[e].AnimController->HierarchicalModelSpaceMatrices = PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);

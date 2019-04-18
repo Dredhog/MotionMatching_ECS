@@ -6,11 +6,11 @@
 
 struct blend_in_info
 {
-  float           GlobalStartTime;
-  float           Duration;
-  int32_t         AnimStateIndex;
-  bool            Mirror;
-  Anim::transform PrevRootTransform;
+  float     GlobalStartTime;
+  float     Duration;
+  int32_t   AnimStateIndex;
+  bool      Mirror;
+  transform PrevRootTransform;
 };
 
 extern circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos;

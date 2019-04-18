@@ -92,7 +92,7 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
                     MMData->Params.DynamicParams.BelndInTime, PlayMirrored);
     }
 
-    mat4 ModelMatrix    = Anim::TransformToMat4(Player->Transform);
+    mat4 ModelMatrix    = TransformToMat4(Player->Transform);
     mat4 InvModelMatrix = Math::InvMat4(ModelMatrix);
 
     mm_frame_info AnimGoal = {};
@@ -265,20 +265,20 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
                    RootMotionAnim->SampleTimes[RootMotionAnim->KeyframeCount - 1]);
 
       int             HipBoneIndex = 0;
-      Anim::transform CurrentHipTransform =
+      transform       CurrentHipTransform =
         Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, CurrentSampleTime);
-      Anim::transform NextHipTransform =
+      transform NextHipTransform =
         Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, NextSampleTime);
 
-      mat4 Mat4Player = Anim::TransformToMat4(Player->Transform);
+      mat4 Mat4Player = TransformToMat4(Player->Transform);
       Mat4Player.T    = {};
       {
-        mat4 Mat4CurrentHip = Anim::TransformToMat4(CurrentHipTransform);
+        mat4 Mat4CurrentHip = TransformToMat4(CurrentHipTransform);
         mat4 Mat4CurrentRoot;
         mat4 Mat4InvCurrentRoot;
         Anim::GetRootAndInvRootMatrices(&Mat4CurrentRoot, &Mat4InvCurrentRoot, Mat4CurrentHip);
         {
-          mat4 Mat4NextHip = Anim::TransformToMat4(NextHipTransform);
+          mat4 Mat4NextHip = TransformToMat4(NextHipTransform);
           mat4 Mat4NextRoot;
           Anim::GetRootAndInvRootMatrices(&Mat4NextRoot, NULL, Mat4NextHip);
           {
@@ -287,19 +287,18 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
               Math::MulMat4(Mat4Player, Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot));
             vec3 DeltaTranslaton = Mat4DeltaRoot.T;*/
             mat4 Mat4LocalRootDelta = Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot);
-            quat DeltaRotation      = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
+            quat dR                 = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
             if(MirrorRootMotion)
             {
               Mat4LocalRootDelta = Math::MulMat4(Math::Mat4Scale(-1, 1, 1), Mat4LocalRootDelta);
-              DeltaRotation      = Math::QuatFromTo(Mat4NextRoot.Z, Mat4CurrentRoot.Z);
+              dR                 = Math::QuatFromTo(Mat4NextRoot.Z, Mat4CurrentRoot.Z);
             }
             mat4 Mat4DeltaRoot = Math::MulMat4(Mat4Player, Mat4LocalRootDelta);
 
-            vec3 DeltaTranslaton = Mat4DeltaRoot.T;
-            Player->Transform.Translation += DeltaTranslaton;
-            Player->Transform.Rotation = Player->Transform.Rotation * DeltaRotation;
-            Debug::PushLine(Player->Transform.Translation,
-                            Player->Transform.Translation + DeltaTranslaton, { 1, 0, 0, 1 });
+            vec3 dT = Mat4DeltaRoot.T;
+            Player->Transform.T += dT;
+            Player->Transform.R = Player->Transform.R * dR;
+            Debug::PushLine(Player->Transform.T, Player->Transform.T + dT, { 1, 0, 0, 1 });
           }
         }
       }

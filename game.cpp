@@ -160,7 +160,7 @@ GenerateScreenQuad(uint32_t* VAO, uint32_t* VBO)
 }
 
 void
-AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, Anim::transform Transform)
+AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, transform Transform)
 {
   assert(0 <= GameState->EntityCount && GameState->EntityCount < ENTITY_MAX_COUNT);
 

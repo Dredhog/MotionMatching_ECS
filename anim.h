@@ -7,19 +7,13 @@
 #include "linear_math/quaternion.h"
 
 #include "skeleton.h"
+#include "transform.h"
 
 static const int ANIM_CONTROLLER_MAX_ANIM_COUNT     = 5;
 static const int ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT = 3;
 
 namespace Anim
 {
-  struct transform
-  {
-    quat Rotation;
-    vec3 Translation;
-    vec3 Scale;
-  };
-
   struct animation
   {
     transform* Transforms;
@@ -63,12 +57,12 @@ namespace Anim
     rid             AnimationIDs[ANIM_CONTROLLER_MAX_ANIM_COUNT];
     animation*      Animations[ANIM_CONTROLLER_MAX_ANIM_COUNT];
 
-    Anim::transform* OutputTransforms;
-    mat4*            BoneSpaceMatrices;
-    mat4*            ModelSpaceMatrices;
-    mat4*            HierarchicalModelSpaceMatrices;
-    float            GlobalTimeSec;
-    int32_t          AnimStateCount;
+    transform* OutputTransforms;
+    mat4*      BoneSpaceMatrices;
+    mat4*      ModelSpaceMatrices;
+    mat4*      HierarchicalModelSpaceMatrices;
+    float      GlobalTimeSec;
+    int32_t    AnimStateCount;
 
     void (*BlendFunc)(animation_controller*);
   };
@@ -92,30 +86,28 @@ namespace Anim
                                   bool Loop, float LocalStartTime);
 
   // Blending and sampling facilities
-  void LerpTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
-                      float T, Anim::transform* Out);
-  void AddTransforms(const Anim::transform* InA, const Anim::transform* InB, int TransformCount,
-                     float T, Anim::transform* Out);
-  void LinearAnimationSample(Anim::transform* OutputTransforms, const Anim::animation* Animation,
-                             float Time);
-  void LinearAnimationSample(animation_controller*, int AnimAInd, float Time, int ResultIndex);
-  void LinearMirroredAnimationSample(Anim::transform* OutputTransforms, mat4* TempMatrices,
-                                     const skeleton* Skeleton, const Anim::animation* Animation,
-                                     float Time, const Anim::skeleton_mirror_info* MirrorInfo);
-  void LinearMirroredAnimationSample(Anim::animation_controller* Controller, int AnimIndex,
-                                     float Time, int ResultIndex,
-                                     const skeleton_mirror_info* MirrorInfo);
-  Anim::transform LinearAnimationBoneSample(const Anim::animation* Animation, int BoneIndex,
-                                            float Time);
+  void      LerpTransforms(const transform* InA, const transform* InB, int TransformCount, float T,
+                           transform* Out);
+  void      AddTransforms(const transform* InA, const transform* InB, int TransformCount, float T,
+                          transform* Out);
+  void      LinearAnimationSample(transform* OutputTransforms, const Anim::animation* Animation,
+                                  float Time);
+  void      LinearAnimationSample(animation_controller*, int AnimAInd, float Time, int ResultIndex);
+  void      LinearMirroredAnimationSample(transform* OutputTransforms, mat4* TempMatrices,
+                                          const skeleton* Skeleton, const Anim::animation* Animation,
+                                          float Time, const Anim::skeleton_mirror_info* MirrorInfo);
+  void      LinearMirroredAnimationSample(Anim::animation_controller* Controller, int AnimIndex,
+                                          float Time, int ResultIndex,
+                                          const skeleton_mirror_info* MirrorInfo);
+  transform LinearAnimationBoneSample(const Anim::animation* Animation, int BoneIndex, float Time);
 
   // Matrix palette generation
-  void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const Anim::transform* Transforms,
-                             int32_t Count);
+  void ComputeBoneSpacePoses(mat4* BoneSpaceMatrices, const transform* Transforms, int32_t Count);
   void ComputeModelSpacePoses(mat4* ModelSpacePoses, const mat4* BoneSpaceMatrices,
                               const Anim::skeleton* Skeleton);
   void ComputeFinalHierarchicalPoses(mat4* FinalPoseMatrices, const mat4* ModelSpaceMatrices,
                                      const Anim::skeleton* Skeleton);
-  void InverseComputeBoneSpacePoses(Anim::transform* Transforms, const mat4* BoneSpaceMatrices,
+  void InverseComputeBoneSpacePoses(transform* Transforms, const mat4* BoneSpaceMatrices,
                                     int Count);
   void InverseComputeModelSpacePoses(mat4* BoneSpaceMatrices, const mat4* ModelSpaceMatrices,
                                      const Anim::skeleton* Skeleton);
@@ -125,13 +117,4 @@ namespace Anim
                            float GlobalTimeSec);
   void  GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRoot, mat4 HipMatrix);
   float GetAnimDuration(const Anim::animation* Animation);
-
-  inline mat4
-  TransformToMat4(const Anim::transform& Transform)
-  {
-    mat4 Result = Math::MulMat4(Math::Mat4Translate(Transform.Translation),
-                                Math::MulMat4(Math::Mat4Rotate(Transform.Rotation),
-                                              Math::Mat4Scale(Transform.Scale)));
-    return Result;
-  }
 }
