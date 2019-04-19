@@ -110,6 +110,8 @@ namespace UI
 
   void Image(const char* Name, int32_t TextureID, vec3 Size);
   void Text(const char* Text);
+  bool SelectSphere(vec3* Position, float Radius = 0.1f, vec4 Color = { 1, 0, 0, 1 },
+                    bool PerspectiveInvariant = false);
 
   void MoveGizmo(transform* Transform, bool UseLocalAxes = false);
   void MoveGizmo(vec3* Position);

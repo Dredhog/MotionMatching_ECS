@@ -80,6 +80,42 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
       // UI::TranslationPlane(&TestTransform.Translation, 1);
     }
   }
+	
+  if(GameState->TrajectorySystem.SelectedSplineIndex >= 0 &&
+     GameState->TrajectorySystem.SelectedWaypointIndex >= 0)
+  {
+    vec3* WaypointPositionPtr =
+      &GameState->TrajectorySystem.Splines[GameState->TrajectorySystem.SelectedSplineIndex]
+         .Waypoints[GameState->TrajectorySystem.SelectedWaypointIndex]
+         .Position;
+    UI::MoveGizmo(WaypointPositionPtr);
+  }
+
+  // Waypoint debug visualizaiton
+  for(int i = 0; i < GameState->TrajectorySystem.Splines.Count; i++)
+  {
+    waypoint PreviousWaypoint = {};
+    for(int j = 0; j < GameState->TrajectorySystem.Splines[i].Waypoints.Count; j++)
+    {
+      waypoint CurrentWaypoint = GameState->TrajectorySystem.Splines[i].Waypoints[j];
+			if(j > 0)
+			{
+        Debug::PushLine(PreviousWaypoint.Position, CurrentWaypoint.Position);
+      }
+      vec4 WaypointColor = { 1, 0, 0, 1 };
+      if(GameState->TrajectorySystem.SelectedSplineIndex == i && GameState->TrajectorySystem.SelectedWaypointIndex == j)
+			{
+        WaypointColor = { 0, 0, 1, 1 };
+      }
+      if(UI::SelectSphere(&CurrentWaypoint.Position, 0.1f, WaypointColor))
+			{
+        GameState->TrajectorySystem.SelectedSplineIndex   = i;
+        GameState->TrajectorySystem.SelectedWaypointIndex = j;
+      }
+      PreviousWaypoint = CurrentWaypoint;
+    }
+  }
+
 
   // Entity creation
   if(GameState->IsEntityCreationMode && Input->MouseLeft.EndedDown && Input->MouseLeft.Changed &&

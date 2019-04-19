@@ -181,27 +181,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  // Waypoint debug visualizaiton
-  for(int i = 0; i < GameState->TrajectorySystem.Splines.Count; i++)
-  {
-    waypoint PreviousWaypoint = {};
-    for(int j = 0; j < GameState->TrajectorySystem.Splines[i].Waypoints.Count; j++)
-    {
-      waypoint CurrentWaypoint = GameState->TrajectorySystem.Splines[i].Waypoints[j];
-			if(j > 0)
-			{
-        Debug::PushLine(PreviousWaypoint.Position, CurrentWaypoint.Position);
-      }
-      vec4 WaypointColor = { 1, 0, 0, 1 };
-      if(GameState->TrajectorySystem.SelectedSplineIndex == i && GameState->TrajectorySystem.SelectedWaypointIndex == j)
-			{
-        WaypointColor = { 0, 0, 1, 1 };
-      }
-      Debug::PushWireframeSphere(CurrentWaypoint.Position, 0.1f, WaypointColor);
-      PreviousWaypoint = CurrentWaypoint;
-    }
-  }
-
   if(GameState->R.ShowLightPosition)
   {
     mat4 Mat4LightPosition = Math::Mat4Translate(GameState->R.LightPosition);

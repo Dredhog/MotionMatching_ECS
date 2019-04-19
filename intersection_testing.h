@@ -7,6 +7,7 @@
 struct raycast_result
 {
   vec3 IntersectP;
+  float t;
   bool Success;
 };
 
@@ -71,6 +72,7 @@ RayIntersectSphere(vec3 Orig, vec3 Dir, vec3 SphereP, float Radius)
   if(t > 0)
   {
     Result.Success    = true;
+    Result.t          = t;
     Result.IntersectP = Orig + t * Dir;
   }
   return Result;

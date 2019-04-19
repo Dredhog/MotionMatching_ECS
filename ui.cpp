@@ -1287,7 +1287,6 @@ _MoveAxes(vec3* Position, const vec3 InputAxes[3])
       AxisPlane.n = Math::Normalized(Math::Cross(AxisPlane.u, tempV));
       AxisPlane.o = *Position;
 
-      // TestRayAxis(NULL, &InitialT, RayOrig, RayDir, *Position, ActiveAxis, AxisRadius);
       if(IntersectRayParametricPlane(&InitialU, RayOrig, RayDir, AxisPlane))
       {
         SetHot(ID);
@@ -1300,7 +1299,6 @@ _MoveAxes(vec3* Position, const vec3 InputAxes[3])
   }
   else if(g.Input->MouseLeft.EndedDown && ID == g.ActiveID)
   {
-    // TestRayAxis(NULL, &CurrentT, RayOrig, RayDir, InitialP, ActiveAxis, AxisRadius);
     float CurrentU;
     if(IntersectRayParametricPlane(&CurrentU, RayOrig, RayDir, AxisPlane))
     {
@@ -1432,6 +1430,68 @@ _MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f
       Debug::PushLine(PtAxisB, PtCorner, PlaneColors[i]);
     }
   }
+}
+
+bool
+UI::SelectSphere(vec3* Position, float Radius, vec4 Color, bool PerspectiveInvariant)
+{
+  gui_context& g = *GetContext();
+
+  ui_id ID = { IDHash(&Position, sizeof(Position), 2) };
+
+  static float ClosestActiveT  = -FLT_MAX;
+
+  bool Result = false;
+
+  vec3 RayDir =
+    GetRayDirFromScreenP({ g.Input->NormMouseX, g.Input->NormMouseY },
+                         g.GameState->Camera.ProjectionMatrix, g.GameState->Camera.ViewMatrix);
+  vec3 RayOrig = g.GameState->Camera.Position + RayDir * g.GameState->Camera.NearClipPlane;
+  raycast_result Raycast = RayIntersectSphere(RayOrig, RayDir, *Position, Radius);
+
+  if(Raycast.Success)
+  {
+    Color += { 0.5f, 0.5f, 0.5f, 0 };
+    ClampFloat(0, Color.X, 1);
+    ClampFloat(0, Color.Y, 1);
+    ClampFloat(0, Color.Z, 1);
+  }
+
+  if(Raycast.Success && g.Input->MouseLeft.EndedDown && g.Input->MouseLeft.Changed)
+  {
+    if(ClosestActiveT != -FLT_MAX && Raycast.t < ClosestActiveT)
+    {
+      SetActive(0, NULL); // Clear out the further sphere's selection
+    }
+    SetHot(ID);
+    if(ID == g.HotID)
+    {
+      ClosestActiveT = Raycast.t;
+      Result = true;
+      SetActive(ID, NULL);
+    }
+  }
+  else if(ID == g.ActiveID)
+  {
+    SetActive(0, NULL);
+    ClosestActiveT = -FLT_MAX;
+  }
+
+  Debug::PushWireframeSphere(*Position, Radius, Color);
+
+  return Result;
+}
+
+void
+UI::MoveGizmo(vec3* Position)
+{
+  vec3 Axes[3];
+  Axes[0] = { 1, 0, 0 };
+  Axes[1] = { 0, 1, 0 };
+  Axes[2] = { 0, 0, 1 };
+
+  _MovePlanes(Position, Axes);
+  _MoveAxes(Position, Axes);
 }
 
 void
