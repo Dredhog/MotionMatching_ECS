@@ -1413,7 +1413,7 @@ _MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f
   }
 
   // Draw the planes
-  vec4 PlaneColors[3] = { { 0, 0, 1, 1 }, { 1, 0, 0, 1 }, { 0, 1, 0, 1 } };
+  vec4 PlaneColors[3] = { { 1, 0, 0, 1 }, { 0, 1, 0, 1 }, { 0, 0, 1, 1 } };
   for(int i = 0; i < 3; i++)
   {
     if(ID != g.ActiveID || (ID == g.ActiveID && i == ActivePlaneIndex))
