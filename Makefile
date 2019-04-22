@@ -11,6 +11,9 @@ all:
 models:
 	@./_build.sh
 
+fbx_models:
+	@./build_fbx.sh
+
 animations:
 	@./build_anim.sh
 

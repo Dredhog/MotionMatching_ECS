@@ -103,9 +103,8 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
                                 0 })
           .XYZ;
       int32_t CurrentAnimIndex = g_BlendInfos.Peek().AnimStateIndex;
-      AnimGoal =
-        GetCurrentFrameGoal(TempAlocator, CurrentAnimIndex, g_BlendInfos.Peek().Mirror,
-                            Player->AnimController, DesiredModelSpaceVelocity, MMData->Params);
+      AnimGoal = GetMMGoal(TempAlocator, CurrentAnimIndex, g_BlendInfos.Peek().Mirror,
+                           Player->AnimController, DesiredModelSpaceVelocity, MMData->Params);
     }
 
     // Visualize the current goal

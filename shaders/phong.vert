@@ -15,7 +15,7 @@ layout(location = 5) in vec4 a_boneWeights;
 uniform mat4 mat_mvp;
 uniform mat4 mat_model;
 uniform mat4 mat_view;
-uniform mat4 g_boneMatrices[20];
+uniform mat4 g_boneMatrices[70];
 uniform vec3 lightPosition;
 uniform vec3 sunDirection;
 uniform vec3 cameraPosition;

@@ -8,7 +8,7 @@
 #include "linear_math/matrix.h"
 
 #define BONE_NAME_LENGTH 40
-#define SKELETON_MAX_BONE_COUNT 60
+#define SKELETON_MAX_BONE_COUNT 70
 
 namespace Anim
 {
@@ -19,7 +19,6 @@ namespace Anim
     mat4 InverseBindPose;
 
     int32_t ParentIndex;
-    int32_t Index;
   };
 
   struct skeleton // root is always the 0'th bone

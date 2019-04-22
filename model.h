@@ -14,6 +14,7 @@ namespace Render
     int32_t         MeshCount;
     Render::mesh**  Meshes;
     Anim::skeleton* Skeleton;
+    float           ScaleOnBuild;
   };
 
   inline void

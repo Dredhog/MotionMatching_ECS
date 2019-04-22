@@ -3,8 +3,8 @@
 #include "linear_math/vector.h"
 #include "linear_math/matrix.h"
 #include "linear_math/quaternion.h"
-#include <stdint.h>
 #include "mesh.h"
+#include <stdint.h>
 
 struct rigid_body
 {

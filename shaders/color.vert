@@ -5,7 +5,7 @@ layout(location = 0) in vec3 a_position;
 layout(location = 4) in ivec4 a_boneIndices;
 layout(location = 5) in vec4 a_boneWeights;
 
-uniform mat4 g_boneMatrices[20];
+uniform mat4 g_boneMatrices[70];
 
 uniform mat4 mat_mvp;
 

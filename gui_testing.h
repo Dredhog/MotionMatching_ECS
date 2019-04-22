@@ -1512,7 +1512,12 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
                .Transforms[GameState->AnimEditor.CurrentBone];
           mat4 Mat4Transform = TransformToGizmoMat4(Transform);
           UI::DragFloat3("Translation", &Transform->T.X, -INFINITY, INFINITY, 10.0f);
-          // UI::DragFloat3("Rotation", &Transform->Rotation.X, -INFINITY, INFINITY, 720.0f);
+
+          {
+            vec3 RotationForEditing = Math::QuatToEuler(Transform->R);
+            UI::DragFloat3("Rotation", &RotationForEditing.X, -INFINITY, INFINITY, 720.0f);
+            Transform->R = Math::EulerToQuat(RotationForEditing);
+          }
           UI::DragFloat3("Scale", &Transform->S.X, -INFINITY, INFINITY, 10.0f);
         }
       }

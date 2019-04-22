@@ -255,7 +255,7 @@ AnimationEditorInteraction(game_state* GameState, const game_input* Input)
                     Math::MulMat4(GameState->AnimEditor.HierarchicalModelSpaceMatrices[i],
                                   GameState->AnimEditor.Skeleton->Bones[i].BindPose));
 
-    const float BoneSphereRadius = 0.1f;
+    const float BoneSphereRadius = 0.03f;
 
     vec3 Position = Math::GetMat4Translation(Mat4Bone);
     vec3 RayDir =

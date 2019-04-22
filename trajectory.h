@@ -12,16 +12,9 @@ struct waypoint
 	float Velocity;
 };
 
-enum spline_loop_type
-{
-  SPLINE_LoopToStart,
-  SPLINE_ReverseWhenEnded,
-};
-
 struct movement_spline
 {
 	fixed_stack<waypoint, WAYPOINT_CAPACITY_PER_TRAJECTORY> Waypoints;
-  uint32_t LoopType;
 };
 
 struct trajectory_system

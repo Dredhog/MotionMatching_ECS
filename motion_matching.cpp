@@ -38,7 +38,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
     const float AnimDuration  = Anim::GetAnimDuration(Anim);
     const float FrameDuration = AnimDuration / float(Anim->KeyframeCount);
 
-    const float PositionSamplePeriod =
+    const float PositionSamplingPeriod =
       Params.DynamicParams.TrajectoryTimeHorizon / float(MM_POINT_COUNT);
 
     const int32_t NewFrameInfoCount =
@@ -63,7 +63,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
                                 float(i) * (1.0f / Params.FixedParams.MetadataSamplingFrequency);
       Anim::LinearAnimationSample(TempTransforms, Anim, CurrentSampleTime);
 
-			Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Anim->ChannelCount);
+      Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Anim->ChannelCount);
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Skeleton);
       ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Skeleton);
 
@@ -81,14 +81,12 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       }
       // Fill Bone Trajectory Positions
 
-      // TODO(Lukas) MAKE THIS USE SAMPING AT DESIRED TIME TIMES SO THAT ARBITRARILY SAMPLED
-      // ANIMATIONS COULD WORK
       for(int p = 0; p < MM_POINT_COUNT; p++)
       {
         transform SampleHipTransform =
           Anim::LinearAnimationBoneSample(Anim, HipIndex,
-                                          CurrentSampleTime + (p + 1) * PositionSamplePeriod);
-        // TODO(Lukas) this should actually get the root for this point
+                                          CurrentSampleTime + (p + 1) * PositionSamplingPeriod);
+        // TODO(Lukas) this should use the root bone if animation has a dedicated one
         mat4 CurrentHipMatrix = TransformToMat4(SampleHipTransform);
         vec3 SamplePoint      = SampleHipTransform.T;
         vec4 SamplePointHomog = { SamplePoint, 1 };
@@ -120,8 +118,8 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       for(int p = 0; p < MM_POINT_COUNT; p++)
       {
         FrameInfoStack[i].TrajectoryVs[p] =
-          Math::Length(FrameInfoStack[i + 1].TrajectoryPs[p] - FrameInfoStack[i].TrajectoryPs[p]) *
-          MMData.Params.FixedParams.MetadataSamplingFrequency;
+          Math::Length(FrameInfoStack[i + 1].TrajectoryPs[p] - FrameInfoStack[i].TrajectoryPs[p]) /
+          PositionSamplingPeriod;
       }
     }
 
@@ -149,11 +147,24 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
 }
 
 mm_frame_info
-GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
-                    const Anim::animation_controller* Controller, vec3 DesiredVelocity,
-                    mm_matching_params Params)
+GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
+          const Anim::animation_controller* Controller, vec3 DesiredVelocity,
+          mm_matching_params Params)
 {
-  mm_frame_info  ResultInfo  = {};
+  vec3          CurrentVelocity = {};
+  mm_frame_info ResultInfo      = {};
+
+  GetPoseGoal(&ResultInfo, &CurrentVelocity, TempAlloc, CurrentAnimIndex, Mirror, Controller,
+              Params);
+  GetLongtermGoal(&ResultInfo, CurrentVelocity, DesiredVelocity);
+  return ResultInfo;
+}
+
+void
+GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
+            int32_t CurrentAnimIndex, bool Mirror, const Anim::animation_controller* Controller,
+            mm_matching_params Params)
+{
   Memory::marker StackMarker = TempAlloc->GetMarker();
 
   const Anim::animation* CurrentAnim = Controller->Animations[CurrentAnimIndex];
@@ -163,7 +174,6 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
   transform* TempTransforms = PushArray(TempAlloc, Controller->Skeleton->BoneCount, transform);
   mat4*      TempMatrices   = PushArray(TempAlloc, Controller->Skeleton->BoneCount, mat4);
 
-  vec3    StartVelocity;
   mat4    CurrentRootMatrix;
   mat4    InvCurrentRootMatrix;
   mat4    NextRootMatrix;
@@ -174,8 +184,8 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
     {
       float LocalTime = GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec);
       Anim::LinearAnimationSample(TempTransforms, CurrentAnim, LocalTime);
-			Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
-			Anim::ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
+      Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
+      Anim::ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
       Anim::ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Controller->Skeleton);
     }
     Anim::GetRootAndInvRootMatrices(&CurrentRootMatrix, &InvCurrentRootMatrix,
@@ -185,7 +195,7 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
     {
       for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
       {
-        ResultInfo.BonePs[b] =
+        OutPose->BonePs[b] =
           Math::MulMat4(InvCurrentRootMatrix,
                         TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
             .T;
@@ -212,59 +222,59 @@ GetCurrentFrameGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex
       Anim::GetRootAndInvRootMatrices(&NextRootMatrix, &InvNextRootMatrix, TempMatrices[HipIndex]);
       for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
       {
-        ResultInfo.BoneVs[b] =
+        OutPose->BoneVs[b] =
           (Math::MulMat4(InvNextRootMatrix,
                          TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
              .T -
-           ResultInfo.BonePs[b]) /
+           OutPose->BonePs[b]) /
           Delta;
       }
     }
-    StartVelocity = Math::MulMat4(InvCurrentRootMatrix, NextRootMatrix).T / Delta;
+    *OutStartVelocity = Math::MulMat4(InvCurrentRootMatrix, NextRootMatrix).T / Delta;
   }
 
   if(Mirror)
   {
     vec3 MirrorMatDiagonal = { -1, 1, 1 };
-    MirrorGoalJoints(&ResultInfo, MirrorMatDiagonal, Params.FixedParams);
-    StartVelocity.X *= MirrorMatDiagonal.X;
-  }
-
-  // Extract desired sampled trajectory
-  {
-    const float TimeHorizon = 1.0f;
-    const float Step        = 1 / 60.0f;
-    float       PointDelta  = TimeHorizon / MM_POINT_COUNT;
-
-    vec3  CurrentPoint    = {};
-    vec3  CurrentVelocity = StartVelocity;
-    float Elapsed         = 0.0f;
-    for(int p = 0; p < MM_POINT_COUNT; p++)
-    {
-      float PointTimeHorizon = (p + 1) * PointDelta;
-      for(; Elapsed <= PointTimeHorizon; Elapsed += Step)
-      {
-        CurrentPoint += CurrentVelocity * Step;
-
-        float t = Elapsed / TimeHorizon;
-
-        CurrentVelocity = (1.0f - t) * StartVelocity + t * DesiredVelocity;
-      }
-
-      ResultInfo.TrajectoryPs[p] = CurrentPoint;
-      ResultInfo.TrajectoryVs[p] = Math::Length(CurrentVelocity);
-      {
-        vec3  InitialXAxis = Math::Normalized(StartVelocity);
-        vec3  PointXAxis   = Math::Normalized(CurrentVelocity);
-        float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
-        float AbsAngle     = acosf(ClampFloat(-1.0f, Math::Dot(InitialXAxis, PointXAxis), 1.0f));
-        ResultInfo.TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
-      }
-    }
+    MirrorGoalJoints(OutPose, MirrorMatDiagonal, Params.FixedParams);
+    OutStartVelocity->X *= MirrorMatDiagonal.X;
   }
 
   TempAlloc->FreeToMarker(StackMarker);
-  return ResultInfo;
+}
+
+void
+GetLongtermGoal(mm_frame_info* OutTrajectory, vec3 StartVelocity, vec3 DesiredVelocity)
+{
+  const float TimeHorizon = 1.0f;
+  const float Step        = 1 / 60.0f;
+  float       PointDelta  = TimeHorizon / MM_POINT_COUNT;
+
+  vec3  CurrentPoint    = {};
+  vec3  CurrentVelocity = StartVelocity;
+  float Elapsed         = 0.0f;
+  for(int p = 0; p < MM_POINT_COUNT; p++)
+  {
+    float PointTimeHorizon = (p + 1) * PointDelta;
+    for(; Elapsed <= PointTimeHorizon; Elapsed += Step)
+    {
+      CurrentPoint += CurrentVelocity * Step;
+
+      float t = Elapsed / TimeHorizon;
+
+      CurrentVelocity = (1.0f - t) * StartVelocity + t * DesiredVelocity;
+    }
+
+    OutTrajectory->TrajectoryPs[p] = CurrentPoint;
+    OutTrajectory->TrajectoryVs[p] = Math::Length(CurrentVelocity);
+    {
+      vec3  InitialXAxis = Math::Normalized(StartVelocity);
+      vec3  PointXAxis   = Math::Normalized(CurrentVelocity);
+      float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
+      float AbsAngle     = acosf(ClampFloat(-1.0f, Math::Dot(InitialXAxis, PointXAxis), 1.0f));
+      OutTrajectory->TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
+    }
+  }
 }
 
 void

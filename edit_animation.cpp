@@ -168,6 +168,7 @@ EditAnimation::InsertIdleKeyframeAtTime(animation_editor* Editor, float Time)
   editor_keyframe IdleKeyframe = {};
   for(int i = 0; i < Editor->Skeleton->BoneCount; i++)
   {
+    IdleKeyframe.Transforms[i].R = Math::QuatIdent();
     IdleKeyframe.Transforms[i].S = { 1, 1, 1 };
   }
   InsertKeyframeAtTime(Editor, &IdleKeyframe, Time);
