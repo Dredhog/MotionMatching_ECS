@@ -272,12 +272,18 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
       mat4 Mat4Player = TransformToMat4(Player->Transform);
       Mat4Player.T    = {};
       {
-        mat4 Mat4CurrentHip = TransformToMat4(CurrentHipTransform);
+        //mat4 Mat4CurrentHip = TransformToMat4(CurrentHipTransform);
+        mat4 Mat4CurrentHip =
+          Math::MulMat4(Player->AnimController->Skeleton->Bones[HipBoneIndex].BindPose,
+                        TransformToMat4(CurrentHipTransform));
         mat4 Mat4CurrentRoot;
         mat4 Mat4InvCurrentRoot;
         Anim::GetRootAndInvRootMatrices(&Mat4CurrentRoot, &Mat4InvCurrentRoot, Mat4CurrentHip);
         {
-          mat4 Mat4NextHip = TransformToMat4(NextHipTransform);
+          //mat4 Mat4NextHip = TransformToMat4(NextHipTransform);
+          mat4 Mat4NextHip =
+            Math::MulMat4(Player->AnimController->Skeleton->Bones[HipBoneIndex].BindPose,
+                          TransformToMat4(NextHipTransform));
           mat4 Mat4NextRoot;
           Anim::GetRootAndInvRootMatrices(&Mat4NextRoot, NULL, Mat4NextHip);
           {
