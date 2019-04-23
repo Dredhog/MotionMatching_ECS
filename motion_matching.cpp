@@ -70,14 +70,18 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
       mat4    InvRootMatrix;
       mat4    RootMatrix;
       int32_t HipIndex  = 0;
-      mat4    HipMatrix = TempMatrices[HipIndex];
+      mat4    HipMatrix = Math::MulMat4(TempMatrices[HipIndex], Skeleton->Bones[HipIndex].BindPose);
       Anim::GetRootAndInvRootMatrices(&RootMatrix, &InvRootMatrix, HipMatrix);
 
       // Fill Bone Positions
       for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
       {
         FrameInfoStack[FrameInfoIndex].BonePs[b] =
-          Math::MulMat4(InvRootMatrix, TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]]).T;
+          Math::MulMat4(InvRootMatrix,
+                        Math::MulMat4(TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]],
+                                      Skeleton->Bones[Params.FixedParams.ComparisonBoneIndices[b]]
+                                        .BindPose))
+            .T;
       }
       // Fill Bone Trajectory Positions
 
@@ -189,7 +193,8 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
       Anim::ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Controller->Skeleton);
     }
     Anim::GetRootAndInvRootMatrices(&CurrentRootMatrix, &InvCurrentRootMatrix,
-                                    TempMatrices[HipIndex]);
+                                    Math::MulMat4(TempMatrices[HipIndex], Controller->Skeleton->Bones[HipIndex]
+                                                      .BindPose));
 
     // Store the current positions
     {
@@ -197,7 +202,10 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
       {
         OutPose->BonePs[b] =
           Math::MulMat4(InvCurrentRootMatrix,
-                        TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
+                        Math::MulMat4(TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]],
+                                      Controller->Skeleton
+                                        ->Bones[Params.FixedParams.ComparisonBoneIndices[b]]
+                                        .BindPose))
             .T;
       }
     }
@@ -219,12 +227,18 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
 
     // Compute bone linear velocities
     {
-      Anim::GetRootAndInvRootMatrices(&NextRootMatrix, &InvNextRootMatrix, TempMatrices[HipIndex]);
+      Anim::GetRootAndInvRootMatrices(&NextRootMatrix, &InvNextRootMatrix,
+                                      Math::MulMat4(TempMatrices[HipIndex],
+                                                    Controller->Skeleton->Bones[HipIndex]
+                                                      .BindPose));
       for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
       {
         OutPose->BoneVs[b] =
           (Math::MulMat4(InvNextRootMatrix,
-                         TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]])
+                         Math::MulMat4(TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]],
+                                       Controller->Skeleton
+                                         ->Bones[Params.FixedParams.ComparisonBoneIndices[b]]
+                                         .BindPose))
              .T -
            OutPose->BonePs[b]) /
           Delta;

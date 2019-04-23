@@ -71,7 +71,7 @@ Debug::PushGizmo(const camera* Camera, mat4 GizmoBase, vec3 Scale)
   assert(0 <= g_GizmoCount && g_GizmoCount < GIZMO_MAX_COUNT);
   mat4  MVMatrix   = Math::MulMat4(Camera->ViewMatrix, GizmoBase);
   mat4  MVPMatrix  = Math::MulMat4(Camera->ProjectionMatrix, MVMatrix);
-  float GizmoDepth = Math::GetTranslationVec3(MVMatrix).Z;
+  float GizmoDepth = MVMatrix.T.Z;
 
   g_GizmoMatrices[g_GizmoCount] = MVPMatrix;
   g_GizmoScales[g_GizmoCount]   = Scale;

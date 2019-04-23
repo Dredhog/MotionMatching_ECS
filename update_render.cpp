@@ -254,13 +254,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           {
             mat4    Mat4Root;
             int32_t HipBoneIndex = 0;
+            //mat4    HipBindPose  = Controller->Skeleton->Bones[HipBoneIndex].BindPose;
 
-            mat4 Mat4Hips = TransformToMat4(
-              CurrentAnimation
-                ->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount + HipBoneIndex]);
+            mat4 Mat4Hips =
+              // Math::MulMat4(HipBindPose,
+              TransformToMat4(
+                CurrentAnimation->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount +
+                                             HipBoneIndex]) /*)*/;
 
             Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
-            Debug::PushGizmo(&GameState->Camera, Mat4Root);
           }
 
           int FutureTrajectoryPointCount = (int)(GameState->MMDebug.TrajectoryDuration /
@@ -323,7 +325,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         mat4    Mat4Root;
         mat4    Mat4InvRoot;
         int32_t HipBoneIndex = 0;
-        mat4    Mat4Hips     = Controller->HierarchicalModelSpaceMatrices[HipBoneIndex];
+        mat4    Mat4HipBindPose = Controller->Skeleton->Bones[HipBoneIndex].BindPose;
+        mat4    Mat4Hips     = Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[HipBoneIndex], Mat4HipBindPose);
+
+        //Debug::PushGizmo(&GameState->Camera, Math::MulMat4(CurrentEntityModelMatrix, Mat4Hips));
 
         Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
         for(int b = 0; b < Controller->Skeleton->BoneCount; b++)

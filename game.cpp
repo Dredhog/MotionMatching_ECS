@@ -285,7 +285,7 @@ DrawSkeleton(const Anim::skeleton* Skeleton, const mat4* HierarchicalModelSpaceM
   {
     mat4 Mat4Bone = Math::MulMat4(MatModel, Math::MulMat4(HierarchicalModelSpaceMatrices[b],
                                                           Skeleton->Bones[b].BindPose));
-    vec3 Position = Math::GetMat4Translation(Mat4Bone);
+    vec3 Position = Mat4Bone.T;
 
     if(0 < b)
     {
@@ -293,7 +293,7 @@ DrawSkeleton(const Anim::skeleton* Skeleton, const mat4* HierarchicalModelSpaceM
       mat4 Mat4Parent =
         Math::MulMat4(MatModel, Math::MulMat4(HierarchicalModelSpaceMatrices[ParentIndex],
                                               Skeleton->Bones[ParentIndex].BindPose));
-      vec3 ParentPosition = Math::GetMat4Translation(Mat4Parent);
+      vec3 ParentPosition = Mat4Parent.T;
 
       if(UseBoneDiamonds)
       {
