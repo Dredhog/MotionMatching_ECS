@@ -42,7 +42,7 @@ TestGui(game_state* GameState, const game_input* Input)
   static bool s_ShowDemoWindow           = false;
   static bool s_ShowPhysicsWindow        = false;
   static bool s_ShowProfilerWindow       = false;
-  static bool s_ShowMotionMatchingWindow = true;
+  static bool s_ShowMotionMatchingWindow = false;
 
   UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
   {

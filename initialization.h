@@ -454,7 +454,7 @@ SetGameStatePODFields(game_state* GameState)
   GameState->DrawGizmos               = true;
   GameState->DrawDebugLines           = true;
   GameState->DrawDebugSpheres         = true;
-  GameState->DrawActorMeshes          = false;
+  GameState->DrawActorMeshes          = true;
   GameState->DrawShadowCascadeVolumes = false;
   GameState->BoneSphereRadius         = 0.01f;
 
