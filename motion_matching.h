@@ -60,7 +60,7 @@ struct mm_debug_settings
   int   TrajectorySampleCount;
   bool  ShowHipTrajectories;
   bool  ShowRootTrajectories;
-  bool  PreviewInRootSpace;
+  bool  ApplyRootMotion;
 
   mm_info_debug_settings CurrentGoal;
   mm_info_debug_settings MatchedGoal;
@@ -81,7 +81,8 @@ struct mm_controller_data
   array_handle<mm_frame_info>                        FrameInfos;
 };
 
-mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
+mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, vec3* OutStartVelocity,
+                        int32_t CurrentAnimIndex, bool Mirror,
                         const Anim::animation_controller* Controller, vec3 DesiredVelocity,
                         mm_matching_params Params);
 

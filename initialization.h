@@ -455,9 +455,11 @@ SetGameStatePODFields(game_state* GameState)
   GameState->DrawDebugLines           = true;
   GameState->DrawDebugSpheres         = true;
   GameState->DrawActorMeshes          = true;
+  GameState->DrawActorSkeletons       = true;
   GameState->DrawShadowCascadeVolumes = false;
   GameState->BoneSphereRadius         = 0.01f;
 
+  GameState->PreviewAnimationsInRootSpace = false;
   GameState->IsAnimationPlaying = false;
   GameState->CurrentMaterialID  = { 0 };
   GameState->PlayerEntityIndex  = -1;
@@ -469,7 +471,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug                       = {};
     GameState->MMDebug.TrajectoryDuration    = 1;
     GameState->MMDebug.TrajectorySampleCount = 20;
-    GameState->MMDebug.PreviewInRootSpace    = true;
+    GameState->MMDebug.ApplyRootMotion       = true;
     GameState->MMDebug.ShowRootTrajectories  = false;
     GameState->MMDebug.ShowHipTrajectories   = false;
 

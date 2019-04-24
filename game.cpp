@@ -1,5 +1,6 @@
 #include "game.h"
 #include "debug_drawing.h"
+#include "player_controller.h"
 
 void
 AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
@@ -193,17 +194,22 @@ DeleteEntity(game_state* GameState, int32_t Index)
   {
     GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
 		if(GameState->Entities[Index].AnimController)
-		{
-				RemoveAnimationReferences(&GameState->Resources, GameState->Entities[Index].AnimController);
-		}
+    {
+
+      if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
+      {
+        Gameplay::ResetPlayer(&GameState->Entities[Index], &GameState->Resources,
+                              &GameState->MMData);
+        GameState->PlayerEntityIndex = -1;
+      }
+
+			// Will remove anything that was left
+			RemoveAnimationReferences(&GameState->Resources, GameState->Entities[Index].AnimController);
+    }
 
     GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
 
     --GameState->EntityCount;
-    if(GameState->PlayerEntityIndex == Index)
-    {
-      GameState->PlayerEntityIndex = -1;
-    }
     return true;
   }
   return false;

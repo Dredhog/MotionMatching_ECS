@@ -12,7 +12,6 @@ Gameplay::ResetPlayer(entity* Player, Resource::resource_manager* Resources,
                       const mm_controller_data* MMData)
 {
   assert(Player->AnimController);
-  assert(MMData);
 
   Player->AnimController->BlendFunc = NULL;
   for(int i = 0; i < Player->AnimController->AnimStateCount; i++)
@@ -95,6 +94,9 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
     mat4 ModelMatrix    = TransformToMat4(Player->Transform);
     mat4 InvModelMatrix = Math::InvMat4(ModelMatrix);
 
+    // TODO(Lukas) Remove these (used only for tracking down a specific bug);
+    vec3 StartVelocity;
+
     mm_frame_info AnimGoal = {};
     {
       vec3 DesiredModelSpaceVelocity =
@@ -103,9 +105,16 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
                                 0 })
           .XYZ;
       int32_t CurrentAnimIndex = g_BlendInfos.Peek().AnimStateIndex;
-      AnimGoal = GetMMGoal(TempAlocator, CurrentAnimIndex, g_BlendInfos.Peek().Mirror,
-                           Player->AnimController, DesiredModelSpaceVelocity, MMData->Params);
+      AnimGoal =
+        GetMMGoal(TempAlocator, &StartVelocity, CurrentAnimIndex, g_BlendInfos.Peek().Mirror,
+                  Player->AnimController, DesiredModelSpaceVelocity, MMData->Params);
+
+      // TODO(Lukas) Remove these (used only for tracking down a specific bug);
+      Debug::PushLine(ModelMatrix.T, Math::MulMat4Vec4(ModelMatrix, vec4{DesiredModelSpaceVelocity, 1}).XYZ);
+      Debug::PushLine(ModelMatrix.T, Math::MulMat4Vec4(ModelMatrix, vec4{StartVelocity, 1}).XYZ);
     }
+
+		const float GoalDirectionLength = 0.2f;
 
     // Visualize the current goal
     {
@@ -146,7 +155,8 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
             vec3 WorldSpaceFacingDirection =
               Math::MulMat4Vec4(ModelMatrix, ModelSpaceFacingDirection).XYZ;
             Debug::PushLine(WorldTrajectoryPointP,
-                            WorldTrajectoryPointP + WorldSpaceFacingDirection);
+                            WorldTrajectoryPointP +
+                              GoalDirectionLength * WorldSpaceFacingDirection);
           }
         }
       }
@@ -193,7 +203,7 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
             vec3 WorldSpaceFacingDirection =
               Math::MulMat4Vec4(ModelMatrix, ModelSpaceFacingDirection).XYZ;
             Debug::PushLine(WorldTrajectoryPointP,
-                            WorldTrajectoryPointP + WorldSpaceFacingDirection);
+                            WorldTrajectoryPointP + GoalDirectionLength*WorldSpaceFacingDirection);
           }
         }
       }
@@ -247,7 +257,7 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
     ThirdPersonBelndFuncStopUnusedAnimations(Player->AnimController);
 
     // Root motion
-    if(0 < g_BlendInfos.m_Count)
+    if(MMDebug->ApplyRootMotion && 0 < g_BlendInfos.m_Count)
     {
       int              AnimationIndex   = g_BlendInfos.Peek().AnimStateIndex;
       bool             MirrorRootMotion = g_BlendInfos.Peek().Mirror;

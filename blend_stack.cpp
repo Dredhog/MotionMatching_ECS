@@ -34,24 +34,44 @@ ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
 {
   Anim::skeleton_mirror_info TestMirrorInfo = {};
 
-  TestMirrorInfo.MirrorBasisScales    = { -1, 1, 1 };
-  TestMirrorInfo.BoneMirrorIndices[0] = { 0, 0 };
-	//Legs/feet
-  TestMirrorInfo.BoneMirrorIndices[1] = { 2, 8 };
-  TestMirrorInfo.BoneMirrorIndices[2] = { 3, 9 };
-  TestMirrorInfo.BoneMirrorIndices[3] = { 4, 10 };
-	//shoulders/arms
-  TestMirrorInfo.BoneMirrorIndices[4] = { 20, 29 };
-  TestMirrorInfo.BoneMirrorIndices[5] = { 21, 30 };
-  TestMirrorInfo.BoneMirrorIndices[6] = { 22, 31 };
-	//Spine/Neck
-  TestMirrorInfo.BoneMirrorIndices[7] = { 13, 13 };
-  TestMirrorInfo.BoneMirrorIndices[8] = { 14, 14 };
-  TestMirrorInfo.BoneMirrorIndices[9] = { 15, 15 };
-  TestMirrorInfo.BoneMirrorIndices[10] = { 16, 16 };
-  TestMirrorInfo.BoneMirrorIndices[11] = { 17, 17 };
-  TestMirrorInfo.BoneMirrorIndices[12] = { 18, 18 };
-  TestMirrorInfo.BoneCount             = 13;
+  for(int i = 0; i < C->Skeleton->BoneCount; i++)
+  {
+    //TestMirrorInfo.BoneMirrorIndices[i] = { i, i };
+    /*int MirrorIndex = -1;
+    for(int j = 0; j < C->Skeleton->BoneCount; j++)
+    {
+      if();
+    }
+    if(MirrorIndex == -1)
+    {
+      TestMirrorInfo
+    }*/
+  }
+  TestMirrorInfo.MirrorBasisScales = { -1, 1, 1 };
+  // Legs/feet
+  TestMirrorInfo.BoneMirrorIndices[0] = { 57, 62 };
+  TestMirrorInfo.BoneMirrorIndices[1] = { 58, 63 };
+  TestMirrorInfo.BoneMirrorIndices[2] = { 59, 64 };
+  TestMirrorInfo.BoneMirrorIndices[3] = { 60, 65 };
+  TestMirrorInfo.BoneMirrorIndices[4] = { 61, 66 };
+  // shoulders/arms
+  TestMirrorInfo.BoneMirrorIndices[5] = { 9, 33 };
+  TestMirrorInfo.BoneMirrorIndices[6] = { 10, 34 };
+  TestMirrorInfo.BoneMirrorIndices[7] = { 11, 35 };
+  TestMirrorInfo.BoneMirrorIndices[8] = { 12, 36 };
+  TestMirrorInfo.BoneMirrorIndices[9] = { 13, 37 };
+  TestMirrorInfo.BoneMirrorIndices[10] = { 14, 38 };
+  TestMirrorInfo.BoneMirrorIndices[11] = { 15, 39 };
+  TestMirrorInfo.BoneMirrorIndices[12] = { 16, 40 };
+  TestMirrorInfo.BoneMirrorIndices[13] = { 17, 41 };
+  TestMirrorInfo.BoneMirrorIndices[14] = { 18, 42 };
+  TestMirrorInfo.BoneCount = 15;
+	for(int i = 0; i <= 5; i++)
+	{
+    TestMirrorInfo.BoneMirrorIndices[TestMirrorInfo.BoneCount + i] = { i, i };
+    TestMirrorInfo.BoneCount++;
+  }
+  // Spine/Neck
 
   if(!g_BlendInfos.Empty())
   {

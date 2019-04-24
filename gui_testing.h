@@ -623,7 +623,7 @@ TestGui(game_state* GameState, const game_input* Input)
       UI::Text("Debug Display");
       UI::Checkbox("Show Root Trajectory", &GameState->MMDebug.ShowRootTrajectories);
       UI::Checkbox("Show Hip Trajectory", &GameState->MMDebug.ShowHipTrajectories);
-      UI::Checkbox("Preview In Root Space", &GameState->MMDebug.PreviewInRootSpace);
+      UI::Checkbox("Apply Root Motion", &GameState->MMDebug.ApplyRootMotion);
       UI::Text("Current Goal");
       UI::Checkbox("Show Current Goal", &GameState->MMDebug.CurrentGoal.ShowTrajectory);
       UI::Checkbox("Show Current Goal Directions",
@@ -639,6 +639,12 @@ TestGui(game_state* GameState, const game_input* Input)
 
       UI::SliderFloat("Metadata Sampling Frequency",
                       &GameState->MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
+    }
+    entity* SelectedEntity = {};
+    if(GetSelectedEntity(GameState, &SelectedEntity) &&
+       GameState->SelectedEntityIndex == GameState->PlayerEntityIndex &&
+       SelectedEntity->AnimController)
+    {
       {
         static int32_t ActivePathIndex = 0;
         UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
@@ -653,48 +659,46 @@ TestGui(game_state* GameState, const game_input* Input)
             GameState->Resources.AnimationPaths[ActivePathIndex].Name);
         }
 
-        if(UI::Button("Add Animation") && !GameState->MMParams.AnimRIDs.Full())
+        if(UI::Button("Add Animation") && !GameState->MMParams.AnimRIDs.Full() &&
+           GameState->Resources.GetAnimation(NewRID)->ChannelCount ==
+             SelectedEntity->AnimController->Skeleton->BoneCount)
         {
           GameState->MMParams.AnimRIDs.Push(NewRID);
         }
       }
-    }
-    {
-      for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
       {
-        bool DeleteCurrent = UI::Button("Delete", 0, i);
-        /*if(!DeleteCurrent)
+        for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
         {
-          entity* SelectedEntity = {};
-          if(GetSelectedEntity(GameState, &SelectedEntity))
+          bool DeleteCurrent = UI::Button("Delete", 0, i);
+          /*if(!DeleteCurrent)
           {
-            if(SelectedEntity->AnimController)
+            entity* SelectedEntity = {};
+            if(GetSelectedEntity(GameState, &SelectedEntity))
             {
-              UI::SameLine();
-              if(UI::Button("Preview", 0, i))
+              if(SelectedEntity->AnimController)
               {
-                Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+                UI::SameLine();
+                if(UI::Button("Preview", 0, i))
+                {
+                  Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+                }
               }
             }
+          }*/
+          UI::SameLine();
+          {
+            char* Path;
+            GameState->Resources.Animations.Get(GameState->MMParams.AnimRIDs[i], NULL, &Path);
+            UI::Text(Path);
           }
-        }*/
-        UI::SameLine();
-        {
-          char* Path;
-          GameState->Resources.Animations.Get(GameState->MMParams.AnimRIDs[i], NULL, &Path);
-          UI::Text(Path);
-        }
-        UI::NewLine();
-        if(DeleteCurrent)
-        {
-          GameState->MMParams.AnimRIDs.Remove(i);
-          i--;
+          UI::NewLine();
+          if(DeleteCurrent)
+          {
+            GameState->MMParams.AnimRIDs.Remove(i);
+            i--;
+          }
         }
       }
-    }
-    entity* SelectedEntity = {};
-    if(GetSelectedEntity(GameState, &SelectedEntity) && SelectedEntity->AnimController)
-    {
       static int32_t ActiveBoneIndex = 0;
       UI::Combo("Bone", &ActiveBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
                 SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
@@ -1386,6 +1390,11 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             }
             GameState->PlayerEntityIndex = -1;
           }
+          {
+            UI::SameLine();
+            UI::Checkbox("Play In Root Space", &GameState->PreviewAnimationsInRootSpace);
+            UI::NewLine();
+          }
 
           {
             static int32_t ActivePathIndex = 0;
@@ -1407,7 +1416,6 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           {
             Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
             GameState->PlayerEntityIndex          = GameState->SelectedEntityIndex;
-            GameState->MMDebug.PreviewInRootSpace = true;
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
@@ -1874,6 +1882,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     UI::Checkbox("Draw Debug Lines", &GameState->DrawDebugLines);
     UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
     UI::Checkbox("Draw Actor Meshes", &GameState->DrawActorMeshes);
+    UI::Checkbox("Draw Actor Skeletons", &GameState->DrawActorSkeletons);
     UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
     // UI::Checkbox("Timeline", &GameState->DrawTimeline);
   }

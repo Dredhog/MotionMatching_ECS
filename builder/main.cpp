@@ -867,7 +867,7 @@ main(int ArgCount, char** Args)
           Convert_mat4_To_aiMatrix4x4(LocalBoneInvBindPose);
 #endif
 
-        assert(Channel->mNumRotationKeys == Channel->mNumPositionKeys);
+        //assert(Channel->mNumRotationKeys == Channel->mNumPositionKeys);
         assert(Channel->mNumScalingKeys >= 1);
         int32_t CurrT = 0;
         int32_t NextT = (int32_t)Max(0, Min(Channel->mNumPositionKeys - 1, 1));
@@ -1002,7 +1002,7 @@ main(int ArgCount, char** Args)
           }
 
 #else  // USE_BIND_POSE
-          transform BindRelativeLocalBoneKeyTransform = BoneParentSpaceAbsTransform;
+          transform BindRelativeLocalBoneKeyTransform = LocalBoneKeyTransform;
 #endif // USE_BIND_POSE
 
           Animation->Transforms[i * Skeleton.BoneCount + BoneIndex] =

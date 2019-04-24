@@ -297,13 +297,13 @@ void
 Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat4 HipMatrix)
 {
   vec3 Up      = { 0, 1, 0 };
-  vec3 Right   = Math::Normalized(Math::Cross(Up, HipMatrix.Z));
-  vec3 Forward = Math::Cross(Right, Up);
+  vec3 Left   = Math::Normalized(Math::Cross(Up, HipMatrix.Z));
+  vec3 Forward = Math::Cross(Left, Up);
 
   mat4 Mat4Root = Math::Mat4Ident();
   Mat4Root.T    = { HipMatrix.T.X, 0, HipMatrix.T.Z };
   Mat4Root.Y    = Up;
-  Mat4Root.X    = Right;
+  Mat4Root.X    = Left;
   Mat4Root.Z    = Forward;
 
   if(OutRootMatrix)

@@ -150,8 +150,9 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
   return MMData;
 }
 
+//TODO(Lukas) Remove the CurrentVelocity (Only for debugging session)
 mm_frame_info
-GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
+GetMMGoal(Memory::stack_allocator* TempAlloc, vec3* OutCurrentVelocity, int32_t CurrentAnimIndex, bool Mirror,
           const Anim::animation_controller* Controller, vec3 DesiredVelocity,
           mm_matching_params Params)
 {
@@ -160,6 +161,7 @@ GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mir
 
   GetPoseGoal(&ResultInfo, &CurrentVelocity, TempAlloc, CurrentAnimIndex, Mirror, Controller,
               Params);
+  *OutCurrentVelocity = CurrentVelocity;
   GetLongtermGoal(&ResultInfo, CurrentVelocity, DesiredVelocity);
   return ResultInfo;
 }

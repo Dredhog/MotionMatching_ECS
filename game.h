@@ -104,8 +104,10 @@ struct game_state
   bool  DrawShadowCascadeVolumes;
   bool  DrawTimeline;
 	bool  DrawActorMeshes;
+	bool  DrawActorSkeletons;
   bool  IsAnimationPlaying;
   bool  IsEntityCreationMode;
+  bool  PreviewAnimationsInRootSpace;
   float BoneSphereRadius;
 
   uint32_t MagicChecksum;

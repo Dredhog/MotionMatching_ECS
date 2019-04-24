@@ -4,7 +4,7 @@
 #include "linear_math/vector.h"
 #include "linear_math/distribution.h"
 
-//TODO(Lukas) make sure that animations references are properly managed
+// TODO(Lukas) make sure that animations references are properly managed
 
 #include "game.h"
 #include "mesh.h"
@@ -33,7 +33,7 @@
 #include "rendering.h"
 #include "post_processing.h"
 
-//TODO remove these globals
+// TODO remove these globals
 extern bool g_VisualizeContactPoints;
 extern bool g_VisualizeContactManifold;
 
@@ -52,8 +52,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     PartitionMemoryInitAllocators(&GameMemory, GameState);
     RegisterLoadInitialResources(GameState);
     SetGameStatePODFields(GameState);
-    InitializeECS(GameState->PersistentMemStack, &GameState->ECSRuntime,
-                       &GameState->ECSWorld, Mibibytes(1));
+    InitializeECS(GameState->PersistentMemStack, &GameState->ECSRuntime, &GameState->ECSWorld,
+                  Mibibytes(1));
 
     if(!GameState->UpdatePathList)
     {
@@ -63,21 +63,20 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   BEGIN_TIMED_BLOCK(Update)
-	{
+  {
     TIMED_BLOCK(FilesystemUpdate);
     if(GameState->UpdatePathList)
     {
-    	TIMED_BLOCK(UpdateHardDrivePathList);
+      TIMED_BLOCK(UpdateHardDrivePathList);
       GameState->Resources.UpdateHardDriveAssetPathLists();
     }
     if(GameState->UseHotReloading)
     {
-    	TIMED_BLOCK(HotReloadAssets);
+      TIMED_BLOCK(HotReloadAssets);
       GameState->Resources.DeleteUnused();
       GameState->Resources.ReloadModified();
     }
   }
-
 
   if(Input->IsMouseInEditorMode)
   {
@@ -163,8 +162,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     for(int i = 0; i < GameState->EntityCount; i++)
     {
-      GameState->Entities[i].RigidBody             = GameState->Physics.RigidBodies[i];
-      GameState->Entities[i].Transform.R    = GameState->Physics.RigidBodies[i].q;
+      GameState->Entities[i].RigidBody   = GameState->Physics.RigidBodies[i];
+      GameState->Entities[i].Transform.R = GameState->Physics.RigidBodies[i].q;
       GameState->Entities[i].Transform.T = GameState->Physics.RigidBodies[i].X;
     }
   }
@@ -172,7 +171,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if(GameState->PlayerEntityIndex != -1)
   {
     GameState->MMData.Params.DynamicParams = GameState->MMParams.DynamicParams;
-    entity* PlayerEntity = {};
+    entity* PlayerEntity                   = {};
     if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
     {
       Gameplay::UpdatePlayer(PlayerEntity, GameState->TemporaryMemStack, &GameState->Resources,
@@ -250,11 +249,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           mat4 Mat4InvRoot = Math::Mat4Ident();
 
           // Transform current pose into the space of the root bone
-          if(GameState->MMDebug.PreviewInRootSpace)
+          if(GameState->PreviewAnimationsInRootSpace)
           {
             mat4    Mat4Root;
             int32_t HipBoneIndex = 0;
-            //mat4    HipBindPose  = Controller->Skeleton->Bones[HipBoneIndex].BindPose;
+            // mat4    HipBindPose  = Controller->Skeleton->Bones[HipBoneIndex].BindPose;
 
             mat4 Mat4Hips =
               // Math::MulMat4(HipBindPose,
@@ -270,8 +269,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
           int EndKeyframeIndex = MinInt32(PrevKeyframeIndex + FutureTrajectoryPointCount,
                                           CurrentAnimation->KeyframeCount - 1);
-          int SamplePeriod     = MaxInt32(1, (int)floorf(FutureTrajectoryPointCount /
-                                                     (float)GameState->MMDebug.TrajectorySampleCount));
+          int SamplePeriod =
+            MaxInt32(1, (int)floorf(FutureTrajectoryPointCount /
+                                    (float)GameState->MMDebug.TrajectorySampleCount));
           for(int i = PrevKeyframeIndex; i < EndKeyframeIndex - SamplePeriod; i += SamplePeriod)
           {
             int32_t HipBoneIndex = 0;
@@ -320,15 +320,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
       }
 
-      if(GameState->MMDebug.PreviewInRootSpace)
+      if(e == GameState->PlayerEntityIndex || GameState->PreviewAnimationsInRootSpace)
       {
         mat4    Mat4Root;
         mat4    Mat4InvRoot;
-        int32_t HipBoneIndex = 0;
+        int32_t HipBoneIndex    = 0;
         mat4    Mat4HipBindPose = Controller->Skeleton->Bones[HipBoneIndex].BindPose;
-        mat4    Mat4Hips     = Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[HipBoneIndex], Mat4HipBindPose);
+        mat4    Mat4Hips =
+          Math::MulMat4(Controller->HierarchicalModelSpaceMatrices[HipBoneIndex], Mat4HipBindPose);
 
-        //Debug::PushGizmo(&GameState->Camera, Math::MulMat4(CurrentEntityModelMatrix, Mat4Hips));
+        // Debug::PushGizmo(&GameState->Camera, Math::MulMat4(CurrentEntityModelMatrix, Mat4Hips));
 
         Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
         for(int b = 0; b < Controller->Skeleton->BoneCount; b++)
@@ -337,8 +338,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             Math::MulMat4(Mat4InvRoot, Controller->HierarchicalModelSpaceMatrices[b]);
         }
       }
-      DrawSkeleton(Controller->Skeleton, Controller->HierarchicalModelSpaceMatrices,
-                   GetEntityModelMatrix(GameState, e), GameState->BoneSphereRadius);
+      if(GameState->DrawActorSkeletons)
+      {
+        DrawSkeleton(Controller->Skeleton, Controller->HierarchicalModelSpaceMatrices,
+                     GetEntityModelMatrix(GameState, e), GameState->BoneSphereRadius);
+      }
     }
   }
 
@@ -359,9 +363,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   for(int e = 0; e < GameState->EntityCount; e++)
   {
     Render::model* CurrentModel = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
-		if(!GameState->DrawActorMeshes && GameState->Entities[e].AnimController){
-			continue;
-		}
+    if(!GameState->DrawActorMeshes && GameState->Entities[e].AnimController)
+    {
+      continue;
+    }
     for(int m = 0; m < CurrentModel->MeshCount; m++)
     {
       mesh_instance MeshInstance = {};
