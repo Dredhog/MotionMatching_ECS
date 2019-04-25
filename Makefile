@@ -9,16 +9,15 @@ all:
 	@./engine
 
 models:
-	@./_build.sh
-
-fbx_models:
-	@./build_fbx.sh
+	./_build.sh
+	./builder/builder ./data/models_actors/conference.obj ./data/built/conference --model --scale 0.0035
 
 animations:
-	@./build_anim.sh
+	make mixamo
+	make cmu
 
-conference:
-	@./builder/builder ./data/models_actors/conference.obj ./data/built/conference --model --scale 0.0035
+mixamo:
+	./build_mixamo.sh
 
-skeleton:
-	@./builder/builder ./data/animations/91_01.bvh ./data/built/01_91 --root_bone Hips --actor --scale 0.056444
+cmu:
+	./build_cmu.sh

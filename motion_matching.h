@@ -81,24 +81,27 @@ struct mm_controller_data
   array_handle<mm_frame_info>                        FrameInfos;
 };
 
+// Main metadata precomputation
+mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
+                                           Resource::resource_manager* Resources,
+                                           mm_matching_params          Params,
+                                           const Anim::skeleton*       Skeleton);
+
+//Goal generation (Not really part of motion matching
 mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, vec3* OutStartVelocity,
                         int32_t CurrentAnimIndex, bool Mirror,
                         const Anim::animation_controller* Controller, vec3 DesiredVelocity,
                         mm_matching_params Params);
-
 void GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
                  int32_t CurrentAnimIndex, bool Mirror,
                  const Anim::animation_controller* Controller, mm_matching_params Params);
 void GetLongtermGoal(mm_frame_info* OutTrajectory, vec3 StartVelocity, vec3 EndVelocity);
 void MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal,
                       const mm_fixed_params& Params);
-
 mm_frame_info      GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
                                         const mm_fixed_params& Params);
-mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
-                                           Resource::resource_manager* Resources,
-                                           mm_matching_params          Params,
-                                           const Anim::skeleton*       Skeleton);
+
+// Runtime API
 float MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
                   const mm_controller_data* MMData, mm_frame_info Goal);
 float MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime,

@@ -266,12 +266,12 @@ ProcessMesh(Memory::stack_allocator* Alloc, const aiMesh* AssimpMesh, Anim::skel
       aiBone* AssimpBone = AssimpMesh->mBones[i];
       int32_t BoneIndex  = Anim::GetBoneIndexFromName(Skeleton, AssimpBone->mName.C_Str());
 
-			//TODO(Lukas) reactivate this
+      // TODO(Lukas) reactivate this
 #if 0
       assert(Convert_mat4_To_aiMatrix4x4(Skeleton->Bones[BoneIndex].InverseBindPose)
                .Equal(AssimpBone->mOffsetMatrix, 0.01f));
 #endif
-			
+
       for(int j = 0; j < AssimpBone->mNumWeights; j++)
       {
         InsertBoneIntoVertex(&Mesh.Vertices[AssimpBone->mWeights[j].mVertexId], BoneIndex,
@@ -346,22 +346,26 @@ SimpleRemoveBoneFromSkeleton(Anim::skeleton* Skeleton, int RemoveIndex)
   --Skeleton->BoneCount;
 }
 
-float Min(float A, float B)
+float
+Min(float A, float B)
 {
   return (A < B) ? A : B;
 }
 
-float Max(float A, float B)
+float
+Max(float A, float B)
 {
   return (A > B) ? A : B;
 }
 
-float Min(float A, float B, float C)
+float
+Min(float A, float B, float C)
 {
   return (A < B) ? ((A < C) ? A : C) : ((B < C) ? B : C);
 }
 
-float Max(float A, float B, float C)
+float
+Max(float A, float B, float C)
 {
   return (A > B) ? ((A > C) ? A : C) : ((B > C) ? B : C);
 }
@@ -369,10 +373,9 @@ float Max(float A, float B, float C)
 float
 Clamp(float t, float A, float B)
 {
-	assert(A <= B);
+  assert(A <= B);
   return (t <= A) ? A : ((t < B) ? t : B);
 }
-
 
 int32_t
 GetAnimationKeyframeCount(const aiAnimation* Animation, float SamplingFrequency,
@@ -480,10 +483,9 @@ PrintUsage()
 {
   printf(
     "usage:\nbuilder input_file output_file_wo_ext [--root_bone name] [--scale value] "
-    "[--print_scene]"
-    "[--undersample_period period] [--target_actor actor_file] --model | --actor | --animation\n");
+    "[--print_scene] [--print_skeleton]"
+    "[--sampling_frequency freq] [--target_actor actor_file] --model | --actor | --animation\n");
 }
-
 
 int
 main(int ArgCount, char** Args)
@@ -492,10 +494,11 @@ main(int ArgCount, char** Args)
   char* ActorName;
   char* AnimationName;
 
-  bool BuildModel     = false;
-  bool BuildActor     = false;
-  bool BuildAnimation = false;
-  bool PrintScene     = false;
+  bool BuildModel             = false;
+  bool BuildActor             = false;
+  bool BuildAnimation         = false;
+  bool PrintScene             = false;
+  bool PrintSkeletonHierarchy = false;
 
   float RescaleCoefficient = 1.0f;
   float SamplingFrequency  = 30.0f;
@@ -546,7 +549,11 @@ main(int ArgCount, char** Args)
       {
         PrintScene = true;
       }
-      else if(strcmp(Args[ArgIndex], "--sample_rate") == 0)
+      else if(strcmp(Args[ArgIndex], "--print_skeleton") == 0)
+      {
+        PrintSkeletonHierarchy = true;
+      }
+      else if(strcmp(Args[ArgIndex], "--sampling_frequency") == 0)
       {
         if(ArgIndex + 1 < ArgCount)
         {
@@ -649,7 +656,8 @@ main(int ArgCount, char** Args)
     printf("error::assimp: %s\n", Importer.GetErrorString());
     return 1;
   }
-  if((!TargetActorName || (TargetActorName && Scene->mNumAnimations == 0)) && (Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE))
+  if((!TargetActorName || (TargetActorName && Scene->mNumAnimations == 0)) &&
+     (Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE))
   {
     printf("error: assimp scene is incomplete\n \"%s\"\n", Importer.GetErrorString());
   }
@@ -697,12 +705,11 @@ main(int ArgCount, char** Args)
         printf(
           "Warning: --scale %.2f option will override scale %.2f found in --target_actor \"%s\"\n",
           (double)RescaleCoefficient, (double)ActorModel->ScaleOnBuild, TargetActorName);
-
       }
 
       if(RescaleCoefficient == 1)
       {
-				RescaleCoefficient = ActorModel->ScaleOnBuild;
+        RescaleCoefficient = ActorModel->ScaleOnBuild;
       }
     }
 
@@ -734,7 +741,7 @@ main(int ArgCount, char** Args)
   // Determine file size on disk
   int32_t TotalModelFileSize = CalculateTotalModelSize(Scene);
   int32_t TotalActorFileSize = TotalModelFileSize + SafeTruncateUint64(sizeof(Skeleton));
-  int32_t TotalAnimFileSize  = CalculateTotalAnimationGroupSize(Scene, &Skeleton, SamplingFrequency);
+  int32_t TotalAnimFileSize = CalculateTotalAnimationGroupSize(Scene, &Skeleton, SamplingFrequency);
 
   int32_t MaximumAssetSize =
     (TotalActorFileSize > TotalAnimFileSize) ? TotalActorFileSize : TotalAnimFileSize;
@@ -780,7 +787,10 @@ main(int ArgCount, char** Args)
       assert(Allocator.GetUsedSize() == TotalActorFileSize);
 
       printf("writing: %s\n", ActorName);
-      PrintSkeleton(&Skeleton);
+      if(PrintSkeletonHierarchy)
+      {
+        PrintSkeleton(&Skeleton);
+      }
       printf("\n");
       Asset::PackModel(Model);
       Platform::WriteEntireFile(ActorName, TotalActorFileSize, FileMemory);
@@ -803,12 +813,12 @@ main(int ArgCount, char** Args)
       Anim::animation* Animation = PushStruct(&Allocator, Anim::animation);
       AnimGroup->Animations[a]   = Animation;
 
-			float AnimStartTicks;
-			float AnimEndTicks;
+      float AnimStartTicks;
+      float AnimEndTicks;
       Animation->KeyframeCount = GetAnimationKeyframeCount(AssimpAnimation, SamplingFrequency,
                                                            &AnimStartTicks, &AnimEndTicks);
-      //printf("Keyframe Count: %d, Total Anim Size: %d, Total Allocated Asset Size: %d",
-             //Animation->KeyframeCount, TotalAnimFileSize, MaximumAssetSize);
+      // printf("Keyframe Count: %d, Total Anim Size: %d, Total Allocated Asset Size: %d",
+      // Animation->KeyframeCount, TotalAnimFileSize, MaximumAssetSize);
       float TicksPerKeyframe = (AnimEndTicks - AnimStartTicks) / Animation->KeyframeCount;
 
       Animation->Transforms =
@@ -867,7 +877,7 @@ main(int ArgCount, char** Args)
           Convert_mat4_To_aiMatrix4x4(LocalBoneInvBindPose);
 #endif
 
-        //assert(Channel->mNumRotationKeys == Channel->mNumPositionKeys);
+        // assert(Channel->mNumRotationKeys == Channel->mNumPositionKeys);
         assert(Channel->mNumScalingKeys >= 1);
         int32_t CurrT = 0;
         int32_t NextT = (int32_t)Max(0, Min(Channel->mNumPositionKeys - 1, 1));
@@ -877,7 +887,7 @@ main(int ArgCount, char** Args)
 
         int32_t CurrS = 0;
         int32_t NextS = (int32_t)Max(0, Min(Channel->mNumScalingKeys - 1, 1));
-        //assert(Channel->mNumRotationKeys == Animation->KeyframeCount);
+        // assert(Channel->mNumRotationKeys == Animation->KeyframeCount);
         for(int i = 0; (float)i < Animation->KeyframeCount; i++)
         {
           float CurrentTick = AnimStartTicks + ((float)i) * TicksPerKeyframe;
@@ -944,7 +954,7 @@ main(int ArgCount, char** Args)
             LocalBoneKeyTransform.R = Math::QuatLerp(FirstR, SecondR, tR);
           }
 
-					//TODO(Lukas) make scaling also use proper sampling
+          // TODO(Lukas) make scaling also use proper sampling
           {
             float tS;
             {
