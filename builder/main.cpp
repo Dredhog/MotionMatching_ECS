@@ -791,7 +791,6 @@ main(int ArgCount, char** Args)
       {
         PrintSkeleton(&Skeleton);
       }
-      printf("\n");
       Asset::PackModel(Model);
       Platform::WriteEntireFile(ActorName, TotalActorFileSize, FileMemory);
     }

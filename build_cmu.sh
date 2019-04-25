@@ -20,8 +20,10 @@ for i in $src_dir*.bvh; do
 	fi
 done
 
-$build 'data/animations/91_01.bvh' 'data/built/91' '--actor' '--root_bone' 'Hips' '--scale' '0.056444'
+#printf "\n"
+#$build 'data/animations/91_01.bvh' 'data/built/91' '--actor' '--root_bone' 'Hips' '--scale' '0.056444'
+#printf "\n"
 
-for i in $src_dir*.bvh; do
-  $build $i $dst_dir`basename $i .bvh` '--animation' '--target_actor' 'data/built/91.actor' '--sampling_frequency' '100'
-done
+#for i in $src_dir*.bvh; do
+#  $build $i $dst_dir`basename $i .bvh` '--animation' '--target_actor' 'data/built/91.actor' '--sampling_frequency' '100'
+#done
