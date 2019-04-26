@@ -730,11 +730,13 @@ TestGui(game_state* GameState, const game_input* Input)
                         &GameState->MMParams.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
         if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
         {
+          fixed_stack<Anim::animation*, MM_ANIM_CAPACITY> Animations = {};
           if(UI::Button("Build MM data"))
           {
             for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
             {
               GameState->Resources.Animations.AddReference(GameState->MMParams.AnimRIDs[i]);
+              Animations.Push(GameState->Resources.GetAnimation(GameState->MMParams.AnimRIDs[i]));
             }
             if(GameState->MMData.FrameInfos.IsValid())
             {
@@ -746,9 +748,10 @@ TestGui(game_state* GameState, const game_input* Input)
                   GameState->MMData.Params.AnimRIDs[i]);
               }
             }
-            GameState->MMData = PrecomputeRuntimeMMData(GameState->TemporaryMemStack,
-                                                        &GameState->Resources, GameState->MMParams,
-                                                        SelectedEntity->AnimController->Skeleton);
+            GameState->MMData =
+              PrecomputeRuntimeMMData(GameState->TemporaryMemStack, Animations.GetArrayHandle(),
+                                      GameState->MMParams,
+                                      SelectedEntity->AnimController->Skeleton);
           }
         }
 

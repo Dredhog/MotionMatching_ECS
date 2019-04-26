@@ -2,10 +2,9 @@
 
 #include "stack_alloc.h"
 #include "basic_data_structures.h"
-#include "rid.h"
 #include "linear_math/vector.h"
+#include "rid.h"
 #include "anim.h"
-#include "resource_manager.h"
 
 #define MM_POINT_COUNT 3
 #define MM_COMPARISON_BONE_COUNT 2
@@ -87,9 +86,9 @@ struct mm_controller_data
 };
 
 // Main metadata precomputation
-mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
-                                           Resource::resource_manager* Resources, mm_params Params,
-                                           const Anim::skeleton* Skeleton);
+mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
+                                           array_handle<Anim::animation*> Animations,
+                                           mm_params Params, const Anim::skeleton* Skeleton);
 
 //Goal generation (Not really part of motion matching
 mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,

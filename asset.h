@@ -8,7 +8,7 @@
 #include "edit_animation.h"
 #include "stack_alloc.h"
 #include "render_data.h"
-//#include "motion_matching.h"
+#include "motion_matching.h"
 
 #define ASSET_HEADER_CHECKSUM 123456
 
@@ -27,6 +27,4 @@ namespace Asset
                             const EditAnimation::animation_editor* AnimEditor, const char* FileName);
   void ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
                             const char* FileName);
-  //void ExportMMParams(const mm_params* AnimEditor, const char* FileName);
-  //void ImportMMParams(mm_params* OutParams, const char* FileName);
 }

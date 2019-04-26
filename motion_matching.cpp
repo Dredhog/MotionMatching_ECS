@@ -1,7 +1,6 @@
 #include "motion_matching.h"
 #include "misc.h"
 #include "profile.h"
-#include "resource_manager.h"
 
 #include <cfloat>
 
@@ -14,7 +13,7 @@ const int32_t g_SkipFrameCount = 1;
 // Copy the velocity for the last frame
 
 mm_controller_data
-PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_manager* Resources,
+PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, array_handle<Anim::animation*> Animations,
                         mm_params Params, const Anim::skeleton* Skeleton)
 {
   TIMED_BLOCK(BuildMotionSet);
@@ -33,7 +32,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
   // Loop over all animations in the set
   for(int a = 0; a < Params.AnimRIDs.Count; a++)
   {
-    const Anim::animation* Anim = Resources->GetAnimation(Params.AnimRIDs[a]);
+    const Anim::animation* Anim = Animations[a];
     assert(Anim->ChannelCount == Skeleton->BoneCount);
     assert(1 < Anim->KeyframeCount);
     const float AnimDuration  = Anim::GetAnimDuration(Anim);
