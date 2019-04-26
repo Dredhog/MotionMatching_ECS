@@ -25,7 +25,6 @@ Gameplay::ResetPlayer(entity* Player, blend_stack* BlendStack,
   {
     if(Player->AnimController->AnimationIDs[i].Value != 0)
     {
-
       bool AnimIsUsedByMMData = false;
       for(int j = 0; MMData->FrameInfos.IsValid() && j < MMData->Params.AnimRIDs.Count; j++)
       {

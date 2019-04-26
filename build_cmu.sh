@@ -20,6 +20,9 @@ printf "\n"
 $build 'data/animations/91_01.bvh' 'data/built/91' '--actor' '--root_bone' 'Hips' '--scale' '0.056444'
 printf "\n"
 
+$build 'data/animations/91_01.bvh' 'data/built/01_91' '--actor' '--root_bone' 'Hips' '--scale' '0.056444'
+printf "\n"
+
 for i in $src_dir*.bvh; do
 	if [[ $i == *"91"*".bvh" ]]; then
 		echo "building " $i

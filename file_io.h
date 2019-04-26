@@ -21,5 +21,5 @@ namespace Platform
 {
   debug_read_file_result ReadEntireFile(Memory::stack_allocator* Allocator, const char* FileName);
   debug_read_file_result ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName);
-  bool                   WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory);
+  bool                   WriteEntireFile(const char* Filename, uint64_t MemorySize, const void* Memory);
 }
