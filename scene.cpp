@@ -224,7 +224,7 @@ ImportScene(game_state* GameState, const char* Path)
     Render::model* Model = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
     if(Scene->Entities[e].AnimController)
     {
-      // allocate memory for animation editor and assigin skeleton
+      // allocate memory for animation controller and assigin skeleton
       GameState->Entities[e].AnimController  = PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
       *GameState->Entities[e].AnimController = *Scene->Entities[e].AnimController;
 
@@ -235,7 +235,7 @@ ImportScene(game_state* GameState, const char* Path)
       }
 
       assert(Model->Skeleton);
-      GameState->Entities[e].AnimController->Skeleton           = Model->Skeleton;
+      GameState->Entities[e].AnimController->Skeleton = Model->Skeleton;
       GameState->Entities[e].AnimController->OutputTransforms =
         PushArray(GameState->PersistentMemStack,
                   ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * Model->Skeleton->BoneCount, transform);

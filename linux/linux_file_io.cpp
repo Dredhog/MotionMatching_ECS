@@ -111,7 +111,7 @@ Platform::ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName
 }
 
 bool
-Platform::WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
+Platform::WriteEntireFile(const char* Filename, uint64_t MemorySize, const void* Memory)
 {
   TIMED_BLOCK(WriteEntireFile);
   int FileHandle = open(Filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);

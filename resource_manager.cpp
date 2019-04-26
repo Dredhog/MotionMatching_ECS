@@ -335,6 +335,23 @@ namespace Resource
   CREATE_GET_PATH_ID_FUNCTION(Animation);
   CREATE_GET_PATH_ID_FUNCTION(Material);
 
+#define CREATE_OBTAIN_PATH_ID_FUNCTION(TYPE_NAME)                                                  \
+  rid resource_manager::Obtain##TYPE_NAME##PathRID(const char* Path)                               \
+  {                                                                                                \
+    rid RID;                                                                                       \
+    if(!this->TYPE_NAME##s.GetPathRID(&RID, Path))                                                 \
+    {                                                                                              \
+      RID = Register##TYPE_NAME(Path);                                                             \
+      assert(RID.Value > 0);                                                                       \
+    }                                                                                              \
+    return RID;                                                                                    \
+  }
+
+  CREATE_OBTAIN_PATH_ID_FUNCTION(Model);
+  CREATE_OBTAIN_PATH_ID_FUNCTION(Texture);
+  CREATE_OBTAIN_PATH_ID_FUNCTION(Animation);
+  CREATE_OBTAIN_PATH_ID_FUNCTION(Material);
+
 #define CREATE_REGISTER_FUNCTION(TYPE_NAME)                                                        \
   rid resource_manager::Register##TYPE_NAME(const char* Path)                                      \
   {                                                                                                \
@@ -455,6 +472,11 @@ namespace Resource
     this->DiffedShaderCount =
       Platform::ReadPaths(this->DiffedShaders, this->ShaderPaths, this->ShaderStats,
                           RESOURCE_MAX_COUNT, &this->ShaderPathCount, "shaders", NULL);
+		
+    // Update shader paths
+    this->DiffedShaderCount =
+      Platform::ReadPaths(this->DiffedMMParams, this->MMParamPaths, this->MMParamStats,
+                          RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/matching_params", "params");
 
     this->SortAllAssetDiffsPathsStats();
   }

@@ -66,7 +66,7 @@ struct game_state
 
   // Motion Matching
   mm_params          MMParams;
-  mm_controller_data MMData;
+	mm_controller_data MMData;
   mm_debug_settings  MMDebug;
   blend_stack        PlayerBlendStack;
   float              PlayerSpeed;

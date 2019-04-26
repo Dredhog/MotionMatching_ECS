@@ -132,6 +132,24 @@ Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
 	Platform::WriteEntireFile(FileName, TotalSize, AnimGroup);
 }
 
+void
+Asset::ExportMMParams(const mm_params* Params, const char* FileName)
+{
+	Platform::WriteEntireFile(FileName, sizeof(mm_params), Params);
+}
+
+void
+Asset::ImportMMParams(Memory::stack_allocator* Alloc, mm_params* OutParams, const char* FileName)
+{
+  Memory::marker MemoryStart = Alloc->GetMarker();
+
+  debug_read_file_result ReadFile = Platform::ReadEntireFile(Alloc, FileName);
+  assert(ReadFile.Contents && ReadFile.ContentsSize == sizeof(mm_params));
+  memcpy(OutParams, ReadFile.Contents, sizeof(mm_params));
+
+	Alloc->FreeToMarker(MemoryStart);
+}
+
 #if 0
 void
 Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
@@ -150,7 +168,7 @@ Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_grou
 }
 #endif
 
-void
+/*void
 Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
                             const char* FileName)
 {
@@ -163,4 +181,4 @@ Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_grou
 	UnpackAnimationGroup(*OutputAnimGroup);
 
   assert(*OutputAnimGroup);
-}
+}*/

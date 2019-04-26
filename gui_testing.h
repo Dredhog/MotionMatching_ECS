@@ -600,6 +600,41 @@ TestGui(game_state* GameState, const game_input* Input)
   if(s_ShowMotionMatchingWindow)
   {
     UI::BeginWindow("Motion Matching", { 100, 20 }, { 700, 700 });
+
+    {
+      static int SelectedParamPathIndex = 0;
+      UI::Combo("Import Path", &SelectedParamPathIndex, GameState->Resources.MMParamPaths,
+                GameState->Resources.MMParamPathCount, PathArrayToString);
+      if(0 < GameState->Resources.MMParamPathCount && SelectedParamPathIndex != -1)
+      {
+        if(UI::Button("Load Parameters"))
+        {
+          Asset::ImportMMParams(GameState->TemporaryMemStack, &GameState->MMParams,
+                                GameState->Resources.MMParamPaths[SelectedParamPathIndex].Name);
+          // Set the animation RIDs from the paths
+					
+					GameState->MMParams.AnimRIDs.HardClear();
+					for(int i = 0; i < GameState->MMParams.AnimPaths.Count; i++)
+          {
+            GameState->MMParams.AnimRIDs.Push(
+              GameState->Resources.ObtainAnimationPathRID(GameState->MMParams.AnimPaths[i].Name));
+          }
+        }
+      }
+
+      if(UI::Button("Save Current Parameters"))
+      {
+				GameState->MMParams.AnimPaths.HardClear();
+        // Set the paths from the animation RIDs
+				for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
+        {
+          int PathIndex =
+            GameState->Resources.GetAnimationPathIndex(GameState->MMParams.AnimRIDs[i]);
+          GameState->MMParams.AnimPaths.Push(GameState->Resources.AnimationPaths[PathIndex]);
+        }
+        Asset::ExportMMParams(&GameState->MMParams, "data/matching_params/test.params");
+      }
+    }
     {
       UI::SliderFloat("Trajectory Duration (sec)", &GameState->MMDebug.TrajectoryDuration, 0, 10);
       UI::SliderInt("Trajectory Sample Count", &GameState->MMDebug.TrajectorySampleCount, 2, 40);

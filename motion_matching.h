@@ -5,6 +5,7 @@
 #include "linear_math/vector.h"
 #include "rid.h"
 #include "anim.h"
+#include "file_queries.h"
 
 #define MM_POINT_COUNT 3
 #define MM_COMPARISON_BONE_COUNT 2
@@ -54,7 +55,7 @@ struct mm_dynamic_params
 struct mm_params
 {
   fixed_stack<rid, MM_ANIM_CAPACITY>  AnimRIDs;
-  //fixed_stack<path, MM_ANIM_CAPACITY> AnimPaths;
+  fixed_stack<path, MM_ANIM_CAPACITY> AnimPaths;
 
   mm_fixed_params   FixedParams;
   mm_dynamic_params DynamicParams;
