@@ -77,6 +77,7 @@ struct mm_controller_data
 {
   mm_matching_params Params;
 
+  fixed_stack<Anim::animation*, MM_ANIM_CAPACITY>    Animations;
   fixed_stack<mm_frame_info_range, MM_ANIM_CAPACITY> AnimFrameInfoRanges;
   array_handle<mm_frame_info>                        FrameInfos;
 };
@@ -88,8 +89,7 @@ mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc
                                            const Anim::skeleton*       Skeleton);
 
 //Goal generation (Not really part of motion matching
-mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, vec3* OutStartVelocity,
-                        int32_t CurrentAnimIndex, bool Mirror,
+mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
                         const Anim::animation_controller* Controller, vec3 DesiredVelocity,
                         mm_matching_params Params);
 void GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,

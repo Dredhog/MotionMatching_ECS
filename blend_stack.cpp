@@ -1,52 +1,42 @@
 #include "blend_stack.h"
 #include "misc.h"
 
-circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> g_BlendInfos = {};
-
-void ResetBlendStack()
+void
+ResetBlendStack(blend_stack* BlendStack)
 {
-  g_BlendInfos.Clear();
+  BlendStack->Clear();
 }
 
 // TODO(Lukas): Remove assumption that playback rate is 1
 void
-PlayAnimation(Anim::animation_controller* C, rid NewAnimRID, float LocalStartTime,
-              float BlendInTime, bool Mirror)
+PlayAnimation(Anim::animation_controller* C, blend_stack* BlendStack, rid NewAnimRID,
+              int32_t IndexInSet, float LocalStartTime, float BlendInTime, bool Mirror)
 {
   blend_in_info AnimBlend   = {};
   AnimBlend.Duration        = BlendInTime;
   AnimBlend.GlobalStartTime = C->GlobalTimeSec;
   AnimBlend.Mirror       = Mirror;
-  AnimBlend.AnimStateIndex  = (g_BlendInfos.Empty()) ? 0
-                                                    : (g_BlendInfos.Peek().AnimStateIndex + 1) %
-                                                        ANIM_CONTROLLER_MAX_ANIM_COUNT;
-  g_BlendInfos.Push(AnimBlend);
+  AnimBlend.IndexInSet      = IndexInSet;
+  AnimBlend.AnimStateIndex  = (BlendStack->Empty()) ? 0
+                                                  : (BlendStack->Peek().AnimStateIndex + 1) %
+                                                      ANIM_CONTROLLER_MAX_ANIM_COUNT;
+  BlendStack->Push(AnimBlend);
 
   Anim::SetAnimation(C, NewAnimRID, AnimBlend.AnimStateIndex);
   Anim::StartAnimationAtGlobalTime(C, AnimBlend.AnimStateIndex, false, LocalStartTime);
 
-  C->AnimStateCount = g_BlendInfos.GetCapacity();
+  C->AnimStateCount = BlendStack->GetCapacity();
 }
 
 // Deferred execution inside of the animation system
 void
-ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
+ThirdPersonAnimationBlendFunction(Anim::animation_controller* C, void* UserData)
 {
+	assert(UserData);
+  blend_stack& BlendStack = *(blend_stack*)UserData;
+
   Anim::skeleton_mirror_info TestMirrorInfo = {};
 
-  for(int i = 0; i < C->Skeleton->BoneCount; i++)
-  {
-    //TestMirrorInfo.BoneMirrorIndices[i] = { i, i };
-    /*int MirrorIndex = -1;
-    for(int j = 0; j < C->Skeleton->BoneCount; j++)
-    {
-      if();
-    }
-    if(MirrorIndex == -1)
-    {
-      TestMirrorInfo
-    }*/
-  }
   TestMirrorInfo.MirrorBasisScales = { -1, 1, 1 };
   // Legs/feet
   TestMirrorInfo.BoneMirrorIndices[0] = { 57, 62 };
@@ -73,31 +63,31 @@ ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
   }
   // Spine/Neck
 
-  if(!g_BlendInfos.Empty())
+  if(!BlendStack.Empty())
   {
     // In order from oldest to most recent
-    if(g_BlendInfos[0].Mirror)
+    if(BlendStack[0].Mirror)
     {
-      Anim::SampleAtGlobalTime(C, g_BlendInfos[0].AnimStateIndex, 0, &TestMirrorInfo);
+      Anim::SampleAtGlobalTime(C, BlendStack[0].AnimStateIndex, 0, &TestMirrorInfo);
     }
     else
     {
-      Anim::SampleAtGlobalTime(C, g_BlendInfos[0].AnimStateIndex, 0);
+      Anim::SampleAtGlobalTime(C, BlendStack[0].AnimStateIndex, 0);
     }
 
-    for(int i = 1; i < g_BlendInfos.m_Count; i++)
+    for(int i = 1; i < BlendStack.m_Count; i++)
     {
-      if(g_BlendInfos[i].Mirror)
+      if(BlendStack[i].Mirror)
       {
-        Anim::SampleAtGlobalTime(C, g_BlendInfos[i].AnimStateIndex, 1, &TestMirrorInfo);
+        Anim::SampleAtGlobalTime(C, BlendStack[i].AnimStateIndex, 1, &TestMirrorInfo);
       }
       else
       {
-        Anim::SampleAtGlobalTime(C, g_BlendInfos[i].AnimStateIndex, 1);
+        Anim::SampleAtGlobalTime(C, BlendStack[i].AnimStateIndex, 1);
       }
 
       float UnclampedBlendAmount =
-        (C->GlobalTimeSec - g_BlendInfos[i].GlobalStartTime) / g_BlendInfos[i].Duration;
+        (C->GlobalTimeSec - BlendStack[i].GlobalStartTime) / BlendStack[i].Duration;
       float t = ClampFloat(0.0f, UnclampedBlendAmount, 1.0f);
       Anim::LinearBlend(C, 0, 1, t, 0);
     }
@@ -105,17 +95,19 @@ ThirdPersonAnimationBlendFunction(Anim::animation_controller* C)
 }
 
 void
-ThirdPersonBelndFuncStopUnusedAnimations(Anim::animation_controller* C)
+ThirdPersonBelndFuncStopUnusedAnimations(Anim::animation_controller* C,
+                                         blend_stack*                InOutBlendStack)
 {
-  for(int i = g_BlendInfos.m_Count - 1; i > 0; i--)
+  blend_stack& BlendStack = *InOutBlendStack;
+  for(int i = BlendStack.m_Count - 1; i > 0; i--)
   {
     float UnclampedBlendAmount =
-      (C->GlobalTimeSec - g_BlendInfos[i].GlobalStartTime) / g_BlendInfos[i].Duration;
+      (C->GlobalTimeSec - BlendStack[i].GlobalStartTime) / BlendStack[i].Duration;
     if(1.0f <= UnclampedBlendAmount)
     {
       for(int a = 0; a < i; a++)
       {
-        blend_in_info RemovedInfo                   = g_BlendInfos.PopBack();
+        blend_in_info RemovedInfo                   = BlendStack.PopBack();
         C->AnimationIDs[RemovedInfo.AnimStateIndex] = {};
         C->Animations[RemovedInfo.AnimStateIndex]   = {};
       }

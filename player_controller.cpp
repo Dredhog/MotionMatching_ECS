@@ -7,9 +7,16 @@
 const vec3 YAxis = { 0, 1, 0 };
 const vec3 ZAxis = { 0, 0, 1 };
 
+transform GetAnimRootMotionDelta(const entity* Entity, Anim::animation* RootMotionAnim,
+                                 bool MirrorRootMotionInX, float LocalSampleTime, float dt);
+
+void DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame,
+                   mm_info_debug_settings DebugSettings, vec3 BoneColor, vec3 VelocityColor,
+                   vec3 TrajectoryColor, vec3 DirectionColor);
+
 void
-Gameplay::ResetPlayer(entity* Player, Resource::resource_manager* Resources,
-                      const mm_controller_data* MMData)
+Gameplay::ResetPlayer(entity* Player, blend_stack* BlendStack,
+                      Resource::resource_manager* Resources, const mm_controller_data* MMData)
 {
   assert(Player->AnimController);
 
@@ -38,176 +45,94 @@ Gameplay::ResetPlayer(entity* Player, Resource::resource_manager* Resources,
     }
   }
   Player->AnimController->AnimStateCount = 0;
-  ResetBlendStack();
+  ResetBlendStack(BlendStack);
 }
 
 void
-Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
-                       Resource::resource_manager* Resources, const game_input* Input,
+Gameplay::UpdatePlayer(entity* Player, blend_stack* InOutBlendStack,
+                       Memory::stack_allocator* TempAlocator, const game_input* Input,
                        const camera* Camera, const mm_controller_data* MMData,
                        const mm_debug_settings* MMDebug, float Speed)
 {
+  blend_stack& BlendStack = *InOutBlendStack;
+
   TIMED_BLOCK(UpdatePlayer);
+  assert(MMData);
+  assert(MMData->FrameInfos.IsValid());
   assert(Player->AnimController);
-  vec3 CameraForward = Camera->Forward;
-  vec3 ViewForward   = Math::Normalized(vec3{ CameraForward.X, 0, CameraForward.Z });
-  vec3 ViewRight     = Math::Cross(ViewForward, YAxis);
+  assert(0 < MMData->Params.AnimRIDs.Count);
 
+  for(int i = 0; i < MMData->Params.AnimRIDs.Count; i++)
+  {
+    assert(MMData->Animations[i]);
+  }
+
+  // Determine the input direction
   vec3 Dir = {};
-  if(Input->ArrowUp.EndedDown)
   {
-    Dir += ViewForward;
-  }
-  if(Input->ArrowDown.EndedDown)
-  {
-    Dir -= ViewForward;
-  }
-  if(Input->ArrowRight.EndedDown)
-  {
-    Dir += ViewRight;
-  }
-  if(Input->ArrowLeft.EndedDown)
-  {
-    Dir -= ViewRight;
-  }
-  if(Math::Length(Dir) > 0.5f)
-  {
-    Dir = Math::Normalized(Dir);
-  }
+    vec3 CameraForward = Camera->Forward;
+    vec3 ViewForward   = Math::Normalized(vec3{ CameraForward.X, 0, CameraForward.Z });
+    vec3 ViewRight     = Math::Cross(ViewForward, YAxis);
 
-  if(MMData->FrameInfos.IsValid())
-  {
-    assert(0 < MMData->Params.AnimRIDs.Count);
-    Player->AnimController->BlendFunc = ThirdPersonAnimationBlendFunction;
-
-    if(g_BlendInfos.Empty())
+    if(Input->ArrowUp.EndedDown)
     {
-      int   InitialAnimIndex = 0;
-      float StartTime        = 0;
-      bool  PlayMirrored     = false;
-      Player->AnimController->Animations[InitialAnimIndex] =
-        Resources->GetAnimation(MMData->Params.AnimRIDs[InitialAnimIndex]);
-      PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[InitialAnimIndex], StartTime,
-                    MMData->Params.DynamicParams.BelndInTime, PlayMirrored);
+      Dir += ViewForward;
     }
+    if(Input->ArrowDown.EndedDown)
+    {
+      Dir -= ViewForward;
+    }
+    if(Input->ArrowRight.EndedDown)
+    {
+      Dir += ViewRight;
+    }
+    if(Input->ArrowLeft.EndedDown)
+    {
+      Dir -= ViewRight;
+    }
+    if(Math::Length(Dir) > 0.5f)
+    {
+      Dir = Math::Normalized(Dir);
+    }
+  }
 
-    mat4 ModelMatrix    = TransformToMat4(Player->Transform);
-    mat4 InvModelMatrix = Math::InvMat4(ModelMatrix);
+  Player->AnimController->BlendFunc = ThirdPersonAnimationBlendFunction;
 
-    // TODO(Lukas) Remove these (used only for tracking down a specific bug);
-    vec3 StartVelocity;
+  if(BlendStack.Empty())
+  {
+    int   InitialAnimIndex = 0;
+    float StartTime        = 0;
+    bool  PlayMirrored     = false;
+
+    PlayAnimation(Player->AnimController, &BlendStack, MMData->Params.AnimRIDs[InitialAnimIndex],
+                  InitialAnimIndex, StartTime, MMData->Params.DynamicParams.BelndInTime,
+                  PlayMirrored);
+  }
+  else
+  {
+    mat4 ModelMatrix = TransformToMat4(Player->Transform);
 
     mm_frame_info AnimGoal = {};
     {
+      mat4 InvModelMatrix = Math::InvMat4(ModelMatrix);
       vec3 DesiredModelSpaceVelocity =
         Math::MulMat4Vec4(InvModelMatrix,
                           vec4{ MMData->Params.DynamicParams.TrajectoryTimeHorizon * Dir * Speed,
                                 0 })
           .XYZ;
-      int32_t CurrentAnimIndex = g_BlendInfos.Peek().AnimStateIndex;
-      AnimGoal =
-        GetMMGoal(TempAlocator, &StartVelocity, CurrentAnimIndex, g_BlendInfos.Peek().Mirror,
-                  Player->AnimController, DesiredModelSpaceVelocity, MMData->Params);
 
-      // TODO(Lukas) Remove these (used only for tracking down a specific bug);
-      Debug::PushLine(ModelMatrix.T, Math::MulMat4Vec4(ModelMatrix, vec4{DesiredModelSpaceVelocity, 1}).XYZ);
-      Debug::PushLine(ModelMatrix.T, Math::MulMat4Vec4(ModelMatrix, vec4{StartVelocity, 1}).XYZ);
+      int32_t CurrentAnimIndex = BlendStack.Peek().AnimStateIndex;
+      AnimGoal                 = GetMMGoal(TempAlocator, CurrentAnimIndex, BlendStack.Peek().Mirror,
+                           Player->AnimController, DesiredModelSpaceVelocity, MMData->Params);
     }
 
-		const float GoalDirectionLength = 0.2f;
-
-    // Visualize the current goal
-    {
-      for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
-      {
-        vec4 HomogLocalBoneP = { AnimGoal.BonePs[i], 1 };
-        vec3 WorldBoneP      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneP).XYZ;
-        vec4 HomogLocalBoneV = { AnimGoal.BoneVs[i], 0 };
-        vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
-        vec3 WorldVEnd       = WorldBoneP + WorldBoneV;
-
-        if(MMDebug->CurrentGoal.ShowBonePositions)
-        {
-          Debug::PushWireframeSphere(WorldBoneP, 0.02f, { 1, 0, 1, 1 });
-        }
-        if(MMDebug->CurrentGoal.ShowBoneVelocities)
-        {
-          Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 0, 1, 1 });
-          Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 0, 1, 1 });
-        }
-      }
-      vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
-      if(MMDebug->CurrentGoal.ShowTrajectory)
-      {
-        for(int i = 0; i < MM_POINT_COUNT; i++)
-        {
-          vec4 HomogTrajectoryPointP = { AnimGoal.TrajectoryPs[i], 1 };
-          vec3 WorldTrajectoryPointP = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
-          {
-            Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 0, 1, 1 });
-            Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 0, 1, 1 });
-            PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
-          }
-          if(MMDebug->CurrentGoal.ShowTrajectoryAngles)
-          {
-            vec4 ModelSpaceFacingDirection = { sinf(AnimGoal.TrajectoryAngles[i]), 0,
-                                               cosf(AnimGoal.TrajectoryAngles[i]), 0 };
-            vec3 WorldSpaceFacingDirection =
-              Math::MulMat4Vec4(ModelMatrix, ModelSpaceFacingDirection).XYZ;
-            Debug::PushLine(WorldTrajectoryPointP,
-                            WorldTrajectoryPointP +
-                              GoalDirectionLength * WorldSpaceFacingDirection);
-          }
-        }
-      }
-    }
+    DrawFrameInfo(AnimGoal, ModelMatrix, MMDebug->CurrentGoal, { 1, 0, 1 }, { 1, 0, 1 },
+                  { 0, 0, 1 }, { 1, 0, 0 });
 
     static mm_frame_info LastMatch = {};
 
-    // Visualize the most recent match
-    {
-      for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
-      {
-        vec4 HomogLocalBoneP = { LastMatch.BonePs[i], 1 };
-        vec3 WorldBoneP      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneP).XYZ;
-        vec4 HomogLocalBoneV = { LastMatch.BoneVs[i], 0 };
-        vec3 WorldBoneV      = Math::MulMat4Vec4(ModelMatrix, HomogLocalBoneV).XYZ;
-        vec3 WorldVEnd       = WorldBoneP + WorldBoneV;
-
-        if(MMDebug->MatchedGoal.ShowBonePositions)
-        {
-          Debug::PushWireframeSphere(WorldBoneP, 0.01f, { 1, 1, 0, 1 });
-        }
-        if(MMDebug->MatchedGoal.ShowBoneVelocities)
-        {
-          Debug::PushLine(WorldBoneP, WorldVEnd, { 1, 1, 0, 1 });
-          Debug::PushWireframeSphere(WorldVEnd, 0.01f, { 1, 1, 0, 1 });
-        }
-      }
-      vec3 PrevWorldTrajectoryPointP = ModelMatrix.T;
-      if(MMDebug->MatchedGoal.ShowTrajectory)
-      {
-        for(int i = 0; i < MM_POINT_COUNT; i++)
-        {
-          vec4 HomogTrajectoryPointP = { LastMatch.TrajectoryPs[i], 1 };
-          vec3 WorldTrajectoryPointP = Math::MulMat4Vec4(ModelMatrix, HomogTrajectoryPointP).XYZ;
-          {
-            Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { 0, 1, 0, 1 });
-            Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { 0, 1, 0, 1 });
-            PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
-          }
-          if(MMDebug->MatchedGoal.ShowTrajectoryAngles)
-          {
-            vec4 ModelSpaceFacingDirection = { sinf(LastMatch.TrajectoryAngles[i]), 0,
-                                               cosf(LastMatch.TrajectoryAngles[i]), 0 };
-            vec3 WorldSpaceFacingDirection =
-              Math::MulMat4Vec4(ModelMatrix, ModelSpaceFacingDirection).XYZ;
-            Debug::PushLine(WorldTrajectoryPointP,
-                            WorldTrajectoryPointP + GoalDirectionLength*WorldSpaceFacingDirection);
-          }
-        }
-      }
-    }
+    DrawFrameInfo(LastMatch, ModelMatrix, MMDebug->MatchedGoal, { 1, 1, 0 }, { 1, 1, 0 },
+                  { 0, 1, 0 }, { 1, 0, 0 });
 
     {
       int32_t NewAnimIndex;
@@ -225,16 +150,13 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
                                MMData, AnimGoal);
       }
 
-      // TODO(Lukas) Prefetch and store all used animations in an array at build time
-      const Anim::animation* MatchedAnim =
-        Resources->GetAnimation(MMData->Params.AnimRIDs[NewAnimIndex]);
+      const Anim::animation* MatchedAnim = MMData->Animations[NewAnimIndex];
 
-      int   ActiveStateIndex = (g_BlendInfos.Empty()) ? -1 : g_BlendInfos.Peek().AnimStateIndex;
-      float ActiveAnimLocalTime =
-        (ActiveStateIndex != -1)
-          ? Anim::GetLocalSampleTime(Player->AnimController, ActiveStateIndex,
-                                     Player->AnimController->GlobalTimeSec)
-          : 0;
+      // Note: this will always run at least one frame after matching the head of the stack so
+      // animation pointer should always be present in the AnimController
+      int   ActiveStateIndex    = BlendStack.Peek().AnimStateIndex;
+      float ActiveAnimLocalTime = Anim::GetLocalSampleTime(Player->AnimController, ActiveStateIndex,
+                                                           Player->AnimController->GlobalTimeSec);
 
       // Figure out if matched frame is sufficiently far away from the current to start a new
       // animation
@@ -242,80 +164,137 @@ Gameplay::UpdatePlayer(entity* Player, Memory::stack_allocator* TempAlocator,
            MMData->Params.AnimRIDs[NewAnimIndex].Value ||
          (AbsFloat(ActiveAnimLocalTime - NewAnimStartTime) >=
             MMData->Params.DynamicParams.MinTimeOffsetThreshold &&
-          NewAnimIsMirrored == g_BlendInfos.Peek().Mirror) ||
-         NewAnimIsMirrored != g_BlendInfos.Peek().Mirror)
+          NewAnimIsMirrored == BlendStack.Peek().Mirror) ||
+         NewAnimIsMirrored != BlendStack.Peek().Mirror)
       {
         LastMatch = (NewAnimIsMirrored)
                       ? GetMirroredFrameGoal(BestMatch, { -1, 1, 1 }, MMData->Params.FixedParams)
                       : BestMatch;
-        PlayAnimation(Player->AnimController, MMData->Params.AnimRIDs[NewAnimIndex],
-                      NewAnimStartTime, MMData->Params.DynamicParams.BelndInTime,
+        PlayAnimation(Player->AnimController, &BlendStack, MMData->Params.AnimRIDs[NewAnimIndex],
+                      NewAnimIndex, NewAnimStartTime, MMData->Params.DynamicParams.BelndInTime,
                       NewAnimIsMirrored);
       }
     }
 
-    ThirdPersonBelndFuncStopUnusedAnimations(Player->AnimController);
+    ThirdPersonBelndFuncStopUnusedAnimations(Player->AnimController, &BlendStack);
 
     // Root motion
-    if(MMDebug->ApplyRootMotion && 0 < g_BlendInfos.m_Count)
+    if(MMDebug->ApplyRootMotion)
     {
-      int              AnimationIndex   = g_BlendInfos.Peek().AnimStateIndex;
-      bool             MirrorRootMotion = g_BlendInfos.Peek().Mirror;
-      Anim::animation* RootMotionAnim =
-        Resources->GetAnimation(Player->AnimController->AnimationIDs[AnimationIndex]);
-      // TODO(Lukas): there should not be any fetching from RIDs here, the animations are known in
-      // advance
-      Player->AnimController->Animations[AnimationIndex] = RootMotionAnim;
+      blend_in_info AnimBlend = BlendStack.Peek();
 
-      float CurrentSampleTime = Anim::GetLocalSampleTime(Player->AnimController, AnimationIndex,
-                                                         Player->AnimController->GlobalTimeSec);
-      float NextSampleTime =
-        ClampFloat(RootMotionAnim->SampleTimes[0], CurrentSampleTime + Input->dt,
-                   RootMotionAnim->SampleTimes[RootMotionAnim->KeyframeCount - 1]);
+      Anim::animation* RootMotionAnim = MMData->Animations[AnimBlend.IndexInSet];
 
-      int             HipBoneIndex = 0;
-      transform       CurrentHipTransform =
-        Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, CurrentSampleTime);
-      transform NextHipTransform =
-        Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, NextSampleTime);
+      float LocalSampleTime =
+        Anim::GetLocalSampleTime(RootMotionAnim,
+                                 &Player->AnimController->States[AnimBlend.AnimStateIndex],
+                                 Player->AnimController->GlobalTimeSec);
 
-      mat4 Mat4Player = TransformToMat4(Player->Transform);
-      Mat4Player.T    = {};
+      transform RootDelta = GetAnimRootMotionDelta(Player, RootMotionAnim, AnimBlend.Mirror,
+                                                   LocalSampleTime, Input->dt);
+      Player->Transform.T += RootDelta.T;
+      Player->Transform.R = Player->Transform.R * RootDelta.R;
+    }
+  }
+}
+
+transform
+GetAnimRootMotionDelta(const entity* Entity, Anim::animation* RootMotionAnim,
+                       bool MirrorRootMotionInX, float LocalSampleTime, float dt)
+{
+  assert(RootMotionAnim);
+
+  const int HipBoneIndex = 0;
+
+  transform RootDelta = IdentityTransform();
+
+  float NextSampleTime = LocalSampleTime + dt;
+
+  transform CurrentHipTransform =
+    Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, LocalSampleTime);
+  transform NextHipTransform =
+    Anim::LinearAnimationBoneSample(RootMotionAnim, HipBoneIndex, NextSampleTime);
+
+  mat4 Mat4Entity = TransformToMat4(Entity->Transform);
+  Mat4Entity.T    = {};
+  {
+    // mat4 Mat4CurrentHip = TransformToMat4(CurrentHipTransform);
+    mat4 Mat4CurrentHip =
+      Math::MulMat4(Entity->AnimController->Skeleton->Bones[HipBoneIndex].BindPose,
+                    TransformToMat4(CurrentHipTransform));
+    mat4 Mat4CurrentRoot;
+    mat4 Mat4InvCurrentRoot;
+    Anim::GetRootAndInvRootMatrices(&Mat4CurrentRoot, &Mat4InvCurrentRoot, Mat4CurrentHip);
+    {
+      // mat4 Mat4NextHip = TransformToMat4(NextHipTransform);
+      mat4 Mat4NextHip =
+        Math::MulMat4(Entity->AnimController->Skeleton->Bones[HipBoneIndex].BindPose,
+                      TransformToMat4(NextHipTransform));
+      mat4 Mat4NextRoot;
+      Anim::GetRootAndInvRootMatrices(&Mat4NextRoot, NULL, Mat4NextHip);
       {
-        //mat4 Mat4CurrentHip = TransformToMat4(CurrentHipTransform);
-        mat4 Mat4CurrentHip =
-          Math::MulMat4(Player->AnimController->Skeleton->Bones[HipBoneIndex].BindPose,
-                        TransformToMat4(CurrentHipTransform));
-        mat4 Mat4CurrentRoot;
-        mat4 Mat4InvCurrentRoot;
-        Anim::GetRootAndInvRootMatrices(&Mat4CurrentRoot, &Mat4InvCurrentRoot, Mat4CurrentHip);
+        mat4 Mat4LocalRootDelta = Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot);
+        quat dR                 = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
+        if(MirrorRootMotionInX)
         {
-          //mat4 Mat4NextHip = TransformToMat4(NextHipTransform);
-          mat4 Mat4NextHip =
-            Math::MulMat4(Player->AnimController->Skeleton->Bones[HipBoneIndex].BindPose,
-                          TransformToMat4(NextHipTransform));
-          mat4 Mat4NextRoot;
-          Anim::GetRootAndInvRootMatrices(&Mat4NextRoot, NULL, Mat4NextHip);
-          {
-            // TODO(Lukas): Multiply by mat4InvPlayer on the left for more generality
-            /*mat4 Mat4DeltaRoot =
-              Math::MulMat4(Mat4Player, Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot));
-            vec3 DeltaTranslaton = Mat4DeltaRoot.T;*/
-            mat4 Mat4LocalRootDelta = Math::MulMat4(Mat4InvCurrentRoot, Mat4NextRoot);
-            quat dR                 = Math::QuatFromTo(Mat4CurrentRoot.Z, Mat4NextRoot.Z);
-            if(MirrorRootMotion)
-            {
-              Mat4LocalRootDelta = Math::MulMat4(Math::Mat4Scale(-1, 1, 1), Mat4LocalRootDelta);
-              dR                 = Math::QuatFromTo(Mat4NextRoot.Z, Mat4CurrentRoot.Z);
-            }
-            mat4 Mat4DeltaRoot = Math::MulMat4(Mat4Player, Mat4LocalRootDelta);
-
-            vec3 dT = Mat4DeltaRoot.T;
-            Player->Transform.T += dT;
-            Player->Transform.R = Player->Transform.R * dR;
-            Debug::PushLine(Player->Transform.T, Player->Transform.T + dT, { 1, 0, 0, 1 });
-          }
+          Mat4LocalRootDelta = Math::MulMat4(Math::Mat4Scale(-1, 1, 1), Mat4LocalRootDelta);
+          dR                 = Math::QuatFromTo(Mat4NextRoot.Z, Mat4CurrentRoot.Z);
         }
+        mat4 Mat4DeltaRoot = Math::MulMat4(Mat4Entity, Mat4LocalRootDelta);
+
+        vec3 dT     = Mat4DeltaRoot.T;
+        RootDelta.T = dT;
+        RootDelta.R = dR;
+        return RootDelta;
+      }
+    }
+  }
+}
+
+void
+DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settings DebugSettings,
+              vec3 BoneColor, vec3 VelocityColor, vec3 TrajectoryColor, vec3 DirectionColor)
+{
+  for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
+  {
+    vec4 HomogLocalBoneP = { AnimGoal.BonePs[i], 1 };
+    vec3 WorldBoneP      = Math::MulMat4Vec4(CoordinateFrame, HomogLocalBoneP).XYZ;
+    vec4 HomogLocalBoneV = { AnimGoal.BoneVs[i], 0 };
+    vec3 WorldBoneV      = Math::MulMat4Vec4(CoordinateFrame, HomogLocalBoneV).XYZ;
+    vec3 WorldVEnd       = WorldBoneP + WorldBoneV;
+
+    if(DebugSettings.ShowBonePositions)
+    {
+      Debug::PushWireframeSphere(WorldBoneP, 0.02f, { BoneColor, 1 });
+    }
+    if(DebugSettings.ShowBoneVelocities)
+    {
+      Debug::PushLine(WorldBoneP, WorldVEnd, { VelocityColor, 1 });
+      Debug::PushWireframeSphere(WorldVEnd, 0.01f, { VelocityColor, 1 });
+    }
+  }
+  vec3 PrevWorldTrajectoryPointP = CoordinateFrame.T;
+  if(DebugSettings.ShowTrajectory)
+  {
+    for(int i = 0; i < MM_POINT_COUNT; i++)
+    {
+      vec4 HomogTrajectoryPointP = { AnimGoal.TrajectoryPs[i], 1 };
+      vec3 WorldTrajectoryPointP = Math::MulMat4Vec4(CoordinateFrame, HomogTrajectoryPointP).XYZ;
+      {
+        Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { TrajectoryColor, 1 });
+        Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { TrajectoryColor, 1 });
+        PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
+      }
+      const float GoalDirectionLength = 0.2f;
+      if(DebugSettings.ShowTrajectoryAngles)
+      {
+        vec4 LocalSpaceFacingDirection = { sinf(AnimGoal.TrajectoryAngles[i]), 0,
+                                           cosf(AnimGoal.TrajectoryAngles[i]), 0 };
+        vec3 WorldSpaceFacingDirection =
+          Math::MulMat4Vec4(CoordinateFrame, LocalSpaceFacingDirection).XYZ;
+        Debug::PushLine(WorldTrajectoryPointP,
+                        WorldTrajectoryPointP + GoalDirectionLength * WorldSpaceFacingDirection,
+                        { DirectionColor, 1 });
       }
     }
   }

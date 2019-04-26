@@ -28,6 +28,7 @@ struct array_handle
   HardClear()
   {
     memset(this->Elements, 0, this->Count * sizeof(T));
+		this->Count = 0;
   }
 
   T& operator[](IndexType Index)
@@ -283,6 +284,7 @@ struct fixed_stack
   {
     int TempCount = this->Count;
     memset(this->Elements, 0, this->Count * sizeof(T));
+		this->Count = 0;
     return TempCount;
   }
 

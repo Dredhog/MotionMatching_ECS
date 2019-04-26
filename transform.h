@@ -18,3 +18,8 @@ TransformToMat4(const transform& Transform)
                   Math::MulMat4(Math::Mat4Rotate(Transform.R), Math::Mat4Scale(Transform.S)));
   return Result;
 }
+
+inline transform IdentityTransform()
+{
+  return { .R = Math::QuatIdent(), .T = {}, .S = { 1, 1, 1 } };
+}

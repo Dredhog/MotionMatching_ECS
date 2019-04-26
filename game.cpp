@@ -198,8 +198,8 @@ DeleteEntity(game_state* GameState, int32_t Index)
 
       if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
       {
-        Gameplay::ResetPlayer(&GameState->Entities[Index], &GameState->Resources,
-                              &GameState->MMData);
+        Gameplay::ResetPlayer(&GameState->Entities[Index], &GameState->PlayerBlendStack,
+                              &GameState->Resources, &GameState->MMData);
         GameState->PlayerEntityIndex = -1;
       }
 

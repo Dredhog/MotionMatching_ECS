@@ -64,7 +64,7 @@ namespace Anim
     float      GlobalTimeSec;
     int32_t    AnimStateCount;
 
-    void (*BlendFunc)(animation_controller*);
+    void (*BlendFunc)(animation_controller*, void* UserData);
   };
 
   // Sampling / Blending
@@ -73,7 +73,8 @@ namespace Anim
   void LinearBlend(animation_controller*, int AnimA, int AnimB, float t, int ResultInd);
   void AdditiveBlend(animation_controller*, int AnimBase, int AnimAdd, float t, int ResultInd);
   void UpdateController(animation_controller*, float dt,
-                        void BlendFunction(animation_controller*) = NULL);
+                        void  BlendFunction(animation_controller*, void* UserData) = NULL,
+                        void* UserData                                             = NULL);
 
   // Animation controller interface
   void AppendAnimation(animation_controller*, rid AnimationID);
@@ -115,6 +116,8 @@ namespace Anim
   // Helper functions
   float GetLocalSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
                            float GlobalTimeSec);
+  float GetLocalSampleTime(const Anim::animation* Animation, const Anim::animation_state* AnimState,
+                           float GlobalSampleTime);
   void  GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRoot, mat4 HipMatrix);
   float GetAnimDuration(const Anim::animation* Animation);
 }

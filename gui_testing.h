@@ -738,7 +738,8 @@ TestGui(game_state* GameState, const game_input* Input)
             }
             if(GameState->MMData.FrameInfos.IsValid())
             {
-              Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+              Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
+                                    &GameState->Resources, &GameState->MMData);
               for(int i = 0; i < GameState->MMData.Params.AnimRIDs.Count; i++)
               {
                 GameState->Resources.Animations.RemoveReference(
@@ -752,7 +753,7 @@ TestGui(game_state* GameState, const game_input* Input)
         }
 
         char TempBuffer[32];
-        sprintf(TempBuffer, "g_BlendInfos.m_Count: %d", g_BlendInfos.m_Count);
+        sprintf(TempBuffer, "PlayerBlendStack.m_Count: %d", GameState->PlayerBlendStack.m_Count);
         UI::Text(TempBuffer);
       }
     }
@@ -1375,7 +1376,8 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           {
             if(GameState->CurrentAnimationID.Value > 0)
             {
-              Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+              Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
+                                    &GameState->Resources, &GameState->MMData);
               if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount ==
                  SelectedModel->Skeleton->BoneCount)
               {
@@ -1414,14 +1416,16 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
           if(UI::Button("Play as entity"))
           {
-            Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+            Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
+                                  &GameState->Resources, &GameState->MMData);
             GameState->PlayerEntityIndex          = GameState->SelectedEntityIndex;
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
             if(UI::Button("Stop playing as entity"))
             {
-              Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
+              Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
+                                    &GameState->Resources, &GameState->MMData);
               GameState->PlayerEntityIndex = -1;
             }
           }

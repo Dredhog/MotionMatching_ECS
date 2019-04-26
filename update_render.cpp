@@ -171,12 +171,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   if(GameState->PlayerEntityIndex != -1)
   {
     GameState->MMData.Params.DynamicParams = GameState->MMParams.DynamicParams;
-    entity* PlayerEntity                   = {};
-    if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex))
+
+    entity* PlayerEntity = {};
+
+    if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex) &&
+       GameState->MMData.FrameInfos.IsValid())
     {
-      Gameplay::UpdatePlayer(PlayerEntity, GameState->TemporaryMemStack, &GameState->Resources,
-                             Input, &GameState->Camera, &GameState->MMData, &GameState->MMDebug,
-                             GameState->PlayerSpeed);
+      GameState->MMData.Animations.HardClear();
+      for(int i = 0; i< GameState->MMData.Params.AnimRIDs.Count; i++)
+			{
+        GameState->MMData.Animations.Push(
+          GameState->Resources.GetAnimation(GameState->MMData.Params.AnimRIDs[i]));
+      }
+      Gameplay::UpdatePlayer(PlayerEntity, &GameState->PlayerBlendStack,
+                             GameState->TemporaryMemStack, Input, &GameState->Camera,
+                             &GameState->MMData, &GameState->MMDebug, GameState->PlayerSpeed);
     }
   }
 
@@ -204,7 +213,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             : NULL;
       }
 
-      Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+      Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc,
+                             &GameState->PlayerBlendStack);
 
       // TODO(Lukas): remove most parts of this code as it is repeated multiple times in different
       // locations

@@ -21,6 +21,24 @@ Anim::GetLocalSampleTime(const Anim::animation_controller* Controller, int Anima
   return SampleTime;
 }
 
+float
+Anim::GetLocalSampleTime(const Anim::animation* Animation, const Anim::animation_state* AnimState,
+                         float GlobalSampleTime)
+{
+  const float AnimDuration = GetAnimDuration(Animation);
+
+  float SampleTime = AnimState->PlaybackRateSec * (GlobalSampleTime - AnimState->StartTimeSec);
+  if(AnimState->Loop && AnimDuration < SampleTime)
+  {
+    SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
+  }
+  else if(AnimDuration < SampleTime)
+  {
+    SampleTime = AnimDuration;
+  }
+  return SampleTime;
+}
+
 void
 Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
                          int OutputBlockIndex, const Anim::skeleton_mirror_info* MirrorInfo)
@@ -110,7 +128,7 @@ Anim::LinearMirroredAnimationSample(transform* OutputTransforms, mat4* TempMatri
 
 void
 Anim::UpdateController(Anim::animation_controller* Controller, float dt,
-                       void BlendFunc(animation_controller*))
+                       void BlendFunc(animation_controller*, void*), void* UserData)
 {
   Controller->GlobalTimeSec += dt;
   if(0 < Controller->AnimStateCount)
@@ -121,7 +139,7 @@ Anim::UpdateController(Anim::animation_controller* Controller, float dt,
     }
     else
     {
-      BlendFunc(Controller);
+      BlendFunc(Controller, UserData);
     }
   }
   else

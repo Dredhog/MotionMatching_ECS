@@ -22,6 +22,7 @@
 #include "motion_matching.h"
 #include "ecs_management.h"
 #include "trajectory.h"
+#include "blend_stack.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
@@ -67,7 +68,8 @@ struct game_state
   mm_matching_params MMParams;
   mm_controller_data MMData;
   mm_debug_settings  MMDebug;
-  float   PlayerSpeed;
+  blend_stack        PlayerBlendStack;
+  float              PlayerSpeed;
 
   bool UseHotReloading;
   bool UpdatePathList;
