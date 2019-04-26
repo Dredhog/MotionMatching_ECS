@@ -377,10 +377,10 @@ SetGameStatePODFields(game_state* GameState)
       GameState->R.RealTimeDirectionalShadows      = true;
       GameState->R.RecomputeDirectionalShadows     = false;
       GameState->R.ClearDirectionalShadows         = false;
-      GameState->R.Sun.CascadeFarPlaneDistances[0] = 1;
-      GameState->R.Sun.CascadeFarPlaneDistances[1] = 4;
-      GameState->R.Sun.CascadeFarPlaneDistances[2] = 10;
-      GameState->R.Sun.CascadeFarPlaneDistances[3] = 20;
+      GameState->R.Sun.CascadeFarPlaneDistances[0] = 3;
+      GameState->R.Sun.CascadeFarPlaneDistances[1] = 8;
+      GameState->R.Sun.CascadeFarPlaneDistances[2] = 20;
+      GameState->R.Sun.CascadeFarPlaneDistances[3] = 40;
 
       GameState->R.Sun.AmbientColor = { 0.3f, 0.3f, 0.3f };
       GameState->R.Sun.DiffuseColor = { 0.7f, 0.7f, 0.7f };

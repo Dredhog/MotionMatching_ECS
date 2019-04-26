@@ -1,6 +1,7 @@
 #include "motion_matching.h"
 #include "misc.h"
 #include "profile.h"
+#include "resource_manager.h"
 
 #include <cfloat>
 
@@ -14,7 +15,7 @@ const int32_t g_SkipFrameCount = 1;
 
 mm_controller_data
 PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_manager* Resources,
-                        mm_matching_params Params, const Anim::skeleton* Skeleton)
+                        mm_params Params, const Anim::skeleton* Skeleton)
 {
   TIMED_BLOCK(BuildMotionSet);
   // Alloc temp memory for matrices
@@ -153,8 +154,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, Resource::resource_m
 //TODO(Lukas) Remove the CurrentVelocity (Only for debugging session)
 mm_frame_info
 GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
-          const Anim::animation_controller* Controller, vec3 DesiredVelocity,
-          mm_matching_params Params)
+          const Anim::animation_controller* Controller, vec3 DesiredVelocity, mm_params Params)
 {
   vec3          CurrentVelocity = {};
   mm_frame_info ResultInfo      = {};
@@ -168,7 +168,7 @@ GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mir
 void
 GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
             int32_t CurrentAnimIndex, bool Mirror, const Anim::animation_controller* Controller,
-            mm_matching_params Params)
+            mm_params Params)
 {
   Memory::marker StackMarker = TempAlloc->GetMarker();
 

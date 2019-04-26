@@ -65,7 +65,7 @@ struct game_state
   trajectory_system TrajectorySystem;
 
   // Motion Matching
-  mm_matching_params MMParams;
+  mm_params          MMParams;
   mm_controller_data MMData;
   mm_debug_settings  MMDebug;
   blend_stack        PlayerBlendStack;

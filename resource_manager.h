@@ -12,7 +12,7 @@
 #include "rid.h"
 
 #include "resource_hash_table.h"
-static const int RESOURCE_MAX_COUNT = 200;
+static const int RESOURCE_MAX_COUNT = 300;
 
 const int MODEL_MAX_COUNT     = RESOURCE_MAX_COUNT;
 const int ANIMATION_MAX_COUNT = RESOURCE_MAX_COUNT;

@@ -1,12 +1,35 @@
 #pragma once
 
 #include "stack_alloc.h"
-#include "resource_manager.h"
 #include "basic_data_structures.h"
+#include "rid.h"
+#include "linear_math/vector.h"
+#include "anim.h"
+#include "resource_manager.h"
 
 #define MM_POINT_COUNT 3
 #define MM_COMPARISON_BONE_COUNT 2
 #define MM_ANIM_CAPACITY 35
+
+struct mm_info_debug_settings
+{
+  bool ShowTrajectory;
+  bool ShowTrajectoryAngles;
+  bool ShowBonePositions;
+  bool ShowBoneVelocities;
+};
+
+struct mm_debug_settings
+{
+  float TrajectoryDuration;
+  int   TrajectorySampleCount;
+  bool  ShowHipTrajectories;
+  bool  ShowRootTrajectories;
+  bool  ApplyRootMotion;
+
+  mm_info_debug_settings CurrentGoal;
+  mm_info_debug_settings MatchedGoal;
+};
 
 struct mm_fixed_params
 {
@@ -29,9 +52,10 @@ struct mm_dynamic_params
   bool  MatchMirroredAnimations;
 };
 
-struct mm_matching_params
+struct mm_params
 {
-  fixed_stack<rid, MM_ANIM_CAPACITY> AnimRIDs;
+  fixed_stack<rid, MM_ANIM_CAPACITY>  AnimRIDs;
+  //fixed_stack<path, MM_ANIM_CAPACITY> AnimPaths;
 
   mm_fixed_params   FixedParams;
   mm_dynamic_params DynamicParams;
@@ -46,26 +70,6 @@ struct mm_frame_info
   float TrajectoryAngles[MM_POINT_COUNT];
 };
 
-struct mm_info_debug_settings
-{
-  bool ShowTrajectory;
-  bool ShowTrajectoryAngles;
-  bool ShowBonePositions;
-  bool ShowBoneVelocities;
-};
-
-struct mm_debug_settings
-{
-  float TrajectoryDuration;
-  int   TrajectorySampleCount;
-  bool  ShowHipTrajectories;
-  bool  ShowRootTrajectories;
-  bool  ApplyRootMotion;
-
-  mm_info_debug_settings CurrentGoal;
-  mm_info_debug_settings MatchedGoal;
-};
-
 struct mm_frame_info_range
 {
   float   StartTimeInAnim;
@@ -75,7 +79,7 @@ struct mm_frame_info_range
 
 struct mm_controller_data
 {
-  mm_matching_params Params;
+  mm_params Params;
 
   fixed_stack<Anim::animation*, MM_ANIM_CAPACITY>    Animations;
   fixed_stack<mm_frame_info_range, MM_ANIM_CAPACITY> AnimFrameInfoRanges;
@@ -84,17 +88,16 @@ struct mm_controller_data
 
 // Main metadata precomputation
 mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*    TempAlloc,
-                                           Resource::resource_manager* Resources,
-                                           mm_matching_params          Params,
-                                           const Anim::skeleton*       Skeleton);
+                                           Resource::resource_manager* Resources, mm_params Params,
+                                           const Anim::skeleton* Skeleton);
 
 //Goal generation (Not really part of motion matching
 mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
                         const Anim::animation_controller* Controller, vec3 DesiredVelocity,
-                        mm_matching_params Params);
+                        mm_params Params);
 void GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
                  int32_t CurrentAnimIndex, bool Mirror,
-                 const Anim::animation_controller* Controller, mm_matching_params Params);
+                 const Anim::animation_controller* Controller, mm_params Params);
 void GetLongtermGoal(mm_frame_info* OutTrajectory, vec3 StartVelocity, vec3 EndVelocity);
 void MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal,
                       const mm_fixed_params& Params);

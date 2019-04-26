@@ -88,7 +88,7 @@ Asset::UnpackAnimationGroup(Anim::animation_group* AnimationGroup)
 
 void
 Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
-                            const EditAnimation::animation_editor* AnimEditor, char* FileName)
+                            const EditAnimation::animation_editor* AnimEditor, const char* FileName)
 {
   Memory::marker Marker = Alloc->GetMarker();
 
@@ -152,7 +152,7 @@ Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_grou
 
 void
 Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
-                            char* FileName)
+                            const char* FileName)
 {
   assert(OutputAnimGroup);
   debug_read_file_result AssetReadResult = Platform::ReadEntireFile(Alloc, FileName);

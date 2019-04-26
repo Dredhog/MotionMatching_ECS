@@ -7,10 +7,6 @@ actor_dir='data/built/'
 ybot_dir='data/animations/ybot_retargeted/fbx/'
 sampling_frequency='--sampling_frequency 30'
 
-for i in $dst_dir/*.anim $actor_dir*.actor; do
-  rm $i
-done
-
 $build 'data/models_actors/xbot.fbx' 'data/built/xbot' '--actor' '--root_bone' 'mixamorig:Hips' '--scale' '0.01'
 
 for i in $src_dir*.fbx; do
