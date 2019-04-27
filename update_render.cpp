@@ -168,25 +168,23 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  if(GameState->PlayerEntityIndex != -1)
   {
-    GameState->MMData.Params.DynamicParams = GameState->MMParams.DynamicParams;
+    // GameState->MMData.Params.DynamicParams = GameState->MMParams.DynamicParams;
 
-    entity* PlayerEntity = {};
-
-    if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex) &&
-       GameState->MMData.FrameInfos.IsValid())
-    {
-      GameState->MMData.Animations.HardClear();
-      for(int i = 0; i< GameState->MMData.Params.AnimRIDs.Count; i++)
-			{
-        GameState->MMData.Animations.Push(
-          GameState->Resources.GetAnimation(GameState->MMData.Params.AnimRIDs[i]));
-      }
-      Gameplay::UpdatePlayer(PlayerEntity, &GameState->PlayerBlendStack,
-                             GameState->TemporaryMemStack, Input, &GameState->Camera,
-                             &GameState->MMData, &GameState->MMDebug, GameState->PlayerSpeed);
-    }
+    /* if(GetEntityAtIndex(GameState, &PlayerEntity, GameState->PlayerEntityIndex) &&
+        GameState->MMData.FrameInfos.IsValid())
+     {
+       GameState->MMData.Animations.HardClear();
+       for(int i = 0; i< GameState->MMData.Params.AnimRIDs.Count; i++)
+       {
+         GameState->MMData.Animations.Push(
+           GameState->Resources.GetAnimation(GameState->MMData.Params.AnimRIDs[i]));
+       }
+       Gameplay::UpdatePlayer(PlayerEntity, &GameState->PlayerBlendStack,
+                              GameState->TemporaryMemStack, Input, &GameState->Camera,
+                              &GameState->MMData, &GameState->MMDebug, GameState->PlayerSpeed);
+     }
+     */
   }
 
   if(GameState->R.ShowLightPosition)
@@ -330,7 +328,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
       }
 
-      if(e == GameState->PlayerEntityIndex || GameState->PreviewAnimationsInRootSpace)
+      if(GetEntityMMDataIndex(e, &GameState->MMEntityData) != -1 ||
+         GameState->PreviewAnimationsInRootSpace)
       {
         mat4    Mat4Root;
         mat4    Mat4InvRoot;

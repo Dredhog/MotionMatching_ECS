@@ -462,7 +462,10 @@ SetGameStatePODFields(game_state* GameState)
   GameState->PreviewAnimationsInRootSpace = false;
   GameState->IsAnimationPlaying = false;
   GameState->CurrentMaterialID  = { 0 };
-  GameState->PlayerEntityIndex  = -1;
+  //GameState->PlayerEntityIndex  = -1;
+
+  // Animation Editor
+  GameState->AnimEditor.EntityIndex = -1;
 
   // Motion Matching
   {
@@ -483,7 +486,6 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.CurrentGoal.ShowBonePositions    = true;
     GameState->MMDebug.MatchedGoal.ShowBonePositions    = true;
 
-    GameState->MMData                                         = {};
     GameState->MMParams.DynamicParams.BonePCoefficient        = 1.0f;
     GameState->MMParams.DynamicParams.BoneVCoefficient        = 0.02f;
     GameState->MMParams.DynamicParams.TrajPCoefficient        = 0.06f;

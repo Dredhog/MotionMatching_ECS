@@ -12,18 +12,29 @@ void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySe
              bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings,
              bool& ShowECDData, bool& ShowTrajectorySettings);
 
-char*
-PathArrayToString(void* Data, int Index)
+const char*
+PathArrayToString(const void* Data, int Index)
 {
   path* Paths = (path*)Data;
   return Paths[Index].Name;
 }
 
-char*
-BoneArrayToString(void* Data, int Index)
+const char*
+BoneArrayToString(const void* Data, int Index)
 {
   Anim::bone* Bones = (Anim::bone*)Data;
   return Bones[Index].Name;
+}
+
+char* g_SplineIndexNames[TRAJECTORY_CAPACITY] =  {
+  "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17",
+    "18", "19"
+};
+
+const char*
+SplineArrayToString(const void* Data, int Index)
+{
+  return g_SplineIndexNames[Index];
 }
 
 int
@@ -676,9 +687,8 @@ TestGui(game_state* GameState, const game_input* Input)
                       &GameState->MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
     }
     entity* SelectedEntity = {};
-    if(GetSelectedEntity(GameState, &SelectedEntity) &&
-       GameState->SelectedEntityIndex == GameState->PlayerEntityIndex &&
-       SelectedEntity->AnimController)
+    if(GetSelectedEntity(GameState, &SelectedEntity) && SelectedEntity->AnimController &&
+       GetEntityMMDataIndex(GameState->SelectedEntityIndex, &GameState->MMEntityData) != -1)
     {
       {
         static int32_t ActivePathIndex = 0;
@@ -763,31 +773,29 @@ TestGui(game_state* GameState, const game_input* Input)
       {
         UI::SliderFloat("Trajectory Time Horizon",
                         &GameState->MMParams.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
-        if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
+        fixed_stack<Anim::animation*, MM_ANIM_CAPACITY> Animations = {};
+        if(UI::Button("Build MM data"))
         {
-          fixed_stack<Anim::animation*, MM_ANIM_CAPACITY> Animations = {};
-          if(UI::Button("Build MM data"))
+          for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
           {
-            for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
-            {
-              GameState->Resources.Animations.AddReference(GameState->MMParams.AnimRIDs[i]);
-              Animations.Push(GameState->Resources.GetAnimation(GameState->MMParams.AnimRIDs[i]));
-            }
-            if(GameState->MMData.FrameInfos.IsValid())
-            {
-              Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                    &GameState->Resources, &GameState->MMData);
-              for(int i = 0; i < GameState->MMData.Params.AnimRIDs.Count; i++)
-              {
-                GameState->Resources.Animations.RemoveReference(
-                  GameState->MMData.Params.AnimRIDs[i]);
-              }
-            }
-            GameState->MMData =
-              PrecomputeRuntimeMMData(GameState->TemporaryMemStack, Animations.GetArrayHandle(),
-                                      GameState->MMParams,
-                                      SelectedEntity->AnimController->Skeleton);
+            GameState->Resources.Animations.AddReference(GameState->MMParams.AnimRIDs[i]);
+            Animations.Push(GameState->Resources.GetAnimation(GameState->MMParams.AnimRIDs[i]));
           }
+          assert(false && "Not Implemented");
+          /*if(GameState->MMData.FrameInfos.IsValid())
+          {
+            Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
+                                  &GameState->Resources, &GameState->MMData);
+            for(int i = 0; i < GameState->MMData.Params.AnimRIDs.Count; i++)
+            {
+              GameState->Resources.Animations.RemoveReference(
+                GameState->MMData.Params.AnimRIDs[i]);
+            }
+          }
+          GameState->MMData =
+            PrecomputeRuntimeMMData(GameState->TemporaryMemStack, Animations.GetArrayHandle(),
+                                    GameState->MMParams,
+                                    SelectedEntity->AnimController->Skeleton);*/
         }
 
         char TempBuffer[32];
@@ -1304,12 +1312,18 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       }
       UI::NewLine();
 
-      transform* Transform = &SelectedEntity->Transform;
-      UI::DragFloat3("Translation", (float*)&Transform->T, -INFINITY, INFINITY, 10);
-      // UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
-      UI::DragFloat3("Scale", (float*)&Transform->S, -INFINITY, INFINITY, 10.0f);
+      static bool s_ShowTransformComponent = false;
+      if(UI::CollapsingHeader("Transform Component", &s_ShowTransformComponent))
+      {
+        transform* Transform = &SelectedEntity->Transform;
+        UI::DragFloat3("Translation", (float*)&Transform->T, -INFINITY, INFINITY, 10);
+        // UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
+        UI::DragFloat3("Scale", (float*)&Transform->S, -INFINITY, INFINITY, 10.0f);
+			}
 
-      // Rigid Body
+      static bool s_ShowPhysicsComponent = false;
+      if(UI::CollapsingHeader("Physics Component", &s_ShowPhysicsComponent))
+        // Rigid Body
       {
         rigid_body* RB = &SelectedEntity->RigidBody;
         // UI::DragFloat3("X", &RB->X.X, -INFINITY, INFINITY, 10);
@@ -1373,7 +1387,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       Render::model* SelectedModel = GameState->Resources.GetModel(SelectedEntity->ModelID);
       if(SelectedModel->Skeleton)
       {
-        if(!SelectedEntity->AnimController && UI::Button("Add Anim. Controller"))
+        if(!SelectedEntity->AnimController && UI::Button("Add Animation Player"))
         {
           SelectedEntity->AnimController =
             PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
@@ -1393,29 +1407,31 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         }
         else if(SelectedEntity->AnimController &&
                 GameState->SelectedEntityIndex != GameState->AnimEditor.EntityIndex &&
-                UI::Button("Delete Anim. Controller"))
+                UI::Button("Delete Animattion Player"))
 
         {
-          // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimController and its arrays are still on
-          // the persistent stack
-          RemoveAnimationReferences(&GameState->Resources, SelectedEntity->AnimController);
-          SelectedEntity->AnimController = 0;
+          RemoveAnimationPlayerComponent(GameState, GameState->SelectedEntityIndex);
         }
         else if(SelectedEntity->AnimController)
         {
-          if(UI::Button("Animate Selected Entity"))
+					static bool s_ShowAnimtionPlayerComponent = true;
+					if(UI::CollapsingHeader("Animation Player Component", &s_ShowAnimtionPlayerComponent))
           {
-            GameState->SelectionMode = SELECT_Bone;
-            AttachEntityToAnimEditor(GameState, &GameState->AnimEditor,
-                                     GameState->SelectedEntityIndex);
-            // s_ShowAnimationEditor = true;
-          }
+            if(UI::Button("Animate Selected Entity"))
+            {
+              GameState->SelectionMode = SELECT_Bone;
+              AttachEntityToAnimEditor(GameState, &GameState->AnimEditor,
+                                       GameState->SelectedEntityIndex);
+              // s_ShowAnimationEditor = true;
+            }
+#if 0
           if(UI::Button("Play Animation"))
           {
             if(GameState->CurrentAnimationID.Value > 0)
             {
-              Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                    &GameState->Resources, &GameState->MMData);
+              assert(0 && "Reset Player not implemented");
+              /*Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
+                                    &GameState->Resources, &GameState->MMData);*/
               if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount ==
                  SelectedModel->Skeleton->BoneCount)
               {
@@ -1454,17 +1470,87 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
           if(UI::Button("Play as entity"))
           {
+            assert(0 && "Not Implemented");
+            /*
             Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                  &GameState->Resources, &GameState->MMData);
-            GameState->PlayerEntityIndex          = GameState->SelectedEntityIndex;
+                                  &GameState->Resources, &GameState->MMData);*/
+            GameState->PlayerEntityIndex = GameState->SelectedEntityIndex;
           }
           if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
           {
+            /*
+            Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
+                                  &GameState->Resources, &GameState->MMData);*/
+            assert(0 && "Not Implemented");
             if(UI::Button("Stop playing as entity"))
             {
+              /*
               Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                    &GameState->Resources, &GameState->MMData);
+                                    &GameState->Resources, &GameState->MMData); */
               GameState->PlayerEntityIndex = -1;
+            }
+          }
+#endif
+          }
+
+          {
+            // Outside data used
+            mm_entity_data&          MMEntityData        = GameState->MMEntityData;
+            int                      SelectedEntityIndex = GameState->SelectedEntityIndex;
+            const trajectory_system& TrajectorySystem    = GameState->TrajectorySystem;
+
+            // Actual UI
+            int32_t     MMControllerIndex           = -1;
+            static bool s_ShowMMControllerComponent = true;
+            if((MMControllerIndex = GetEntityMMDataIndex(SelectedEntityIndex, &MMEntityData)) == -1)
+            {
+              if(MMEntityData.Count < MM_CONTROLLER_MAX_COUNT &&
+                 UI::Button("Add Matched Animation Controller"))
+              {
+                MMEntityData.Count++;
+                mm_aos_entity_data MMControllerData =
+                  GetEntityAOSMMData(MMEntityData.Count - 1, &MMEntityData);
+
+                SetDefaultMMControllerFileds(&MMControllerData);
+                MMEntityData.EntityIndices[MMEntityData.Count - 1] = SelectedEntityIndex;
+              }
+            }
+            else if(UI::Button("Remove Matching Animation Controller"))
+            {
+              RemoveMMControllerDataAtIndex(MMControllerIndex, &MMEntityData);
+            }
+            else if(UI::CollapsingHeader("Matched Anim. Controller Component",
+                                         &s_ShowMMControllerComponent))
+            {
+              mm_aos_entity_data MMControllerData =
+                GetEntityAOSMMData(MMControllerIndex, &MMEntityData);
+              char TempBuffer[40];
+              sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
+              UI::Text(TempBuffer);
+
+              UI::Checkbox("Control From Spline", MMControllerData.FollowTrajectory);
+              if(*MMControllerData.FollowTrajectory == true)
+              {
+                static bool s_ShowTrajectoryControlParameters = true;
+                if(UI::CollapsingHeader("Trajectory Control Params",
+                                        &s_ShowTrajectoryControlParameters))
+                {
+                  UI::Combo("Follow Spline", &MMControllerData.TrajectoryState->SplineIndex,
+                            (const char**)&g_SplineIndexNames[0], TrajectorySystem.Splines.Count);
+                }
+              }
+              else
+              {
+                static bool s_ShowInputControlParameters = true;
+                if(UI::CollapsingHeader("Input Control Params", &s_ShowInputControlParameters))
+                {
+                  UI::SliderFloat("Maximum Speed", &MMControllerData.InputControlParams->MaxSpeed,
+                                  0.0f, 5.0f);
+                  UI::SliderFloat("Acceleration", &MMControllerData.InputControlParams->MaxSpeed,
+                                  0.0f, 10.0f);
+                  UI::Checkbox("Strafe", &MMControllerData.InputControlParams->UseStrafing);
+                }
+              }
             }
           }
         }

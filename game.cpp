@@ -187,24 +187,48 @@ RemoveAnimationReferences(Resource::resource_manager* Resources,
   }
 }
 
+void
+RemoveAnimationPlayerComponent(game_state* GameState, int32_t EntityIndex)
+{
+	entity* Entity;
+  assert(GetEntityAtIndex(GameState, &Entity, EntityIndex));
+	assert(Entity->AnimController);
+
+  // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimController and its arrays are still on
+  // the persistent stack
+  RemoveAnimationReferences(&GameState->Resources, Entity->AnimController);
+  int MMControllerDataIndex = GetEntityMMDataIndex(EntityIndex, &GameState->MMEntityData);
+  if(MMControllerDataIndex != -1)
+	{
+		RemoveMMControllerDataAtIndex(MMControllerDataIndex, &GameState->MMEntityData);
+	}
+	Entity->AnimController = NULL;
+
+  //assert(false && "Not Implemented");
+  // TODO(Lukas) redo this part after moving onto multiple MMData support
+  /*
+
+    if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
+    {
+      Gameplay::ResetPlayer(&GameState->Entities[Index], &GameState->PlayerBlendStack,
+                            &GameState->Resources, &GameState->MMData);
+      GameState->PlayerEntityIndex = -1;
+    }*/
+
+  // Will remove anything that was left
+  //RemoveAnimationReferences(&GameState->Resources, GameState->Entities[Index].AnimController);
+}
+
 bool
 DeleteEntity(game_state* GameState, int32_t Index)
 {
   if(0 <= Index && GameState->EntityCount)
   {
     GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
+
 		if(GameState->Entities[Index].AnimController)
     {
-
-      if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
-      {
-        Gameplay::ResetPlayer(&GameState->Entities[Index], &GameState->PlayerBlendStack,
-                              &GameState->Resources, &GameState->MMData);
-        GameState->PlayerEntityIndex = -1;
-      }
-
-			// Will remove anything that was left
-			RemoveAnimationReferences(&GameState->Resources, GameState->Entities[Index].AnimController);
+			RemoveAnimationPlayerComponent(GameState, Index);
     }
 
     GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
@@ -239,6 +263,7 @@ DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animatio
   assert(GameState->Entities[Editor->EntityIndex].AnimController);
   assert(Editor->Skeleton);
   memset(Editor, 0, sizeof(EditAnimation::animation_editor));
+	Editor->EntityIndex = -1;
 }
 
 bool

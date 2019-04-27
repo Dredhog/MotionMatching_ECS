@@ -580,8 +580,8 @@ UI::Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount
 }
 
 void
-UI::Combo(const char* Label, int* CurrentItem, void* Data, int ItemCount,
-          char* (*DataToText)(void*, int), int HeightInItems, float Width)
+UI::Combo(const char* Label, int* CurrentItem, const void* Data, int ItemCount,
+          const char* (*DataToText)(const void*, int), int HeightInItems, float Width)
 {
   gui_context& g      = *GetContext();
   gui_window*  Window = GetCurrentWindow();

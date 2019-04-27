@@ -23,6 +23,7 @@
 #include "ecs_management.h"
 #include "trajectory.h"
 #include "blend_stack.h"
+#include "motion_goal_system.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
@@ -62,14 +63,14 @@ struct game_state
   camera Camera;
   camera PreviewCamera;
 
-  trajectory_system TrajectorySystem;
-
   // Motion Matching
   mm_params          MMParams;
-	mm_controller_data MMData;
   mm_debug_settings  MMDebug;
   blend_stack        PlayerBlendStack;
   float              PlayerSpeed;
+
+  trajectory_system TrajectorySystem;
+  mm_entity_data    MMEntityData;
 
   bool UseHotReloading;
   bool UpdatePathList;
@@ -92,7 +93,7 @@ struct game_state
   int32_t EntityCount;
   int32_t SelectedEntityIndex;
   int32_t SelectedMeshIndex;
-  int32_t PlayerEntityIndex;
+  //int32_t PlayerEntityIndex;
   mat4    PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
 
   // Fonts/text
@@ -147,8 +148,7 @@ void     DrawSkeleton(const Anim::skeleton* Skeleton, const mat4* HierarchicalMo
 
 void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, transform Transform);
 bool DeleteEntity(game_state* GameState, int32_t Index);
-void RemoveAnimationReferences(Resource::resource_manager* Resources,
-                               Anim::animation_controller* Controller);
+void RemoveAnimationPlayerComponent(game_state* GameState, int32_t EntityIndex);
 bool GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex);
 void AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,
                               int32_t EntityIndex);

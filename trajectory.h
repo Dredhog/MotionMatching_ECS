@@ -3,7 +3,7 @@
 #include "basic_data_structures.h"
 
 #define WAYPOINT_CAPACITY_PER_TRAJECTORY 20
-#define TRAJECTORY_CAPACITY 10
+#define TRAJECTORY_CAPACITY 20
 
 struct waypoint
 {
