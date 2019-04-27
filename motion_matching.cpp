@@ -150,15 +150,15 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, array_handle<Anim::a
   return MMData;
 }
 
-//TODO(Lukas) Remove the CurrentVelocity (Only for debugging session)
 mm_frame_info
-GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
-          const Anim::animation_controller* Controller, vec3 DesiredVelocity, mm_params Params)
+GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t AnimStateIndex, bool Mirror,
+          const Anim::animation_controller* Controller, vec3 DesiredVelocity,
+          const mm_fixed_params& Params)
 {
   vec3          CurrentVelocity = {};
   mm_frame_info ResultInfo      = {};
 
-  GetPoseGoal(&ResultInfo, &CurrentVelocity, TempAlloc, CurrentAnimIndex, Mirror, Controller,
+  GetPoseGoal(&ResultInfo, &CurrentVelocity, TempAlloc, AnimStateIndex, Mirror, Controller,
               Params);
   GetLongtermGoal(&ResultInfo, CurrentVelocity, DesiredVelocity);
   return ResultInfo;
@@ -166,12 +166,12 @@ GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mir
 
 void
 GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
-            int32_t CurrentAnimIndex, bool Mirror, const Anim::animation_controller* Controller,
-            mm_params Params)
+            int32_t AnimStateIndex, bool Mirror, const Anim::animation_controller* Controller,
+            const mm_fixed_params& Params)
 {
   Memory::marker StackMarker = TempAlloc->GetMarker();
 
-  const Anim::animation* CurrentAnim = Controller->Animations[CurrentAnimIndex];
+  const Anim::animation* CurrentAnim = Controller->Animations[AnimStateIndex];
   assert(CurrentAnim);
 
   // Allocate temporary transforms and matrices
@@ -186,7 +186,7 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
   {
     // Sample the most recent animation's current frame
     {
-      float LocalTime = GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec);
+      float LocalTime = GetLocalSampleTime(Controller, AnimStateIndex, Controller->GlobalTimeSec);
       Anim::LinearAnimationSample(TempTransforms, CurrentAnim, LocalTime);
       Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
       Anim::ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
@@ -198,13 +198,13 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
 
     // Store the current positions
     {
-      for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
+      for(int b = 0; b < Params.ComparisonBoneIndices.Count; b++)
       {
         OutPose->BonePs[b] =
           Math::MulMat4(InvCurrentRootMatrix,
-                        Math::MulMat4(TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]],
+                        Math::MulMat4(TempMatrices[Params.ComparisonBoneIndices[b]],
                                       Controller->Skeleton
-                                        ->Bones[Params.FixedParams.ComparisonBoneIndices[b]]
+                                        ->Bones[Params.ComparisonBoneIndices[b]]
                                         .BindPose))
             .T;
       }
@@ -218,7 +218,7 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
     // Sample the most recent animation's next frame
     {
       float LocalTimeWithDelta =
-        GetLocalSampleTime(Controller, CurrentAnimIndex, Controller->GlobalTimeSec + Delta);
+        GetLocalSampleTime(Controller, AnimStateIndex, Controller->GlobalTimeSec + Delta);
       Anim::LinearAnimationSample(TempTransforms, CurrentAnim, LocalTimeWithDelta);
       Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Controller->Skeleton->BoneCount);
       ComputeModelSpacePoses(TempMatrices, TempMatrices, Controller->Skeleton);
@@ -231,13 +231,13 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
                                       Math::MulMat4(TempMatrices[HipIndex],
                                                     Controller->Skeleton->Bones[HipIndex]
                                                       .BindPose));
-      for(int b = 0; b < Params.FixedParams.ComparisonBoneIndices.Count; b++)
+      for(int b = 0; b < Params.ComparisonBoneIndices.Count; b++)
       {
         OutPose->BoneVs[b] =
           (Math::MulMat4(InvNextRootMatrix,
-                         Math::MulMat4(TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]],
+                         Math::MulMat4(TempMatrices[Params.ComparisonBoneIndices[b]],
                                        Controller->Skeleton
-                                         ->Bones[Params.FixedParams.ComparisonBoneIndices[b]]
+                                         ->Bones[Params.ComparisonBoneIndices[b]]
                                          .BindPose))
              .T -
            OutPose->BonePs[b]) /
@@ -250,7 +250,7 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
   if(Mirror)
   {
     vec3 MirrorMatDiagonal = { -1, 1, 1 };
-    MirrorGoalJoints(OutPose, MirrorMatDiagonal, Params.FixedParams);
+    MirrorGoalJoints(OutPose, MirrorMatDiagonal, Params);
     OutStartVelocity->X *= MirrorMatDiagonal.X;
   }
 

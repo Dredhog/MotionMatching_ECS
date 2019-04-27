@@ -94,10 +94,10 @@ mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAl
 //Goal generation (Not really part of motion matching
 mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
                         const Anim::animation_controller* Controller, vec3 DesiredVelocity,
-                        mm_params Params);
+                        const mm_fixed_params& Params);
 void GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
                  int32_t CurrentAnimIndex, bool Mirror,
-                 const Anim::animation_controller* Controller, mm_params Params);
+                 const Anim::animation_controller* Controller, const mm_fixed_params& Params);
 void GetLongtermGoal(mm_frame_info* OutTrajectory, vec3 StartVelocity, vec3 EndVelocity);
 void MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal,
                       const mm_fixed_params& Params);

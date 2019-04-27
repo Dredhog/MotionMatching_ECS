@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "basic_data_structures.h"
+#include "linear_math/vector.h"
 
 #define WAYPOINT_CAPACITY_PER_TRAJECTORY 20
 #define TRAJECTORY_CAPACITY 20

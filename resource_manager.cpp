@@ -486,6 +486,7 @@ namespace Resource
   CREATE_GET_FUNCTION(Render::model*, Model);
   CREATE_GET_FUNCTION(Anim::animation*, Animation);
   CREATE_GET_FUNCTION(material*, Material);
+  CREATE_GET_FUNCTION(mm_controller_data*, MMController);
 
 #define CREATE_GET_PATH_INDEX_FUNCTION(TYPE_NAME)                                                  \
   int32_t resource_manager::Get##TYPE_NAME##PathIndex(rid RID)                                     \

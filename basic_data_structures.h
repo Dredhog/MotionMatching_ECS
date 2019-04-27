@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include "string.h"
 
 template<typename T, typename IndexType = int32_t>
 struct array_handle
@@ -258,7 +259,7 @@ struct fixed_stack
   }
 
   T
-  Peek()
+  Peek() const
   {
     assert(0 < this->Count);
     return this->Elements[this->Count - 1];
@@ -406,7 +407,7 @@ struct circular_stack
   }
 
   T
-  PeekBack()
+  PeekBack() const
   {
     assert(0 < m_Count);
     T Result = m_Entries[m_StartIndex];
@@ -414,7 +415,7 @@ struct circular_stack
   }
 
   T
-  Peek()
+  Peek() const
   {
     assert(0 < m_Count);
     int Index = (m_StartIndex + Capacity + (m_Count - 1)) % Capacity;
