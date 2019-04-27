@@ -175,14 +175,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     entity*                    Entities     = GameState->Entities;
     Resource::resource_manager Resources    = GameState->Resources;
 
-    int FirstTrajecotryControlledIndex = SortMMEntityDataByTrajectoryUsage(&MMEntityData);
+    int InputControlledCount;
+    int FirstTrajecotryControlledIndex;
+    int TrajectoryControlledCount;
+    SortMMEntityDataByUsage(&InputControlledCount, &FirstTrajecotryControlledIndex,
+                            &TrajectoryControlledCount, &MMEntityData);
+    int TotalControllerCount = InputControlledCount + TrajectoryControlledCount;
 
-    FetchMMControllerDataPointers(&Resources, &MMEntityData.MMControllers[0],
-                                  &MMEntityData.MMControllerRIDs[0], MMEntityData.Count);
-    FetchAnimationPointers(&Resources, &MMEntityData.AnimControllers[0], MMEntityData.Count);
-
-    int InputControlledCount      = MMEntityData.Count - FirstTrajecotryControlledIndex;
-    int TrajectoryControlledCount = MMEntityData.Count - InputControlledCount;
+    FetchMMControllerDataPointers(&Resources, MMEntityData.MMControllers,
+                                  MMEntityData.MMControllerRIDs, TotalControllerCount);
+    FetchAnimationPointers(&Resources, MMEntityData.AnimControllers, TotalControllerCount);
 
     GenerateGoalsFromInput(&MMEntityData.AnimGoals[0], &MMEntityData.AnimControllers[0],
                            &MMEntityData.BlendStacks[0], InputControlledCount, Input);
@@ -191,11 +193,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                              &MMEntityData.AnimControllers[FirstTrajecotryControlledIndex],
                              &MMEntityData.BlendStacks[FirstTrajecotryControlledIndex],
                              TrajectoryControlledCount, Trajectories.Splines.Elements);
-    MotionMatchGoals(&MMEntityData.BlendStacks[0], &MMEntityData.AnimGoals[0], MMEntityData.Count);
-    ComputeRootMotion(&MMEntityData.OutDeltaRootMotions[0], &MMEntityData.BlendStacks[0],
-                      MMEntityData.Count);
+    MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.AnimGoals, TotalControllerCount);
+    ComputeRootMotion(MMEntityData.OutDeltaRootMotions, MMEntityData.BlendStacks,
+                      TotalControllerCount);
     ApplyRootMotion(Entities, MMEntityData.OutDeltaRootMotions, MMEntityData.EntityIndices,
-                    MMEntityData.Count);
+                    TotalControllerCount);
   }
 
   if(GameState->R.ShowLightPosition)

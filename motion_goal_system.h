@@ -195,36 +195,54 @@ GenerateGoalsFromSplines(mm_frame_info* OutGoals, const entity_trajectory_state*
   }
 }
 
-//Input controlled on the left, trajectory controlled on the right
-inline int32_t
-SortMMEntityDataByTrajectoryUsage(mm_entity_data* MMEntityData)
-{
-  int32_t ResultIndex = MMEntityData->Count;
 
+//Input controlled on the left, trajectory controlled on the right
+inline void
+SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectoryControlledStart,
+                        int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData)
+{
   for(int i = 0; i < MMEntityData->Count-1; i++)
   {
-    if(!MMEntityData->FollowTrajectory[i])
-      continue;
-
+		int SmallestIndex = i;
     for (int j = i + 1; j < MMEntityData->Count; j++)
     {
-      if(i != j && !MMEntityData->FollowTrajectory[j])
+      if(MMEntityData->MMControllerRIDs[j].Value > 0)
       {
-        mm_aos_entity_data A = GetEntityAOSMMData(i, MMEntityData);
-        mm_aos_entity_data B = GetEntityAOSMMData(j, MMEntityData);
-        SwapMMEntityData(&A, &B);
-        continue;
+        if(MMEntityData->MMControllerRIDs[SmallestIndex].Value <= 0)
+        {
+					SmallestIndex = j;
+				}
+        else if(!MMEntityData->FollowTrajectory[SmallestIndex] && MMEntityData->FollowTrajectory[j])
+        {
+          SmallestIndex = j;
+        }
       }
     }
+    if(SmallestIndex != i)
+    {
+      mm_aos_entity_data A = GetEntityAOSMMData(i, MMEntityData);
+      mm_aos_entity_data B = GetEntityAOSMMData(SmallestIndex, MMEntityData);
+      SwapMMEntityData(&A, &B);
+      continue;
+		}
   }
-	for(int i = 0; i < MMEntityData->Count; i++)
+	*OutInputControlledCount = 0;
+  *OutTrajectoryControlledStart = 0;
+  for(int i = 0; i < MMEntityData->Count; i++)
 	{
-		if(MMEntityData->FollowTrajectory[i])
+		if(MMEntityData->MMControllerRIDs[i].Value > 0)
 		{
-			ResultIndex = i;
+			if(MMEntityData->FollowTrajectory[i])
+			{
+        (*OutTrajectoryControlledStart)++;
+      }
+      else
+      {
+        (*OutInputControlledCount)++;
+      }
 		}
 	}
-	return ResultIndex;
+  *OutTrajectoryControlledStart = *OutInputControlledCount;
 }
 
 inline void
