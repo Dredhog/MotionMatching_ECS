@@ -18,20 +18,26 @@ namespace Resource
   resource_manager::Create(uint8_t* MemoryStart, uint32_t TotalMemorySize,
                            Memory::stack_allocator* TemporaryStack)
   {
-    *this                      = {};
-    uint32_t ModelHeapSize     = (uint32_t)((float)TotalMemorySize * 0.3f);
-    uint32_t AnimationHeapSize = (uint32_t)((float)TotalMemorySize * 0.6f);
-    uint32_t MaterialStackSize = TotalMemorySize - ModelHeapSize - AnimationHeapSize;
+    *this                         = {};
+    uint32_t ModelHeapSize        = (uint32_t)((float)TotalMemorySize * 0.35f);
+    uint32_t AnimationHeapSize    = (uint32_t)((float)TotalMemorySize * 0.3f);
+    uint32_t MMControllerHeapSize = (uint32_t)((float)TotalMemorySize * 0.3f);
+    uint32_t MaterialStackSize =
+      TotalMemorySize - ModelHeapSize - AnimationHeapSize - MMControllerHeapSize;
 
-    uint8_t* ModelHeapStart     = MemoryStart;
-    uint8_t* AnimationHeapStart = ModelHeapStart + ModelHeapSize;
-    uint8_t* MaterialStackStart = AnimationHeapStart + AnimationHeapSize;
+    uint8_t* ModelHeapStart        = MemoryStart;
+    uint8_t* AnimationHeapStart    = ModelHeapStart + ModelHeapSize;
+    uint8_t* MMControllerHeapStart = AnimationHeapStart + AnimationHeapSize;
+    uint8_t* MaterialStackStart    = MMControllerHeapStart + MMControllerHeapSize;
 
     this->ModelHeap.Create(ModelHeapStart, ModelHeapSize);
     this->ModelHeap.Clear();
 
     this->AnimationHeap.Create(AnimationHeapStart, AnimationHeapSize);
     this->ModelHeap.Clear();
+
+    this->MMControllerHeap.Create(MMControllerHeapStart, MMControllerHeapSize);
+    this->MMControllerHeap.Clear();
 
     this->MaterialStack.Create(MaterialStackStart, MaterialStackSize);
     this->MaterialStack.NullifyClear();
@@ -154,6 +160,36 @@ namespace Resource
   }
 
   bool
+  resource_manager::LoadMMController(rid RID)
+  {
+    mm_controller_data* Controller;
+    char*               Path;
+    if(this->MMControllers.Get(RID, &Controller, &Path))
+    {
+      if(Controller)
+      {
+        assert(0 && "Reloading MMController");
+      }
+      else
+      {
+        debug_read_file_result AssetReadResult =
+          Platform::ReadEntireFile(&this->MMControllerHeap, Path);
+
+        assert(AssetReadResult.Contents);
+        if(AssetReadResult.ContentsSize <= 0 || AssetReadResult.Contents == NULL)
+        {
+          return false;
+        }
+				assert(0 && "Please implement remapping of paths to animation RIDs");
+        Controller = (mm_controller_data*)AssetReadResult.Contents;
+        this->MMControllers.Set(RID, Controller, Path);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  bool
   resource_manager::LoadMaterial(rid RID)
   {
     material* Material;
@@ -226,6 +262,16 @@ namespace Resource
   }
 
   void
+  resource_manager::WipeAllMMControllerData()
+  {
+    for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
+    {
+      this->FreeMMController({ i + 1 });
+    }
+    this->MMControllers.Reset();
+  }
+
+  void
   resource_manager::WipeAllModelData()
   {
     for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
@@ -286,6 +332,26 @@ namespace Resource
         this->AnimationHeap.Dealloc((uint8_t*)Animation - sizeof(Anim::animation_group) -
                                     sizeof(Anim::animation*));
         this->Animations.SetAsset(RID, NULL);
+      }
+    }
+  }
+
+  void
+  resource_manager::FreeMMController(rid RID)
+  {
+    mm_controller_data* Controller;
+    char*            Path;
+    if(this->MMControllers.Get(RID, &Controller, &Path))
+    {
+      if(Controller)
+      {
+				for(int i = 0; i < Controller->Params.AnimRIDs.Count; i++)
+				{
+          this->Animations.RemoveReference(Controller->Params.AnimRIDs[i]);
+        }
+
+        this->MMControllerHeap.Dealloc((uint8_t*)Controller);
+        this->MMControllers.SetAsset(RID, NULL);
       }
     }
   }

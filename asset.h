@@ -24,9 +24,10 @@ namespace Asset
   void UnpackAnimationGroup(Anim::animation_group* AnimationGroup);
 
   void ExportAnimationGroup(Memory::stack_allocator*               Alloc,
-                            const EditAnimation::animation_editor* AnimEditor, const char* FileName);
-  //void ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group** OutputAnimGroup,
-                            //const char* FileName);
+                            const EditAnimation::animation_editor* AnimEditor,
+                            const char*                            FileName);
+  // void ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_group**
+  // OutputAnimGroup,  const char* FileName);
   void ExportMMParams(const mm_params* Params, const char* FileName);
   void ImportMMParams(Memory::stack_allocator* Alloc, mm_params* OutParams, const char* FileName);
 }

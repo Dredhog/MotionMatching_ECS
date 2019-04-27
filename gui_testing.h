@@ -26,10 +26,9 @@ BoneArrayToString(const void* Data, int Index)
   return Bones[Index].Name;
 }
 
-char* g_SplineIndexNames[TRAJECTORY_CAPACITY] =  {
-  "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17",
-    "18", "19"
-};
+char* g_SplineIndexNames[TRAJECTORY_CAPACITY] = { "0",  "1",  "2",  "3",  "4",  "5",  "6",
+                                                  "7",  "8",  "9",  "10", "11", "12", "13",
+                                                  "14", "15", "16", "17", "18", "19" };
 
 const char*
 SplineArrayToString(const void* Data, int Index)
@@ -86,7 +85,8 @@ TestGui(game_state* GameState, const game_input* Input)
     MaterialGUI(GameState, s_ShowMaterialEditor);
     AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
     MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings,
-            s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowECSData, s_ShowTrajectorySetting);
+            s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowECSData,
+            s_ShowTrajectorySetting);
   }
   UI::EndWindow();
 
@@ -461,7 +461,7 @@ TestGui(game_state* GameState, const game_input* Input)
                 float ComponentOffsetInPixels = PixelsPerByte * (float)ComponentOffset.Offset;
                 float AlignmentWidth          = ComponentOffsetInPixels - CurrentPos;
 
-								UI::Dummy(AlignmentWidth);
+                UI::Dummy(AlignmentWidth);
                 UI::SameLine();
 
                 float ComponentWidth =
@@ -550,8 +550,8 @@ TestGui(game_state* GameState, const game_input* Input)
         static bool s_Checkbox1 = false;
 
         {
-					UI::gui_style& Style     = *UI::GetStyle();
-          int32_t    Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
+          UI::gui_style& Style     = *UI::GetStyle();
+          int32_t        Thickness = (int32_t)Style.Vars[UI::VAR_BorderThickness];
           UI::SliderInt("Border Thickness ", &Thickness, 0, 10);
           Style.Vars[UI::VAR_BorderThickness] = Thickness;
 
@@ -611,7 +611,6 @@ TestGui(game_state* GameState, const game_input* Input)
   if(s_ShowMotionMatchingWindow)
   {
     UI::BeginWindow("Motion Matching", { 100, 20 }, { 700, 700 });
-
     {
       static int SelectedParamPathIndex = 0;
       UI::Combo("Import Path", &SelectedParamPathIndex, GameState->Resources.MMParamPaths,
@@ -623,9 +622,9 @@ TestGui(game_state* GameState, const game_input* Input)
           Asset::ImportMMParams(GameState->TemporaryMemStack, &GameState->MMParams,
                                 GameState->Resources.MMParamPaths[SelectedParamPathIndex].Name);
           // Set the animation RIDs from the paths
-					
-					GameState->MMParams.AnimRIDs.HardClear();
-					for(int i = 0; i < GameState->MMParams.AnimPaths.Count; i++)
+
+          GameState->MMParams.AnimRIDs.HardClear();
+          for(int i = 0; i < GameState->MMParams.AnimPaths.Count; i++)
           {
             GameState->MMParams.AnimRIDs.Push(
               GameState->Resources.ObtainAnimationPathRID(GameState->MMParams.AnimPaths[i].Name));
@@ -635,9 +634,9 @@ TestGui(game_state* GameState, const game_input* Input)
 
       if(UI::Button("Save Current Parameters"))
       {
-				GameState->MMParams.AnimPaths.HardClear();
+        GameState->MMParams.AnimPaths.HardClear();
         // Set the paths from the animation RIDs
-				for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
+        for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
         {
           int PathIndex =
             GameState->Resources.GetAnimationPathIndex(GameState->MMParams.AnimRIDs[i]);
@@ -646,45 +645,48 @@ TestGui(game_state* GameState, const game_input* Input)
         Asset::ExportMMParams(&GameState->MMParams, "data/matching_params/test.params");
       }
     }
-    {
-      UI::SliderFloat("Trajectory Duration (sec)", &GameState->MMDebug.TrajectoryDuration, 0, 10);
-      UI::SliderInt("Trajectory Sample Count", &GameState->MMDebug.TrajectorySampleCount, 2, 40);
-      UI::SliderFloat("Player Speed (m/s)", &GameState->PlayerSpeed, 0, 10);
-      UI::SliderFloat("Bone Position Influence",
-                      &GameState->MMParams.DynamicParams.BonePCoefficient, 0, 5);
-      UI::SliderFloat("Bone Velocity Influence",
-                      &GameState->MMParams.DynamicParams.BoneVCoefficient, 0, 5);
-      UI::SliderFloat("Trajectory Position Influence",
-                      &GameState->MMParams.DynamicParams.TrajPCoefficient, 0, 1);
-      UI::SliderFloat("Trajectory Velocity Influence",
-                      &GameState->MMParams.DynamicParams.TrajVCoefficient, 0, 1);
-      UI::SliderFloat("Trajectory Angle Influence",
-                      &GameState->MMParams.DynamicParams.TrajAngleCoefficient, 0, 1);
-      UI::SliderFloat("BlendInTime", &GameState->MMParams.DynamicParams.BelndInTime, 0, 1);
-      UI::SliderFloat("Min Time Offset Threshold",
-                      &GameState->MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 1);
 
+
+    {
+      mm_params& MMParams = GameState->MMParams;
+      mm_debug_settings& MMDebug = GameState->MMDebug;
+
+      UI::SliderFloat("Bone Position Influence",
+                      &MMParams.DynamicParams.BonePCoefficient, 0, 5);
+      UI::SliderFloat("Bone Velocity Influence",
+                      &MMParams.DynamicParams.BoneVCoefficient, 0, 5);
+      UI::SliderFloat("Trajectory Position Influence",
+                      &MMParams.DynamicParams.TrajPCoefficient, 0, 1);
+      UI::SliderFloat("Trajectory Velocity Influence",
+                      &MMParams.DynamicParams.TrajVCoefficient, 0, 1);
+      UI::SliderFloat("Trajectory Angle Influence",
+                      &MMParams.DynamicParams.TrajAngleCoefficient, 0, 1);
+      UI::SliderFloat("BlendInTime", &MMParams.DynamicParams.BelndInTime, 0, 1);
+      UI::SliderFloat("Min Time Offset Threshold",
+                      &MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 1);
       UI::Checkbox("Match MirroredAnimations",
-                   &GameState->MMParams.DynamicParams.MatchMirroredAnimations);
+                   &MMParams.DynamicParams.MatchMirroredAnimations);
       UI::Text("Debug Display");
-      UI::Checkbox("Show Root Trajectory", &GameState->MMDebug.ShowRootTrajectories);
-      UI::Checkbox("Show Hip Trajectory", &GameState->MMDebug.ShowHipTrajectories);
-      UI::Checkbox("Apply Root Motion", &GameState->MMDebug.ApplyRootMotion);
+      UI::SliderFloat("Trajectory Duration (sec)", &MMDebug.TrajectoryDuration, 0, 10);
+      UI::SliderInt("Trajectory Sample Count", &MMDebug.TrajectorySampleCount, 2, 40);
+      UI::Checkbox("Show Root Trajectory", &MMDebug.ShowRootTrajectories);
+      UI::Checkbox("Show Hip Trajectory", &MMDebug.ShowHipTrajectories);
+      UI::Checkbox("Apply Root Motion", &MMDebug.ApplyRootMotion);
       UI::Text("Current Goal");
-      UI::Checkbox("Show Current Goal", &GameState->MMDebug.CurrentGoal.ShowTrajectory);
+      UI::Checkbox("Show Current Goal", &MMDebug.CurrentGoal.ShowTrajectory);
       UI::Checkbox("Show Current Goal Directions",
-                   &GameState->MMDebug.CurrentGoal.ShowTrajectoryAngles);
-      UI::Checkbox("Show Current Positions", &GameState->MMDebug.CurrentGoal.ShowBonePositions);
-      UI::Checkbox("Show Current Velocities", &GameState->MMDebug.CurrentGoal.ShowBoneVelocities);
+                   &MMDebug.CurrentGoal.ShowTrajectoryAngles);
+      UI::Checkbox("Show Current Positions", &MMDebug.CurrentGoal.ShowBonePositions);
+      UI::Checkbox("Show Current Velocities", &MMDebug.CurrentGoal.ShowBoneVelocities);
       UI::Text("Matched Goal");
-      UI::Checkbox("Show Matched Goal", &GameState->MMDebug.MatchedGoal.ShowTrajectory);
+      UI::Checkbox("Show Matched Goal", &MMDebug.MatchedGoal.ShowTrajectory);
       UI::Checkbox("Show Matched Goal Directions",
-                   &GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles);
-      UI::Checkbox("Show Matched Positions", &GameState->MMDebug.MatchedGoal.ShowBonePositions);
-      UI::Checkbox("Show Matched Velocities", &GameState->MMDebug.MatchedGoal.ShowBoneVelocities);
+                   &MMDebug.MatchedGoal.ShowTrajectoryAngles);
+      UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
+      UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
 
       UI::SliderFloat("Metadata Sampling Frequency",
-                      &GameState->MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
+                      &MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
     }
     entity* SelectedEntity = {};
     if(GetSelectedEntity(GameState, &SelectedEntity) && SelectedEntity->AnimController &&
@@ -715,21 +717,6 @@ TestGui(game_state* GameState, const game_input* Input)
         for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
         {
           bool DeleteCurrent = UI::Button("Delete", 0, i);
-          /*if(!DeleteCurrent)
-          {
-            entity* SelectedEntity = {};
-            if(GetSelectedEntity(GameState, &SelectedEntity))
-            {
-              if(SelectedEntity->AnimController)
-              {
-                UI::SameLine();
-                if(UI::Button("Preview", 0, i))
-                {
-                  Gameplay::ResetPlayer(SelectedEntity, &GameState->Resources, &GameState->MMData);
-                }
-              }
-            }
-          }*/
           UI::SameLine();
           {
             char* Path;
@@ -1217,6 +1204,7 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             GameState->Resources.CreateMaterial(*CurrentMaterial, NULL);
           printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
         }
+
           // Bad Idea, because texture RIDs cannot be 0
 #if 0
         UI::SameLine();
@@ -1319,11 +1307,11 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         UI::DragFloat3("Translation", (float*)&Transform->T, -INFINITY, INFINITY, 10);
         // UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
         UI::DragFloat3("Scale", (float*)&Transform->S, -INFINITY, INFINITY, 10.0f);
-			}
+      }
 
       static bool s_ShowPhysicsComponent = false;
       if(UI::CollapsingHeader("Physics Component", &s_ShowPhysicsComponent))
-        // Rigid Body
+      // Rigid Body
       {
         rigid_body* RB = &SelectedEntity->RigidBody;
         // UI::DragFloat3("X", &RB->X.X, -INFINITY, INFINITY, 10);
@@ -1414,8 +1402,8 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         }
         else if(SelectedEntity->AnimController)
         {
-					static bool s_ShowAnimtionPlayerComponent = true;
-					if(UI::CollapsingHeader("Animation Player Component", &s_ShowAnimtionPlayerComponent))
+          static bool s_ShowAnimtionPlayerComponent = true;
+          if(UI::CollapsingHeader("Animation Player Component", &s_ShowAnimtionPlayerComponent))
           {
             if(UI::Button("Animate Selected Entity"))
             {
@@ -1546,8 +1534,8 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 {
                   UI::SliderFloat("Maximum Speed", &MMControllerData.InputControlParams->MaxSpeed,
                                   0.0f, 5.0f);
-                  UI::SliderFloat("Acceleration", &MMControllerData.InputControlParams->MaxSpeed,
-                                  0.0f, 10.0f);
+                  UI::SliderFloat("Acceleration",
+                                  &MMControllerData.InputControlParams->Acceleration, 0.0f, 10.0f);
                   UI::Checkbox("Strafe", &MMControllerData.InputControlParams->UseStrafing);
                 }
               }
@@ -1713,7 +1701,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         GameState->TrajectorySystem.Splines.Push({});
         GameState->TrajectorySystem.SelectedSplineIndex =
           GameState->TrajectorySystem.Splines.Count - 1;
-				GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+        GameState->TrajectorySystem.SelectedWaypointIndex = -1;
       }
     }
     else

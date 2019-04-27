@@ -70,7 +70,7 @@ namespace Resource
     void FreeModel(rid RID);
     void FreeAnimation(rid RID);
     void FreeShader(rid RID);
-    bool FreeMMController(rid RID);
+    void FreeMMController(rid RID);
 
     GLuint DefaultShaderID;
 

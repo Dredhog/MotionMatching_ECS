@@ -2,8 +2,7 @@
 
 #include "file_io.h"
 
-void
-Asset::PackModel(Render::model* Model)
+void Asset::PackModel(Render::model* Model)
 {
   uint64_t Base = (uint64_t)Model;
   for(int i = 0; i < Model->MeshCount; i++)
@@ -148,6 +147,7 @@ Asset::ImportMMParams(Memory::stack_allocator* Alloc, mm_params* OutParams, cons
   memcpy(OutParams, ReadFile.Contents, sizeof(mm_params));
 
 	Alloc->FreeToMarker(MemoryStart);
+
 }
 
 #if 0
