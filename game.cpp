@@ -188,7 +188,8 @@ RemoveAnimationReferences(Resource::resource_manager* Resources,
 }
 
 void
-RemoveAnimationPlayerComponent(game_state* GameState, int32_t EntityIndex)
+RemoveAnimationPlayerComponent(game_state* GameState, Resource::resource_manager* Resources,
+                               int32_t EntityIndex)
 {
 	entity* Entity;
   assert(GetEntityAtIndex(GameState, &Entity, EntityIndex));
@@ -200,8 +201,8 @@ RemoveAnimationPlayerComponent(game_state* GameState, int32_t EntityIndex)
   int MMControllerDataIndex = GetEntityMMDataIndex(EntityIndex, &GameState->MMEntityData);
   if(MMControllerDataIndex != -1)
 	{
-		RemoveMMControllerDataAtIndex(MMControllerDataIndex, &GameState->MMEntityData);
-	}
+    RemoveMMControllerDataAtIndex(MMControllerDataIndex, Resources, &GameState->MMEntityData);
+  }
 	Entity->AnimController = NULL;
 
   //assert(false && "Not Implemented");
@@ -220,7 +221,7 @@ RemoveAnimationPlayerComponent(game_state* GameState, int32_t EntityIndex)
 }
 
 bool
-DeleteEntity(game_state* GameState, int32_t Index)
+DeleteEntity(game_state* GameState, Resource::resource_manager* Resources, int32_t Index)
 {
   if(0 <= Index && GameState->EntityCount)
   {
@@ -228,7 +229,7 @@ DeleteEntity(game_state* GameState, int32_t Index)
 
 		if(GameState->Entities[Index].AnimController)
     {
-			RemoveAnimationPlayerComponent(GameState, Index);
+      RemoveAnimationPlayerComponent(GameState, Resources, Index);
     }
 
     GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];

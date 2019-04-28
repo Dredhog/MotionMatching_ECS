@@ -187,8 +187,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     FetchMMControllerDataPointers(&Resources, MMEntityData.MMControllers,
                                   MMEntityData.MMControllerRIDs, TotalControllerCount);
+    FetchAnimControllerPointers(MMEntityData.AnimControllers, MMEntityData.EntityIndices, Entities,
+                                TotalControllerCount);
     FetchAnimationPointers(&Resources, MMEntityData.MMControllers, TotalControllerCount);
-
+    PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.AnimControllers,
+                                   MMEntityData.MMControllers, TotalControllerCount);
     GenerateGoalsFromInput(TempStack, &MMEntityData.AnimGoals[0], &MMEntityData.BlendStacks[0],
                            &MMEntityData.AnimControllers[0], &MMEntityData.MMControllers[0],
                            &MMEntityData.InputControlParams[0], InputControlledCount, Input,

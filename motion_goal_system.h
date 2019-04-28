@@ -69,7 +69,6 @@ struct mm_aos_entity_data
   mm_frame_info* const               AnimGoal;
 };
 
-
 inline void
 SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
 {
@@ -157,10 +156,15 @@ CopyMMEntityData(int32_t DestIndex, int32_t SourceIndex, mm_entity_data* MMEntit
 }
 
 inline void
-RemoveMMControllerDataAtIndex(int32_t MMControllerIndex, mm_entity_data* MMEntityData)
+RemoveMMControllerDataAtIndex(int32_t MMControllerIndex, Resource::resource_manager* Resources,
+                              mm_entity_data* MMEntityData)
 {
   assert(0 <= MMControllerIndex && MMControllerIndex < MMEntityData->Count);
   mm_aos_entity_data RemovedController = GetEntityAOSMMData(MMControllerIndex, MMEntityData);
+  if(RemovedController.MMControllerRID->Value > 0)
+  {
+    Resources->MMControllers.RemoveReference(*RemovedController.MMControllerRID);
+  }
   // TODO(Lukas) remove any assocaited data references e.g. resource references
   mm_aos_entity_data LastController = GetEntityAOSMMData(MMEntityData->Count - 1, MMEntityData);
   CopyAOSMMEntityData(&RemovedController, &LastController);
@@ -252,6 +256,17 @@ FetchMMControllerDataPointers(Resource::resource_manager* Resources,
 }
 
 inline void
+FetchAnimControllerPointers(Anim::animation_controller** OutAnimControllers,
+                            const int32_t* EntityIndices, const entity* Entities, int32_t Count)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    OutAnimControllers[i] = Entities[EntityIndices[i]].AnimController;
+    assert(OutAnimControllers[i]);
+  }
+}
+
+inline void
 FetchAnimationPointers(Resource::resource_manager* Resources, mm_controller_data** MMControllers,
                        int32_t Count)
 {
@@ -263,6 +278,25 @@ FetchAnimationPointers(Resource::resource_manager* Resources, mm_controller_data
       Anim::animation* Anim = Resources->GetAnimation(MMControllers[i]->Params.AnimRIDs[j]);
       assert(Anim);
       MMControllers[i]->Animations.Push(Anim);
+    }
+  }
+}
+
+inline void
+PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, Anim::animation_controller** ACs,
+                               const mm_controller_data* const* MMControllers, int32_t Count)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    if(BSs[i].Empty())
+    {
+      const int   IndexInSet     = 0;
+      const float LocalStartTime = 0.0f;
+      const float BlendInTime    = 0.0f;
+      const bool  Mirror         = false;
+      PlayAnimation(ACs[i], &BSs[i], MMControllers[i]->Params.AnimRIDs[IndexInSet], IndexInSet,
+                    LocalStartTime, BlendInTime, Mirror);
+      ACs[i]->Animations[BSs[i].Peek().AnimStateIndex] = MMControllers[i]->Animations[IndexInSet];
     }
   }
 }
@@ -352,12 +386,11 @@ ComputeLocalRootMotion(transform*                               OutDeltaRootMoti
                        const Anim::animation_controller* const* AnimControllers,
                        const blend_stack* BlendStacks, int32_t Count, float dt)
 {
-	for(int i =0; i < Count; i++)
-	{
-    blend_in_info    AnimBlend = BlendStacks[i].Peek();
-    Anim::animation* RootMotionAnim =
-      AnimControllers[i]->Animations[AnimBlend.AnimStateIndex];
-    float LocalSampleTime =
+  for(int i = 0; i < Count; i++)
+  {
+    blend_in_info    AnimBlend      = BlendStacks[i].Peek();
+    Anim::animation* RootMotionAnim = AnimControllers[i]->Animations[AnimBlend.AnimStateIndex];
+    float            LocalSampleTime =
       Anim::GetLocalSampleTime(RootMotionAnim,
                                &AnimControllers[i]->States[AnimBlend.AnimStateIndex],
                                AnimControllers[i]->GlobalTimeSec);

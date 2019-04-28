@@ -19,9 +19,9 @@ namespace Resource
                            Memory::stack_allocator* TemporaryStack)
   {
     *this                         = {};
-    uint32_t ModelHeapSize        = (uint32_t)((float)TotalMemorySize * 0.35f);
-    uint32_t AnimationHeapSize    = (uint32_t)((float)TotalMemorySize * 0.3f);
-    uint32_t MMControllerHeapSize = (uint32_t)((float)TotalMemorySize * 0.3f);
+    uint32_t ModelHeapSize        = (uint32_t)((float)TotalMemorySize * 0.2f);
+    uint32_t AnimationHeapSize    = (uint32_t)((float)TotalMemorySize * 0.7f);
+    uint32_t MMControllerHeapSize = (uint32_t)((float)TotalMemorySize * 0.05f);
     uint32_t MaterialStackSize =
       TotalMemorySize - ModelHeapSize - AnimationHeapSize - MMControllerHeapSize;
 
@@ -554,7 +554,7 @@ namespace Resource
     this->DiffedMMControllerCount =
       Platform::ReadPaths(this->DiffedMMControllers, this->MMControllerPaths,
                           this->MMControllerStats, RESOURCE_MAX_COUNT, &this->MMControllerPathCount,
-                          "data/matching_params", NULL);
+                          "data/matching_params", "controller");
     this->DiffedMMParamCount =
       Platform::ReadPaths(this->DiffedMMParams, this->MMParamPaths, this->MMParamStats,
                           RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/matching_params",

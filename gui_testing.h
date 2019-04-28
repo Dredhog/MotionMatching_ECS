@@ -1144,7 +1144,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       UI::SameLine();
       if(UI::Button("Delete Entity"))
       {
-        DeleteEntity(GameState, GameState->SelectedEntityIndex);
+        DeleteEntity(GameState, &GameState->Resources, GameState->SelectedEntityIndex);
         GameState->SelectedEntityIndex = -1;
       }
       UI::NewLine();
@@ -1247,7 +1247,8 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 UI::Button("Delete Animattion Player"))
 
         {
-          RemoveAnimationPlayerComponent(GameState, GameState->SelectedEntityIndex);
+          RemoveAnimationPlayerComponent(GameState, &GameState->Resources,
+                                         GameState->SelectedEntityIndex);
         }
         else if(SelectedEntity->AnimController)
         {
@@ -1356,7 +1357,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             }
             else if(UI::Button("Remove Matching Animation Controller"))
             {
-              RemoveMMControllerDataAtIndex(MMControllerIndex, &MMEntityData);
+              RemoveMMControllerDataAtIndex(MMControllerIndex, Resources, &MMEntityData);
             }
             else if(UI::CollapsingHeader("Matched Anim. Controller Component",
                                          &s_ShowMMControllerComponent))
@@ -1382,10 +1383,12 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 if(MMController->Params.FixedParams.Skeleton.BoneCount == Skeleton->BoneCount)
                 {
                   *MMControllerData.MMControllerRID = NewRID;
+                  Resources->MMControllers.AddReference(NewRID);
                 }
               }
-              else if(NewPathIndex == -1)
+              else if(NewPathIndex == -1 && MMControllerData.MMControllerRID->Value > 0)
               {
+                Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
                 *MMControllerData.MMControllerRID = {};
               }
 
