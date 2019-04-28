@@ -124,6 +124,7 @@ namespace Resource
     bool GetTexturePathRID(rid* RID, const char* Path);
     bool GetAnimationPathRID(rid* RID, const char* Path);
     bool GetMaterialPathRID(rid* RID, const char* Path);
+    bool GetMMControllerPathRID(rid* RID, const char* Path);
 
     // TODO(Lukas) expand the GetPathRID API to do perform this as this use case is extremely common
     // If fail to find path register with a new ID
@@ -136,6 +137,7 @@ namespace Resource
     int32_t GetTexturePathIndex(rid RID);
     int32_t GetMaterialPathIndex(rid RID);
     int32_t GetAnimationPathIndex(rid RID);
+    int32_t GetMMControllerPathIndex(rid RID);
 
     Render::model*      GetModel(rid RID);
     uint32_t            GetTexture(rid RID);

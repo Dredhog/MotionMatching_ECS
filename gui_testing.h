@@ -1332,9 +1332,11 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
           {
             // Outside data used
-            mm_entity_data&          MMEntityData        = GameState->MMEntityData;
-            int                      SelectedEntityIndex = GameState->SelectedEntityIndex;
-            const trajectory_system& TrajectorySystem    = GameState->TrajectorySystem;
+            mm_entity_data&             MMEntityData        = GameState->MMEntityData;
+            int                         SelectedEntityIndex = GameState->SelectedEntityIndex;
+            const trajectory_system&    TrajectorySystem    = GameState->TrajectorySystem;
+            Resource::resource_manager* Resources           = &GameState->Resources;
+            const Anim::skeleton*       Skeleton = SelectedEntity->AnimController->Skeleton;
 
             // Actual UI
             int32_t     MMControllerIndex           = -1;
@@ -1361,6 +1363,32 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             {
               mm_aos_entity_data MMControllerData =
                 GetEntityAOSMMData(MMControllerIndex, &MMEntityData);
+
+              // Pick the mm controller
+              int32_t ControllerPathIndex = -1;
+              if(MMControllerData.MMControllerRID->Value > 0)
+              {
+                ControllerPathIndex =
+                  Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
+              }
+              int NewPathIndex = ControllerPathIndex;
+              UI::Combo("Controller", &NewPathIndex, Resources->MMControllerPaths,
+                        Resources->MMControllerPathCount, PathArrayToString);
+              if(NewPathIndex != ControllerPathIndex && NewPathIndex != -1)
+              {
+                rid NewRID = Resources->ObtainMMControllerPathRID(
+                  Resources->MMControllerPaths[NewPathIndex].Name);
+                mm_controller_data* MMController = Resources->GetMMController(NewRID);
+                if(MMController->Params.FixedParams.Skeleton.BoneCount == Skeleton->BoneCount)
+                {
+                  *MMControllerData.MMControllerRID = NewRID;
+                }
+              }
+              else if(NewPathIndex == -1)
+              {
+                *MMControllerData.MMControllerRID = {};
+              }
+
               char TempBuffer[40];
               sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
               UI::Text(TempBuffer);

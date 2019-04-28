@@ -520,6 +520,7 @@ namespace Resource
   CREATE_GET_PATH_INDEX_FUNCTION(Material);
   CREATE_GET_PATH_INDEX_FUNCTION(Animation);
   // CREATE_GET_PATH_INDEX_FUNCTION(Model);
+  CREATE_GET_PATH_INDEX_FUNCTION(MMController);
 
   void
   resource_manager::UpdateHardDriveAssetPathLists()
@@ -549,11 +550,15 @@ namespace Resource
     this->DiffedShaderCount =
       Platform::ReadPaths(this->DiffedShaders, this->ShaderPaths, this->ShaderStats,
                           RESOURCE_MAX_COUNT, &this->ShaderPathCount, "shaders", NULL);
-		
-    // Update shader paths
-    this->DiffedShaderCount =
+
+    this->DiffedMMControllerCount =
+      Platform::ReadPaths(this->DiffedMMControllers, this->MMControllerPaths,
+                          this->MMControllerStats, RESOURCE_MAX_COUNT, &this->MMControllerPathCount,
+                          "data/matching_params", NULL);
+    this->DiffedMMParamCount =
       Platform::ReadPaths(this->DiffedMMParams, this->MMParamPaths, this->MMParamStats,
-                          RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/matching_params", NULL);
+                          RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/matching_params",
+                          NULL);
 
     this->SortAllAssetDiffsPathsStats();
   }
@@ -604,6 +609,12 @@ namespace Resource
                         this->TexturePathCount);
     SortAssetInfoByPath(this->DiffedScenes, this->ScenePaths, this->SceneStats,
                         this->ScenePathCount);
+    SortAssetInfoByPath(this->DiffedShaders, this->ShaderPaths, this->ShaderStats,
+                        this->ShaderPathCount);
+    SortAssetInfoByPath(this->DiffedMMParams, this->MMParamPaths, this->MMParamStats,
+                        this->MMParamPathCount);
+    SortAssetInfoByPath(this->DiffedMMControllers, this->MMControllerPaths, this->MMControllerStats,
+                        this->MMControllerPathCount);
   }
 
   void

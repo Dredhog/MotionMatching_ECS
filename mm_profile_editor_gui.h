@@ -54,11 +54,23 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
   static bool s_SkeletonMirrorInfoDropdown                       = false;
   static bool s_MatchingPointSelectionDropdown                   = false;
 
+  // THE LOAD/EXTRACT TEMPLATE BUTTON
+  const char* ButtonText = (TargetPathIndex == -1)
+                             ? "New Template    "
+                             : ((TargetIsTemplate) ? "Load Template   " : "Extract Template");
+  if(UI::Button(ButtonText))
+  {
+    // UPDATING MMEditor.ActiveProfile
+    MMEditor->ActiveProfile = MMEditor->SelectedProfile;
+  }
+
   // UPDATING MMEditor.SelectedProfile
   {
+    UI::SameLine();
     int NewTargetPathIndex = TargetPathIndex;
     UI::Combo("Target File", &NewTargetPathIndex, Resources->MMParamPaths,
               Resources->MMParamPathCount, PathArrayToString);
+    UI::NewLine();
     if(NewTargetPathIndex != TargetPathIndex)
     {
       if(NewTargetPathIndex != -1)
@@ -103,37 +115,33 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
     TargetPathIndex = NewTargetPathIndex;
   }
 
-  // THE LOAD/EXTRACT TEMPLATE BUTTON
-  const char* ButtonText = (TargetIsTemplate) ? "Load Template   " : "Extract Template";
-  if(UI::Button(ButtonText))
-  {
-    // UPDATING MMEditor.ActiveProfile
-    MMEditor->ActiveProfile = MMEditor->SelectedProfile;
-  }
 
   // Set skeleton if not already set. Otherwise give a red "switch target" button
-  if(MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount <= 0)
   {
     static int32_t ActiveModelPathIndex = -1;
-    UI::Combo("Target Skeleton", &ActiveModelPathIndex, Resources->ModelPaths,
+		int32_t NewModelPathIndex = ActiveModelPathIndex;
+    UI::Combo("Target Skeleton", &NewModelPathIndex, Resources->ModelPaths,
               Resources->ModelPathCount, PathArrayToString);
-    if(ActiveModelPathIndex != -1)
+    if(NewModelPathIndex != -1 && NewModelPathIndex != ActiveModelPathIndex)
     {
-      rid TargetModelRID =
-        Resources->ObtainModelPathRID(Resources->ModelPaths[ActiveModelPathIndex].Name);
+      rid TargetModelRID = Resources->ObtainModelPathRID(Resources->ModelPaths[NewModelPathIndex].Name);
       Render::model* TargetModel = Resources->GetModel(TargetModelRID);
       if(TargetModel->Skeleton)
       {
+        ResetMMParamsToDefault(&MMEditor->ActiveProfile);
+
         memcpy(&MMEditor->ActiveProfile.FixedParams.Skeleton, TargetModel->Skeleton,
                sizeof(Anim::skeleton));
         GenerateSkeletonMirroringInfo(&MMEditor->ActiveProfile.DynamicParams.MirrorInfo,
                                       &MMEditor->ActiveProfile.FixedParams.Skeleton);
       }
+
     }
+    ActiveModelPathIndex = NewModelPathIndex;
   }
-  else
+  if(MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount > 0)
   {
-    if(UI::CollapsingHeader("Target Skeleton", &s_TargetSkeletonDropdown))
+    if(UI::CollapsingHeader("Skeleton", &s_TargetSkeletonDropdown))
     {
       if(UI::CollapsingHeader("Skeletal Hierarchy", &s_SkeletalHieararchyDropdown))
       {
@@ -182,22 +190,23 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
     if(UI::CollapsingHeader("Animations", &s_AnimationDropdown))
     {
       {
-        static int32_t ActivePathIndex = 0;
+				bool ClickedAddAnimation = UI::Button("Add Animation"); 
+
+				UI::SameLine();
+        static int32_t ActivePathIndex = -1;
         UI::Combo("Animation", &ActivePathIndex, Resources->AnimationPaths,
                   Resources->AnimationPathCount, PathArrayToString);
-        rid NewRID = { 0 };
-        if(Resources->AnimationPathCount > 0 &&
-           !Resources->GetAnimationPathRID(&NewRID,
-                                           Resources->AnimationPaths[ActivePathIndex].Name))
+        UI::NewLine();
+        if(ActivePathIndex >= 0 && ClickedAddAnimation)
         {
-          NewRID = Resources->RegisterAnimation(Resources->AnimationPaths[ActivePathIndex].Name);
-        }
-
-        if(UI::Button("Add Animation") && !MMEditor->ActiveProfile.AnimRIDs.Full() &&
-           Resources->GetAnimation(NewRID)->ChannelCount ==
-             MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount)
-        {
-          MMEditor->ActiveProfile.AnimRIDs.Push(NewRID);
+          rid NewRID =
+            Resources->ObtainAnimationPathRID(Resources->AnimationPaths[ActivePathIndex].Name);
+          if(!MMEditor->ActiveProfile.AnimRIDs.Full() &&
+             Resources->GetAnimation(NewRID)->ChannelCount ==
+               MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount)
+          {
+            MMEditor->ActiveProfile.AnimRIDs.Push(NewRID);
+          }
         }
       }
       {
