@@ -202,6 +202,11 @@ struct fixed_stack
   T   Elements[Capacity];
   int Count;
 
+  fixed_stack()
+  {
+    this->Count = 0;
+  }
+
   void
   Push(const T& NewElement)
   {

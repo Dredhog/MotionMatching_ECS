@@ -1,23 +1,58 @@
 #pragma once
 #include "string.h"
 #include "skeleton.h"
+#include "file_io.h"
 
 const char* PathArrayToString(const void* Data, int Index);
 const char* BoneArrayToString(const void* Data, int Index);
+
+#define TEMPLATE_NAME_MAX_LENGTH 100
+
+// Note(Lukas) the Params have to have the names for this to export correctly
+inline void
+BuildAndExportMMController(Memory::stack_allocator* Alloc, Resource::resource_manager* Resources,
+                           const mm_params* Params, const char* FileName)
+{
+  // Fetch the animation pointers
+  fixed_stack<Anim::animation*, MM_ANIM_CAPACITY> Animations = {};
+  for(int i = 0; i < Params->AnimRIDs.Count; i++)
+  {
+    Animations.Push(Resources->GetAnimation(Params->AnimRIDs[i]));
+  }
+
+  Memory::marker MMControllerAssetStart = Alloc->GetMarker();
+
+  mm_controller_data* MMControllerAsset =
+    PrecomputeRuntimeMMData(Alloc, Animations.GetArrayHandle(), *Params);
+  // assert(MMControllerAssetStart.Address == (uint8_t*)MMControllerAsset);
+
+  size_t MMControllerAssetSize = Alloc->GetByteCountAboveMarker(MMControllerAssetStart);
+
+  MMControllerAsset->Params.AnimPaths.HardClear();
+  // Fetch the animation names
+  for(int i = 0; i < MMControllerAsset->Params.AnimRIDs.Count; i++)
+  {
+    int PathIndex = Resources->GetAnimationPathIndex(MMControllerAsset->Params.AnimRIDs[i]);
+    MMControllerAsset->Params.AnimPaths.Push(Resources->AnimationPaths[PathIndex]);
+  }
+
+  Asset::PackMMController(MMControllerAsset);
+  Platform::WriteEntireFile(FileName, MMControllerAssetSize, MMControllerAsset);
+}
 
 void
 MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* TempStack,
                       Resource::resource_manager* Resources)
 {
-
-  static int  TargetPathIndex                  = -1;
-  static bool TargetIsTemplate                 = true;
-  static bool s_AnimationDropdown              = false;
-  static bool s_MirrorInfoDropdown             = false;
-  static bool s_GeneralParametersDropdown      = false;
-  static bool s_TargetSkeletonDropdown         = false;
-  static bool s_SkeletalHieararchyDropdown = false;
-  static bool s_SkeletonMirrorInfoDropdown = false;
+  static int  TargetPathIndex                                    = -1;
+  static bool TargetIsTemplate                                   = true;
+  static bool s_AnimationDropdown                                = false;
+  static bool s_MirrorInfoDropdown                               = false;
+  static bool s_GeneralParametersDropdown                        = false;
+  static bool s_TargetSkeletonDropdown                           = false;
+  static bool s_SkeletalHieararchyDropdown                       = false;
+  static bool s_SkeletonMirrorInfoDropdown                       = false;
+  static bool s_MatchingPointSelectionDropdown                   = false;
 
   // UPDATING MMEditor.SelectedProfile
   {
@@ -43,10 +78,21 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         {
           Asset::ImportMMParams(TempStack, &MMEditor->SelectedProfile,
                                 Resources->MMParamPaths[NewTargetPathIndex].Name);
+
+          // Set the animation RIDs from the paths
+          MMEditor->SelectedProfile.AnimRIDs.HardClear();
+          for(int i = 0; i < MMEditor->SelectedProfile.AnimPaths.Count; i++)
+          {
+            MMEditor->SelectedProfile.AnimRIDs.Push(
+              Resources->ObtainAnimationPathRID(MMEditor->SelectedProfile.AnimPaths[i].Name));
+          }
         }
         else
         {
-          assert(false && "Not implemented");
+          rid MMControllerRID =
+            Resources->ObtainMMControllerPathRID(Resources->MMParamPaths[NewTargetPathIndex].Name);
+          mm_controller_data* MMController = Resources->GetMMController(MMControllerRID);
+          MMEditor->SelectedProfile        = MMController->Params;
         }
       }
       else
@@ -58,14 +104,11 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
   }
 
   // THE LOAD/EXTRACT TEMPLATE BUTTON
-  if(TargetPathIndex != -1)
+  const char* ButtonText = (TargetIsTemplate) ? "Load Template   " : "Extract Template";
+  if(UI::Button(ButtonText))
   {
-    const char* ButtonText = (TargetIsTemplate) ? "Load Template   " : "Extract Template";
-    if(UI::Button(ButtonText))
-    {
-      // UPDATING MMEditor.ActiveProfile
-      MMEditor->ActiveProfile = MMEditor->SelectedProfile;
-    }
+    // UPDATING MMEditor.ActiveProfile
+    MMEditor->ActiveProfile = MMEditor->SelectedProfile;
   }
 
   // Set skeleton if not already set. Otherwise give a red "switch target" button
@@ -93,14 +136,14 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
     if(UI::CollapsingHeader("Target Skeleton", &s_TargetSkeletonDropdown))
     {
       if(UI::CollapsingHeader("Skeletal Hierarchy", &s_SkeletalHieararchyDropdown))
-			{
+      {
         for(int i = 0; i < MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount; i++)
         {
           UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[i].Name);
         }
-			}
-			if(UI::CollapsingHeader("Mirror Info", &s_SkeletonMirrorInfoDropdown))
-			{
+      }
+      if(UI::CollapsingHeader("Mirror Info", &s_SkeletonMirrorInfoDropdown))
+      {
         char TempBuff[3 * BONE_NAME_LENGTH];
         for(int i = 0; i < MMEditor->ActiveProfile.DynamicParams.MirrorInfo.PairCount; i++)
         {
@@ -111,7 +154,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
                    MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[IndB].Name);
           UI::Text(TempBuff);
         }
-			}
+      }
     }
     if(UI::CollapsingHeader("General parameters", &s_GeneralParametersDropdown))
     {
@@ -176,67 +219,34 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         }
       }
     }
-    static int32_t ActiveBoneIndex = 0;
-    UI::Combo("Bone", &ActiveBoneIndex, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
-              MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString);
 
-    if(UI::Button("Add Bone") && !MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Full())
+    if(UI::CollapsingHeader("Points For Matching", &s_MatchingPointSelectionDropdown))
     {
-      MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
-    }
+      static int32_t ActiveBoneIndex = 0;
+      UI::Combo("Bone", &ActiveBoneIndex, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
+                MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString);
 
-    for(int i = 0; i < MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Count; i++)
-    {
-      bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
-      UI::SameLine();
+      if(UI::Button("Add Bone") &&
+         !MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Full())
       {
-        UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton
-                   .Bones[MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices[i]]
-                   .Name);
+        MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
       }
-      UI::NewLine();
-      if(DeleteCurrent)
-      {
-        MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Remove(i);
-      }
-    }
 
-    if(0 < MMEditor->ActiveProfile.AnimRIDs.Count)
-    {
-      if(UI::Button("Build MM data"))
+      for(int i = 0; i < MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Count; i++)
       {
-        fixed_stack<Anim::animation*, MM_ANIM_CAPACITY> Animations = {};
-        for(int i = 0; i < MMEditor->ActiveProfile.AnimRIDs.Count; i++)
+        bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
+        UI::SameLine();
         {
-          Resources->Animations.AddReference(MMEditor->ActiveProfile.AnimRIDs[i]);
-          Animations.Push(Resources->GetAnimation(MMEditor->ActiveProfile.AnimRIDs[i]));
+          UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton
+                     .Bones[MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices[i]]
+                     .Name);
         }
-
-#if 0
-        // Compute this asset, copy it to the heap, associate it with an entity and save it to disk
+        UI::NewLine();
+        if(DeleteCurrent)
         {
-          Memory::marker      MMControllerAssetStart = TempStack->GetMarker();
-          mm_controller_data* MMDataAsset =
-            PrecomputeRuntimeMMData(TempStack, Animations.GetArrayHandle(), Params,
-                                    SelectedEntity->AnimController->Skeleton);
-          assert(MMControllerAssetStart.Address == (uint8_t*)MMDataAsset);
-          size_t MMControllerAssetSize = TempStack->GetByteCountAboveMarker(MMControllerAssetStart);
-          //PackMMController(MMDataAsset);
-
-          // Get MMController's RID if entity has it
-          if(MMEntity->MMControllerRID->Value <= 0)
-          {
-            // Generate New Path For Asset
-            // Resources->
-          }
+          MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Remove(i);
         }
-        // GetEntityMMData
-#endif
       }
-    }
-    else
-    {
-      // UI::Dummy("Build MM data");
     }
 
     if(UI::Button("Save Template"))
@@ -248,7 +258,22 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         int PathIndex = Resources->GetAnimationPathIndex(MMEditor->ActiveProfile.AnimRIDs[i]);
         MMEditor->ActiveProfile.AnimPaths.Push(Resources->AnimationPaths[PathIndex]);
       }
-      Asset::ExportMMParams(&MMEditor->ActiveProfile, "data/matching_params/test.params");
+      Asset::ExportMMParams(&MMEditor->ActiveProfile, "data/matching_params/test.template");
+      MMEditor->SelectedProfile = MMEditor->ActiveProfile;
+    }
+    if(0 < MMEditor->ActiveProfile.AnimRIDs.Count)
+    {
+      UI::SameLine();
+      if(UI::Button("Build Controller"))
+      {
+        BuildAndExportMMController(TempStack, Resources, &MMEditor->ActiveProfile,
+                                   "data/matching_params/test.controller");
+      }
+      UI::NewLine();
+    }
+    else
+    {
+      // UI::Dummy("Build MM data");
     }
   }
 }

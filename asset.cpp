@@ -2,7 +2,8 @@
 
 #include "file_io.h"
 
-void Asset::PackModel(Render::model* Model)
+void
+Asset::PackModel(Render::model* Model)
 {
   uint64_t Base = (uint64_t)Model;
   for(int i = 0; i < Model->MeshCount; i++)
@@ -86,6 +87,22 @@ Asset::UnpackAnimationGroup(Anim::animation_group* AnimationGroup)
 }
 
 void
+Asset::PackMMController(mm_controller_data* Controller)
+{
+  uint64_t Base = (uint64_t)Controller;
+  Controller->FrameInfos.Elements =
+    (mm_frame_info*)(((uint64_t)Controller->FrameInfos.Elements) - Base);
+}
+
+void
+Asset::UnpackMMController(mm_controller_data* Controller)
+{
+  uint64_t Base = (uint64_t)Controller;
+  Controller->FrameInfos.Elements =
+    (mm_frame_info*)(((uint64_t)Controller->FrameInfos.Elements) + Base);
+}
+
+void
 Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
                             const EditAnimation::animation_editor* AnimEditor, const char* FileName)
 {
@@ -128,13 +145,13 @@ Asset::ExportAnimationGroup(Memory::stack_allocator*               Alloc,
     Memory::SafeTruncate_size_t_To_uint32_t(Alloc->GetByteCountAboveMarker(Marker));
   PackAnimationGroup(AnimGroup);
 
-	Platform::WriteEntireFile(FileName, TotalSize, AnimGroup);
+  Platform::WriteEntireFile(FileName, TotalSize, AnimGroup);
 }
 
 void
 Asset::ExportMMParams(const mm_params* Params, const char* FileName)
 {
-	Platform::WriteEntireFile(FileName, sizeof(mm_params), Params);
+  Platform::WriteEntireFile(FileName, sizeof(mm_params), Params);
 }
 
 void
@@ -146,8 +163,7 @@ Asset::ImportMMParams(Memory::stack_allocator* Alloc, mm_params* OutParams, cons
   assert(ReadFile.Contents && ReadFile.ContentsSize == sizeof(mm_params));
   memcpy(OutParams, ReadFile.Contents, sizeof(mm_params));
 
-	Alloc->FreeToMarker(MemoryStart);
-
+  Alloc->FreeToMarker(MemoryStart);
 }
 
 #if 0
@@ -176,9 +192,9 @@ Asset::ImportAnimationGroup(Memory::stack_allocator* Alloc, Anim::animation_grou
   debug_read_file_result AssetReadResult = Platform::ReadEntireFile(Alloc, FileName);
 
   assert(AssetReadResult.Contents);
-  
+
   *OutputAnimGroup = (Anim::animation_group*)AssetReadResult.Contents;;
-	UnpackAnimationGroup(*OutputAnimGroup);
+  UnpackAnimationGroup(*OutputAnimGroup);
 
   assert(*OutputAnimGroup);
 }*/

@@ -180,8 +180,16 @@ namespace Resource
         {
           return false;
         }
-				assert(0 && "Please implement remapping of paths to animation RIDs");
         Controller = (mm_controller_data*)AssetReadResult.Contents;
+        Asset::UnpackMMController(Controller);
+
+        Controller->Params.AnimRIDs.HardClear();
+        for(int i = 0; i < Controller->Params.AnimPaths.Count; i++)
+        {
+          rid AnimRID = this->ObtainAnimationPathRID(Controller->Params.AnimPaths[i].Name);
+					Controller->Params.AnimRIDs.Push(AnimRID);
+          this->Animations.AddReference(AnimRID);
+        }
         this->MMControllers.Set(RID, Controller, Path);
       }
       return true;
@@ -417,6 +425,7 @@ namespace Resource
   CREATE_OBTAIN_PATH_ID_FUNCTION(Texture);
   CREATE_OBTAIN_PATH_ID_FUNCTION(Animation);
   CREATE_OBTAIN_PATH_ID_FUNCTION(Material);
+  CREATE_OBTAIN_PATH_ID_FUNCTION(MMController);
 
 #define CREATE_REGISTER_FUNCTION(TYPE_NAME)                                                        \
   rid resource_manager::Register##TYPE_NAME(const char* Path)                                      \
@@ -434,6 +443,7 @@ namespace Resource
   CREATE_REGISTER_FUNCTION(Animation);
   CREATE_REGISTER_FUNCTION(Material);
   CREATE_REGISTER_FUNCTION(Shader);
+  CREATE_REGISTER_FUNCTION(MMController);
 
 #define CREATE_GET_FUNCTION(STORED_TYPE, TYPE_NAME)                                                \
   STORED_TYPE resource_manager::Get##TYPE_NAME(rid RID)                                            \
@@ -720,6 +730,26 @@ namespace Resource
           {
             printf("deleting animation rid: %d, refs: %d\n", RID.Value, RefCount);
             FreeAnimation(RID);
+          }
+        }
+      }
+    }
+#endif
+#if 1
+    for(int i = 1; i <= RESOURCE_MAX_COUNT; i++)
+    {
+      mm_controller_data* Controller;
+      char*            Path;
+      rid              RID = { i };
+      if(this->MMControllers.Get(RID, &Controller, &Path))
+      {
+        if(Controller)
+        {
+          int32_t RefCount = this->MMControllers.QueryReferences(RID);
+          if(RefCount <= 0)
+          {
+            printf("deleting controller rid: %d, refs: %d\n", RID.Value, RefCount);
+            FreeMMController(RID);
           }
         }
       }

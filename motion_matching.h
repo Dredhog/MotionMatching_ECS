@@ -96,7 +96,7 @@ mm_controller_data* PrecomputeRuntimeMMData(Memory::stack_allocator*       TempA
 inline void
 ResetMMParamsToDefault(mm_params* Params)
 {
-	memset(&Params, 0, sizeof(mm_params));
+  memset(Params, 0, sizeof(mm_params));
   Params->DynamicParams.BonePCoefficient        = 1.0f;
   Params->DynamicParams.BoneVCoefficient        = 0.02f;
   Params->DynamicParams.TrajPCoefficient        = 0.06f;

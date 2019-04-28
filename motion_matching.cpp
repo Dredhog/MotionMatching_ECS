@@ -20,21 +20,20 @@ enum anim_endpoint_extrapolation_type
 //TODO(Lukas) make this be used by the asset pipeline
 mm_controller_data*
 PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
-                        array_handle<Anim::animation*> Animations, const mm_params& Params,
-                        const Anim::skeleton* Skeleton)
+                        array_handle<Anim::animation*> Animations, const mm_params& Params)
 {
   TIMED_BLOCK(BuildMotionSet);
 
   mm_controller_data* MMData = PushAlignedStruct(TempAlloc, mm_controller_data);
+  memset(MMData, 0, sizeof(mm_controller_data));
   MMData->Params             = Params;
 
-  memset(MMData, 0, sizeof(mm_controller_data));
   mm_frame_info* FrameInfoStorage =
     PushAlignedArray(TempAlloc, MM_MAX_FRAME_INFO_COUNT, mm_frame_info);
 
   // Alloc temp memory for transforms and matrices
-  mat4*          TempMatrices          = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
-  transform*     TempTransforms        = PushArray(TempAlloc, Skeleton->BoneCount, transform);
+  mat4*          TempMatrices          = PushArray(TempAlloc, Params.FixedParams.Skeleton.BoneCount, mat4);
+  transform*     TempTransforms        = PushArray(TempAlloc, Params.FixedParams.Skeleton.BoneCount, transform);
 
   // Initialize the frame info stack
   stack_handle<mm_frame_info> FrameInfoStack = {};
@@ -44,7 +43,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
   for(int a = 0; a < Params.AnimRIDs.Count; a++)
   {
     const Anim::animation* Anim = Animations[a];
-    assert(Anim->ChannelCount == Skeleton->BoneCount);
+    assert(Anim->ChannelCount == Params.FixedParams.Skeleton.BoneCount);
     assert(1 < Anim->KeyframeCount);
     const float AnimDuration  = Anim::GetAnimDuration(Anim);
     const float FrameDuration = AnimDuration / float(Anim->KeyframeCount);
@@ -75,13 +74,13 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
       Anim::LinearAnimationSample(TempTransforms, Anim, CurrentSampleTime);
 
       Anim::ComputeBoneSpacePoses(TempMatrices, TempTransforms, Anim->ChannelCount);
-      ComputeModelSpacePoses(TempMatrices, TempMatrices, Skeleton);
-      ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Skeleton);
+      ComputeModelSpacePoses(TempMatrices, TempMatrices, &Params.FixedParams.Skeleton);
+      ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, &Params.FixedParams.Skeleton);
 
       mat4    InvRootMatrix;
       mat4    RootMatrix;
       int32_t HipIndex  = 0;
-      mat4    HipMatrix = Math::MulMat4(TempMatrices[HipIndex], Skeleton->Bones[HipIndex].BindPose);
+      mat4    HipMatrix = Math::MulMat4(TempMatrices[HipIndex], Params.FixedParams.Skeleton.Bones[HipIndex].BindPose);
       Anim::GetRootAndInvRootMatrices(&RootMatrix, &InvRootMatrix, HipMatrix);
 
       // Fill Bone Positions
@@ -90,7 +89,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
         FrameInfoStack[FrameInfoIndex].BonePs[b] =
           Math::MulMat4(InvRootMatrix,
                         Math::MulMat4(TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]],
-                                      Skeleton->Bones[Params.FixedParams.ComparisonBoneIndices[b]]
+                                      Params.FixedParams.Skeleton.Bones[Params.FixedParams.ComparisonBoneIndices[b]]
                                         .BindPose))
             .T;
       }
