@@ -231,8 +231,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             : NULL;
       }
 
-      Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc,
-                             &GameState->PlayerBlendStack);
+			int MMEntityIndex = -1;
+      if((MMEntityIndex = GetEntityMMDataIndex(e, &GameState->MMEntityData)) != -1)
+      {
+        mm_aos_entity_data MMEntity = GetEntityAOSMMData(MMEntityIndex, &GameState->MMEntityData);
+        Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc, MMEntity.BlendStack);
+      }
+			else
+			{
+        Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+      }
 
       // TODO(Lukas): remove most parts of this code as it is repeated multiple times in different
       // locations

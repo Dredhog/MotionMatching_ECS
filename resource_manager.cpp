@@ -543,7 +543,7 @@ namespace Resource
     // Update shader paths
     this->DiffedShaderCount =
       Platform::ReadPaths(this->DiffedMMParams, this->MMParamPaths, this->MMParamStats,
-                          RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/matching_params", "params");
+                          RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/matching_params", NULL);
 
     this->SortAllAssetDiffsPathsStats();
   }

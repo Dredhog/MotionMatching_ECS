@@ -55,11 +55,11 @@ ThirdPersonAnimationBlendFunction(Anim::animation_controller* C, void* UserData)
   TestMirrorInfo.BoneMirrorIndices[12] = { 16, 40 };
   TestMirrorInfo.BoneMirrorIndices[13] = { 17, 41 };
   TestMirrorInfo.BoneMirrorIndices[14] = { 18, 42 };
-  TestMirrorInfo.BoneCount = 15;
+  TestMirrorInfo.PairCount = 15;
 	for(int i = 0; i <= 5; i++)
 	{
-    TestMirrorInfo.BoneMirrorIndices[TestMirrorInfo.BoneCount + i] = { i, i };
-    TestMirrorInfo.BoneCount++;
+    TestMirrorInfo.BoneMirrorIndices[TestMirrorInfo.PairCount + i] = { i, i };
+    TestMirrorInfo.PairCount++;
   }
   // Spine/Neck
 

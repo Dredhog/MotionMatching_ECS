@@ -43,6 +43,14 @@ static const char* g_SelectionEnumStrings[SELECT_EnumCount] = { FOR_ALL_NAMES(GE
 #undef GENERATE_ENUM
 #undef GENERATE_STRING
 
+struct mm_profile_editor
+{
+  mm_params SelectedProfile;
+  mm_params ActiveProfile;
+  rid       ControllerRID;
+  bool      SyncDynamic;
+};
+
 struct game_state
 {
   Memory::stack_allocator* PersistentMemStack;
@@ -64,10 +72,10 @@ struct game_state
   camera PreviewCamera;
 
   // Motion Matching
-  mm_params          MMParams;
-  mm_debug_settings  MMDebug;
-  blend_stack        PlayerBlendStack;
-  float              PlayerSpeed;
+  mm_profile_editor MMEditor;
+  mm_debug_settings MMDebug;
+  // blend_stack        PlayerBlendStack;
+  // float              PlayerSpeed;
 
   trajectory_system TrajectorySystem;
   mm_entity_data    MMEntityData;
@@ -93,8 +101,8 @@ struct game_state
   int32_t EntityCount;
   int32_t SelectedEntityIndex;
   int32_t SelectedMeshIndex;
-  //int32_t PlayerEntityIndex;
-  mat4    PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
+  // int32_t PlayerEntityIndex;
+  mat4 PrevFrameMVPMatrices[ENTITY_MAX_COUNT];
 
   // Fonts/text
   Text::font Font;
@@ -106,8 +114,8 @@ struct game_state
   bool  DrawDebugSpheres;
   bool  DrawShadowCascadeVolumes;
   bool  DrawTimeline;
-	bool  DrawActorMeshes;
-	bool  DrawActorSkeletons;
+  bool  DrawActorMeshes;
+  bool  DrawActorSkeletons;
   bool  IsAnimationPlaying;
   bool  IsEntityCreationMode;
   bool  PreviewAnimationsInRootSpace;

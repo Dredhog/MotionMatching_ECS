@@ -36,6 +36,7 @@ struct mm_fixed_params
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> MirroredComparisonIndexIndices;
 
+  Anim::skeleton             Skeleton;
   float MetadataSamplingFrequency;
 };
 
@@ -50,6 +51,7 @@ struct mm_dynamic_params
   float BelndInTime;
   float MinTimeOffsetThreshold;
   bool  MatchMirroredAnimations;
+  Anim::skeleton_mirror_info MirrorInfo;
 };
 
 struct mm_params
@@ -87,9 +89,31 @@ struct mm_controller_data
 };
 
 // Main metadata precomputation
-mm_controller_data PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
-                                           array_handle<Anim::animation*> Animations,
-                                           mm_params Params, const Anim::skeleton* Skeleton);
+mm_controller_data* PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
+                                            array_handle<Anim::animation*> Animations,
+                                            const mm_params&               Params);
+
+inline void
+ResetMMParamsToDefault(mm_params* Params)
+{
+	memset(&Params, 0, sizeof(mm_params));
+  Params->DynamicParams.BonePCoefficient        = 1.0f;
+  Params->DynamicParams.BoneVCoefficient        = 0.02f;
+  Params->DynamicParams.TrajPCoefficient        = 0.06f;
+  Params->DynamicParams.TrajVCoefficient        = 0.0f;
+  Params->DynamicParams.TrajAngleCoefficient    = 0.0f;
+  Params->DynamicParams.TrajectoryTimeHorizon   = 1.0f;
+  Params->DynamicParams.MinTimeOffsetThreshold  = 0.2f;
+  Params->DynamicParams.BelndInTime             = 0.2f;
+  Params->DynamicParams.MatchMirroredAnimations = false;
+  Params->FixedParams.MetadataSamplingFrequency = 30.0f;
+
+  /*Params.FixedParams.ComparisonBoneIndices.Push(4);
+  Params.FixedParams.ComparisonBoneIndices.Push(10);
+
+  Params.FixedParams.MirroredComparisonIndexIndices.Push(1);
+  Params.FixedParams.MirroredComparisonIndexIndices.Push(0);*/
+}
 
 //Goal generation (Not really part of motion matching
 mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,

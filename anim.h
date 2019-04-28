@@ -46,7 +46,7 @@ namespace Anim
   struct skeleton_mirror_info
   {
     int32_pair BoneMirrorIndices[SKELETON_MAX_BONE_COUNT];
-    int32_t    BoneCount;
+    int32_t    PairCount;
     vec3       MirrorBasisScales;
   };
 
@@ -120,4 +120,6 @@ namespace Anim
                            float GlobalSampleTime);
   void  GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRoot, mat4 HipMatrix);
   float GetAnimDuration(const Anim::animation* Animation);
+  void  GenerateSkeletonMirroringInfo(Anim::skeleton_mirror_info* OutMirrorInfo,
+                                      const Anim::skeleton*       Skeleton);
 }

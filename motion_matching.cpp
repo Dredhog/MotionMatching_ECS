@@ -4,30 +4,41 @@
 
 #include <cfloat>
 
-#define MM_MAX_FRAME_INFO_COUNT 10 * 60 * 120
-
-// TODO(Lukas): move this to a propper part of memory, likely a seperate mm resource heap
-mm_frame_info g_MMStorageArray[MM_MAX_FRAME_INFO_COUNT];
+#define MM_MAX_FRAME_INFO_COUNT 10 * 60 * 90
 
 const int32_t g_SkipFrameCount = 1;
 // Copy the velocity for the last frame
 
-mm_controller_data
-PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, array_handle<Anim::animation*> Animations,
-                        mm_params Params, const Anim::skeleton* Skeleton)
+enum anim_endpoint_extrapolation_type
+{
+  EXTRAPOLATE_None,
+  EXTRAPOLATE_Loop,
+  EXTRAPOLATE_Stop,
+  EXTRAPOLATE_Continue,
+};
+
+//TODO(Lukas) make this be used by the asset pipeline
+mm_controller_data*
+PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
+                        array_handle<Anim::animation*> Animations, const mm_params& Params,
+                        const Anim::skeleton* Skeleton)
 {
   TIMED_BLOCK(BuildMotionSet);
-  // Alloc temp memory for matrices
-  Memory::marker FuncStartMemoryMarker = TempAlloc->GetMarker();
+
+  mm_controller_data* MMData = PushAlignedStruct(TempAlloc, mm_controller_data);
+  MMData->Params             = Params;
+
+  memset(MMData, 0, sizeof(mm_controller_data));
+  mm_frame_info* FrameInfoStorage =
+    PushAlignedArray(TempAlloc, MM_MAX_FRAME_INFO_COUNT, mm_frame_info);
+
+  // Alloc temp memory for transforms and matrices
   mat4*          TempMatrices          = PushArray(TempAlloc, Skeleton->BoneCount, mat4);
   transform*     TempTransforms        = PushArray(TempAlloc, Skeleton->BoneCount, transform);
 
-  mm_controller_data MMData = {}; // ZII
-  MMData.Params             = Params;
-
   // Initialize the frame info stack
   stack_handle<mm_frame_info> FrameInfoStack = {};
-  FrameInfoStack.Init(g_MMStorageArray, 0, sizeof(g_MMStorageArray));
+  FrameInfoStack.Init(FrameInfoStorage, 0, sizeof(mm_frame_info) * MM_MAX_FRAME_INFO_COUNT);
 
   // Loop over all animations in the set
   for(int a = 0; a < Params.AnimRIDs.Count; a++)
@@ -54,7 +65,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, array_handle<Anim::a
       CurrentRange.End             = FrameInfoStack.Count + NewFrameInfoCount;
     }
     FrameInfoStack.Expand(NewFrameInfoCount);
-    MMData.AnimFrameInfoRanges.Push(CurrentRange);
+    MMData->AnimFrameInfoRanges.Push(CurrentRange);
 
     for(int i = 0; i < NewFrameInfoCount; i++)
     {
@@ -116,7 +127,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, array_handle<Anim::a
       {
         FrameInfoStack[i].BoneVs[b] =
           (FrameInfoStack[i + 1].BonePs[b] - FrameInfoStack[i].BonePs[b]) *
-          MMData.Params.FixedParams.MetadataSamplingFrequency;
+          MMData->Params.FixedParams.MetadataSamplingFrequency;
       }
 
       for(int p = 0; p < MM_POINT_COUNT; p++)
@@ -144,9 +155,11 @@ PrecomputeRuntimeMMData(Memory::stack_allocator* TempAlloc, array_handle<Anim::a
       }*/
     }
   }
-  MMData.FrameInfos = FrameInfoStack.GetArrayHandle();
+  MMData->FrameInfos = FrameInfoStack.GetArrayHandle();
+  Memory::marker AssetEndMarker = { .Address = (uint8_t*)(MMData->FrameInfos.Elements +
+                                                          MMData->FrameInfos.Count) };
 
-  TempAlloc->FreeToMarker(FuncStartMemoryMarker);
+  TempAlloc->FreeToMarker(AssetEndMarker);
   return MMData;
 }
 

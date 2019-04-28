@@ -9,6 +9,8 @@
 #define PushStruct(Allocator, Type) (Type*)(Allocator)->Alloc(sizeof(Type))
 #define PushArray(Allocator, Count, Type) (Type*)(Allocator)->Alloc(sizeof(Type) * (Count))
 #define PushAlignedStruct(Allocator, Type) (Type*)(Allocator)->AlignedAlloc(sizeof(Type), alignof(Type))
+#define PushAlignedArray(Allocator, Count, Type)                                                   \
+  (Type*)(Allocator)->AlignedAlloc(sizeof(Type) * (Count), alignof(Type))
 namespace Memory
 {
   struct marker

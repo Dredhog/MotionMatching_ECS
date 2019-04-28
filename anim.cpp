@@ -1,5 +1,6 @@
 #include "anim.h"
 #include "misc.h"
+#include "basic_data_structures.h"
 
 float
 Anim::GetLocalSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
@@ -93,7 +94,7 @@ Anim::LinearMirroredAnimationSample(transform* OutputTransforms, mat4* TempMatri
 
   mat4 MirrorMatrix = Math::Mat4Scale(MirrorInfo->MirrorBasisScales);
   // Mirror the matrices and put them into their appropriate places
-  for(int i = 0; i < MirrorInfo->BoneCount; i++)
+  for(int i = 0; i < MirrorInfo->PairCount; i++)
   {
     int a = MirrorInfo->BoneMirrorIndices[i].a;
     int b = MirrorInfo->BoneMirrorIndices[i].b;
@@ -408,3 +409,78 @@ Anim::InverseComputeFinalHierarchicalPoses(mat4* ModelSpaceMatrices, const mat4*
                     FinalPoseMatrices[i]);
   }
 }*/
+
+void
+Anim::GenerateSkeletonMirroringInfo(Anim::skeleton_mirror_info* OutMirrorInfo,
+                                    const Anim::skeleton*       Skeleton)
+{
+  OutMirrorInfo->MirrorBasisScales = { -1, 1, 1 };
+  OutMirrorInfo->PairCount         = 0;
+
+  fixed_stack<int, SKELETON_MAX_BONE_COUNT> RemainingBoneIndices;
+  RemainingBoneIndices.Clear();
+  for(int i = 0; i < Skeleton->BoneCount; i++)
+  {
+    RemainingBoneIndices.Push(i);
+  }
+
+  const int i = 0;
+  while(!RemainingBoneIndices.Empty())
+  {
+    int A = RemainingBoneIndices[i];
+
+    bool        SearchForLeft  = false;
+    bool        SearchForRight = false;
+    const char* FirstStart     = &Skeleton->Bones[A].Name[0];
+    char*       FirstMiddle;
+    char*       FirstEnd;
+    size_t      FirstLength = strlen(Skeleton->Bones[A].Name);
+    char*       Tmp;
+    if((Tmp = strstr(Skeleton->Bones[A].Name, "Left")) != NULL)
+    {
+      SearchForRight = true;
+      FirstMiddle    = Tmp;
+      FirstEnd       = FirstMiddle + strlen("Left");
+    }
+    if((Tmp = strstr(Skeleton->Bones[A].Name, "Right")) != NULL)
+    {
+      SearchForLeft = true;
+      FirstMiddle   = Tmp;
+      FirstEnd      = FirstMiddle + strlen("Right");
+    }
+
+    if(!SearchForLeft && !SearchForRight)
+    {
+      RemainingBoneIndices.Remove(i);
+      OutMirrorInfo->BoneMirrorIndices[OutMirrorInfo->PairCount++] = { A, A };
+      continue;
+    }
+    assert(SearchForLeft != SearchForRight);
+
+    char TempBuff[BONE_NAME_LENGTH + 1];
+    size_t      FirstStartLength   = FirstMiddle - FirstStart;
+    const char* SecondMiddleString = (SearchForRight) ? "Right" : "Left";
+    size_t  SecondMiddleLength = strlen(SecondMiddleString);
+    strncpy(TempBuff, FirstStart, FirstStartLength);
+    strncpy(TempBuff + FirstStartLength, SecondMiddleString, SecondMiddleLength);
+    //Using sprintf instead of snprintf to get the '\0' at the end
+    strcpy(TempBuff + FirstStartLength + SecondMiddleLength, FirstEnd);
+
+    int B = -1;
+    int j = i + 1;
+    for(; j < RemainingBoneIndices.Count; j++)
+    {
+      int BoneIndex = RemainingBoneIndices[j];
+      if(strcmp(Skeleton->Bones[BoneIndex].Name, TempBuff) == 0)
+      {
+        B = BoneIndex;
+        break;
+      }
+    }
+    assert(B != -1);
+
+    OutMirrorInfo->BoneMirrorIndices[OutMirrorInfo->PairCount++] = { A, B };
+    RemainingBoneIndices.Remove(j);
+    RemainingBoneIndices.Remove(i);
+  }
+}

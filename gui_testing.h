@@ -4,6 +4,7 @@
 #include "profile.h"
 #include <cstdlib>
 #include "blend_stack.h"
+#include "mm_profile_editor_gui.h"
 
 void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
@@ -53,6 +54,7 @@ TestGui(game_state* GameState, const game_input* Input)
   static bool s_ShowPhysicsWindow        = false;
   static bool s_ShowProfilerWindow       = false;
   static bool s_ShowMotionMatchingWindow = false;
+  static bool s_ShowMMDebugSettingsWindow = false;
 
   UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
   {
@@ -611,213 +613,60 @@ TestGui(game_state* GameState, const game_input* Input)
   if(s_ShowMotionMatchingWindow)
   {
     UI::BeginWindow("Motion Matching", { 100, 20 }, { 700, 700 });
-    {
-      static int SelectedParamPathIndex = 0;
-      UI::Combo("Import Path", &SelectedParamPathIndex, GameState->Resources.MMParamPaths,
-                GameState->Resources.MMParamPathCount, PathArrayToString);
-      if(0 < GameState->Resources.MMParamPathCount && SelectedParamPathIndex != -1)
-      {
-        if(UI::Button("Load Parameters"))
-        {
-          Asset::ImportMMParams(GameState->TemporaryMemStack, &GameState->MMParams,
-                                GameState->Resources.MMParamPaths[SelectedParamPathIndex].Name);
-          // Set the animation RIDs from the paths
-
-          GameState->MMParams.AnimRIDs.HardClear();
-          for(int i = 0; i < GameState->MMParams.AnimPaths.Count; i++)
-          {
-            GameState->MMParams.AnimRIDs.Push(
-              GameState->Resources.ObtainAnimationPathRID(GameState->MMParams.AnimPaths[i].Name));
-          }
-        }
-      }
-
-      if(UI::Button("Save Current Parameters"))
-      {
-        GameState->MMParams.AnimPaths.HardClear();
-        // Set the paths from the animation RIDs
-        for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
-        {
-          int PathIndex =
-            GameState->Resources.GetAnimationPathIndex(GameState->MMParams.AnimRIDs[i]);
-          GameState->MMParams.AnimPaths.Push(GameState->Resources.AnimationPaths[PathIndex]);
-        }
-        Asset::ExportMMParams(&GameState->MMParams, "data/matching_params/test.params");
-      }
-    }
-
-
-    {
-      mm_params& MMParams = GameState->MMParams;
-      mm_debug_settings& MMDebug = GameState->MMDebug;
-
-      UI::SliderFloat("Bone Position Influence",
-                      &MMParams.DynamicParams.BonePCoefficient, 0, 5);
-      UI::SliderFloat("Bone Velocity Influence",
-                      &MMParams.DynamicParams.BoneVCoefficient, 0, 5);
-      UI::SliderFloat("Trajectory Position Influence",
-                      &MMParams.DynamicParams.TrajPCoefficient, 0, 1);
-      UI::SliderFloat("Trajectory Velocity Influence",
-                      &MMParams.DynamicParams.TrajVCoefficient, 0, 1);
-      UI::SliderFloat("Trajectory Angle Influence",
-                      &MMParams.DynamicParams.TrajAngleCoefficient, 0, 1);
-      UI::SliderFloat("BlendInTime", &MMParams.DynamicParams.BelndInTime, 0, 1);
-      UI::SliderFloat("Min Time Offset Threshold",
-                      &MMParams.DynamicParams.MinTimeOffsetThreshold, 0, 1);
-      UI::Checkbox("Match MirroredAnimations",
-                   &MMParams.DynamicParams.MatchMirroredAnimations);
-      UI::Text("Debug Display");
-      UI::SliderFloat("Trajectory Duration (sec)", &MMDebug.TrajectoryDuration, 0, 10);
-      UI::SliderInt("Trajectory Sample Count", &MMDebug.TrajectorySampleCount, 2, 40);
-      UI::Checkbox("Show Root Trajectory", &MMDebug.ShowRootTrajectories);
-      UI::Checkbox("Show Hip Trajectory", &MMDebug.ShowHipTrajectories);
-      UI::Checkbox("Apply Root Motion", &MMDebug.ApplyRootMotion);
-      UI::Text("Current Goal");
-      UI::Checkbox("Show Current Goal", &MMDebug.CurrentGoal.ShowTrajectory);
-      UI::Checkbox("Show Current Goal Directions",
-                   &MMDebug.CurrentGoal.ShowTrajectoryAngles);
-      UI::Checkbox("Show Current Positions", &MMDebug.CurrentGoal.ShowBonePositions);
-      UI::Checkbox("Show Current Velocities", &MMDebug.CurrentGoal.ShowBoneVelocities);
-      UI::Text("Matched Goal");
-      UI::Checkbox("Show Matched Goal", &MMDebug.MatchedGoal.ShowTrajectory);
-      UI::Checkbox("Show Matched Goal Directions",
-                   &MMDebug.MatchedGoal.ShowTrajectoryAngles);
-      UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
-      UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
-
-      UI::SliderFloat("Metadata Sampling Frequency",
-                      &MMParams.FixedParams.MetadataSamplingFrequency, 15, 240);
-    }
-    entity* SelectedEntity = {};
-    if(GetSelectedEntity(GameState, &SelectedEntity) && SelectedEntity->AnimController &&
-       GetEntityMMDataIndex(GameState->SelectedEntityIndex, &GameState->MMEntityData) != -1)
-    {
-      {
-        static int32_t ActivePathIndex = 0;
-        UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
-                  GameState->Resources.AnimationPathCount, PathArrayToString);
-        rid NewRID = { 0 };
-        if(GameState->Resources.AnimationPathCount > 0 &&
-           !GameState->Resources
-              .GetAnimationPathRID(&NewRID,
-                                   GameState->Resources.AnimationPaths[ActivePathIndex].Name))
-        {
-          NewRID = GameState->Resources.RegisterAnimation(
-            GameState->Resources.AnimationPaths[ActivePathIndex].Name);
-        }
-
-        if(UI::Button("Add Animation") && !GameState->MMParams.AnimRIDs.Full() &&
-           GameState->Resources.GetAnimation(NewRID)->ChannelCount ==
-             SelectedEntity->AnimController->Skeleton->BoneCount)
-        {
-          GameState->MMParams.AnimRIDs.Push(NewRID);
-        }
-      }
-      {
-        for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
-        {
-          bool DeleteCurrent = UI::Button("Delete", 0, i);
-          UI::SameLine();
-          {
-            char* Path;
-            GameState->Resources.Animations.Get(GameState->MMParams.AnimRIDs[i], NULL, &Path);
-            UI::Text(Path);
-          }
-          UI::NewLine();
-          if(DeleteCurrent)
-          {
-            GameState->MMParams.AnimRIDs.Remove(i);
-            i--;
-          }
-        }
-      }
-      static int32_t ActiveBoneIndex = 0;
-      UI::Combo("Bone", &ActiveBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
-                SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
-
-      if(UI::Button("Add Bone") && !GameState->MMParams.FixedParams.ComparisonBoneIndices.Full())
-      {
-        GameState->MMParams.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
-      }
-
-      for(int i = 0; i < GameState->MMParams.FixedParams.ComparisonBoneIndices.Count; i++)
-      {
-        bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
-        UI::SameLine();
-        {
-          UI::Text(SelectedEntity->AnimController->Skeleton
-                     ->Bones[GameState->MMParams.FixedParams.ComparisonBoneIndices[i]]
-                     .Name);
-        }
-        UI::NewLine();
-        if(DeleteCurrent)
-        {
-          GameState->MMParams.FixedParams.ComparisonBoneIndices.Remove(i);
-        }
-      }
-
-      if(0 < GameState->MMParams.AnimRIDs.Count)
-      {
-        UI::SliderFloat("Trajectory Time Horizon",
-                        &GameState->MMParams.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
-        fixed_stack<Anim::animation*, MM_ANIM_CAPACITY> Animations = {};
-        if(UI::Button("Build MM data"))
-        {
-          for(int i = 0; i < GameState->MMParams.AnimRIDs.Count; i++)
-          {
-            GameState->Resources.Animations.AddReference(GameState->MMParams.AnimRIDs[i]);
-            Animations.Push(GameState->Resources.GetAnimation(GameState->MMParams.AnimRIDs[i]));
-          }
-          assert(false && "Not Implemented");
-          /*if(GameState->MMData.FrameInfos.IsValid())
-          {
-            Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                  &GameState->Resources, &GameState->MMData);
-            for(int i = 0; i < GameState->MMData.Params.AnimRIDs.Count; i++)
-            {
-              GameState->Resources.Animations.RemoveReference(
-                GameState->MMData.Params.AnimRIDs[i]);
-            }
-          }
-          GameState->MMData =
-            PrecomputeRuntimeMMData(GameState->TemporaryMemStack, Animations.GetArrayHandle(),
-                                    GameState->MMParams,
-                                    SelectedEntity->AnimController->Skeleton);*/
-        }
-
-        char TempBuffer[32];
-        sprintf(TempBuffer, "PlayerBlendStack.m_Count: %d", GameState->PlayerBlendStack.m_Count);
-        UI::Text(TempBuffer);
-      }
-    }
-#if 0
-			{
-				static vec3 R = {};
-        static vec3 T = {};
-
-        UI::DragFloat3("Test Rotation (euler)", (float*)&R, -INFINITY, INFINITY, 5);
-        quat Q = Math::EulerToQuat(R);
-        UI::DragFloat4("Test Rotation  (quat)", (float*)&Q, -INFINITY, INFINITY, 5);
-        UI::DragFloat3("Test Translation", (float*)&T, -INFINITY, INFINITY, 5);
-
-        mat4 OriginalMatrix = Math::MulMat4(Math::Mat4Translate(T), Math::Mat4Rotate(Q));
-				UI::Text("(Original Matrix)^T");
-        UI::DragFloat4("X_h", (float*)&OriginalMatrix.X_h, -INFINITY, INFINITY, 5);
-        UI::DragFloat4("Y_h", (float*)&OriginalMatrix.Y_h, -INFINITY, INFINITY, 5);
-        UI::DragFloat4("Z_h", (float*)&OriginalMatrix.Z_h, -INFINITY, INFINITY, 5);
-        UI::DragFloat4("T_h", (float*)&OriginalMatrix.T_h, -INFINITY, INFINITY, 5);
-
-        quat ExtractedQ = Math::Mat4ToQuat(OriginalMatrix);
-        vec3 ExtractedT = OriginalMatrix.T;
-        vec3 ExtractedR = Math::QuatToEuler(ExtractedQ);
-
-        UI::DragFloat3("Extracted Rotation (euler)", (float*)&ExtractedR, -INFINITY, INFINITY, 5);
-        UI::DragFloat4("Extracted Rotation  (quat)", (float*)&ExtractedQ, -INFINITY, INFINITY, 5);
-        UI::DragFloat3("Extracted Translation", (float*)&ExtractedT, -INFINITY, INFINITY, 5);
-			}
-#endif
+    MMControllerEditorGUI(&GameState->MMEditor, GameState->TemporaryMemStack,
+                          &GameState->Resources);
     UI::EndWindow();
   }
+	if(s_ShowMMDebugSettingsWindow)
+	{
+    UI::BeginWindow("Motion Matching Debug Settings", { 800, 20 }, { 700, 700 });
+
+    mm_debug_settings& MMDebug = GameState->MMDebug;
+    UI::Text("Debug Display");
+    UI::SliderFloat("Trajectory Duration (sec)", &MMDebug.TrajectoryDuration, 0, 10);
+    UI::SliderInt("Trajectory Sample Count", &MMDebug.TrajectorySampleCount, 2, 40);
+    UI::Checkbox("Show Root Trajectory", &MMDebug.ShowRootTrajectories);
+    UI::Checkbox("Show Hip Trajectory", &MMDebug.ShowHipTrajectories);
+    UI::Checkbox("Apply Root Motion", &MMDebug.ApplyRootMotion);
+    UI::Text("Current Goal");
+    UI::Checkbox("Show Current Goal", &MMDebug.CurrentGoal.ShowTrajectory);
+    UI::Checkbox("Show Current Goal Directions", &MMDebug.CurrentGoal.ShowTrajectoryAngles);
+    UI::Checkbox("Show Current Positions", &MMDebug.CurrentGoal.ShowBonePositions);
+    UI::Checkbox("Show Current Velocities", &MMDebug.CurrentGoal.ShowBoneVelocities);
+    UI::Text("Matched Goal");
+    UI::Checkbox("Show Matched Goal", &MMDebug.MatchedGoal.ShowTrajectory);
+    UI::Checkbox("Show Matched Goal Directions", &MMDebug.MatchedGoal.ShowTrajectoryAngles);
+    UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
+    UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
+
+    UI::EndWindow();
+	}
+#if 0
+  {
+    static vec3 R = {};
+    static vec3 T = {};
+
+    UI::DragFloat3("Test Rotation (euler)", (float*)&R, -INFINITY, INFINITY, 5);
+    quat Q = Math::EulerToQuat(R);
+    UI::DragFloat4("Test Rotation  (quat)", (float*)&Q, -INFINITY, INFINITY, 5);
+    UI::DragFloat3("Test Translation", (float*)&T, -INFINITY, INFINITY, 5);
+
+    mat4 OriginalMatrix = Math::MulMat4(Math::Mat4Translate(T), Math::Mat4Rotate(Q));
+    UI::Text("(Original Matrix)^T");
+    UI::DragFloat4("X_h", (float*)&OriginalMatrix.X_h, -INFINITY, INFINITY, 5);
+    UI::DragFloat4("Y_h", (float*)&OriginalMatrix.Y_h, -INFINITY, INFINITY, 5);
+    UI::DragFloat4("Z_h", (float*)&OriginalMatrix.Z_h, -INFINITY, INFINITY, 5);
+    UI::DragFloat4("T_h", (float*)&OriginalMatrix.T_h, -INFINITY, INFINITY, 5);
+
+    quat ExtractedQ = Math::Mat4ToQuat(OriginalMatrix);
+    vec3 ExtractedT = OriginalMatrix.T;
+    vec3 ExtractedR = Math::QuatToEuler(ExtractedQ);
+
+    UI::DragFloat3("Extracted Rotation (euler)", (float*)&ExtractedR, -INFINITY, INFINITY, 5);
+    UI::DragFloat4("Extracted Rotation  (quat)", (float*)&ExtractedQ, -INFINITY, INFINITY, 5);
+    UI::DragFloat3("Extracted Translation", (float*)&ExtractedT, -INFINITY, INFINITY, 5);
+  }
+#endif
 
   END_TIMED_BLOCK(GUI);
 }
