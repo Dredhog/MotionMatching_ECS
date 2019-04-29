@@ -17,7 +17,7 @@ enum anim_endpoint_extrapolation_type
   EXTRAPOLATE_Continue,
 };
 
-//TODO(Lukas) make this be used by the asset pipeline
+// TODO(Lukas) make this be used by the asset pipeline
 mm_controller_data*
 PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
                         array_handle<Anim::animation*> Animations, const mm_params& Params)
@@ -26,14 +26,15 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
 
   mm_controller_data* MMData = PushAlignedStruct(TempAlloc, mm_controller_data);
   memset(MMData, 0, sizeof(mm_controller_data));
-  MMData->Params             = Params;
+  MMData->Params = Params;
 
   mm_frame_info* FrameInfoStorage =
     PushAlignedArray(TempAlloc, MM_MAX_FRAME_INFO_COUNT, mm_frame_info);
 
   // Alloc temp memory for transforms and matrices
-  mat4*          TempMatrices          = PushArray(TempAlloc, Params.FixedParams.Skeleton.BoneCount, mat4);
-  transform*     TempTransforms        = PushArray(TempAlloc, Params.FixedParams.Skeleton.BoneCount, transform);
+  mat4*      TempMatrices = PushArray(TempAlloc, Params.FixedParams.Skeleton.BoneCount, mat4);
+  transform* TempTransforms =
+    PushArray(TempAlloc, Params.FixedParams.Skeleton.BoneCount, transform);
 
   // Initialize the frame info stack
   stack_handle<mm_frame_info> FrameInfoStack = {};
@@ -79,8 +80,9 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
 
       mat4    InvRootMatrix;
       mat4    RootMatrix;
-      int32_t HipIndex  = 0;
-      mat4    HipMatrix = Math::MulMat4(TempMatrices[HipIndex], Params.FixedParams.Skeleton.Bones[HipIndex].BindPose);
+      int32_t HipIndex = 0;
+      mat4    HipMatrix =
+        Math::MulMat4(TempMatrices[HipIndex], Params.FixedParams.Skeleton.Bones[HipIndex].BindPose);
       Anim::GetRootAndInvRootMatrices(&RootMatrix, &InvRootMatrix, HipMatrix);
 
       // Fill Bone Positions
@@ -89,7 +91,8 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
         FrameInfoStack[FrameInfoIndex].BonePs[b] =
           Math::MulMat4(InvRootMatrix,
                         Math::MulMat4(TempMatrices[Params.FixedParams.ComparisonBoneIndices[b]],
-                                      Params.FixedParams.Skeleton.Bones[Params.FixedParams.ComparisonBoneIndices[b]]
+                                      Params.FixedParams.Skeleton
+                                        .Bones[Params.FixedParams.ComparisonBoneIndices[b]]
                                         .BindPose))
             .T;
       }
@@ -154,37 +157,112 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
       }*/
     }
   }
-  MMData->FrameInfos = FrameInfoStack.GetArrayHandle();
+  MMData->FrameInfos            = FrameInfoStack.GetArrayHandle();
   Memory::marker AssetEndMarker = { .Address = (uint8_t*)(MMData->FrameInfos.Elements +
                                                           MMData->FrameInfos.Count) };
+
+  // Set up the mirroring info for goal generation
+  MMData->Params.FixedParams.MirrorBoneIndices.HardClear();
+  if(MMData->Params.DynamicParams.MatchMirroredAnimations)
+  {
+    for(int i = 0; i < MMData->Params.FixedParams.ComparisonBoneIndices.Count; i++)
+    {
+      int BoneA = MMData->Params.FixedParams.ComparisonBoneIndices[i];
+      int BoneB = -1;
+      for(int p = 0; p < MMData->Params.DynamicParams.MirrorInfo.PairCount; p++)
+      {
+        int CandidateA = MMData->Params.DynamicParams.MirrorInfo.BoneMirrorIndices[p].a;
+        int CandidateB = MMData->Params.DynamicParams.MirrorInfo.BoneMirrorIndices[p].b;
+        if(BoneA == CandidateA)
+        {
+          BoneB = CandidateB;
+					break;
+        }
+
+        if(BoneA == CandidateB)
+        {
+          BoneB = CandidateA;
+					break;
+        }
+      }
+      assert(BoneB != -1 && "Search bone does not have a mirror");
+      MMData->Params.FixedParams.MirrorBoneIndices.Push(BoneB);
+    }
+  }
 
   TempAlloc->FreeToMarker(AssetEndMarker);
   return MMData;
 }
 
-mm_frame_info
-GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t AnimStateIndex, bool Mirror,
-          const Anim::animation_controller* Controller, vec3 DesiredVelocity,
-          const mm_fixed_params& Params)
+void
+CopyLongtermGoalFromRightToLeft(mm_frame_info* Dest, mm_frame_info Src)
 {
-  vec3          CurrentVelocity = {};
-  mm_frame_info ResultInfo      = {};
-
-  GetPoseGoal(&ResultInfo, &CurrentVelocity, TempAlloc, AnimStateIndex, Mirror, Controller,
-              Params);
-  GetLongtermGoal(&ResultInfo, CurrentVelocity, DesiredVelocity);
-  return ResultInfo;
+  for(int i = 0; i < MM_POINT_COUNT; i++)
+  {
+    Dest->TrajectoryPs[i]     = Src.TrajectoryPs[i];
+    Dest->TrajectoryVs[i]     = Src.TrajectoryVs[i];
+    Dest->TrajectoryAngles[i] = Src.TrajectoryAngles[i];
+  }
 }
 
 void
-GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
-            int32_t AnimStateIndex, bool Mirror, const Anim::animation_controller* Controller,
-            const mm_fixed_params& Params)
+MirrorLongtermGoal(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal = { -1, 1, 1 })
+{
+  assert(AbsFloat(MirrorMatDiagonal.X) + AbsFloat(MirrorMatDiagonal.Y) +
+           AbsFloat(MirrorMatDiagonal.Z) ==
+         3.0f);
+
+  mat3 MirrorMatrix = Math::Mat3Scale(MirrorMatDiagonal);
+  for(int i = 0; i < MM_POINT_COUNT; i++)
+  {
+    InOutInfo->TrajectoryPs[i] = Math::MulMat3Vec3(MirrorMatrix, InOutInfo->TrajectoryPs[i]);
+    InOutInfo->TrajectoryAngles[i] *= -1;
+  }
+}
+
+void
+GetMMGoal(mm_frame_info* OutGoal, mm_frame_info* OutMirroredGoal,
+          Memory::stack_allocator* TempAlloc, int32_t AnimStateIndex, bool PlayingMirrored,
+          const Anim::animation_controller* Controller, vec3 DesiredVelocity,
+          const mm_fixed_params& Params)
+{
+  mm_frame_info AnimPose         = {};
+  mm_frame_info MirroredAnimPose = {};
+
+  vec3 AnimVelocity         = {};
+  vec3 MirroredAnimVelocity = {};
+
+  GetPoseGoal(&AnimPose, &MirroredAnimPose, &AnimVelocity, &MirroredAnimVelocity, TempAlloc,
+              AnimStateIndex, Controller, Params);
+
+  if(PlayingMirrored)
+  {
+    *OutGoal = MirroredAnimPose;
+    GetLongtermGoal(OutGoal, MirroredAnimVelocity, DesiredVelocity);
+
+    *OutMirroredGoal = AnimPose;
+  }
+  else
+  {
+    *OutGoal = AnimPose;
+    GetLongtermGoal(OutGoal, AnimVelocity, DesiredVelocity);
+
+    *OutMirroredGoal = MirroredAnimPose;
+  }
+  CopyLongtermGoalFromRightToLeft(OutMirroredGoal, *OutGoal);
+  MirrorLongtermGoal(OutMirroredGoal);
+}
+
+void
+GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootVelocity,
+            vec3* OutMirrorRootVelocity, Memory::stack_allocator* TempAlloc, int32_t AnimStateIndex,
+            const Anim::animation_controller* Controller, const mm_fixed_params& Params)
 {
   Memory::marker StackMarker = TempAlloc->GetMarker();
 
   const Anim::animation* CurrentAnim = Controller->Animations[AnimStateIndex];
   assert(CurrentAnim);
+	const bool GenerateMirrorInfo = Params.MirrorBoneIndices.Count == Params.ComparisonBoneIndices.Count;
 
   // Allocate temporary transforms and matrices
   transform* TempTransforms = PushArray(TempAlloc, Controller->Skeleton->BoneCount, transform);
@@ -205,25 +283,38 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
       Anim::ComputeFinalHierarchicalPoses(TempMatrices, TempMatrices, Controller->Skeleton);
     }
     Anim::GetRootAndInvRootMatrices(&CurrentRootMatrix, &InvCurrentRootMatrix,
-                                    Math::MulMat4(TempMatrices[HipIndex], Controller->Skeleton->Bones[HipIndex]
-                                                      .BindPose));
+                                    Math::MulMat4(TempMatrices[HipIndex],
+                                                  Controller->Skeleton->Bones[HipIndex].BindPose));
 
     // Store the current positions
+    for(int b = 0; b < Params.ComparisonBoneIndices.Count; b++)
     {
-      for(int b = 0; b < Params.ComparisonBoneIndices.Count; b++)
+      // Positions of bones used for matching
+      if(OutPose)
       {
+        int BoneIndex = Params.ComparisonBoneIndices[b];
         OutPose->BonePs[b] =
           Math::MulMat4(InvCurrentRootMatrix,
-                        Math::MulMat4(TempMatrices[Params.ComparisonBoneIndices[b]],
-                                      Controller->Skeleton
-                                        ->Bones[Params.ComparisonBoneIndices[b]]
-                                        .BindPose))
+                        Math::MulMat4(TempMatrices[BoneIndex],
+                                      Controller->Skeleton->Bones[BoneIndex].BindPose))
+            .T;
+      }
+
+      // Positions of the mirroring bones used for matching
+      if(OutMirrorPose && GenerateMirrorInfo)
+      {
+        int BoneIndex = Params.MirrorBoneIndices[b];
+        OutMirrorPose->BonePs[b] =
+          Math::MulMat4(InvCurrentRootMatrix,
+                        Math::MulMat4(TempMatrices[BoneIndex],
+                                      Controller->Skeleton->Bones[BoneIndex].BindPose))
             .T;
       }
     }
   }
 
   // Compute bone velocities
+  vec3 RootVelocity = {};
   {
     const float Delta = 1 / 60.0f;
 
@@ -245,25 +336,59 @@ GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_alloca
                                                       .BindPose));
       for(int b = 0; b < Params.ComparisonBoneIndices.Count; b++)
       {
-        OutPose->BoneVs[b] =
-          (Math::MulMat4(InvNextRootMatrix,
-                         Math::MulMat4(TempMatrices[Params.ComparisonBoneIndices[b]],
-                                       Controller->Skeleton
-                                         ->Bones[Params.ComparisonBoneIndices[b]]
-                                         .BindPose))
-             .T -
-           OutPose->BonePs[b]) /
-          Delta;
+        if(OutPose)
+        {
+          int BoneIndex = Params.ComparisonBoneIndices[b];
+          OutPose->BoneVs[b] =
+            (Math::MulMat4(InvNextRootMatrix,
+                           Math::MulMat4(TempMatrices[BoneIndex],
+                                         Controller->Skeleton->Bones[BoneIndex].BindPose))
+               .T -
+             OutPose->BonePs[b]) /
+            Delta;
+        }
+        if(OutMirrorPose && GenerateMirrorInfo)
+        {
+          int BoneIndex = Params.MirrorBoneIndices[b];
+          OutMirrorPose->BoneVs[b] =
+            (Math::MulMat4(InvNextRootMatrix,
+                           Math::MulMat4(TempMatrices[BoneIndex],
+                                         Controller->Skeleton->Bones[BoneIndex].BindPose))
+               .T -
+             OutMirrorPose->BonePs[b]) /
+            Delta;
+        }
       }
     }
-    *OutStartVelocity = Math::MulMat4(InvCurrentRootMatrix, NextRootMatrix).T / Delta;
+    RootVelocity = Math::MulMat4(InvCurrentRootMatrix, NextRootMatrix).T / Delta;
   }
 
-  if(Mirror)
+  // Flipping the mirror bone positions and velocities
+  vec3 MirrorMatrixDiagonal = { -1, 1, 1 };
+  if(OutMirrorPose && GenerateMirrorInfo)
   {
-    vec3 MirrorMatDiagonal = { -1, 1, 1 };
-    MirrorGoalJoints(OutPose, MirrorMatDiagonal, Params);
-    OutStartVelocity->X *= MirrorMatDiagonal.X;
+    mat3 MirrorMatrix = Math::Mat3Scale(MirrorMatrixDiagonal);
+    for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
+    {
+      OutMirrorPose->BonePs[b] = Math::MulMat3Vec3(MirrorMatrix, OutMirrorPose->BonePs[b]);
+      OutMirrorPose->BoneVs[b] = Math::MulMat3Vec3(MirrorMatrix, OutMirrorPose->BoneVs[b]);
+    }
+  }
+
+  if(OutMirrorRootVelocity)
+  {
+    *OutRootVelocity = RootVelocity;
+  }
+  if(OutMirrorRootVelocity && GenerateMirrorInfo)
+  {
+    *OutMirrorRootVelocity = RootVelocity;
+    OutMirrorRootVelocity->X *= MirrorMatrixDiagonal.X;
+  }
+
+	if(!GenerateMirrorInfo)
+	{
+    *OutMirrorPose = *OutPose;
+    *OutMirrorRootVelocity = *OutRootVelocity;
   }
 
   TempAlloc->FreeToMarker(StackMarker);
@@ -301,46 +426,6 @@ GetLongtermGoal(mm_frame_info* OutTrajectory, vec3 StartVelocity, vec3 DesiredVe
       OutTrajectory->TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
     }
   }
-}
-
-void
-MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal, const mm_fixed_params& Params)
-{
-  assert(AbsFloat(MirrorMatDiagonal.X) + AbsFloat(MirrorMatDiagonal.Y) +
-           AbsFloat(MirrorMatDiagonal.Z) ==
-         3.0f);
-  mat3          MirrorMatrix = Math::Mat3Scale(MirrorMatDiagonal);
-  mm_frame_info OriginalInfo = *InOutInfo;
-
-  // Mirror the bone positions and velocities
-  for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
-  {
-    int32_t MirrorIndex  = Params.MirroredComparisonIndexIndices[i];
-    InOutInfo->BonePs[i] = Math::MulMat3Vec3(MirrorMatrix, OriginalInfo.BonePs[MirrorIndex]);
-    InOutInfo->BoneVs[i] = Math::MulMat3Vec3(MirrorMatrix, OriginalInfo.BoneVs[MirrorIndex]);
-  }
-}
-
-mm_frame_info
-GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
-                     const mm_fixed_params& Params)
-{
-  mm_frame_info MirroredInfo = OriginalInfo;
-
-  assert(AbsFloat(MirrorMatDiagonal.X) + AbsFloat(MirrorMatDiagonal.Y) +
-           AbsFloat(MirrorMatDiagonal.Z) ==
-         3.0f);
-  MirrorGoalJoints(&MirroredInfo, MirrorMatDiagonal, Params);
-
-  mat3 MirrorMatrix = Math::Mat3Scale(MirrorMatDiagonal);
-  // Mirror the trajectory positions
-  for(int i = 0; i < MM_POINT_COUNT; i++)
-  {
-    MirroredInfo.TrajectoryPs[i] = Math::MulMat3Vec3(MirrorMatrix, OriginalInfo.TrajectoryPs[i]);
-    MirroredInfo.TrajectoryAngles[i] *= -1;
-  }
-
-  return MirroredInfo;
 }
 
 float
@@ -435,14 +520,10 @@ MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutB
 float
 MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
                        bool* OutMatchedMirrored, const mm_controller_data* MMData,
-                       mm_frame_info Goal)
+                       mm_frame_info Goal, mm_frame_info MirroredGoal)
 {
   TIMED_BLOCK(MotionMatch);
-  assert(OutAnimIndex && OutLocalStartTime);
-  assert(MMData);
   assert(MMData->FrameInfos.IsValid());
-
-  mm_frame_info MirroredGoal = GetMirroredFrameGoal(Goal, { -1, 1, 1 }, MMData->Params.FixedParams);
 
   float   SmallestCost       = FLT_MAX;
   int32_t BestFrameInfoIndex = -1;

@@ -24,11 +24,11 @@ const int MM_CONTROLLER_COUNT = RESOURCE_MAX_COUNT;
 
 namespace Resource
 {
-  typedef resource_hash_table<Render::model*, MODEL_MAX_COUNT>       model_hash_table;
-  typedef resource_hash_table<Anim::animation*, ANIMATION_MAX_COUNT> animation_group_hash_table;
-  typedef resource_hash_table<material*, MATERIAL_MAX_COUNT>         material_hash_table;
-  typedef resource_hash_table<uint32_t, TEXTURE_MAX_COUNT>           texture_hash_table;
-  typedef resource_hash_table<GLuint, SHADER_MAX_COUNT>              shader_hash_table;
+  typedef resource_hash_table<Render::model*, MODEL_MAX_COUNT>          model_hash_table;
+  typedef resource_hash_table<Anim::animation*, ANIMATION_MAX_COUNT>    animation_group_hash_table;
+  typedef resource_hash_table<material*, MATERIAL_MAX_COUNT>            material_hash_table;
+  typedef resource_hash_table<uint32_t, TEXTURE_MAX_COUNT>              texture_hash_table;
+  typedef resource_hash_table<GLuint, SHADER_MAX_COUNT>                 shader_hash_table;
   typedef resource_hash_table<mm_controller_data*, MM_CONTROLLER_COUNT> mm_controller_hash_table;
 
   class resource_manager
@@ -49,7 +49,7 @@ namespace Resource
     int32_t DiffedSceneCount;
     int32_t DiffedShaderCount;
     int32_t DiffedMMParamCount;
-		int32_t DiffedMMControllerCount;
+    int32_t DiffedMMControllerCount;
 
     file_stat ModelStats[RESOURCE_MAX_COUNT];
     file_stat TextureStats[RESOURCE_MAX_COUNT];
@@ -73,6 +73,8 @@ namespace Resource
     void FreeMMController(rid RID);
 
     GLuint DefaultShaderID;
+
+    void AddMMControllerAnimationReferences(mm_controller_data* Controller);
 
   public:
     Memory::heap_allocator   ModelHeap;
@@ -105,6 +107,9 @@ namespace Resource
     int32_t ScenePathCount;
     int32_t MMParamPathCount;
     int32_t MMControllerPathCount;
+
+    rid UpdateOrCreateMMController(mm_controller_data* ControllerData, size_t Size,
+                                   const char* Path);
 
     rid CreateMaterial(material Material, const char* Path);
 
@@ -156,7 +161,7 @@ namespace Resource
     void UpdateHardDriveAssetPathLists();
     void DeleteUnused();
     void ReloadModified();
-		void SortAllAssetDiffsPathsStats();
+    void SortAllAssetDiffsPathsStats();
 
     void Create(uint8_t* Memory, uint32_t TotalMemorySize, Memory::stack_allocator* TemporaryStack);
     void SetDefaultShaderID(GLuint ShaderID);

@@ -159,6 +159,18 @@ namespace Resource
     return false;
   }
 
+	void
+  resource_manager::AddMMControllerAnimationReferences(mm_controller_data* Controller)
+  {
+    Controller->Params.AnimRIDs.HardClear();
+    for(int i = 0; i < Controller->Params.AnimPaths.Count; i++)
+    {
+      rid AnimRID = this->ObtainAnimationPathRID(Controller->Params.AnimPaths[i].Name);
+      Controller->Params.AnimRIDs.Push(AnimRID);
+      this->Animations.AddReference(AnimRID);
+    }
+  }
+
   bool
   resource_manager::LoadMMController(rid RID)
   {
@@ -176,25 +188,59 @@ namespace Resource
           Platform::ReadEntireFile(&this->MMControllerHeap, Path);
 
         assert(AssetReadResult.Contents);
-        if(AssetReadResult.ContentsSize <= 0 || AssetReadResult.Contents == NULL)
+        if(AssetReadResult.ContentsSize <= sizeof(mm_controller_data) ||
+           AssetReadResult.Contents == NULL)
         {
           return false;
         }
         Controller = (mm_controller_data*)AssetReadResult.Contents;
         Asset::UnpackMMController(Controller);
 
-        Controller->Params.AnimRIDs.HardClear();
-        for(int i = 0; i < Controller->Params.AnimPaths.Count; i++)
-        {
-          rid AnimRID = this->ObtainAnimationPathRID(Controller->Params.AnimPaths[i].Name);
-					Controller->Params.AnimRIDs.Push(AnimRID);
-          this->Animations.AddReference(AnimRID);
-        }
         this->MMControllers.Set(RID, Controller, Path);
+        this->AddMMControllerAnimationReferences(Controller);
       }
       return true;
     }
     return false;
+  }
+
+  rid
+  resource_manager::UpdateOrCreateMMController(mm_controller_data* ControllerData, size_t Size,
+                                               const char* Path)
+  {
+    assert(ControllerData);
+    assert(Size > sizeof(mm_controller_data));
+    assert(Path);
+
+    rid RID = {};
+    // If path exists
+    if(this->MMControllers.GetPathRID(&RID, Path))
+    {
+      // If there is an asset
+      mm_controller_data* StoredController = NULL;
+      if(this->MMControllers.Get(RID, &StoredController, NULL) && StoredController)
+      {
+        this->FreeMMController(RID);
+				//Assume that RID was not wiped
+        char* CheckPath = NULL;
+				//TODO(Lukas) remove this check
+        assert(this->MMControllers.Get(RID, NULL, &CheckPath) && CheckPath);
+      }
+    }
+    else
+    {
+      // Making sure that RID is valid going forward
+      RID = this->RegisterMMController(Path);
+    }
+    assert(RID.Value > 0);
+
+    mm_controller_data* NewController = (mm_controller_data*)this->MMControllerHeap.Alloc(
+      Memory::SafeTruncate_size_t_To_uint32_t(Size));
+    memcpy(NewController, ControllerData, Size);
+    this->MMControllers.Set(RID, NewController, Path);
+    AddMMControllerAnimationReferences(NewController);
+
+    return RID;
   }
 
   bool

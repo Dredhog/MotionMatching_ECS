@@ -7,6 +7,7 @@
 #include "resource_manager.h"
 #include "blend_stack.h"
 #include "common.h"
+#include "misc.h"
 #include <stdint.h>
 
 #define MM_CONTROLLER_MAX_COUNT 20
@@ -45,9 +46,11 @@ struct mm_entity_data
   mm_input_control_params InputControlParams[MM_CONTROLLER_MAX_COUNT]; // persistent
 
   // Intermediate data
-  mm_controller_data*         MMControllers[MM_CONTROLLER_MAX_COUNT];   // One Frame
-  Anim::animation_controller* AnimControllers[MM_CONTROLLER_MAX_COUNT]; // One Frame
-  mm_frame_info               AnimGoals[MM_CONTROLLER_MAX_COUNT];       // One Frame
+  mm_controller_data*         MMControllers[MM_CONTROLLER_MAX_COUNT];    // One Frame
+  Anim::animation_controller* AnimControllers[MM_CONTROLLER_MAX_COUNT];  // One Frame
+  mm_frame_info               LastMatchedGoals[MM_CONTROLLER_MAX_COUNT]; // One Frame
+  mm_frame_info               MirroredAnimGoals[MM_CONTROLLER_MAX_COUNT]; // One Frame
+  mm_frame_info               AnimGoals[MM_CONTROLLER_MAX_COUNT];        // One Frame
 
   // Output data
   transform OutDeltaRootMotions[MM_CONTROLLER_MAX_COUNT]; // One Frame
@@ -66,6 +69,8 @@ struct mm_aos_entity_data
   // Intermediate data
   mm_controller_data** const         MMController;
   Anim::animation_controller** const AnimController;
+  mm_frame_info* const               LastMatchedGoal;
+  mm_frame_info* const               MirroredAnimGoal;
   mm_frame_info* const               AnimGoal;
 };
 
@@ -84,9 +89,11 @@ SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
                                         .Acceleration = 2.0f,
                                         .UseStrafing  = false };
 
-  *MMEntityData->MMController   = NULL;
-  *MMEntityData->AnimController = NULL;
-  *MMEntityData->AnimGoal       = {};
+  *MMEntityData->MMController     = NULL;
+  *MMEntityData->AnimController   = NULL;
+  *MMEntityData->LastMatchedGoal  = {};
+  *MMEntityData->MirroredAnimGoal = {};
+  *MMEntityData->AnimGoal         = {};
 }
 
 inline void
@@ -99,9 +106,11 @@ CopyAOSMMEntityData(mm_aos_entity_data* Dest, const mm_aos_entity_data* Src)
   *Dest->FollowTrajectory   = *Src->FollowTrajectory;
   *Dest->InputControlParams = *Src->InputControlParams;
 
-  *Dest->MMController   = *Src->MMController;
-  *Dest->AnimController = *Src->AnimController;
-  *Dest->AnimGoal       = *Src->AnimGoal;
+  *Dest->MMController     = *Src->MMController;
+  *Dest->AnimController   = *Src->AnimController;
+  *Dest->LastMatchedGoal  = *Src->LastMatchedGoal;
+  *Dest->MirroredAnimGoal = *Src->MirroredAnimGoal;
+  *Dest->AnimGoal         = *Src->AnimGoal;
 }
 
 inline void
@@ -114,9 +123,11 @@ SwapMMEntityData(mm_aos_entity_data* A, mm_aos_entity_data* B)
   bool                    TempFollowTrajectory   = *A->FollowTrajectory;
   mm_input_control_params TempInputControlParams = *A->InputControlParams;
 
-  mm_controller_data*         TempMMController   = *A->MMController;
-  Anim::animation_controller* TempAnimController = *A->AnimController;
-  mm_frame_info               TempAnimGoal       = *A->AnimGoal;
+  mm_controller_data*         TempMMController     = *A->MMController;
+  Anim::animation_controller* TempAnimController   = *A->AnimController;
+  mm_frame_info               TempLastMatchedGoal  = *A->LastMatchedGoal;
+  mm_frame_info               TempMirroredAnimGoal = *A->MirroredAnimGoal;
+  mm_frame_info               TempAnimGoal         = *A->AnimGoal;
 
   *A->MMControllerRID    = *B->MMControllerRID;
   *A->BlendStack         = *B->BlendStack;
@@ -126,6 +137,8 @@ SwapMMEntityData(mm_aos_entity_data* A, mm_aos_entity_data* B)
   *A->InputControlParams = *B->InputControlParams;
   *A->MMController       = *B->MMController;
   *A->AnimController     = *B->AnimController;
+  *A->LastMatchedGoal    = *B->LastMatchedGoal;
+  *A->MirroredAnimGoal   = *B->MirroredAnimGoal;
   *A->AnimGoal           = *B->AnimGoal;
 
   *B->MMControllerRID    = TempMMControllerRID;
@@ -136,6 +149,8 @@ SwapMMEntityData(mm_aos_entity_data* A, mm_aos_entity_data* B)
   *B->InputControlParams = TempInputControlParams;
   *B->MMController       = TempMMController;
   *B->AnimController     = TempAnimController;
+  *B->LastMatchedGoal    = TempLastMatchedGoal;
+  *B->MirroredAnimGoal   = TempMirroredAnimGoal;
   *B->AnimGoal           = TempAnimGoal;
 }
 
@@ -151,6 +166,8 @@ GetEntityAOSMMData(int32_t MMDataIndex, mm_entity_data* MMEntityData)
     .FollowTrajectory   = &MMEntityData->FollowTrajectory[MMDataIndex],
     .InputControlParams = &MMEntityData->InputControlParams[MMDataIndex],
     .MMController       = &MMEntityData->MMControllers[MMDataIndex],
+    .LastMatchedGoal    = &MMEntityData->LastMatchedGoals[MMDataIndex],
+    .MirroredAnimGoal   = &MMEntityData->MirroredAnimGoals[MMDataIndex],
     .AnimGoal           = &MMEntityData->AnimGoals[MMDataIndex],
     .AnimController     = &MMEntityData->AnimControllers[MMDataIndex],
   };
@@ -243,6 +260,7 @@ SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectory
     }
   }
   *OutInputControlledCount      = 0;
+  *OutTrajectoryControlledCount = 0;
   *OutTrajectoryControlledStart = 0;
   for(int i = 0; i < MMEntityData->Count; i++)
   {
@@ -308,12 +326,14 @@ PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, Anim::animation_controller** AC
   {
     if(BSs[i].Empty())
     {
+      ACs[i]->BlendFunc = ThirdPersonAnimationBlendFunction;
+
       const int   IndexInSet     = 0;
       const float LocalStartTime = 0.0f;
       const float BlendInTime    = 0.0f;
       const bool  Mirror         = false;
-      PlayAnimation(ACs[i], &BSs[i], MMControllers[i]->Params.AnimRIDs[IndexInSet], IndexInSet,
-                    LocalStartTime, BlendInTime, Mirror);
+      PlayAnimation(ACs[i], &BSs[i], MMControllers[i]->Params.AnimRIDs[IndexInSet],
+                    MMControllers[i]->Animations[IndexInSet], LocalStartTime, BlendInTime, Mirror);
       ACs[i]->Animations[BSs[i].Peek().AnimStateIndex] = MMControllers[i]->Animations[IndexInSet];
     }
   }
@@ -321,25 +341,25 @@ PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, Anim::animation_controller** AC
 
 inline void
 DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityIndices, int32_t Count,
-                   const entity* Entities, const mm_info_debug_settings* MMInfoDebug)
+                   const entity* Entities, const mm_info_debug_settings* MMInfoDebug,
+                   vec3 BoneColor = { 1, 0, 1 }, vec3 TrajectoryColor = { 0, 0, 1 },
+                   vec3 DirectionColor = { 1, 0, 0 })
 {
-	for(int i = 0; i < Count; i++)
-	{
+  for(int i = 0; i < Count; i++)
+  {
     DrawFrameInfo(GoalInfos[i], TransformToMat4(Entities[EntityIndices[i]].Transform), *MMInfoDebug,
-                  { 1, 0, 1 }, { 1, 0, 1 }, { 0, 0, 1 }, { 1, 0, 0 });
-
-    /*DrawFrameInfo(OutGoals[i], Math::Mat4Ident(), MMDebug->MatchedGoal, { 1, 1, 0 }, { 1, 1, 0 },
-                  { 0, 1, 0 }, { 1, 0, 0 });*/
+                  BoneColor, BoneColor, TrajectoryColor, DirectionColor);
   }
 }
 
 inline void
-GenerateGoalsFromInput(Memory::stack_allocator* TempAlloc, mm_frame_info* OutGoals,
-                       const blend_stack*                       BlendStacks,
+GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
+                       Memory::stack_allocator* TempAlloc, const blend_stack* BlendStacks,
                        const Anim::animation_controller* const* AnimControllers,
                        const mm_controller_data* const*         MMControllers,
-                       const mm_input_control_params* ControlParams, int32_t Count,
-                       const game_input* Input, vec3 CameraForward)
+                       const mm_input_control_params* ControlParams, const int32_t* EntityIndices,
+                       int32_t Count, const entity* Entities, const game_input* Input,
+                       vec3 CameraForward)
 {
   // TODO(Lukas) Add joystick option here
   vec3 Dir = {};
@@ -369,14 +389,19 @@ GenerateGoalsFromInput(Memory::stack_allocator* TempAlloc, mm_frame_info* OutGoa
       Dir = Math::Normalized(Dir);
     }
   }
-
+	
   for(int i = 0; i < Count; i++)
   {
-    vec3 GoalVelocity = ControlParams[i].MaxSpeed * Dir;
+    quat R            = Entities[EntityIndices[i]].Transform.R;
+    R.V *= -1;
+    vec3 GoalVelocity =
+      Math::MulMat4Vec4(Math::Mat4Rotate(R), { ControlParams[i].MaxSpeed * Dir, 0 }).XYZ;
 
     blend_in_info DominantBlend = BlendStacks[i].Peek();
-    OutGoals[i] = GetMMGoal(TempAlloc, DominantBlend.AnimStateIndex, DominantBlend.Mirror,
-                            AnimControllers[i], GoalVelocity, MMControllers[i]->Params.FixedParams);
+
+    GetMMGoal(&OutGoals[i], &OutMirroredGoals[i], TempAlloc, DominantBlend.AnimStateIndex,
+              DominantBlend.Mirror, AnimControllers[i], GoalVelocity,
+              MMControllers[i]->Params.FixedParams);
   }
 }
 
@@ -388,27 +413,73 @@ GenerateGoalsFromSplines(mm_frame_info* OutGoals, const entity_trajectory_state*
 {
 }
 
-inline void
-MotionMatchGoals(blend_stack* OutBlendStacks, const mm_frame_info* AnimGoals,
-                 const Anim::animation_controller* const* AnimControllers,
-                 const mm_controller_data* const* MMControllers, int32_t Count)
+// Only used to visualize the mirrored match, not adequate way to flip for searching mirrors
+inline mm_frame_info
+VisualFlipGoalX(const mm_frame_info& Goal)
 {
-  /*for(int i = 0; i < Count; i++)
+  mm_frame_info FlippedGoal = Goal;
+  for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
   {
-    OutBlendStacks[i].Peek()
-
-    int32_t       MatchedAnimIndex = -1;
-    int32_t       MatchedAnimTime  = -1;
-    mm_frame_info BestMatch;
-    MotionMatch(&MatchedAnimIndex, &MatchedAnimTime, &BestMatch, MMControllers[i], AnimGoals[i]);
-    if(MatchedAnimIndex !=
-    PlayAnim();
-    Set the AnimController's State
-  }*/
+    FlippedGoal.BonePs[i].X *= -1;
+    FlippedGoal.BoneVs[i].X *= -1;
+  }
+  for(int i = 0; i < MM_POINT_COUNT; i++)
+  {
+    FlippedGoal.TrajectoryPs[i].X *= -1;
+    FlippedGoal.TrajectoryAngles[i] *= -1;
+  }
+  return FlippedGoal;
 }
 
 inline void
-ComputeLocalRootMotion(transform*                               OutDeltaRootMotions,
+MotionMatchGoals(blend_stack* OutBlendStacks, Anim::animation_controller* const* AnimControllers,
+                 mm_frame_info* LastMatchedGoals, const mm_frame_info* AnimGoals,
+                 const mm_frame_info*             MirroredAnimGoals,
+                 const mm_controller_data* const* MMControllers, int32_t Count)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    int32_t NewAnimIndex;
+    float   NewAnimStartTime;
+    bool    NewMatchIsMirrored = false;
+
+    mm_frame_info BestMatch = {};
+    if(!MMControllers[i]->Params.DynamicParams.MatchMirroredAnimations)
+    {
+      MotionMatch(&NewAnimIndex, &NewAnimStartTime, &BestMatch, MMControllers[i], AnimGoals[i]);
+    }
+    else
+    {
+      MotionMatchWithMirrors(&NewAnimIndex, &NewAnimStartTime, &BestMatch, &NewMatchIsMirrored,
+                             MMControllers[i], AnimGoals[i], MirroredAnimGoals[i]);
+    }
+
+    const Anim::animation* MatchedAnim = MMControllers[i]->Animations[NewAnimIndex];
+    // animation pointer should always be present in the AnimController
+    int   ActiveStateIndex    = OutBlendStacks[i].Peek().AnimStateIndex;
+    float ActiveAnimLocalTime = Anim::GetLocalSampleTime(AnimControllers[i], ActiveStateIndex,
+                                                         AnimControllers[i]->GlobalTimeSec);
+
+    // Figure out if matched frame is sufficiently far away from the current to start a new
+    // animation
+    if(AnimControllers[i]->AnimationIDs[ActiveStateIndex].Value !=
+         MMControllers[i]->Params.AnimRIDs[NewAnimIndex].Value ||
+       (AbsFloat(ActiveAnimLocalTime - NewAnimStartTime) >=
+          MMControllers[i]->Params.DynamicParams.MinTimeOffsetThreshold &&
+        NewMatchIsMirrored == OutBlendStacks[i].Peek().Mirror) ||
+       NewMatchIsMirrored != OutBlendStacks[i].Peek().Mirror)
+    {
+      LastMatchedGoals[i] = (NewMatchIsMirrored) ? VisualFlipGoalX(BestMatch) : BestMatch;
+      PlayAnimation(AnimControllers[i], &OutBlendStacks[i],
+                    MMControllers[i]->Params.AnimRIDs[NewAnimIndex],
+                    MMControllers[i]->Animations[NewAnimIndex], NewAnimStartTime,
+                    MMControllers[i]->Params.DynamicParams.BelndInTime, NewMatchIsMirrored);
+    }
+  }
+}
+
+inline void
+ComputeLocalRootMotion(transform*                               OutLocalDeltaRootMotions,
                        const Anim::animation_controller* const* AnimControllers,
                        const blend_stack* BlendStacks, int32_t Count, float dt)
 {
@@ -420,13 +491,24 @@ ComputeLocalRootMotion(transform*                               OutDeltaRootMoti
       Anim::GetLocalSampleTime(RootMotionAnim,
                                &AnimControllers[i]->States[AnimBlend.AnimStateIndex],
                                AnimControllers[i]->GlobalTimeSec);
-    OutDeltaRootMotions[i] = GetAnimRootMotionDelta(RootMotionAnim, AnimControllers[i],
-                                                    AnimBlend.Mirror, LocalSampleTime, dt);
+    OutLocalDeltaRootMotions[i] = GetAnimRootMotionDelta(RootMotionAnim, AnimControllers[i],
+                                                         AnimBlend.Mirror, LocalSampleTime, dt);
   }
 }
 
 inline void
-ApplyRootMotion(entity* InOutEntites, const transform* DeltaRootMotions, int32_t* EntityIndices,
-                int32_t Count)
+ApplyRootMotion(entity* InOutEntities, const transform* LocalDeltaRootMotions,
+                int32_t* EntityIndices, int32_t Count)
 {
+	for(int i = 0; i < Count; i++)
+	{
+    transform* TargetTransform = &InOutEntities[EntityIndices[i]].Transform;
+
+    vec3 dT =
+      Math::MulMat4Vec4(Math::Mat4Rotate(TargetTransform->R), { LocalDeltaRootMotions[i].T, 0 })
+        .XYZ;
+
+    TargetTransform->R = TargetTransform->R * LocalDeltaRootMotions[i].R;
+    TargetTransform->T += dT;
+  }
 }

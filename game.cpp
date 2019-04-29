@@ -1,6 +1,5 @@
 #include "game.h"
 #include "debug_drawing.h"
-#include "player_controller.h"
 
 void
 AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_editor* Editor,

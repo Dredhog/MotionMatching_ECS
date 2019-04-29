@@ -82,7 +82,9 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
     UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
     UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+    UI::Checkbox("Motion Matching Debug", &s_ShowMMDebugSettingsWindow);
     UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
+
     EntityGUI(GameState, s_ShowEntityTools);
     MaterialGUI(GameState, s_ShowMaterialEditor);
     AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
@@ -619,7 +621,7 @@ TestGui(game_state* GameState, const game_input* Input)
   }
 	if(s_ShowMMDebugSettingsWindow)
 	{
-    UI::BeginWindow("Motion Matching Debug Settings", { 800, 20 }, { 700, 700 });
+    UI::BeginWindow("Matching Debug Settings", { 800, 20 }, { 700, 700 });
 
     mm_debug_settings& MMDebug = GameState->MMDebug;
     UI::Text("Debug Display");

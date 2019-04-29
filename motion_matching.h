@@ -34,23 +34,23 @@ struct mm_debug_settings
 struct mm_fixed_params
 {
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
-  fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> MirroredComparisonIndexIndices;
+  fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> MirrorBoneIndices;
 
-  Anim::skeleton             Skeleton;
-  float MetadataSamplingFrequency;
+  Anim::skeleton Skeleton;
+  float          MetadataSamplingFrequency;
 };
 
 struct mm_dynamic_params
 {
-  float TrajectoryTimeHorizon;
-  float BonePCoefficient;
-  float BoneVCoefficient;
-  float TrajPCoefficient;
-  float TrajVCoefficient;
-  float TrajAngleCoefficient;
-  float BelndInTime;
-  float MinTimeOffsetThreshold;
-  bool  MatchMirroredAnimations;
+  float                      TrajectoryTimeHorizon;
+  float                      BonePCoefficient;
+  float                      BoneVCoefficient;
+  float                      TrajPCoefficient;
+  float                      TrajVCoefficient;
+  float                      TrajAngleCoefficient;
+  float                      BelndInTime;
+  float                      MinTimeOffsetThreshold;
+  bool                       MatchMirroredAnimations;
   Anim::skeleton_mirror_info MirrorInfo;
 };
 
@@ -107,30 +107,27 @@ ResetMMParamsToDefault(mm_params* Params)
   Params->DynamicParams.BelndInTime             = 0.2f;
   Params->DynamicParams.MatchMirroredAnimations = false;
   Params->FixedParams.MetadataSamplingFrequency = 30.0f;
-
-  /*Params.FixedParams.ComparisonBoneIndices.Push(4);
-  Params.FixedParams.ComparisonBoneIndices.Push(10);
-
-  Params.FixedParams.MirroredComparisonIndexIndices.Push(1);
-  Params.FixedParams.MirroredComparisonIndexIndices.Push(0);*/
 }
 
-//Goal generation (Not really part of motion matching
-mm_frame_info GetMMGoal(Memory::stack_allocator* TempAlloc, int32_t CurrentAnimIndex, bool Mirror,
-                        const Anim::animation_controller* Controller, vec3 DesiredVelocity,
-                        const mm_fixed_params& Params);
-void GetPoseGoal(mm_frame_info* OutPose, vec3* OutStartVelocity, Memory::stack_allocator* TempAlloc,
-                 int32_t CurrentAnimIndex, bool Mirror,
-                 const Anim::animation_controller* Controller, const mm_fixed_params& Params);
+// Goal generation (Not really part of motion matching
+void GetMMGoal(mm_frame_info* OutGoal, mm_frame_info* OutMirroredGoal,
+               Memory::stack_allocator* TempAlloc, int32_t AnimStateIndex, bool PlayingMirrored,
+               const Anim::animation_controller* Controller, vec3 DesiredVelocity,
+               const mm_fixed_params& Params);
+void GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootVelocity,
+                 vec3* OutMirrorRootVelocity, Memory::stack_allocator* TempAlloc,
+                 int32_t AnimStateIndex, const Anim::animation_controller* Controller,
+                 const mm_fixed_params& Params);
 void GetLongtermGoal(mm_frame_info* OutTrajectory, vec3 StartVelocity, vec3 EndVelocity);
 void MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal,
                       const mm_fixed_params& Params);
-mm_frame_info      GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
-                                        const mm_fixed_params& Params);
+mm_frame_info GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
+                                   const mm_fixed_params& Params);
 
 // Runtime API
 float MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
                   const mm_controller_data* MMData, mm_frame_info Goal);
 float MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime,
                              mm_frame_info* OutBestMatch, bool* OutMatchedMirrored,
-                             const mm_controller_data* MMData, mm_frame_info Goal);
+                             const mm_controller_data* MMData, mm_frame_info Goal,
+                             mm_frame_info MirroredGoal);

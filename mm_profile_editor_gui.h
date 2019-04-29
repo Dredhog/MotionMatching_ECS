@@ -10,8 +10,8 @@ const char* BoneArrayToString(const void* Data, int Index);
 
 // Note(Lukas) the Params have to have the names for this to export correctly
 inline void
-BuildAndExportMMController(Memory::stack_allocator* Alloc, Resource::resource_manager* Resources,
-                           const mm_params* Params, const char* FileName)
+ExportAndSetMMController(Memory::stack_allocator* Alloc, Resource::resource_manager* Resources,
+                         const mm_params* Params, const char* FileName)
 {
   // Fetch the animation pointers
   fixed_stack<Anim::animation*, MM_ANIM_CAPACITY> Animations = {};
@@ -26,7 +26,10 @@ BuildAndExportMMController(Memory::stack_allocator* Alloc, Resource::resource_ma
     PrecomputeRuntimeMMData(Alloc, Animations.GetArrayHandle(), *Params);
   // assert(MMControllerAssetStart.Address == (uint8_t*)MMControllerAsset);
 
-  size_t MMControllerAssetSize = Alloc->GetByteCountAboveMarker(MMControllerAssetStart);
+  size_t AlignmentSize = (uint8_t*)MMControllerAsset - (uint8_t*)MMControllerAssetStart.Address;
+  assert(0 <= AlignmentSize && AlignmentSize < 64);
+  size_t MMControllerAssetSize =
+    Alloc->GetByteCountAboveMarker(MMControllerAssetStart) - AlignmentSize;
 
   MMControllerAsset->Params.AnimPaths.HardClear();
   // Fetch the animation names
@@ -36,8 +39,12 @@ BuildAndExportMMController(Memory::stack_allocator* Alloc, Resource::resource_ma
     MMControllerAsset->Params.AnimPaths.Push(Resources->AnimationPaths[PathIndex]);
   }
 
+  Resources->UpdateOrCreateMMController(MMControllerAsset, MMControllerAssetSize, FileName);
+
   Asset::PackMMController(MMControllerAsset);
   Platform::WriteEntireFile(FileName, MMControllerAssetSize, MMControllerAsset);
+
+  Alloc->FreeToMarker(MMControllerAssetStart);
 }
 
 void
@@ -115,16 +122,21 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
     TargetPathIndex = NewTargetPathIndex;
   }
 
-
   // Set skeleton if not already set. Otherwise give a red "switch target" button
+  if(MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount <= 0)
   {
+    bool ClickedSetSkeleton = UI::Button("Set skeleton");
     static int32_t ActiveModelPathIndex = -1;
-		int32_t NewModelPathIndex = ActiveModelPathIndex;
-    UI::Combo("Target Skeleton", &NewModelPathIndex, Resources->ModelPaths,
-              Resources->ModelPathCount, PathArrayToString);
-    if(NewModelPathIndex != -1 && NewModelPathIndex != ActiveModelPathIndex)
     {
-      rid TargetModelRID = Resources->ObtainModelPathRID(Resources->ModelPaths[NewModelPathIndex].Name);
+      UI::SameLine();
+      UI::Combo("Target Skeleton", &ActiveModelPathIndex, Resources->ModelPaths,
+                Resources->ModelPathCount, PathArrayToString);
+      UI::NewLine();
+    }
+    if(ClickedSetSkeleton && ActiveModelPathIndex != -1)
+    {
+      rid TargetModelRID =
+        Resources->ObtainModelPathRID(Resources->ModelPaths[ActiveModelPathIndex].Name);
       Render::model* TargetModel = Resources->GetModel(TargetModelRID);
       if(TargetModel->Skeleton)
       {
@@ -135,11 +147,9 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         GenerateSkeletonMirroringInfo(&MMEditor->ActiveProfile.DynamicParams.MirrorInfo,
                                       &MMEditor->ActiveProfile.FixedParams.Skeleton);
       }
-
     }
-    ActiveModelPathIndex = NewModelPathIndex;
   }
-  if(MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount > 0)
+  else
   {
     if(UI::CollapsingHeader("Skeleton", &s_TargetSkeletonDropdown))
     {
@@ -275,8 +285,8 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
       UI::SameLine();
       if(UI::Button("Build Controller"))
       {
-        BuildAndExportMMController(TempStack, Resources, &MMEditor->ActiveProfile,
-                                   "data/matching_params/test.controller");
+        ExportAndSetMMController(TempStack, Resources, &MMEditor->ActiveProfile,
+                                 "data/matching_params/test.controller");
       }
       UI::NewLine();
     }

@@ -16,12 +16,12 @@ struct array_handle
     return this->Elements != NULL && this->Count != 0;
   }
 
-	void
-	Init(T* Elements, IndexType Count)
-	{
+  void
+  Init(T* Elements, IndexType Count)
+  {
     assert(Elements);
     assert(0 < Count);
-		this->Elements = Elements;
+    this->Elements = Elements;
     this->Count    = Count;
   }
 
@@ -29,7 +29,7 @@ struct array_handle
   HardClear()
   {
     memset(this->Elements, 0, this->Count * sizeof(T));
-		this->Count = 0;
+    this->Count = 0;
   }
 
   T& operator[](IndexType Index)
@@ -48,17 +48,17 @@ struct array_handle
 template<typename T, typename IndexType = int32_t>
 struct stack_handle
 {
-  T*  Elements;
+  T*      Elements;
   int32_t Capacity;
   int32_t Count;
 
-	void
-	Init(T* Elements, IndexType Count, IndexType Capacity)
-	{
+  void
+  Init(T* Elements, IndexType Count, IndexType Capacity)
+  {
     assert(Elements);
     assert(Count <= Capacity);
-		this->Elements = Elements;
-		this->Count = Count;
+    this->Elements = Elements;
+    this->Count    = Count;
     this->Capacity = Capacity;
   }
 
@@ -165,10 +165,10 @@ struct stack_handle
     return Capacity;
   }
 
-	array_handle<T, IndexType>
-	GetArrayHandle()
-	{
-		array_handle<T, IndexType> NewArrayHandle;
+  array_handle<T, IndexType>
+  GetArrayHandle()
+  {
+    array_handle<T, IndexType> NewArrayHandle;
     NewArrayHandle.Init(Elements, Count);
     return NewArrayHandle;
   }
@@ -179,20 +179,19 @@ stack_handle<T, IndexType>
 CreateStackHandle(T* Elements, int32_t Count, int32_t Capacity)
 {
   stack_handle<T, IndexType> NewStackHandle;
-	NewStackHandle.Elements = Elements;
+  NewStackHandle.Elements = Elements;
   NewStackHandle.Count    = Count;
   NewStackHandle.Capacity = Capacity;
 
   return NewStackHandle;
 }
 
-
 template<typename T, typename IndexType = int32_t>
 array_handle<T, IndexType>
 CreateArrayHandle(T* Elements, IndexType Count)
 {
   array_handle<T, IndexType> NewHandle;
-	NewHandle.Init(Elements, Count);
+  NewHandle.Init(Elements, Count);
   return NewHandle;
 }
 
@@ -202,10 +201,7 @@ struct fixed_stack
   T   Elements[Capacity];
   int Count;
 
-  fixed_stack()
-  {
-    this->Count = 0;
-  }
+  fixed_stack() { this->Count = 0; }
 
   void
   Push(const T& NewElement)
@@ -290,7 +286,7 @@ struct fixed_stack
   {
     int TempCount = this->Count;
     memset(this->Elements, 0, this->Count * sizeof(T));
-		this->Count = 0;
+    this->Count = 0;
     return TempCount;
   }
 
@@ -442,25 +438,25 @@ struct circular_stack
   }
 
   bool
-  Full()
+  Full() const
   {
     return m_Count == Capacity;
   }
 
   bool
-  Empty()
+  Empty() const
   {
     return m_Count == 0;
   }
 
   int
-  GetCount()
+  GetCount() const
   {
     return m_Count;
   }
 
   int
-  GetCapacity()
+  GetCapacity() const
   {
     return Capacity;
   }
