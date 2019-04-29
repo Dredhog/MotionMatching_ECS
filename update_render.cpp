@@ -174,7 +174,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     mm_debug_settings&         MMDebug       = GameState->MMDebug;
     trajectory_system&         Trajectories  = GameState->TrajectorySystem;
     entity*                    Entities      = GameState->Entities;
-    Resource::resource_manager Resources     = GameState->Resources;
+    Resource::resource_manager& Resources     = GameState->Resources;
     vec3                       CameraForward = GameState->Camera.Forward;
     Memory::stack_allocator*   TempStack     = GameState->TemporaryMemStack;
 
@@ -195,7 +195,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GenerateGoalsFromInput(TempStack, &MMEntityData.AnimGoals[0], &MMEntityData.BlendStacks[0],
                            &MMEntityData.AnimControllers[0], &MMEntityData.MMControllers[0],
                            &MMEntityData.InputControlParams[0], InputControlledCount, Input,
-                           CameraForward, &MMDebug);
+                           CameraForward);
+
+    DrawGoalFrameInfos(&MMEntityData.AnimGoals[0], &MMEntityData.EntityIndices[0],
+                       TotalControllerCount, Entities, &MMDebug.CurrentGoal);
     // TODO(Lukas) make sure that all trajectory indices are valid by prevention or correction
     GenerateGoalsFromSplines(&MMEntityData.AnimGoals[FirstTrajecotryControlledIndex],
                              &MMEntityData.TrajectoryStates[FirstTrajecotryControlledIndex],

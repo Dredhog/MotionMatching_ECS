@@ -270,16 +270,6 @@ namespace Resource
   }
 
   void
-  resource_manager::WipeAllMMControllerData()
-  {
-    for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
-    {
-      this->FreeMMController({ i + 1 });
-    }
-    this->MMControllers.Reset();
-  }
-
-  void
   resource_manager::WipeAllModelData()
   {
     for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
@@ -288,6 +278,32 @@ namespace Resource
     }
     this->Models.Reset();
     this->ModelHeap.Clear();
+  }
+
+  void
+  resource_manager::WipeAllMMControllerData()
+  {
+    for(int i = 0; i < RESOURCE_MAX_COUNT; i++)
+    {
+      this->FreeMMController({ i + 1 });
+    }
+    this->MMControllers.Reset();
+    this->MMControllerHeap.Clear();
+  }
+
+  void
+  resource_manager::WipeAllMaterialData()
+  {
+    this->Materials.Reset();
+    this->MaterialStack.NullifyClear();
+  }
+
+  void
+  resource_manager::WipeAllAnimationData()
+  {
+    this->Animations.Reset();
+    this->AnimationHeap.Clear();
+    // this->AnimationStack.NullifyClear();
   }
 
   void
@@ -362,21 +378,6 @@ namespace Resource
         this->MMControllers.SetAsset(RID, NULL);
       }
     }
-  }
-
-  void
-  resource_manager::WipeAllMaterialData()
-  {
-    this->Materials.Reset();
-    this->MaterialStack.NullifyClear();
-  }
-
-  void
-  resource_manager::WipeAllAnimationData()
-  {
-    this->Animations.Reset();
-    this->AnimationHeap.Clear();
-    // this->AnimationStack.NullifyClear();
   }
 
 #define _STRING(X) #X

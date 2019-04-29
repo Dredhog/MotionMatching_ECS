@@ -5,7 +5,7 @@ src_dir='data/animations/'
 dst_dir='data/animations/'
 actor_dir='data/built/'
 ybot_dir='data/animations/ybot_retargeted/fbx/'
-sampling_frequency='--sampling_frequency 30'
+sampling_frequency='--sampling_frequency 15'
 
 $build 'data/models_actors/xbot.fbx' 'data/built/xbot' '--actor' '--root_bone' 'mixamorig:Hips' '--scale' '0.01'
 

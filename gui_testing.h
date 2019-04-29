@@ -1365,31 +1365,57 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
               mm_aos_entity_data MMControllerData =
                 GetEntityAOSMMData(MMControllerIndex, &MMEntityData);
 
-              // Pick the mm controller
-              int32_t ControllerPathIndex = -1;
-              if(MMControllerData.MMControllerRID->Value > 0)
               {
-                ControllerPathIndex =
-                  Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
-              }
-              int NewPathIndex = ControllerPathIndex;
-              UI::Combo("Controller", &NewPathIndex, Resources->MMControllerPaths,
-                        Resources->MMControllerPathCount, PathArrayToString);
-              if(NewPathIndex != ControllerPathIndex && NewPathIndex != -1)
-              {
-                rid NewRID = Resources->ObtainMMControllerPathRID(
-                  Resources->MMControllerPaths[NewPathIndex].Name);
-                mm_controller_data* MMController = Resources->GetMMController(NewRID);
-                if(MMController->Params.FixedParams.Skeleton.BoneCount == Skeleton->BoneCount)
+                // Pick the mm controller
+                static int32_t ShownPathIndex = -1;
+                int32_t        UsedPathIndex  = -1;
+                if(MMControllerData.MMControllerRID->Value > 0)
                 {
-                  *MMControllerData.MMControllerRID = NewRID;
-                  Resources->MMControllers.AddReference(NewRID);
+                  UsedPathIndex =
+                    Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
                 }
-              }
-              else if(NewPathIndex == -1 && MMControllerData.MMControllerRID->Value > 0)
-              {
-                Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
-                *MMControllerData.MMControllerRID = {};
+                bool ClickedAdd = false;
+                {
+                  if(ShownPathIndex != UsedPathIndex)
+                  {
+                    UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.8f, 0.8f, 0.4f, 1 });
+                    UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 1, 1, 0.6f, 1 });
+                  }
+                  ClickedAdd = UI::Button("Add", 0, 33);
+                  if(ShownPathIndex != UsedPathIndex)
+                  {
+                    UI::PopStyleColor();
+                    UI::PopStyleColor();
+                  }
+                }
+                UI::SameLine();
+                UI::Combo("Controller", &ShownPathIndex, &Resources->MMControllerPaths,
+                          Resources->MMControllerPathCount, PathArrayToString);
+                UI::NewLine();
+                if(ClickedAdd)
+                {
+                  if(ShownPathIndex != -1)
+                  {
+                    rid NewRID = Resources->ObtainMMControllerPathRID(
+                      Resources->MMControllerPaths[ShownPathIndex].Name);
+                    mm_controller_data* MMController = Resources->GetMMController(NewRID);
+                    if(MMController->Params.FixedParams.Skeleton.BoneCount == Skeleton->BoneCount)
+                    {
+                      if(MMControllerData.MMControllerRID->Value > 0 &&
+                         MMControllerData.MMControllerRID->Value != NewRID.Value)
+                      {
+                        Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
+                      }
+                      *MMControllerData.MMControllerRID = NewRID;
+                      Resources->MMControllers.AddReference(NewRID);
+                    }
+                  }
+                  else if(MMControllerData.MMControllerRID->Value > 0)
+                  {
+                    Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
+                    *MMControllerData.MMControllerRID = {};
+                  }
+                }
               }
 
               char TempBuffer[40];

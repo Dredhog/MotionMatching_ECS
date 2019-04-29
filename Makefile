@@ -13,6 +13,7 @@ models:
 	./builder/builder ./data/models_actors/conference.obj ./data/built/conference --model --scale 0.0035
 
 animations:
+	./clean_anims_actors.sh
 	make mixamo
 	make cmu
 

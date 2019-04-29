@@ -59,8 +59,8 @@ struct mm_aos_entity_data
   rid* const                     MMControllerRID;
   blend_stack* const             BlendStack;
   int32_t* const                 EntityIndex;
-  entity_trajectory_state* const TrajectoryState;
   bool* const                    FollowTrajectory;
+  entity_trajectory_state* const TrajectoryState;
   mm_input_control_params* const InputControlParams;
 
   // Intermediate data
@@ -72,21 +72,21 @@ struct mm_aos_entity_data
 inline void
 SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
 {
-
   *MMEntityData->MMControllerRID    = {};
   *MMEntityData->BlendStack         = {};
   *MMEntityData->EntityIndex        = -1;
+  *MMEntityData->FollowTrajectory   = false;
   *MMEntityData->TrajectoryState    = { .SplineIndex       = -1,
                                      .NextWaypointIndex = 0,
                                      .LoopType          = 0,
                                      .MovingInPositive  = true };
-  *MMEntityData->FollowTrajectory   = false;
   *MMEntityData->InputControlParams = { .MaxSpeed     = 1.0f,
                                         .Acceleration = 2.0f,
                                         .UseStrafing  = false };
 
-  *MMEntityData->MMController = NULL;
-  *MMEntityData->AnimGoal     = {};
+  *MMEntityData->MMController   = NULL;
+  *MMEntityData->AnimController = NULL;
+  *MMEntityData->AnimGoal       = {};
 }
 
 inline void
@@ -118,15 +118,25 @@ SwapMMEntityData(mm_aos_entity_data* A, mm_aos_entity_data* B)
   Anim::animation_controller* TempAnimController = *A->AnimController;
   mm_frame_info               TempAnimGoal       = *A->AnimGoal;
 
-  *A->MMControllerRID    = TempMMControllerRID;
-  *A->BlendStack         = TempBlendStack;
-  *A->EntityIndex        = TempEntityIndex;
-  *A->TrajectoryState    = TempTrajectoryState;
-  *A->FollowTrajectory   = TempFollowTrajectory;
-  *A->InputControlParams = TempInputControlParams;
-  *A->MMController       = TempMMController;
-  *A->AnimController     = TempAnimController;
-  *A->AnimGoal           = TempAnimGoal;
+  *A->MMControllerRID    = *B->MMControllerRID;
+  *A->BlendStack         = *B->BlendStack;
+  *A->EntityIndex        = *B->EntityIndex;
+  *A->TrajectoryState    = *B->TrajectoryState;
+  *A->FollowTrajectory   = *B->FollowTrajectory;
+  *A->InputControlParams = *B->InputControlParams;
+  *A->MMController       = *B->MMController;
+  *A->AnimController     = *B->AnimController;
+  *A->AnimGoal           = *B->AnimGoal;
+
+  *B->MMControllerRID    = TempMMControllerRID;
+  *B->BlendStack         = TempBlendStack;
+  *B->EntityIndex        = TempEntityIndex;
+  *B->TrajectoryState    = TempTrajectoryState;
+  *B->FollowTrajectory   = TempFollowTrajectory;
+  *B->InputControlParams = TempInputControlParams;
+  *B->MMController       = TempMMController;
+  *B->AnimController     = TempAnimController;
+  *B->AnimGoal           = TempAnimGoal;
 }
 
 inline mm_aos_entity_data
@@ -160,12 +170,23 @@ RemoveMMControllerDataAtIndex(int32_t MMControllerIndex, Resource::resource_mana
                               mm_entity_data* MMEntityData)
 {
   assert(0 <= MMControllerIndex && MMControllerIndex < MMEntityData->Count);
+
   mm_aos_entity_data RemovedController = GetEntityAOSMMData(MMControllerIndex, MMEntityData);
   if(RemovedController.MMControllerRID->Value > 0)
   {
     Resources->MMControllers.RemoveReference(*RemovedController.MMControllerRID);
   }
-  // TODO(Lukas) remove any assocaited data references e.g. resource references
+
+  if(MMEntityData->AnimControllers[MMControllerIndex])
+  {
+    for(int i = 0; i < ANIM_CONTROLLER_MAX_ANIM_COUNT; i++)
+    {
+      MMEntityData->AnimControllers[MMControllerIndex]->AnimationIDs[i] = {};
+      MMEntityData->AnimControllers[MMControllerIndex]->Animations[i]   = {};
+    }
+    MMEntityData->AnimControllers[MMControllerIndex]->AnimStateCount = 0;
+  }
+
   mm_aos_entity_data LastController = GetEntityAOSMMData(MMEntityData->Count - 1, MMEntityData);
   CopyAOSMMEntityData(&RemovedController, &LastController);
   MMEntityData->Count--;
@@ -206,11 +227,8 @@ SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectory
     {
       if(MMEntityData->MMControllerRIDs[j].Value > 0)
       {
-        if(MMEntityData->MMControllerRIDs[SmallestIndex].Value <= 0)
-        {
-          SmallestIndex = j;
-        }
-        else if(!MMEntityData->FollowTrajectory[SmallestIndex] && MMEntityData->FollowTrajectory[j])
+        if(MMEntityData->MMControllerRIDs[SmallestIndex].Value <= 0 ||
+           (MMEntityData->FollowTrajectory[SmallestIndex] && !MMEntityData->FollowTrajectory[j]))
         {
           SmallestIndex = j;
         }
@@ -232,7 +250,7 @@ SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectory
     {
       if(MMEntityData->FollowTrajectory[i])
       {
-        (*OutTrajectoryControlledStart)++;
+        (*OutTrajectoryControlledCount)++;
       }
       else
       {
@@ -302,13 +320,26 @@ PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, Anim::animation_controller** AC
 }
 
 inline void
+DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityIndices, int32_t Count,
+                   const entity* Entities, const mm_info_debug_settings* MMInfoDebug)
+{
+	for(int i = 0; i < Count; i++)
+	{
+    DrawFrameInfo(GoalInfos[i], TransformToMat4(Entities[EntityIndices[i]].Transform), *MMInfoDebug,
+                  { 1, 0, 1 }, { 1, 0, 1 }, { 0, 0, 1 }, { 1, 0, 0 });
+
+    /*DrawFrameInfo(OutGoals[i], Math::Mat4Ident(), MMDebug->MatchedGoal, { 1, 1, 0 }, { 1, 1, 0 },
+                  { 0, 1, 0 }, { 1, 0, 0 });*/
+  }
+}
+
+inline void
 GenerateGoalsFromInput(Memory::stack_allocator* TempAlloc, mm_frame_info* OutGoals,
                        const blend_stack*                       BlendStacks,
                        const Anim::animation_controller* const* AnimControllers,
                        const mm_controller_data* const*         MMControllers,
                        const mm_input_control_params* ControlParams, int32_t Count,
-                       const game_input* Input, vec3 CameraForward,
-                       const mm_debug_settings* MMDebug)
+                       const game_input* Input, vec3 CameraForward)
 {
   // TODO(Lukas) Add joystick option here
   vec3 Dir = {};
@@ -341,16 +372,11 @@ GenerateGoalsFromInput(Memory::stack_allocator* TempAlloc, mm_frame_info* OutGoa
 
   for(int i = 0; i < Count; i++)
   {
-    DrawFrameInfo(OutGoals[i], Math::Mat4Ident(), MMDebug->CurrentGoal, { 1, 0, 1 }, { 1, 0, 1 },
-                  { 0, 0, 1 }, { 1, 0, 0 });
     vec3 GoalVelocity = ControlParams[i].MaxSpeed * Dir;
 
     blend_in_info DominantBlend = BlendStacks[i].Peek();
     OutGoals[i] = GetMMGoal(TempAlloc, DominantBlend.AnimStateIndex, DominantBlend.Mirror,
                             AnimControllers[i], GoalVelocity, MMControllers[i]->Params.FixedParams);
-
-    DrawFrameInfo(OutGoals[i], Math::Mat4Ident(), MMDebug->MatchedGoal, { 1, 1, 0 }, { 1, 1, 0 },
-                  { 0, 1, 0 }, { 1, 0, 0 });
   }
 }
 

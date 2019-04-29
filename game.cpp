@@ -197,13 +197,16 @@ RemoveAnimationPlayerComponent(game_state* GameState, Resource::resource_manager
 
   // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimController and its arrays are still on
   // the persistent stack
-  RemoveAnimationReferences(&GameState->Resources, Entity->AnimController);
   int MMControllerDataIndex = GetEntityMMDataIndex(EntityIndex, &GameState->MMEntityData);
   if(MMControllerDataIndex != -1)
 	{
     RemoveMMControllerDataAtIndex(MMControllerDataIndex, Resources, &GameState->MMEntityData);
   }
-	Entity->AnimController = NULL;
+  else
+  {
+    RemoveAnimationReferences(&GameState->Resources, Entity->AnimController);
+  }
+  Entity->AnimController = NULL;
 
   //assert(false && "Not Implemented");
   // TODO(Lukas) redo this part after moving onto multiple MMData support
