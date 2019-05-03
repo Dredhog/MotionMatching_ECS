@@ -77,7 +77,7 @@ struct game_state
   // blend_stack        PlayerBlendStack;
   // float              PlayerSpeed;
 
-  trajectory_system TrajectorySystem;
+  spline_system SplineSystem;
   mm_entity_data    MMEntityData;
 
   bool UseHotReloading;

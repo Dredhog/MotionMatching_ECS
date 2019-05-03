@@ -7,8 +7,8 @@
 #include "anim.h"
 #include "file_queries.h"
 
-#define MM_POINT_COUNT 3
-#define MM_COMPARISON_BONE_COUNT 2
+#define MM_POINT_COUNT 6
+#define MM_COMPARISON_BONE_COUNT 3
 #define MM_ANIM_CAPACITY 35
 
 struct mm_info_debug_settings
@@ -86,6 +86,14 @@ struct mm_controller_data
   fixed_stack<Anim::animation*, MM_ANIM_CAPACITY>    Animations;
   fixed_stack<mm_frame_info_range, MM_ANIM_CAPACITY> AnimFrameInfoRanges;
   array_handle<mm_frame_info>                        FrameInfos;
+};
+
+enum anim_endpoint_extrapolation_type
+{
+  EXTRAPOLATE_None,
+  EXTRAPOLATE_Loop,
+  EXTRAPOLATE_Stop,
+  EXTRAPOLATE_Continue,
 };
 
 // Main metadata precomputation

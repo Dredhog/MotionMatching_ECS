@@ -439,10 +439,10 @@ SetGameStatePODFields(game_state* GameState)
 
   // Trajectory system
   {
-    GameState->TrajectorySystem.Splines.HardClear();
-    GameState->TrajectorySystem.IsWaypointPlacementMode = false;
-    GameState->TrajectorySystem.SelectedSplineIndex     = -1;
-    GameState->TrajectorySystem.SelectedWaypointIndex   = -1;
+    GameState->SplineSystem.Splines.HardClear();
+    GameState->SplineSystem.IsWaypointPlacementMode = false;
+    GameState->SplineSystem.SelectedSplineIndex     = -1;
+    GameState->SplineSystem.SelectedWaypointIndex   = -1;
   }
 
   GameState->UseHotReloading = true;

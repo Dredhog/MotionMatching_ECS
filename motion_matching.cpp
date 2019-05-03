@@ -9,14 +9,6 @@
 const int32_t g_SkipFrameCount = 1;
 // Copy the velocity for the last frame
 
-enum anim_endpoint_extrapolation_type
-{
-  EXTRAPOLATE_None,
-  EXTRAPOLATE_Loop,
-  EXTRAPOLATE_Stop,
-  EXTRAPOLATE_Continue,
-};
-
 // TODO(Lukas) make this be used by the asset pipeline
 mm_controller_data*
 PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,

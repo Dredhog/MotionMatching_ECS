@@ -1337,7 +1337,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             // Outside data used
             mm_entity_data&             MMEntityData        = GameState->MMEntityData;
             int                         SelectedEntityIndex = GameState->SelectedEntityIndex;
-            const trajectory_system&    TrajectorySystem    = GameState->TrajectorySystem;
+            const spline_system&        SplineSystem        = GameState->SplineSystem;
             Resource::resource_manager* Resources           = &GameState->Resources;
             const Anim::skeleton*       Skeleton = SelectedEntity->AnimController->Skeleton;
 
@@ -1424,15 +1424,15 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
               sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
               UI::Text(TempBuffer);
 
-              UI::Checkbox("Control From Spline", MMControllerData.FollowTrajectory);
-              if(*MMControllerData.FollowTrajectory == true)
+              UI::Checkbox("Control From Spline", MMControllerData.FollowSpline);
+              if(*MMControllerData.FollowSpline == true)
               {
                 static bool s_ShowTrajectoryControlParameters = true;
                 if(UI::CollapsingHeader("Trajectory Control Params",
                                         &s_ShowTrajectoryControlParameters))
                 {
-                  UI::Combo("Follow Spline", &MMControllerData.TrajectoryState->SplineIndex,
-                            (const char**)&g_SplineIndexNames[0], TrajectorySystem.Splines.Count);
+                  UI::Combo("Follow Spline", &MMControllerData.SplineState->SplineIndex,
+                            (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
                 }
               }
               else
@@ -1440,11 +1440,13 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 static bool s_ShowInputControlParameters = true;
                 if(UI::CollapsingHeader("Input Control Params", &s_ShowInputControlParameters))
                 {
-                  UI::SliderFloat("Maximum Speed", &MMControllerData.InputControlParams->MaxSpeed,
+                  UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
                                   0.0f, 5.0f);
-                  UI::SliderFloat("Acceleration",
-                                  &MMControllerData.InputControlParams->Acceleration, 0.0f, 10.0f);
-                  UI::Checkbox("Strafe", &MMControllerData.InputControlParams->UseStrafing);
+                  UI::SliderFloat("Position Bias", &MMControllerData.InputController->PositionBias,
+                                  0.0f, 1.0f);
+                  UI::SliderFloat("Velocity Bias", &MMControllerData.InputController->VelocityBias,
+                                  0.0f, 1.0f);
+                  UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
                 }
               }
             }
@@ -1602,14 +1604,14 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
   }
   if(UI::CollapsingHeader("Trajectory settings", &s_ShowTrajectorySettings))
   {
-    if(!GameState->TrajectorySystem.Splines.Full())
+    if(!GameState->SplineSystem.Splines.Full())
     {
       if(UI::Button("Create Spline"))
       {
-        GameState->TrajectorySystem.Splines.Push({});
-        GameState->TrajectorySystem.SelectedSplineIndex =
-          GameState->TrajectorySystem.Splines.Count - 1;
-        GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+        GameState->SplineSystem.Splines.Push({});
+        GameState->SplineSystem.SelectedSplineIndex =
+          GameState->SplineSystem.Splines.Count - 1;
+        GameState->SplineSystem.SelectedWaypointIndex = -1;
       }
     }
     else
@@ -1618,20 +1620,20 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     }
     // Loop over
     int DeleteSplineIndex = -1;
-    for(int i = 0; i < GameState->TrajectorySystem.Splines.Count; i++)
+    for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
     {
       UI::Text("Spline");
       UI::SameLine();
       if(UI::Button("Delete", 0, 512 + i))
       {
         DeleteSplineIndex                                 = i;
-        GameState->TrajectorySystem.SelectedSplineIndex   = -1;
-        GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+        GameState->SplineSystem.SelectedSplineIndex   = -1;
+        GameState->SplineSystem.SelectedWaypointIndex = -1;
       }
       else
       {
         UI::SameLine();
-        bool IsCurrentSplineSelected = i == GameState->TrajectorySystem.SelectedSplineIndex;
+        bool IsCurrentSplineSelected = i == GameState->SplineSystem.SelectedSplineIndex;
         if(IsCurrentSplineSelected)
         {
           UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 1, 0.2f, 0.2f, 1 });
@@ -1640,11 +1642,11 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
 
         if(UI::Button("Select", 0, 512 + i))
         {
-          if(GameState->TrajectorySystem.SelectedSplineIndex != i)
+          if(GameState->SplineSystem.SelectedSplineIndex != i)
           {
-            GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+            GameState->SplineSystem.SelectedWaypointIndex = -1;
           }
-          GameState->TrajectorySystem.SelectedSplineIndex = i;
+          GameState->SplineSystem.SelectedSplineIndex = i;
         }
         if(IsCurrentSplineSelected)
         {
@@ -1656,12 +1658,12 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     }
     if(DeleteSplineIndex != -1)
     {
-      GameState->TrajectorySystem.Splines.Remove(DeleteSplineIndex);
+      GameState->SplineSystem.Splines.Remove(DeleteSplineIndex);
     }
-    int CurrentSplineIndex  = GameState->TrajectorySystem.SelectedSplineIndex;
+    int CurrentSplineIndex  = GameState->SplineSystem.SelectedSplineIndex;
     int DeleteWaypointIndex = -1;
     for(int i = 0; CurrentSplineIndex != -1 &&
-                   i < GameState->TrajectorySystem.Splines[CurrentSplineIndex].Waypoints.Count;
+                   i < GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Count;
         i++)
     {
       UI::Text("Waypoint");
@@ -1669,12 +1671,12 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
       if(UI::Button("Delete", 0, 1024 + i))
       {
         DeleteWaypointIndex                               = i;
-        GameState->TrajectorySystem.SelectedWaypointIndex = -1;
+        GameState->SplineSystem.SelectedWaypointIndex = -1;
       }
       else
       {
         UI::SameLine();
-        bool IsCurrentWaypointsSelected = i == GameState->TrajectorySystem.SelectedWaypointIndex;
+        bool IsCurrentWaypointsSelected = i == GameState->SplineSystem.SelectedWaypointIndex;
         if(IsCurrentWaypointsSelected)
         {
           UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.2f, 0.2f, 1, 1 });
@@ -1682,7 +1684,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         }
         if(UI::Button("Select", 0, 1024 + i))
         {
-          GameState->TrajectorySystem.SelectedWaypointIndex = i;
+          GameState->SplineSystem.SelectedWaypointIndex = i;
         }
         if(IsCurrentWaypointsSelected)
         {
@@ -1694,13 +1696,13 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     }
     if(DeleteWaypointIndex != -1)
     {
-      GameState->TrajectorySystem.Splines[CurrentSplineIndex].Waypoints.Remove(DeleteWaypointIndex);
+      GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Remove(DeleteWaypointIndex);
     }
     if(CurrentSplineIndex != -1 &&
-       !GameState->TrajectorySystem.Splines[CurrentSplineIndex].Waypoints.Full() &&
+       !GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Full() &&
        UI::Button("Place New Waypoint"))
     {
-      GameState->TrajectorySystem.IsWaypointPlacementMode = true;
+      GameState->SplineSystem.IsWaypointPlacementMode = true;
     }
   }
   if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))

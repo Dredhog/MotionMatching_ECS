@@ -18,7 +18,7 @@ struct movement_spline
 	fixed_stack<waypoint, WAYPOINT_CAPACITY_PER_TRAJECTORY> Waypoints;
 };
 
-struct trajectory_system
+struct spline_system
 {
   fixed_stack<movement_spline, TRAJECTORY_CAPACITY> Splines;
 

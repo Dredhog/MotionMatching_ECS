@@ -39,6 +39,16 @@ extern bool g_VisualizeContactManifold;
 GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
   BEGIN_TIMED_FRAME();
+  printf("sizeof(Anim::skeleton)            : %ld\n", sizeof(Anim::skeleton));
+  printf("sizeof(mm_frame_info)             : %ld\n", sizeof(mm_frame_info));
+  printf("sizeof(mm_controller_data)        : %ld\n", sizeof(mm_controller_data));
+  printf("sizeof(mm_entity_data)            : %ld\n", sizeof(mm_entity_data));
+  printf("sizeof(mm_aos_entity_data)        : %ld\n", sizeof(mm_aos_entity_data));
+  printf("sizeof(blend_stack)               : %ld\n", sizeof(blend_stack));
+  printf("sizeof(Anim::animation_controller): %ld\n", sizeof(Anim::animation_controller));
+  printf("sizeof(transform)                 : %ld\n", sizeof(transform));
+  printf("sizeof(pose_transform)            : %ld\n", sizeof(pose_transform));
+  printf("alignof(pose_transform)           : %ld\n\n", alignof(pose_transform));
 
   game_state* GameState = (game_state*)GameMemory.PersistentMemory;
   assert(GameMemory.HasBeenInitialized);
@@ -171,7 +181,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   {
     mm_entity_data&             MMEntityData  = GameState->MMEntityData;
     mm_debug_settings&          MMDebug       = GameState->MMDebug;
-    trajectory_system&          Trajectories  = GameState->TrajectorySystem;
+    spline_system&              SplineSystem  = GameState->SplineSystem;
     entity*                     Entities      = GameState->Entities;
     Resource::resource_manager& Resources     = GameState->Resources;
     vec3                        CameraForward = GameState->Camera.Forward;
@@ -179,10 +189,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     int InputControlledCount;
     int FirstTrajecotryControlledIndex;
-    int TrajectoryControlledCount;
+    int SplineControlledCount;
     SortMMEntityDataByUsage(&InputControlledCount, &FirstTrajecotryControlledIndex,
-                            &TrajectoryControlledCount, &MMEntityData);
-    int TotalControllerCount = InputControlledCount + TrajectoryControlledCount;
+                            &SplineControlledCount, &MMEntityData);
+    int TotalControllerCount = InputControlledCount + SplineControlledCount;
 
     FetchMMControllerDataPointers(&Resources, MMEntityData.MMControllers,
                                   MMEntityData.MMControllerRIDs, TotalControllerCount);
@@ -194,14 +204,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     GenerateGoalsFromInput(&MMEntityData.AnimGoals[0], &MMEntityData.MirroredAnimGoals[0],
                            TempStack, &MMEntityData.BlendStacks[0],
                            &MMEntityData.AnimControllers[0], &MMEntityData.MMControllers[0],
-                           &MMEntityData.InputControlParams[0], &MMEntityData.EntityIndices[0],
+                           &MMEntityData.InputControllers[0], &MMEntityData.EntityIndices[0],
                            InputControlledCount, Entities, Input, CameraForward);
-    // TODO(Lukas) make sure that all trajectory indices are valid by prevention or correction
+    // TODO(Lukas) make sure that all motion spline indices are valid by prevention or correction
     GenerateGoalsFromSplines(&MMEntityData.AnimGoals[FirstTrajecotryControlledIndex],
-                             &MMEntityData.TrajectoryStates[FirstTrajecotryControlledIndex],
+                             &MMEntityData.SplineStates[FirstTrajecotryControlledIndex],
                              &MMEntityData.AnimControllers[FirstTrajecotryControlledIndex],
                              &MMEntityData.BlendStacks[FirstTrajecotryControlledIndex],
-                             TrajectoryControlledCount, Trajectories.Splines.Elements);
+                             SplineControlledCount, SplineSystem.Splines.Elements);
     MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.AnimControllers,
                      MMEntityData.LastMatchedGoals, MMEntityData.AnimGoals,
                      MMEntityData.MirroredAnimGoals, MMEntityData.MMControllers,
