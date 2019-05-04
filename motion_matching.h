@@ -7,8 +7,8 @@
 #include "anim.h"
 #include "file_queries.h"
 
-#define MM_POINT_COUNT 6
-#define MM_COMPARISON_BONE_COUNT 3
+#define MM_POINT_COUNT 3
+#define MM_COMPARISON_BONE_COUNT 2
 #define MM_ANIM_CAPACITY 35
 
 struct mm_info_debug_settings
@@ -96,11 +96,6 @@ enum anim_endpoint_extrapolation_type
   EXTRAPOLATE_Continue,
 };
 
-// Main metadata precomputation
-mm_controller_data* PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
-                                            array_handle<Anim::animation*> Animations,
-                                            const mm_params&               Params);
-
 inline void
 ResetMMParamsToDefault(mm_params* Params)
 {
@@ -117,21 +112,10 @@ ResetMMParamsToDefault(mm_params* Params)
   Params->FixedParams.MetadataSamplingFrequency = 30.0f;
 }
 
-// Goal generation (Not really part of motion matching
-void GetMMGoal(mm_frame_info* OutGoal, mm_frame_info* OutMirroredGoal,
-               Memory::stack_allocator* TempAlloc, int32_t AnimStateIndex, bool PlayingMirrored,
-               const Anim::animation_controller* Controller, vec3 DesiredVelocity,
-               const mm_fixed_params& Params);
-void GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootVelocity,
-                 vec3* OutMirrorRootVelocity, Memory::stack_allocator* TempAlloc,
-                 int32_t AnimStateIndex, const Anim::animation_controller* Controller,
-                 const mm_fixed_params& Params);
-void GetLongtermGoal(mm_frame_info* OutTrajectory, vec3 StartVelocity, vec3 EndVelocity);
-void MirrorGoalJoints(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal,
-                      const mm_fixed_params& Params);
-mm_frame_info GetMirroredFrameGoal(mm_frame_info OriginalInfo, vec3 MirrorMatDiagonal,
-                                   const mm_fixed_params& Params);
-
+// Main metadata precomputation
+mm_controller_data* PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
+                                            array_handle<Anim::animation*> Animations,
+                                            const mm_params&               Params);
 // Runtime API
 float MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
                   const mm_controller_data* MMData, mm_frame_info Goal);

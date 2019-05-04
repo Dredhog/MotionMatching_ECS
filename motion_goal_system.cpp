@@ -1,5 +1,71 @@
 #include "motion_goal_system.h"
 #include "debug_drawing.h"
+#include "goal_gen.h"
+
+void DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame,
+                   mm_info_debug_settings DebugSettings, vec3 BoneColor, vec3 VelocityColor,
+                   vec3 TrajectoryColor, vec3 DirectionColor);
+
+void DrawTrajectory(mat4 CoordinateFrame, const trajectory* Trajectory, vec3 PastColor, vec3 PresentColor,
+                    vec3 FutureColor);
+
+void
+SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectoryControlledStart,
+                        int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData)
+{
+  for(int i = 0; i < MMEntityData->Count - 1; i++)
+  {
+    int SmallestIndex = i;
+    for(int j = i + 1; j < MMEntityData->Count; j++)
+    {
+      if(MMEntityData->MMControllerRIDs[j].Value > 0)
+      {
+        if(MMEntityData->MMControllerRIDs[SmallestIndex].Value <= 0 ||
+           (MMEntityData->FollowSpline[SmallestIndex] && !MMEntityData->FollowSpline[j]))
+        {
+          SmallestIndex = j;
+        }
+      }
+    }
+    if(SmallestIndex != i)
+    {
+      mm_aos_entity_data A = GetEntityAOSMMData(i, MMEntityData);
+      mm_aos_entity_data B = GetEntityAOSMMData(SmallestIndex, MMEntityData);
+      SwapMMEntityData(&A, &B);
+      continue;
+    }
+  }
+  *OutInputControlledCount      = 0;
+  *OutTrajectoryControlledCount = 0;
+  *OutTrajectoryControlledStart = 0;
+  for(int i = 0; i < MMEntityData->Count; i++)
+  {
+    if(MMEntityData->MMControllerRIDs[i].Value > 0)
+    {
+      if(MMEntityData->FollowSpline[i])
+      {
+        (*OutTrajectoryControlledCount)++;
+      }
+      else
+      {
+        (*OutInputControlledCount)++;
+      }
+    }
+  }
+  *OutTrajectoryControlledStart = *OutInputControlledCount;
+}
+
+void
+FetchMMControllerDataPointers(Resource::resource_manager* Resources,
+                              mm_controller_data** OutMMControllers, rid* MMControllerRIDs,
+                              int32_t Count)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    OutMMControllers[i] = Resources->GetMMController(MMControllerRIDs[i]);
+    assert(OutMMControllers[i]);
+  }
+}
 
 void
 FetchAnimControllerPointers(Anim::animation_controller** OutAnimControllers,
@@ -62,8 +128,21 @@ DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityIndices,
 }
 
 void
+DrawControlTrajectories(const trajectory* Trajectories, const int32_t* EntityIndices, int32_t Count,
+                        const entity* Entities)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    DrawTrajectory(TransformToMat4(Entities[EntityIndices[i]].Transform), &Trajectories[i],
+                   { 0, 1, 0 }, { 0, 0, 1 }, { 1, 1, 0 });
+  }
+}
+
+
+void
 GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
-                       Memory::stack_allocator* TempAlloc, const blend_stack* BlendStacks,
+                       trajectory* Trajectories, Memory::stack_allocator* TempAlloc,
+                       const blend_stack*                       BlendStacks,
                        const Anim::animation_controller* const* AnimControllers,
                        const mm_controller_data* const*         MMControllers,
                        const mm_input_controller* InputControllers, const int32_t* EntityIndices,
@@ -99,18 +178,104 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
     }
   }
 
-  for(int i = 0; i < Count; i++)
+  for(int e = 0; e < Count; e++)
   {
-    quat R = Entities[EntityIndices[i]].Transform.R;
+    quat R = Entities[EntityIndices[e]].Transform.R;
     R.V *= -1;
     vec3 GoalVelocity =
-      Math::MulMat4Vec4(Math::Mat4Rotate(R), { InputControllers[i].MaxSpeed * Dir, 0 }).XYZ;
+      Math::MulMat4Vec4(Math::Mat4Rotate(R), { InputControllers[e].MaxSpeed * Dir, 0 }).XYZ;
 
-    blend_in_info DominantBlend = BlendStacks[i].Peek();
+    blend_in_info DominantBlend = BlendStacks[e].Peek();
 
-    GetMMGoal(&OutGoals[i], &OutMirroredGoals[i], TempAlloc, DominantBlend.AnimStateIndex,
-              DominantBlend.Mirror, AnimControllers[i], GoalVelocity,
-              MMControllers[i]->Params.FixedParams);
+    GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc,
+              DominantBlend.AnimStateIndex, DominantBlend.Mirror, AnimControllers[e], GoalVelocity,
+              MMControllers[e]->Params.FixedParams, Input->dt);
+#if 0
+    {
+      const float PositionBias    = InputControllers[e].PositionBias;
+      const float DirectionBias   = InputControllers[e].DirectionBias;
+      float       SampleFrequency = HALF_TRAJECTORY_TRANSFORM_COUNT;
+      trajectory* Trajectory      = &Trajectories[e];
+
+      vec3 DesiredVelocity = InputControllers[e].MaxSpeed * Dir;
+      // Update the trajectory transform array
+      vec2 DesiredLinearDisplacement =
+        vec2{ DesiredVelocity.X, DesiredVelocity.Z } / SampleFrequency;
+
+      if(Math::Length(Dir) > FLT_MIN)
+      {
+        Trajectories[e].TargetAngle =
+          atan2f(DesiredLinearDisplacement.X, DesiredLinearDisplacement.Y);
+      }
+
+      quat TargetRotation = Math::QuatAxisAngle({ 0, 1, 0 }, Trajectories[e].TargetAngle);
+
+      vec2 TrajectoryPositions[HALF_TRAJECTORY_TRANSFORM_COUNT];
+      TrajectoryPositions[0] = Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT].T;
+
+      for(int i = 1; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
+      {
+        float Fraction         = float(i) / float(HALF_TRAJECTORY_TRANSFORM_COUNT);
+        float OneMinusFraction = 1.0f - Fraction;
+        float TranslationBlend = 1.0f - powf(OneMinusFraction, PositionBias);
+        float RotationBlend    = 1.0f - powf(OneMinusFraction, DirectionBias);
+
+        vec2 TrajectoryPointDisplacement =
+          Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].T -
+          Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i - 1].T;
+        vec2 AdjustedPointDisplacement = (1 - TranslationBlend) * TrajectoryPointDisplacement +
+                                         TranslationBlend * DesiredLinearDisplacement;
+
+        TrajectoryPositions[i] = TrajectoryPositions[i - 1] + AdjustedPointDisplacement;
+
+        Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].R =
+          Math::QuatLerp(Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].R,
+                         TargetRotation, RotationBlend);
+      }
+
+      for(int i = 1; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
+      {
+        Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].T = TrajectoryPositions[i];
+      }
+
+      // vec2 OriginalNext = Trajectory->Transforms[1].T;
+      for(int i = 0; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
+      {
+        Trajectory->Transforms[i] = Trajectory->Transforms[i + 1];
+      }
+
+#if 1
+      // TESTING THE NEW TRAJECTORY
+			//
+      {
+        transform EntityTransform = Entities[EntityIndices[e]].Transform;
+        mat4      InvEntityMatrix = Math::InvMat4(TransformToMat4(EntityTransform));
+
+        // Generate a goal from this array
+        for(int i = 0; i < MM_POINT_COUNT; i++)
+        {
+          int TrajectoryPointIndex =
+            int(float(i + 1) * float(HALF_TRAJECTORY_TRANSFORM_COUNT - 1) / float(MM_POINT_COUNT));
+
+          trajectory_transform PointTransform =
+            Trajectories[e].Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + TrajectoryPointIndex];
+
+          OutGoals[e].TrajectoryPs[i] =
+            Math::MulMat4Vec4(InvEntityMatrix, { PointTransform.T.X, 0, PointTransform.T.Y, 1 })
+              .XYZ;
+
+#if 0
+          quat InvEntityR = quat{ .V = -EntityTransform.R.V, .S = EntityTransform.R.S };
+          OutGoals[e].TrajectoryAngles[i] = 2 * acosf(PointTransform.R.S);
+#endif
+
+          OutMirroredGoals[e] = OutGoals[e];
+          MirrorLongtermGoal(&OutMirroredGoals[e]);
+        }
+      }
+#endif
+    }
+#endif
   }
 }
 
@@ -206,8 +371,8 @@ ComputeLocalRootMotion(transform*                               OutLocalDeltaRoo
 }
 
 void
-ApplyRootMotion(entity* InOutEntities, const transform* LocalDeltaRootMotions,
-                int32_t* EntityIndices, int32_t Count)
+ApplyRootMotion(entity* InOutEntities, trajectory* Trajectories,
+                const transform* LocalDeltaRootMotions, int32_t* EntityIndices, int32_t Count)
 {
   for(int i = 0; i < Count; i++)
   {
@@ -219,6 +384,14 @@ ApplyRootMotion(entity* InOutEntities, const transform* LocalDeltaRootMotions,
 
     TargetTransform->R = TargetTransform->R * LocalDeltaRootMotions[i].R;
     TargetTransform->T += dT;
+
+    vec2 DeltaToNewRoot = vec2{ TargetTransform->T.X, TargetTransform->T.Z } -
+                          Trajectories[i].Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT].T;
+    for(int p = 0; p < HALF_TRAJECTORY_TRANSFORM_COUNT; p++)
+		{
+      Trajectories[i].Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + p].T += DeltaToNewRoot;
+    }
+		Trajectories[i].Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT].R = TargetTransform->R;
   }
 }
 
@@ -272,6 +445,35 @@ DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settin
   }
 }
 
+void
+DrawTrajectory(mat4 CoordinateFrame, const trajectory* Trajectory, vec3 PastColor,
+               vec3 PresentColor, vec3 FutureColor)
+{
+  for(int i = 0; i < TRAJECTORY_TRANSFORM_COUNT; i++)
+  {
+#if 0
+    vec3 CurrentWorldPos = Math::MulMat4Vec4(CoordinateFrame, { Trajectory->Transforms[i].T.X, 0,
+                                                                Trajectory->Transforms[i].T.Y, 1 })
+                             .XYZ;
+#endif
+#if 0
+    vec3 CurrentWorldPos =
+      CoordinateFrame.T + vec3{ Trajectory->Transforms[i].T.X, 0, Trajectory->Transforms[i].T.Y };
+#endif
+#if 1
+    vec3 CurrentWorldPos = vec3{ Trajectory->Transforms[i].T.X, 0, Trajectory->Transforms[i].T.Y };
+#endif
+    vec3 Forward = { 0, 0, 1 };
+    vec3 FacingDir = Math::MulMat3Vec3(Math::QuatToMat3(Trajectory->Transforms[i].R), Forward);
+
+    vec3 PointColor = (i < HALF_TRAJECTORY_TRANSFORM_COUNT)
+                        ? PastColor
+                        : ((i == HALF_TRAJECTORY_TRANSFORM_COUNT) ? PresentColor : FutureColor);
+    Debug::PushWireframeSphere(CurrentWorldPos, 0.005f, { PointColor, 0.5 });
+    Debug::PushLine(CurrentWorldPos, CurrentWorldPos + FacingDir * 0.1f, { 0, 1, 1, 1 });
+  }
+}
+
 transform
 GetAnimRootMotionDelta(Anim::animation* RootMotionAnim, const Anim::animation_controller* C,
                        bool MirrorRootMotionInX, float LocalSampleTime, float dt)
@@ -310,7 +512,7 @@ GetAnimRootMotionDelta(Anim::animation* RootMotionAnim, const Anim::animation_co
           Mat4LocalRootDelta = Math::MulMat4(Math::Mat4Scale(-1, 1, 1), Mat4LocalRootDelta);
           dR                 = Math::QuatFromTo(Mat4NextRoot.Z, Mat4CurrentRoot.Z);
         }
-        // TODO(Lukas) Remember to apply the entity's rotation to the delta
+        // NOTE(Lukas) Remember to apply the entity's rotation to the delta
         // Mat4Entity.T    = {};
         // mat4 Mat4DeltaRoot = Math::MulMat4(Mat4Entity, Mat4LocalRootDelta);
 
@@ -322,60 +524,4 @@ GetAnimRootMotionDelta(Anim::animation* RootMotionAnim, const Anim::animation_co
     }
   }
 }
-void
-SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectoryControlledStart,
-                        int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData)
-{
-  for(int i = 0; i < MMEntityData->Count - 1; i++)
-  {
-    int SmallestIndex = i;
-    for(int j = i + 1; j < MMEntityData->Count; j++)
-    {
-      if(MMEntityData->MMControllerRIDs[j].Value > 0)
-      {
-        if(MMEntityData->MMControllerRIDs[SmallestIndex].Value <= 0 ||
-           (MMEntityData->FollowSpline[SmallestIndex] && !MMEntityData->FollowSpline[j]))
-        {
-          SmallestIndex = j;
-        }
-      }
-    }
-    if(SmallestIndex != i)
-    {
-      mm_aos_entity_data A = GetEntityAOSMMData(i, MMEntityData);
-      mm_aos_entity_data B = GetEntityAOSMMData(SmallestIndex, MMEntityData);
-      SwapMMEntityData(&A, &B);
-      continue;
-    }
-  }
-  *OutInputControlledCount      = 0;
-  *OutTrajectoryControlledCount = 0;
-  *OutTrajectoryControlledStart = 0;
-  for(int i = 0; i < MMEntityData->Count; i++)
-  {
-    if(MMEntityData->MMControllerRIDs[i].Value > 0)
-    {
-      if(MMEntityData->FollowSpline[i])
-      {
-        (*OutTrajectoryControlledCount)++;
-      }
-      else
-      {
-        (*OutInputControlledCount)++;
-      }
-    }
-  }
-  *OutTrajectoryControlledStart = *OutInputControlledCount;
-}
 
-void
-FetchMMControllerDataPointers(Resource::resource_manager* Resources,
-                              mm_controller_data** OutMMControllers, rid* MMControllerRIDs,
-                              int32_t Count)
-{
-  for(int i = 0; i < Count; i++)
-  {
-    OutMMControllers[i] = Resources->GetMMController(MMControllerRIDs[i]);
-    assert(OutMMControllers[i]);
-  }
-}

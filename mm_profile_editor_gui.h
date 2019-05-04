@@ -51,21 +51,21 @@ void
 MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* TempStack,
                       Resource::resource_manager* Resources)
 {
-  static int  TargetPathIndex                                    = -1;
-  static bool TargetIsTemplate                                   = true;
-  static bool s_AnimationDropdown                                = false;
-  static bool s_MirrorInfoDropdown                               = false;
-  static bool s_GeneralParametersDropdown                        = false;
-  static bool s_TargetSkeletonDropdown                           = false;
-  static bool s_SkeletalHieararchyDropdown                       = false;
-  static bool s_SkeletonMirrorInfoDropdown                       = false;
-  static bool s_MatchingPointSelectionDropdown                   = false;
+  static int  TargetPathIndex                  = -1;
+  static bool TargetIsTemplate                 = true;
+  static bool s_AnimationDropdown              = false;
+  static bool s_MirrorInfoDropdown             = false;
+  static bool s_GeneralParametersDropdown      = false;
+  static bool s_TargetSkeletonDropdown         = false;
+  static bool s_SkeletalHieararchyDropdown     = false;
+  static bool s_SkeletonMirrorInfoDropdown     = false;
+  static bool s_MatchingPointSelectionDropdown = false;
 
+  const float LeftOfComboButtonWidth              = 150;
+  const float ComboRightEdgeDistanceFromRightSize = 200;
   // THE LOAD/EXTRACT TEMPLATE BUTTON
-  const char* ButtonText = (TargetPathIndex == -1)
-                             ? "New Template    "
-                             : ((TargetIsTemplate) ? "Load Template   " : "Extract Template");
-  if(UI::Button(ButtonText))
+  const char* ButtonText = (TargetPathIndex == -1) ? "New Template" : "Load";
+  if(UI::Button(ButtonText, LeftOfComboButtonWidth))
   {
     // UPDATING MMEditor.ActiveProfile
     MMEditor->ActiveProfile = MMEditor->SelectedProfile;
@@ -75,9 +75,10 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
   {
     UI::SameLine();
     int NewTargetPathIndex = TargetPathIndex;
+    UI::PushWidth(-ComboRightEdgeDistanceFromRightSize);
     UI::Combo("Target File", &NewTargetPathIndex, Resources->MMParamPaths,
               Resources->MMParamPathCount, PathArrayToString);
-    UI::NewLine();
+    UI::PopWidth();
     if(NewTargetPathIndex != TargetPathIndex)
     {
       if(NewTargetPathIndex != -1)
@@ -125,13 +126,14 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
   // Set skeleton if not already set. Otherwise give a red "switch target" button
   if(MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount <= 0)
   {
-    bool ClickedSetSkeleton = UI::Button("Set skeleton");
+    bool           ClickedSetSkeleton   = UI::Button("Set skeleton", LeftOfComboButtonWidth);
     static int32_t ActiveModelPathIndex = -1;
     {
       UI::SameLine();
+      UI::PushWidth(-ComboRightEdgeDistanceFromRightSize);
       UI::Combo("Target Skeleton", &ActiveModelPathIndex, Resources->ModelPaths,
                 Resources->ModelPathCount, PathArrayToString);
-      UI::NewLine();
+      UI::PopWidth();
     }
     if(ClickedSetSkeleton && ActiveModelPathIndex != -1)
     {
@@ -151,31 +153,93 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
   }
   else
   {
-    if(UI::CollapsingHeader("Skeleton", &s_TargetSkeletonDropdown))
+    if(UI::TreeNode("Skeleton", &s_TargetSkeletonDropdown))
     {
-      if(UI::CollapsingHeader("Skeletal Hierarchy", &s_SkeletalHieararchyDropdown))
+      if(UI::TreeNode("Skeletal Hierarchy", &s_SkeletalHieararchyDropdown))
       {
         for(int i = 0; i < MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount; i++)
         {
           UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[i].Name);
         }
+        UI::TreePop();
       }
-      if(UI::CollapsingHeader("Mirror Info", &s_SkeletonMirrorInfoDropdown))
+      if(UI::TreeNode("Mirror Info", &s_SkeletonMirrorInfoDropdown))
       {
-        char TempBuff[3 * BONE_NAME_LENGTH];
+        int RemovedPairIndex = -1;
+        UI::PushWidth(200);
         for(int i = 0; i < MMEditor->ActiveProfile.DynamicParams.MirrorInfo.PairCount; i++)
         {
-          int IndA = MMEditor->ActiveProfile.DynamicParams.MirrorInfo.BoneMirrorIndices[i].a;
-          int IndB = MMEditor->ActiveProfile.DynamicParams.MirrorInfo.BoneMirrorIndices[i].b;
-          snprintf(TempBuff, sizeof(TempBuff), "{%s %s}",
-                   MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[IndA].Name,
-                   MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[IndB].Name);
-          UI::Text(TempBuff);
+          int& IndA = MMEditor->ActiveProfile.DynamicParams.MirrorInfo.BoneMirrorIndices[i].a;
+          int& IndB = MMEditor->ActiveProfile.DynamicParams.MirrorInfo.BoneMirrorIndices[i].b;
+
+          UI::PushID(&IndA);
+          if(UI::Button("Remove"))
+          {
+            RemovedPairIndex = i;
+          }
+          UI::SameLine();
+          UI::Combo("Left Side", &IndA, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
+                    MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString, 5);
+          UI::SameLine();
+          UI::Combo("Right Side", &IndB, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
+                    MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString, 5);
+          UI::PopID();
         }
+        UI::PopWidth();
+        if(RemovedPairIndex != -1)
+        {
+          stack_handle<Anim::int32_pair> TempRemovalStackHandle;
+          TempRemovalStackHandle
+            .Init(MMEditor->ActiveProfile.DynamicParams.MirrorInfo.BoneMirrorIndices,
+                  MMEditor->ActiveProfile.DynamicParams.MirrorInfo.PairCount,
+                  MMEditor->ActiveProfile.DynamicParams.MirrorInfo.PairCount);
+          TempRemovalStackHandle.Remove(RemovedPairIndex);
+          MMEditor->ActiveProfile.DynamicParams.MirrorInfo.PairCount = TempRemovalStackHandle.Count;
+        }
+        UI::TreePop();
+      }
+      UI::Checkbox("Match MirroredAnimations",
+                   &MMEditor->ActiveProfile.DynamicParams.MatchMirroredAnimations);
+
+      UI::TreePop();
+    }
+
+    if(UI::CollapsingHeader("Bones To Match", &s_MatchingPointSelectionDropdown))
+    {
+      bool ClickedAddBone = UI::Button("AddBone", LeftOfComboButtonWidth);
+      UI::SameLine();
+      static int32_t ActiveBoneIndex = 0;
+      UI::PushWidth(-ComboRightEdgeDistanceFromRightSize);
+      UI::Combo("Bone", &ActiveBoneIndex, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
+                MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString);
+      UI::PopWidth();
+
+      if(ClickedAddBone && !MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Full())
+      {
+        MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
+      }
+
+      for(int i = 0; i < MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Count; i++)
+      {
+        UI::PushID(&MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Elements[i]);
+        bool RemoveCurrent = UI::Button("Remove");
+        UI::SameLine();
+        {
+          UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton
+                     .Bones[MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices[i]]
+                     .Name);
+        }
+        if(RemoveCurrent)
+        {
+          MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Remove(i);
+        }
+        UI::PopID();
       }
     }
-    if(UI::CollapsingHeader("General parameters", &s_GeneralParametersDropdown))
+
+    if(UI::CollapsingHeader("Scalar parameters", &s_GeneralParametersDropdown))
     {
+			UI::Text("Cost Computation Parameters");
       UI::SliderFloat("Bone Position Influence",
                       &MMEditor->ActiveProfile.DynamicParams.BonePCoefficient, 0, 5);
       UI::SliderFloat("Bone Velocity Influence",
@@ -186,12 +250,11 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
                       &MMEditor->ActiveProfile.DynamicParams.TrajVCoefficient, 0, 1);
       UI::SliderFloat("Trajectory Angle Influence",
                       &MMEditor->ActiveProfile.DynamicParams.TrajAngleCoefficient, 0, 1);
+			UI::Text("Playback Parameters");
       UI::SliderFloat("BlendInTime", &MMEditor->ActiveProfile.DynamicParams.BelndInTime, 0, 1);
       UI::SliderFloat("Min Time Offset Threshold",
                       &MMEditor->ActiveProfile.DynamicParams.MinTimeOffsetThreshold, 0, 1);
-      UI::Checkbox("Match MirroredAnimations",
-                   &MMEditor->ActiveProfile.DynamicParams.MatchMirroredAnimations);
-
+      UI::Text("Metadata Generation Parameters");
       UI::SliderFloat("Metadata Sampling Frequency",
                       &MMEditor->ActiveProfile.FixedParams.MetadataSamplingFrequency, 15, 240);
       UI::SliderFloat("Trajectory Time Horizon",
@@ -200,13 +263,14 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
     if(UI::CollapsingHeader("Animations", &s_AnimationDropdown))
     {
       {
-				bool ClickedAddAnimation = UI::Button("Add Animation"); 
+        bool ClickedAddAnimation = UI::Button("Add Animation", LeftOfComboButtonWidth);
 
-				UI::SameLine();
+        UI::SameLine();
         static int32_t ActivePathIndex = -1;
+        UI::PushWidth(-ComboRightEdgeDistanceFromRightSize);
         UI::Combo("Animation", &ActivePathIndex, Resources->AnimationPaths,
                   Resources->AnimationPathCount, PathArrayToString);
-        UI::NewLine();
+        UI::PopWidth();
         if(ActivePathIndex >= 0 && ClickedAddAnimation)
         {
           rid NewRID =
@@ -222,53 +286,32 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
       {
         for(int i = 0; i < MMEditor->ActiveProfile.AnimRIDs.Count; i++)
         {
-          bool DeleteCurrent = UI::Button("Delete", 0, i);
+          UI::PushID(&MMEditor->ActiveProfile.AnimRIDs.Elements[i]);
+          bool RemoveCurrent = UI::Button("Remove");
           UI::SameLine();
           {
             char* Path;
-            Resources->Animations.Get(MMEditor->ActiveProfile.AnimRIDs[i], NULL, &Path);
-            UI::Text(Path);
+            if(Resources->Animations.Get(MMEditor->ActiveProfile.AnimRIDs[i], NULL, &Path))
+            {
+              UI::Text(Path);
+            }
           }
-          UI::NewLine();
-          if(DeleteCurrent)
+          if(RemoveCurrent)
           {
             MMEditor->ActiveProfile.AnimRIDs.Remove(i);
             i--;
           }
+          else // NOTE(Lukas) this branch is only expected to be taken if the path array changes
+               // behind our back e.g. when reloading the scen
+          {
+            UI::NewLine();
+          }
+          UI::PopID();
         }
       }
     }
 
-    if(UI::CollapsingHeader("Points For Matching", &s_MatchingPointSelectionDropdown))
-    {
-      static int32_t ActiveBoneIndex = 0;
-      UI::Combo("Bone", &ActiveBoneIndex, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
-                MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString);
-
-      if(UI::Button("Add Bone") &&
-         !MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Full())
-      {
-        MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Push(ActiveBoneIndex);
-      }
-
-      for(int i = 0; i < MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Count; i++)
-      {
-        bool DeleteCurrent = UI::Button("Delete", 0, 111 + i);
-        UI::SameLine();
-        {
-          UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton
-                     .Bones[MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices[i]]
-                     .Name);
-        }
-        UI::NewLine();
-        if(DeleteCurrent)
-        {
-          MMEditor->ActiveProfile.FixedParams.ComparisonBoneIndices.Remove(i);
-        }
-      }
-    }
-
-    if(UI::Button("Save Template"))
+    if(UI::Button("Save Template", LeftOfComboButtonWidth))
     {
       MMEditor->ActiveProfile.AnimPaths.HardClear();
       // Set the paths from the animation RIDs
@@ -283,12 +326,11 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
     if(0 < MMEditor->ActiveProfile.AnimRIDs.Count)
     {
       UI::SameLine();
-      if(UI::Button("Build Controller"))
+      if(UI::Button("Build Controller", LeftOfComboButtonWidth))
       {
         ExportAndSetMMController(TempStack, Resources, &MMEditor->ActiveProfile,
                                  "data/matching_params/test.controller");
       }
-      UI::NewLine();
     }
     else
     {

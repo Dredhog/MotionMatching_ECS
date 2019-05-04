@@ -18,6 +18,7 @@ namespace UI
     COLOR_CheckboxNormal,
     COLOR_CheckboxPressed,
     COLOR_CheckboxHovered,
+    COLOR_ComboNormal,
     COLOR_WindowBackground,
     COLOR_WindowBorder,
     COLOR_ChildWindowBackground,
@@ -31,6 +32,10 @@ namespace UI
   {
     VAR_BorderThickness,
     VAR_FontSize,
+    VAR_WindowPaddingX,
+    VAR_WindowPaddingY,
+    VAR_IndentSpacing,
+    VAR_HeaderIndentSpacing,
     VAR_BoxPaddingX,
     VAR_BoxPaddingY,
     VAR_SpacingX,
@@ -52,6 +57,7 @@ namespace UI
     WINDOW_IsNotResizable         = 1 << 6,
     WINDOW_Popup                  = 1 << 7,
     WINDOW_Combo                  = 1 << 8,
+    WINDOW_NoWindowPadding        = 1 << 9,
   };
 
   enum ui_button_flags
@@ -80,33 +86,51 @@ namespace UI
   void EndChildWindow();
   void EndPopupWindow();
 
-  void  Dummy(float Width, float Height = 0);
+  void Dummy(float Width = 0, float Height = 0);
   // void  TextBox(const char* Text, Width = 0);
   // void  Box(vec2 Size = {});
   float GetWindowWidth();
   float GetAvailableWidth();
-  void  SameLine();
+  void  SameLine(float PosX = 0, float SpacingWidth = -1);
   void  NewLine();
-  void  PushStyleVar(int32_t Index, float Value);
-  void  PopStyleVar();
-  void  PushStyleColor(int32_t Index, vec4 Color);
-  void  PopStyleColor();
+
+  void PushStyleVar(int32_t Index, float Value);
+  void PopStyleVar();
+  void PushWidth(float Width);
+  void PopWidth();
+  void PushStyleColor(int32_t Index, vec4 Color);
+  void PopStyleColor();
+  void PushID(const void* ID);
+  void PushID(const char* ID);
+  void PushID(const int ID);
+  void PopID();
+  void Indent(float IndentWidth = 0);
+  void Unindent(float IndentWidth = 0);
 
   bool CollapsingHeader(const char* Text, bool* IsExpanded);
-  bool Button(const char* Text, float Width = 0, int UniqueID = 0);
+  bool TreeNode(const char* Label, bool* IsExpanded);
+  void TreePop();
+  bool Button(const char* Text, float Width = 0);
   bool ClickButton(const char* Text);
   void Checkbox(const char* Label, bool* Toggle);
 
-  void DragFloat(const char* Label, float* Value, float MinValue, float MaxValue, float ScreenDelta, float Width = 0);
+  void DragFloat(const char* Label, float* Value, float MinValue, float MaxValue,
+                 float ScreenDelta);
 
-  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Vertical = false);
-  void DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue, float ScreenDelta);
-  void DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue, float ScreenDelta);
+  void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
+                   bool Vertical = false);
+  void DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue,
+                  float ScreenDelta);
+  void DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue,
+                  float ScreenDelta);
 
-  void SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical = false);
+  void SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue,
+                 bool Vertical = false);
 
-  void Combo(const char* Label, int* CurrentItem, const void* Data, int ItemCount, const char* (*DataToText)(const void*, int), int HeightInItems = 8, float Width = 0);
-  void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount, int HeightInItems = 5, float Width = 0);
+  void Combo(const char* Label, int* CurrentItem, const void* Data, int ItemCount,
+             const char* (*DataToText)(const void*, int), int HeightInItems = 8);
+  void Combo(const char* Label, int* CurrentItem, const char** Items, int ItemCount,
+             int HeightInItems = 5);
 
   void Image(const char* Name, int32_t TextureID, vec3 Size);
   void Text(const char* Text);
@@ -117,7 +141,7 @@ namespace UI
   void MoveGizmo(vec3* Position);
   void PlaneGizmo(transform* Transform, int32_t PlaneIndex);
   void PlaneGizmo(transform* Position, vec3 PlaneNormal);
-  //void PlaneGizmo(transform* Position, parametric_plane);
+  // void PlaneGizmo(transform* Position, parametric_plane);
 
   uint32_t GetActiveID();
   uint32_t GetHotID();

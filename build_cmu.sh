@@ -16,6 +16,15 @@ for i in $src_dir*.bvh; do
 	fi
 done
 
+$build 'data/animations/127_01.bvh' 'data/built/127' '--actor' '--root_bone' 'Hips' '--scale' '0.056444'
+
+for i in $src_dir*.bvh; do
+	if [[ $i == *"127"*".bvh" ]]; then
+		echo "building " $i
+		$build $i $dst_dir`basename $i .bvh` '--animation' '--target_actor' 'data/built/127.actor'
+	fi
+done
+
 printf "\n"
 $build 'data/animations/91_01.bvh' 'data/built/91' '--actor' '--root_bone' 'Hips' '--scale' '0.056444'
 printf "\n"

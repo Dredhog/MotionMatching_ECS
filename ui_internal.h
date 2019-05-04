@@ -147,10 +147,11 @@ struct style_color_memo
 
 struct gui_window
 {
-  path               Name;
-  ui_id              ID;
-  ui_id              MoveID;
-  UI::window_flags_t Flags;
+  path                   Name;
+  ui_id                  ID;
+  ui_id                  MoveID;
+  UI::window_flags_t     Flags;
+  fixed_stack<ui_id, 20> IDStack;
 
   gui_window*                  RootWindow;
   gui_window*                  ParentWindow;
@@ -160,36 +161,56 @@ struct gui_window
   bool UsedLastFrame;
   bool UsedThisFrame;
 
-  vec3 Position;
-  vec3 StartPos;
-  vec3 Size;
+  vec3 Position;     // The window's top left corner in screen space
+  vec3 Size;         // The size of the entire window quad
   vec3 SizeNoScroll; // Entire window except scrollbars
 
-  vec3 CurrentPos;
-  vec3 PreviousPos;
-  vec3 MaxPos;
+  vec3  StartPos;        // Cursor start position in screen space
+  vec3  Padding;         // Distance from StartPos and the first user element
+  vec3  CurrentPos;      // The cursor's position in screen space
+  vec3  PreviousLinePos; // The cursor's position in screen space if it stayed on the same line
+  vec3  MaxPos;          // Position in screen space of the furthest the contents went last frame
+  float IndentX; // The offset from the left of the window in screen space to start a new line
 
-  rect  ClippedSizeRect; // Used for hovered window calculations
-  float DefaultItemWidth;
+  // Used for finding the cursor's position on the next line when there are several items of
+  // different heights on the current line
+  float CurrentLineHeight;
+  float PreviousLineHeight; // Need to remember the CurrentLineHeight to use SameLine correctly
 
-  vec3 ContentsSize;
+  rect                   ClippedSizeRect;  // Used for hovered window calculations
+  float                  DefaultItemWidth; // Used if ItemWidthStack is empty
+  fixed_stack<float, 20> ItemWidthStack;   // Set by user. Will assert if not empty at end of frame
 
-  vec3 ScrollNorm;
-  vec3 ScrollRange;
+  vec3 ContentsSize; // Set to (MaxPos - Position) at the beginning of the frame
+
+  vec3 ScrollNorm;  // Normalized scroll position
+  vec3 ScrollRange; // Set to Max(0, ContentsSize - SizeNoScroll) in Scrollbar() calls
 
   fixed_array<quad_instance, 300> DrawArray;
 
   ui_id
   GetID(const char* Label) const
   {
-    return IDHash(Label, (int)strlen(Label), this->ID);
+    ui_id ParentID = (this->IDStack.Empty()) ? this->ID : this->IDStack.Peek();
+    return IDHash(Label, (int)strlen(Label), ParentID);
   }
+
+  ui_id
+  GetID(const void* Pointer) const
+  {
+    ui_id ParentID = (this->IDStack.Empty()) ? this->ID : this->IDStack.Peek();
+    return IDHash(&Pointer, (int)sizeof(uintptr_t*), ParentID);
+  }
+
   ui_id
   GetID(const uintptr_t Pointer) const
   {
-    return IDHash(&Pointer, (int)sizeof(uintptr_t*), this->ID);
+    ui_id ParentID = (this->IDStack.Empty()) ? this->ID : this->IDStack.Peek();
+    return IDHash(&Pointer, (int)sizeof(uintptr_t*), ParentID);
   }
-  vec3 GetDefaultItemSize() const;
+
+  vec3  GetItemSize() const;
+  float GetItemWidth() const;
 };
 
 struct gui_popup
@@ -224,17 +245,23 @@ struct gui_context
   gui_window*       FocusedWindow;
 };
 
+// GLOBAL CONTEXT
+static gui_context g_Context;
+
+float
+gui_window::GetItemWidth() const
+{
+  return this->ItemWidthStack.Empty() ? this->DefaultItemWidth : this->ItemWidthStack.Peek();
+}
+
 vec3
-gui_window::GetDefaultItemSize() const
+gui_window::GetItemSize() const
 {
   gui_context& g      = *GetContext();
-  vec3         Result = { this->DefaultItemWidth,
+  vec3         Result = { GetItemWidth(),
                   g.Style.Vars[UI::VAR_FontSize] + 2 * g.Style.Vars[UI::VAR_BoxPaddingY] };
   return Result;
 }
-
-// GLOBAL CONTEXT
-static gui_context g_Context;
 
 void
 PushClipQuad(gui_window* Window, const vec3& Position, const vec3& Size, bool IntersectWithPrevious)
@@ -516,13 +543,15 @@ AddSize(const vec3& Size)
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
-  Window.MaxPos.X =
-    MaxFloat(Window.MaxPos.X, Window.CurrentPos.X + Size.X /* + g.Style.Vars[UI::VAR_SpacingX]*/);
-  Window.MaxPos.Y =
-    MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y + Size.Y /*+ g.Style.Vars[UI::VAR_SpacingY]*/);
+  const float LineHeight = MaxFloat(Window.CurrentLineHeight, Size.Y);
+  Window.PreviousLinePos = Window.CurrentPos + vec3{ Size.X, 0 };
+  Window.CurrentPos.X    = Window.Position.X + Window.IndentX;
+  Window.CurrentPos.Y    = Window.CurrentPos.Y + LineHeight + g.Style.Vars[UI::VAR_SpacingY];
+  Window.MaxPos.X        = MaxFloat(Window.MaxPos.X, Window.PreviousLinePos.X);
+  Window.MaxPos.Y        = MaxFloat(Window.MaxPos.Y, Window.CurrentPos.Y);
 
-  Window.PreviousPos = Window.CurrentPos + vec3{ Size.X + g.Style.Vars[UI::VAR_SpacingX], 0 };
-  Window.CurrentPos.Y += Size.Y + g.Style.Vars[UI::VAR_SpacingY];
+  Window.PreviousLineHeight = LineHeight;
+  Window.CurrentLineHeight  = 0;
 }
 
 bool
@@ -626,6 +655,7 @@ void
 Init(gui_context* Context, game_state* GameState)
 {
   Context->Style.Colors[UI::COLOR_Border]           = { 0.1f, 0.1f, 0.1f, 0.5f };
+  Context->Style.Colors[UI::COLOR_ComboNormal]      = { 0.35f, 0.35f, 0.35f, 1 };
   Context->Style.Colors[UI::COLOR_ButtonNormal]     = { 0.4f, 0.4f, 0.4f, 1 };
   Context->Style.Colors[UI::COLOR_ButtonHovered]    = { 0.5f, 0.5f, 0.5f, 1 };
   Context->Style.Colors[UI::COLOR_ButtonPressed]    = { 0.3f, 0.3f, 0.3f, 1 };
@@ -642,14 +672,17 @@ Init(gui_context* Context, game_state* GameState)
   Context->Style.Colors[UI::COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
 
   Context->Style.Vars[UI::VAR_FontSize]        = (float)GameState->Font.SizedFonts[0].Size;
+  Context->Style.Vars[UI::VAR_WindowPaddingX]  = 7;
+  Context->Style.Vars[UI::VAR_WindowPaddingY]  = 7;
   Context->Style.Vars[UI::VAR_BorderThickness] = 1;
   Context->Style.Vars[UI::VAR_ScrollbarSize]   = 15;
   Context->Style.Vars[UI::VAR_DragMinSize]     = 10;
   Context->Style.Vars[UI::VAR_BoxPaddingX]     = 5;
-  Context->Style.Vars[UI::VAR_BoxPaddingY]     = 0;
+  Context->Style.Vars[UI::VAR_BoxPaddingY]     = 1;
   Context->Style.Vars[UI::VAR_SpacingX]        = 5;
   Context->Style.Vars[UI::VAR_SpacingY]        = 5;
   Context->Style.Vars[UI::VAR_InternalSpacing] = 5;
+  Context->Style.Vars[UI::VAR_IndentSpacing]   = 20;
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;

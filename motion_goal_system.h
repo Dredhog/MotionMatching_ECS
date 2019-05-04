@@ -2,6 +2,7 @@
 
 #include "trajectory.h"
 #include "motion_matching.h"
+#include "goal_gen.h"
 #include "rid.h"
 
 #include "resource_manager.h"
@@ -11,18 +12,6 @@
 #include <stdint.h>
 
 #define MM_CONTROLLER_MAX_COUNT 20
-#define RECORDED_TRANSFORM_COUNT 20
-
-struct pose_transform
-{
-  vec2  Position;
-  float Angle;
-};
-
-struct trajectory
-{
-  pose_transform PastTransforms[RECORDED_TRANSFORM_COUNT];
-};
 
 enum spline_loop_type
 {
@@ -43,7 +32,7 @@ struct mm_input_controller
 {
   float MaxSpeed;
   float PositionBias;
-  float VelocityBias;
+  float DirectionBias;
   bool  UseStrafing;
 };
 
@@ -53,6 +42,7 @@ struct mm_input_controller
   DO_FUNC(int32_t, EntityIndex, EntityIndices)                                                     \
   DO_FUNC(bool, FollowSpline, FollowSpline)                                                        \
   DO_FUNC(spline_follow_state, SplineState, SplineStates)                                          \
+  DO_FUNC(trajectory, Trajectory, Trajectories)                                                    \
   DO_FUNC(mm_input_controller, InputController, InputControllers)                                  \
   DO_FUNC(mm_controller_data*, MMController, MMControllers)                                        \
   DO_FUNC(Anim::animation_controller*, AnimController, AnimControllers)                            \
@@ -62,46 +52,44 @@ struct mm_input_controller
   DO_FUNC(transform, OutDeltaRootMotion, OutDeltaRootMotions)
 
 #define PLACE_TOKEN(X) X
-#define GENERATE_MM_SOA_FIELDS(Type, SingularName, PluralName) Type PluralName[MM_CONTROLLER_MAX_COUNT];
-#define GENERATE_MM_AOS_FIELDS(Type, SingularName, PluralName) Type * const SingularName;
-#define GENERATE_AOS_ASSIGNMENT(Type, SingularName, PluralName) *Dest  PLACE_TOKEN(->)  SingularName = *Src PLACE_TOKEN(->) SingularName;
-#define GENERATE_TEMP_COPIES(Type, SingularName, PluralName) Type Temp##SingularName = *A PLACE_TOKEN(->) SingularName;
-#define GENERATE_AOS_ASSIGNMENT_A_TO_B(Type, SingularName, PluralName) *B  PLACE_TOKEN(->)  SingularName = *A PLACE_TOKEN(->) SingularName;
-#define GENERATE_AOS_ASSIGNMENT_B_TO_A(Type, SingularName, PluralName) *A  PLACE_TOKEN(->)  SingularName = *B PLACE_TOKEN(->) SingularName;
-#define GENERATE_AOS_INIT_FIELDS(Type, SingularName, PluralName) PLACE_TOKEN(.) SingularName = PLACE_TOKEN(&) MMEntityData->PluralName[MMDataIndex],
+#define GENERATE_MM_DATA_ARRAY_FIELDS(Type, SingularName, PluralName) Type PluralName[MM_CONTROLLER_MAX_COUNT];
+#define GENERATE_MM_DATA_POINTER_FIELDS(Type, SingularName, PluralName) Type * const SingularName;
+#define GENERATE_MM_DATA_SRC_TO_DEST_ASSIGNMENT(Type, SingularName, PluralName) *Dest  PLACE_TOKEN(->)  SingularName = *Src PLACE_TOKEN(->) SingularName;
+#define GENERATE_MM_DATA_TEMP_COPIES(Type, SingularName, PluralName) Type Temp##SingularName = *A PLACE_TOKEN(->) SingularName;
+#define GENERATE_MM_DATA_ASSIGNMENT_A_TO_B(Type, SingularName, PluralName) *B  PLACE_TOKEN(->)  SingularName = *A PLACE_TOKEN(->) SingularName;
+#define GENERATE_MM_DATA_ASSIGNMENT_B_TO_A(Type, SingularName, PluralName) *A  PLACE_TOKEN(->)  SingularName = *B PLACE_TOKEN(->) SingularName;
+#define GENERATE_MM_DATA_INIT_FIELDS(Type, SingularName, PluralName) PLACE_TOKEN(.) SingularName = PLACE_TOKEN(&) MMEntityData->PluralName[MMDataIndex],
 
 struct mm_entity_data
 {
   // Serializable data
-  int32_t                 Count;
-  FOR_ALL_NAMES(GENERATE_MM_SOA_FIELDS);
+  int32_t Count;
+  FOR_ALL_NAMES(GENERATE_MM_DATA_ARRAY_FIELDS);
 };
 
 // Used in the editor to access the soa fields
 struct mm_aos_entity_data
 {
-	FOR_ALL_NAMES(GENERATE_MM_AOS_FIELDS);
+  FOR_ALL_NAMES(GENERATE_MM_DATA_POINTER_FIELDS);
 };
 inline void
 CopyAOSMMEntityData(mm_aos_entity_data* Dest, const mm_aos_entity_data* Src)
 {
-	FOR_ALL_NAMES(GENERATE_AOS_ASSIGNMENT);
+  FOR_ALL_NAMES(GENERATE_MM_DATA_SRC_TO_DEST_ASSIGNMENT);
 }
 inline void
 SwapMMEntityData(mm_aos_entity_data* A, mm_aos_entity_data* B)
 {
-	FOR_ALL_NAMES(GENERATE_TEMP_COPIES);
- 	FOR_ALL_NAMES(GENERATE_AOS_ASSIGNMENT_B_TO_A);
-  FOR_ALL_NAMES(GENERATE_AOS_ASSIGNMENT_A_TO_B);
+  FOR_ALL_NAMES(GENERATE_MM_DATA_TEMP_COPIES);
+  FOR_ALL_NAMES(GENERATE_MM_DATA_ASSIGNMENT_B_TO_A);
+  FOR_ALL_NAMES(GENERATE_MM_DATA_ASSIGNMENT_A_TO_B);
 }
 
 inline mm_aos_entity_data
 GetEntityAOSMMData(int32_t MMDataIndex, mm_entity_data* MMEntityData)
 {
   assert(0 <= MMDataIndex && MMDataIndex < MMEntityData->Count);
-  mm_aos_entity_data Result = {
-		FOR_ALL_NAMES(GENERATE_AOS_INIT_FIELDS)
-  };
+  mm_aos_entity_data Result = { FOR_ALL_NAMES(GENERATE_MM_DATA_INIT_FIELDS) };
   return Result;
 }
 #undef FOR_ALL_NAMES
@@ -109,18 +97,19 @@ GetEntityAOSMMData(int32_t MMDataIndex, mm_entity_data* MMEntityData)
 inline void
 SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
 {
-  *MMEntityData->MMControllerRID    = {};
-  *MMEntityData->BlendStack         = {};
-  *MMEntityData->EntityIndex        = -1;
-  *MMEntityData->FollowSpline       = false;
-  *MMEntityData->SplineState        = { .SplineIndex       = -1,
+  *MMEntityData->MMControllerRID = {};
+  *MMEntityData->BlendStack      = {};
+  *MMEntityData->EntityIndex     = -1;
+  *MMEntityData->FollowSpline    = false;
+  *MMEntityData->SplineState     = { .SplineIndex       = -1,
                                  .NextWaypointIndex = 0,
                                  .LoopType          = 0,
                                  .MovingInPositive  = true };
-  *MMEntityData->InputController    = { .MaxSpeed     = 1.0f,
-                                     .PositionBias = 0.2f,
-                                     .VelocityBias = 0.2f,
-                                     .UseStrafing  = false };
+  InitTrajectory(MMEntityData->Trajectory);
+  *MMEntityData->InputController = { .MaxSpeed      = 1.0f,
+                                     .PositionBias  = 0.08f,
+                                     .DirectionBias = 0.1f,
+                                     .UseStrafing   = false };
 
   *MMEntityData->MMController     = NULL;
   *MMEntityData->AnimController   = NULL;
@@ -179,10 +168,6 @@ GetEntityMMDataIndex(int32_t EntityIndex, const mm_entity_data* MMEntityData)
   return MMDataIndex;
 }
 
-void DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame,
-                   mm_info_debug_settings DebugSettings, vec3 BoneColor, vec3 VelocityColor,
-                   vec3 TrajectoryColor, vec3 DirectionColor);
-
 transform GetAnimRootMotionDelta(Anim::animation*                  RootMotionAnim,
                                  const Anim::animation_controller* C, bool MirrorRootMotionInX,
                                  float LocalSampleTime, float dt);
@@ -209,9 +194,12 @@ void DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityInd
                         const entity* Entities, const mm_info_debug_settings* MMInfoDebug,
                         vec3 BoneColor = { 1, 0, 1 }, vec3 TrajectoryColor = { 0, 0, 1 },
                         vec3 DirectionColor = { 1, 0, 0 });
+void DrawControlTrajectories(const trajectory* Trajectories, const int32_t* EntityIndices,
+                             int32_t Count, const entity* Entities);
 
 void GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
-                            Memory::stack_allocator* TempAlloc, const blend_stack* BlendStacks,
+                            trajectory* Trajectories, Memory::stack_allocator* TempAlloc,
+                            const blend_stack*                       BlendStacks,
                             const Anim::animation_controller* const* AnimControllers,
                             const mm_controller_data* const*         MMControllers,
                             const mm_input_controller*               InputController,
@@ -223,9 +211,6 @@ void GenerateGoalsFromSplines(mm_frame_info* OutGoals, const spline_follow_state
                               const blend_stack* BlendStacks, int32_t Count,
                               const movement_spline* Splines);
 
-// Only used to visualize the mirrored match, not adequate way to flip for searching mirrors
-mm_frame_info VisualFlipGoalX(const mm_frame_info& Goal);
-
 void MotionMatchGoals(blend_stack*                       OutBlendStacks,
                       Anim::animation_controller* const* AnimControllers,
                       mm_frame_info* LastMatchedGoals, const mm_frame_info* AnimGoals,
@@ -236,5 +221,5 @@ void ComputeLocalRootMotion(transform*                               OutLocalDel
                             const Anim::animation_controller* const* AnimControllers,
                             const blend_stack* BlendStacks, int32_t Count, float dt);
 
-void ApplyRootMotion(entity* InOutEntities, const transform* LocalDeltaRootMotions,
-                     int32_t* EntityIndices, int32_t Count);
+void ApplyRootMotion(entity* InOutEntities, trajectory* Trajectories,
+                     const transform* LocalDeltaRootMotions, int32_t* EntityIndices, int32_t Count);

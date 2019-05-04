@@ -14,10 +14,10 @@ PlayAnimation(Anim::animation_controller* C, blend_stack* BlendStack, rid NewAni
   blend_in_info AnimBlend   = {};
   AnimBlend.Duration        = BlendInTime;
   AnimBlend.GlobalStartTime = C->GlobalTimeSec;
-  AnimBlend.Mirror       = Mirror;
+  AnimBlend.Mirror          = Mirror;
   AnimBlend.AnimStateIndex  = (BlendStack->Empty()) ? 0
-                                                  : (BlendStack->Peek().AnimStateIndex + 1) %
-                                                      ANIM_CONTROLLER_MAX_ANIM_COUNT;
+                                                   : (BlendStack->Peek().AnimStateIndex + 1) %
+                                                       ANIM_CONTROLLER_MAX_ANIM_COUNT;
   BlendStack->Push(AnimBlend);
 
   Anim::SetAnimation(C, NewAnimRID, AnimBlend.AnimStateIndex);

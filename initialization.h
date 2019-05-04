@@ -59,8 +59,14 @@ RegisterLoadInitialResources(game_state* GameState)
 
   // Load unmanaged textures (only used in ui)
   {
+#if 0 
     GameState->CollapsedTextureID  = Texture::LoadTexture("./data/textures/collapsed.bmp");
     GameState->ExpandedTextureID   = Texture::LoadTexture("./data/textures/expanded.bmp");
+#else
+    GameState->CollapsedTextureID  = Texture::LoadTexture("./data/textures/CollapsedHeader.bmp");
+    GameState->ExpandedTextureID   = Texture::LoadTexture("./data/textures/ExpandedHeader.bmp");
+#endif
+    //FIXME(Lukas): Remove this line
     GameState->R.PostTestTextureID = Texture::LoadTexture("./data/textures/collapsed.bmp");
     assert(GameState->CollapsedTextureID);
     assert(GameState->ExpandedTextureID);

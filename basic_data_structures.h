@@ -114,13 +114,13 @@ struct stack_handle
   }
 
   bool
-  Empty()
+  Empty() const 
   {
     return Count == 0;
   }
 
   bool
-  Full()
+  Full() const 
   {
     return this->Count == Capacity;
   }
@@ -248,13 +248,13 @@ struct fixed_stack
   }
 
   bool
-  Empty()
+  Empty() const
   {
     return Count == 0;
   }
 
   bool
-  Full()
+  Full() const
   {
     return this->Count == Capacity;
   }

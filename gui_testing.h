@@ -11,7 +11,7 @@ void EntityGUI(game_state* GameState, bool& ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
 void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
              bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings,
-             bool& ShowECDData, bool& ShowTrajectorySettings);
+             bool& ShowTrajectorySettings);
 
 const char*
 PathArrayToString(const void* Data, int Index)
@@ -50,10 +50,10 @@ TestGui(game_state* GameState, const game_input* Input)
 {
   BEGIN_TIMED_BLOCK(GUI);
 
-  static bool s_ShowDemoWindow           = false;
-  static bool s_ShowPhysicsWindow        = false;
-  static bool s_ShowProfilerWindow       = false;
-  static bool s_ShowMotionMatchingWindow = false;
+  static bool s_ShowDemoWindow            = false;
+  static bool s_ShowPhysicsWindow         = false;
+  static bool s_ShowProfilerWindow        = false;
+  static bool s_ShowMotionMatchingWindow  = false;
   static bool s_ShowMMDebugSettingsWindow = false;
 
   UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
@@ -74,14 +74,17 @@ TestGui(game_state* GameState, const game_input* Input)
     static bool s_ShowCameraSettings         = false;
     static bool s_ShowSceneSettings          = false;
     static bool s_ShowPostProcessingSettings = false;
-    static bool s_ShowECSData                = false;
     static bool s_ShowTrajectorySetting      = false;
 
     UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
+		UI::SameLine(200);
     UI::Checkbox("Update Path List", &GameState->UpdatePathList);
+		UI::SameLine(400);
     UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
     UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
+		UI::SameLine(200);
     UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+		UI::SameLine(400);
     UI::Checkbox("Motion Matching Debug", &s_ShowMMDebugSettingsWindow);
     UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
 
@@ -89,8 +92,7 @@ TestGui(game_state* GameState, const game_input* Input)
     MaterialGUI(GameState, s_ShowMaterialEditor);
     AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
     MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings,
-            s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowECSData,
-            s_ShowTrajectorySetting);
+            s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowTrajectorySetting);
   }
   UI::EndWindow();
 
@@ -127,7 +129,6 @@ TestGui(game_state* GameState, const game_input* Input)
           s_CurrentModifiableFrameIndex =
             (s_CurrentModifiableFrameIndex + PROFILE_MAX_FRAME_COUNT + 1) % PROFILE_MAX_FRAME_COUNT;
         }
-        UI::NewLine();
       }
 
       s_CurrentModifiableFrameIndex =
@@ -231,13 +232,16 @@ TestGui(game_state* GameState, const game_input* Input)
                     {
                       s_BlockIndexForSummary = CurrentEvent.NameTableIndex;
                     }
-                    UI::SameLine();
+                    if(i < GLOBAL_TIMER_FRAME_EVENT_COUNT_TABLE[s_CurrentModifiableFrameIndex] - 1)
+                    {
+                      UI::SameLine();
+                    }
                     CurrentHorizontalPosition += DummyWidth + EventWidth;
                   }
                   UI::PopStyleColor();
                 }
               }
-              UI::NewLine();
+							UI::NewLine();
             }
           }
           UI::PopStyleVar();
@@ -247,7 +251,6 @@ TestGui(game_state* GameState, const game_input* Input)
         }
         UI::EndChildWindow();
         UI::PopStyleColor();
-        UI::NewLine();
         {
           {
             UI::Text(TIMER_NAME_TABLE[s_BlockIndexForSummary]);
@@ -260,7 +263,6 @@ TestGui(game_state* GameState, const game_input* Input)
                                                         .CycleCount);
               UI::Text(CountBuffer);
             }
-            UI::NewLine();
           }
         }
       }
@@ -278,7 +280,6 @@ TestGui(game_state* GameState, const game_input* Input)
                     GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
             UI::Text(CountBuffer);
           }
-          UI::NewLine();
         }
       }
 
@@ -295,7 +296,6 @@ TestGui(game_state* GameState, const game_input* Input)
                       (float)1e6);
             UI::Text(CountBuffer);
           }
-          UI::NewLine();
         }
       }
       {
@@ -324,7 +324,6 @@ TestGui(game_state* GameState, const game_input* Input)
               DestroyEntity(GameState->ECSWorld, (entity_id)SelectedEntityID);
               SelectedEntityID = -1;
             }
-            UI::NewLine();
           }
 
           if(DoesEntityExist(GameState->ECSWorld, (entity_id)SelectedEntityID))
@@ -352,7 +351,7 @@ TestGui(game_state* GameState, const game_input* Input)
 
             UI::Combo("Component Type", (int32_t*)&NewComponentID,
                       &GameState->ECSRuntime->ComponentNames.Elements,
-                      GameState->ECSRuntime->ComponentNames.Count, UI::StringArrayToString, 6, 200);
+                      GameState->ECSRuntime->ComponentNames.Count, UI::StringArrayToString, 6);
 
             snprintf(TempBuffer, TempBufferCapacity, "Chunk Index   : %d",
                      GameState->ECSWorld->Entities[(entity_id)SelectedEntityID].ChunkIndex);
@@ -449,8 +448,6 @@ TestGui(game_state* GameState, const game_input* Input)
 
               archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
 
-              UI::NewLine();
-
               float CurrentPos  = 0;
               float HeaderWidth = PixelsPerByte * (float)sizeof(chunk_header);
               UI::Button("Header", HeaderWidth);
@@ -479,7 +476,6 @@ TestGui(game_state* GameState, const game_input* Input)
 
             // Output archetype details
             {
-              UI::NewLine();
 
               archetype* Archetype = &GameState->ECSRuntime->Archetypes[Header.ArchetypeIndex];
 
@@ -495,7 +491,6 @@ TestGui(game_state* GameState, const game_input* Input)
                          "ID: %d, Offset: %d; Size: %d; Alignment: %d", ComponentOffset.ID,
                          ComponentOffset.Offset, ComopnentInfo.Size, ComopnentInfo.Alignment);
                 UI::Text(TempBuffer);
-                UI::NewLine();
               }
             }
           }
@@ -564,17 +559,21 @@ TestGui(game_state* GameState, const game_input* Input)
           UI::DragFloat4("Header Normal", &Style.Colors[UI::COLOR_HeaderNormal].X, 0, 1, 5);
           UI::DragFloat4("Header Hovered", &Style.Colors[UI::COLOR_HeaderHovered].X, 0, 1, 5);
           UI::DragFloat4("Header Pressed", &Style.Colors[UI::COLOR_HeaderPressed].X, 0, 1, 5);
+          UI::SliderFloat("Window Padding X", &Style.Vars[UI::VAR_WindowPaddingX], 0, 20);
+          UI::SliderFloat("Window Padding Y", &Style.Vars[UI::VAR_WindowPaddingY], 0, 20);
           UI::SliderFloat("Horizontal Padding", &Style.Vars[UI::VAR_BoxPaddingX], 0, 10);
           UI::SliderFloat("Vertical Padding", &Style.Vars[UI::VAR_BoxPaddingY], 0, 10);
           UI::SliderFloat("Horizontal Spacing", &Style.Vars[UI::VAR_SpacingX], 0, 10);
           UI::SliderFloat("Vertical Spacing", &Style.Vars[UI::VAR_SpacingY], 0, 10);
           UI::SliderFloat("Internal Spacing", &Style.Vars[UI::VAR_InternalSpacing], 0, 10);
+          UI::SliderFloat("Indent Spacing", &Style.Vars[UI::VAR_IndentSpacing], 0, 20);
         }
-        UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5, 150);
+        UI::PushWidth(150);
+        UI::Combo("Combo test", &s_CurrentItem, s_Items, ARRAY_SIZE(s_Items), 5);
+        UI::PopWidth();
         int StartIndex = 3;
         UI::Combo("Combo test1", &s_CurrentItem, s_Items + StartIndex,
                   ARRAY_SIZE(s_Items) - StartIndex);
-        UI::NewLine();
 
         char TempBuff[30];
         snprintf(TempBuff, sizeof(TempBuff), "Wheel %d", Input->MouseWheelScreen);
@@ -594,7 +593,6 @@ TestGui(game_state* GameState, const game_input* Input)
         {
           UI::SameLine();
           UI::Checkbox("Put image in frame", &s_Checkbox1);
-          UI::NewLine();
           if(s_Checkbox1)
           {
             UI::BeginChildWindow("Image frame", { 300, 170 });
@@ -614,13 +612,13 @@ TestGui(game_state* GameState, const game_input* Input)
 
   if(s_ShowMotionMatchingWindow)
   {
-    UI::BeginWindow("Motion Matching", { 100, 20 }, { 700, 700 });
+    UI::BeginWindow("Motion Matching", { 100, 20 }, { 750, 700 });
     MMControllerEditorGUI(&GameState->MMEditor, GameState->TemporaryMemStack,
                           &GameState->Resources);
     UI::EndWindow();
   }
-	if(s_ShowMMDebugSettingsWindow)
-	{
+  if(s_ShowMMDebugSettingsWindow)
+  {
     UI::BeginWindow("Matching Debug Settings", { 800, 20 }, { 700, 700 });
 
     mm_debug_settings& MMDebug = GameState->MMDebug;
@@ -642,7 +640,7 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
 
     UI::EndWindow();
-	}
+  }
 #if 0
   {
     static vec3 R = {};
@@ -714,8 +712,10 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         // Select shader type
         {
           int32_t NewShaderType = CurrentMaterial->Common.ShaderType;
+          UI::PushWidth(200);
           UI::Combo("Shader Type", (int32_t*)&NewShaderType, g_ShaderTypeEnumStrings,
-                    SHADER_EnumCount, UI::StringArrayToString, 6, 200);
+                    SHADER_EnumCount, UI::StringArrayToString, 6);
+          UI::PopWidth();
           if(CurrentMaterial->Common.ShaderType != NewShaderType)
           {
             *CurrentMaterial                   = {};
@@ -726,7 +726,6 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
         UI::Checkbox("Blending", &CurrentMaterial->Common.UseBlending);
         UI::SameLine();
         UI::Checkbox("Skeletel", &CurrentMaterial->Common.IsSkeletal);
-        UI::NewLine();
 
         if(CurrentMaterial->Common.ShaderType == SHADER_Phong)
         {
@@ -1074,9 +1073,9 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             GameState->Resources.CreateMaterial(NewPhongMaterial(), NULL);
           printf("Created Material with rid: %d\n", GameState->CurrentMaterialID.Value);
         }
-        UI::SameLine();
         if(GetSelectedEntity(GameState, &SelectedEntity))
         {
+          UI::SameLine();
           if(UI::Button("Apply To Selected"))
           {
             if(GameState->CurrentMaterialID.Value > 0)
@@ -1096,9 +1095,9 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
               }
             }
           }
-          UI::SameLine();
           if(GameState->SelectionMode == SELECT_Mesh)
           {
+            UI::SameLine();
             if(UI::Button("Edit Selected"))
             {
               GameState->CurrentMaterialID =
@@ -1106,7 +1105,6 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
             }
           }
         }
-        UI::NewLine();
       }
     }
   }
@@ -1149,19 +1147,19 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         DeleteEntity(GameState, &GameState->Resources, GameState->SelectedEntityIndex);
         GameState->SelectedEntityIndex = -1;
       }
-      UI::NewLine();
 
       static bool s_ShowTransformComponent = false;
-      if(UI::CollapsingHeader("Transform Component", &s_ShowTransformComponent))
+      if(UI::TreeNode("Transform Component", &s_ShowTransformComponent))
       {
         transform* Transform = &SelectedEntity->Transform;
         UI::DragFloat3("Translation", (float*)&Transform->T, -INFINITY, INFINITY, 10);
         // UI::DragFloat3("Rotation", (float*)&Transform->Rotation, -INFINITY, INFINITY, 720.0f);
         UI::DragFloat3("Scale", (float*)&Transform->S, -INFINITY, INFINITY, 10.0f);
+        UI::TreePop();
       }
 
       static bool s_ShowPhysicsComponent = false;
-      if(UI::CollapsingHeader("Physics Component", &s_ShowPhysicsComponent))
+      if(UI::TreeNode("Physics Component", &s_ShowPhysicsComponent))
       // Rigid Body
       {
         rigid_body* RB = &SelectedEntity->RigidBody;
@@ -1181,14 +1179,12 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         }
         UI::SameLine();
         UI::DragFloat3("v", &RB->v.X, -INFINITY, INFINITY, 10);
-        UI::NewLine();
         if(UI::Button("Clear w"))
         {
           RB->w = {};
         }
         UI::SameLine();
         UI::DragFloat3("w", &RB->w.X, -INFINITY, INFINITY, 10);
-        UI::NewLine();
 
         UI::Checkbox("Regard Gravity", &RB->RegardGravity);
 
@@ -1221,6 +1217,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             RB->InertiaBodyInv._33 = 1.0f / InertiaDiagonal.Z;
           }
         }
+        UI::TreePop();
       }
 
       Render::model* SelectedModel = GameState->Resources.GetModel(SelectedEntity->ModelID);
@@ -1255,7 +1252,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         else if(SelectedEntity->AnimController)
         {
           static bool s_ShowAnimtionPlayerComponent = true;
-          if(UI::CollapsingHeader("Animation Player Component", &s_ShowAnimtionPlayerComponent))
+          if(UI::TreeNode("Animation Player Component", &s_ShowAnimtionPlayerComponent))
           {
             if(UI::Button("Animate Selected Entity"))
             {
@@ -1289,7 +1286,6 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           {
             UI::SameLine();
             UI::Checkbox("Play In Root Space", &GameState->PreviewAnimationsInRootSpace);
-            UI::NewLine();
           }
 
           {
@@ -1331,125 +1327,131 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             }
           }
 #endif
-          }
 
-          {
-            // Outside data used
-            mm_entity_data&             MMEntityData        = GameState->MMEntityData;
-            int                         SelectedEntityIndex = GameState->SelectedEntityIndex;
-            const spline_system&        SplineSystem        = GameState->SplineSystem;
-            Resource::resource_manager* Resources           = &GameState->Resources;
-            const Anim::skeleton*       Skeleton = SelectedEntity->AnimController->Skeleton;
-
-            // Actual UI
-            int32_t     MMControllerIndex           = -1;
-            static bool s_ShowMMControllerComponent = true;
-            if((MMControllerIndex = GetEntityMMDataIndex(SelectedEntityIndex, &MMEntityData)) == -1)
             {
-              if(MMEntityData.Count < MM_CONTROLLER_MAX_COUNT &&
-                 UI::Button("Add Matched Animation Controller"))
-              {
-                MMEntityData.Count++;
-                mm_aos_entity_data MMControllerData =
-                  GetEntityAOSMMData(MMEntityData.Count - 1, &MMEntityData);
+              // Outside data used
+              mm_entity_data&             MMEntityData        = GameState->MMEntityData;
+              int                         SelectedEntityIndex = GameState->SelectedEntityIndex;
+              const spline_system&        SplineSystem        = GameState->SplineSystem;
+              Resource::resource_manager* Resources           = &GameState->Resources;
+              const Anim::skeleton*       Skeleton = SelectedEntity->AnimController->Skeleton;
 
-                SetDefaultMMControllerFileds(&MMControllerData);
-                MMEntityData.EntityIndices[MMEntityData.Count - 1] = SelectedEntityIndex;
+              // Actual UI
+              int32_t     MMControllerIndex           = -1;
+              static bool s_ShowMMControllerComponent = true;
+              if((MMControllerIndex = GetEntityMMDataIndex(SelectedEntityIndex, &MMEntityData)) ==
+                 -1)
+              {
+                if(MMEntityData.Count < MM_CONTROLLER_MAX_COUNT &&
+                   UI::Button("Add Matched Animation Controller"))
+                {
+                  MMEntityData.Count++;
+                  mm_aos_entity_data MMControllerData =
+                    GetEntityAOSMMData(MMEntityData.Count - 1, &MMEntityData);
+
+                  SetDefaultMMControllerFileds(&MMControllerData);
+                  MMEntityData.EntityIndices[MMEntityData.Count - 1] = SelectedEntityIndex;
+                }
               }
-            }
-            else if(UI::Button("Remove Matching Animation Controller"))
-            {
-              RemoveMMControllerDataAtIndex(MMControllerIndex, Resources, &MMEntityData);
-            }
-            else if(UI::CollapsingHeader("Matched Anim. Controller Component",
-                                         &s_ShowMMControllerComponent))
-            {
-              mm_aos_entity_data MMControllerData =
-                GetEntityAOSMMData(MMControllerIndex, &MMEntityData);
-
+              else if(UI::Button("Remove Matching Animation Controller"))
               {
-                // Pick the mm controller
-                static int32_t ShownPathIndex = -1;
-                int32_t        UsedPathIndex  = -1;
-                if(MMControllerData.MMControllerRID->Value > 0)
+                RemoveMMControllerDataAtIndex(MMControllerIndex, Resources, &MMEntityData);
+              }
+              else if(UI::TreeNode("Matched Anim. Controller Component",
+                                   &s_ShowMMControllerComponent))
+              {
+                mm_aos_entity_data MMControllerData =
+                  GetEntityAOSMMData(MMControllerIndex, &MMEntityData);
+
                 {
-                  UsedPathIndex =
-                    Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
-                }
-                bool ClickedAdd = false;
-                {
-                  if(ShownPathIndex != UsedPathIndex)
+                  // Pick the mm controller
+                  static int32_t ShownPathIndex = -1;
+                  int32_t        UsedPathIndex  = -1;
+                  if(MMControllerData.MMControllerRID->Value > 0)
                   {
-                    UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.8f, 0.8f, 0.4f, 1 });
-                    UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 1, 1, 0.6f, 1 });
+                    UsedPathIndex =
+                      Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
                   }
-                  ClickedAdd = UI::Button("Add", 0, 33);
-                  if(ShownPathIndex != UsedPathIndex)
+                  bool ClickedAdd = false;
                   {
-                    UI::PopStyleColor();
-                    UI::PopStyleColor();
-                  }
-                }
-                UI::SameLine();
-                UI::Combo("Controller", &ShownPathIndex, &Resources->MMControllerPaths,
-                          Resources->MMControllerPathCount, PathArrayToString);
-                UI::NewLine();
-                if(ClickedAdd)
-                {
-                  if(ShownPathIndex != -1)
-                  {
-                    rid NewRID = Resources->ObtainMMControllerPathRID(
-                      Resources->MMControllerPaths[ShownPathIndex].Name);
-                    mm_controller_data* MMController = Resources->GetMMController(NewRID);
-                    if(MMController->Params.FixedParams.Skeleton.BoneCount == Skeleton->BoneCount)
+                    if(ShownPathIndex != UsedPathIndex)
                     {
-                      if(MMControllerData.MMControllerRID->Value > 0 &&
-                         MMControllerData.MMControllerRID->Value != NewRID.Value)
-                      {
-                        Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
-                      }
-                      *MMControllerData.MMControllerRID = NewRID;
-                      Resources->MMControllers.AddReference(NewRID);
+                      UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.8f, 0.8f, 0.4f, 1 });
+                      UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 1, 1, 0.6f, 1 });
+                    }
+                    UI::PushID(s_ShowMMControllerComponent);
+                    ClickedAdd = UI::Button("Add");
+                    UI::PopID();
+                    if(ShownPathIndex != UsedPathIndex)
+                    {
+                      UI::PopStyleColor();
+                      UI::PopStyleColor();
                     }
                   }
-                  else if(MMControllerData.MMControllerRID->Value > 0)
+                  UI::SameLine();
+                  UI::Combo("Controller", &ShownPathIndex, &Resources->MMControllerPaths,
+                            Resources->MMControllerPathCount, PathArrayToString);
+                  if(ClickedAdd)
                   {
-                    Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
-                    *MMControllerData.MMControllerRID = {};
+                    if(ShownPathIndex != -1)
+                    {
+                      rid NewRID = Resources->ObtainMMControllerPathRID(
+                        Resources->MMControllerPaths[ShownPathIndex].Name);
+                      mm_controller_data* MMController = Resources->GetMMController(NewRID);
+                      if(MMController->Params.FixedParams.Skeleton.BoneCount == Skeleton->BoneCount)
+                      {
+                        if(MMControllerData.MMControllerRID->Value > 0 &&
+                           MMControllerData.MMControllerRID->Value != NewRID.Value)
+                        {
+                          Resources->MMControllers.RemoveReference(
+                            *MMControllerData.MMControllerRID);
+                        }
+                        *MMControllerData.MMControllerRID = NewRID;
+                        Resources->MMControllers.AddReference(NewRID);
+                      }
+                    }
+                    else if(MMControllerData.MMControllerRID->Value > 0)
+                    {
+                      Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
+                      *MMControllerData.MMControllerRID = {};
+                    }
                   }
                 }
-              }
 
-              char TempBuffer[40];
-              sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
-              UI::Text(TempBuffer);
+                char TempBuffer[40];
+                sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
+                UI::Text(TempBuffer);
 
-              UI::Checkbox("Control From Spline", MMControllerData.FollowSpline);
-              if(*MMControllerData.FollowSpline == true)
-              {
-                static bool s_ShowTrajectoryControlParameters = true;
-                if(UI::CollapsingHeader("Trajectory Control Params",
-                                        &s_ShowTrajectoryControlParameters))
+                UI::Checkbox("Control From Spline", MMControllerData.FollowSpline);
+                if(*MMControllerData.FollowSpline == true)
                 {
-                  UI::Combo("Follow Spline", &MMControllerData.SplineState->SplineIndex,
-                            (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
+                  static bool s_ShowTrajectoryControlParameters = true;
+                  if(UI::CollapsingHeader("Trajectory Control Params",
+                                          &s_ShowTrajectoryControlParameters))
+                  {
+                    UI::Combo("Follow Spline", &MMControllerData.SplineState->SplineIndex,
+                              (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
+                  }
                 }
-              }
-              else
-              {
-                static bool s_ShowInputControlParameters = true;
-                if(UI::CollapsingHeader("Input Control Params", &s_ShowInputControlParameters))
+                else
                 {
-                  UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
-                                  0.0f, 5.0f);
-                  UI::SliderFloat("Position Bias", &MMControllerData.InputController->PositionBias,
-                                  0.0f, 1.0f);
-                  UI::SliderFloat("Velocity Bias", &MMControllerData.InputController->VelocityBias,
-                                  0.0f, 1.0f);
-                  UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
+                  static bool s_ShowInputControlParameters = true;
+                  if(UI::TreeNode("Input Control Params", &s_ShowInputControlParameters))
+                  {
+                    UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
+                                    0.0f, 5.0f);
+                    UI::SliderFloat("Position Bias",
+                                    &MMControllerData.InputController->PositionBias, 0.0f, 1.0f);
+                    UI::SliderFloat("Direction Bias",
+                                    &MMControllerData.InputController->DirectionBias, 0.0f, 1.0f);
+                    UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
+                    UI::TreePop();
+                  }
                 }
+                UI::TreePop();
               }
             }
+            UI::TreePop();
           }
         }
       }
@@ -1559,49 +1561,12 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
   }
 }
 
-#pragma pack(2)
-struct test_struct
-{
-  float    f;
-  float    f2;
-  double   d;
-  uint16_t u16;
-};
-
 // TODO(Lukas) Add bit mask checkbox to the UI API
 void
 MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet,
         bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings,
-        bool& s_ShowECSData, bool& s_ShowTrajectorySettings)
+        bool& s_ShowTrajectorySettings)
 {
-  if(UI::CollapsingHeader("ECS data", &s_ShowECSData))
-  {
-    char TempBuffer[50];
-
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(entity): %ld", sizeof(entity));
-    UI::Text(TempBuffer);
-
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(animation_controller): %ld",
-             sizeof(Anim::animation_controller));
-    UI::Text(TempBuffer);
-
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(test_struct)): %ld", sizeof(test_struct));
-    UI::Text(TempBuffer);
-    snprintf(TempBuffer, sizeof(TempBuffer), "alignof(test_struct)): %ld", alignof(test_struct));
-    UI::Text(TempBuffer);
-
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(material): %ld", sizeof(material));
-    UI::Text(TempBuffer);
-
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(Render::mesh): %ld", sizeof(Render::mesh));
-    UI::Text(TempBuffer);
-
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(transform): %ld", sizeof(transform));
-    UI::Text(TempBuffer);
-
-    snprintf(TempBuffer, sizeof(TempBuffer), "sizeof(rigid_body): %ld", sizeof(rigid_body));
-    UI::Text(TempBuffer);
-  }
   if(UI::CollapsingHeader("Trajectory settings", &s_ShowTrajectorySettings))
   {
     if(!GameState->SplineSystem.Splines.Full())
@@ -1609,8 +1574,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
       if(UI::Button("Create Spline"))
       {
         GameState->SplineSystem.Splines.Push({});
-        GameState->SplineSystem.SelectedSplineIndex =
-          GameState->SplineSystem.Splines.Count - 1;
+        GameState->SplineSystem.SelectedSplineIndex   = GameState->SplineSystem.Splines.Count - 1;
         GameState->SplineSystem.SelectedWaypointIndex = -1;
       }
     }
@@ -1620,13 +1584,15 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     }
     // Loop over
     int DeleteSplineIndex = -1;
+		UI::PushID("Spline");
     for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
     {
+			UI::PushID(i);
       UI::Text("Spline");
       UI::SameLine();
-      if(UI::Button("Delete", 0, 512 + i))
+      if(UI::Button("Delete"))
       {
-        DeleteSplineIndex                                 = i;
+        DeleteSplineIndex                             = i;
         GameState->SplineSystem.SelectedSplineIndex   = -1;
         GameState->SplineSystem.SelectedWaypointIndex = -1;
       }
@@ -1640,7 +1606,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
           UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 1, 0.5f, 0.5f, 1 });
         }
 
-        if(UI::Button("Select", 0, 512 + i))
+        if(UI::Button("Select"))
         {
           if(GameState->SplineSystem.SelectedSplineIndex != i)
           {
@@ -1653,24 +1619,27 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
           UI::PopStyleColor();
           UI::PopStyleColor();
         }
-        UI::NewLine();
       }
+			UI::PopID();
     }
+		UI::PopID();
     if(DeleteSplineIndex != -1)
     {
       GameState->SplineSystem.Splines.Remove(DeleteSplineIndex);
     }
     int CurrentSplineIndex  = GameState->SplineSystem.SelectedSplineIndex;
     int DeleteWaypointIndex = -1;
+		UI::PushID("Waypoint");
     for(int i = 0; CurrentSplineIndex != -1 &&
                    i < GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Count;
         i++)
     {
+			UI::PushID(i);
       UI::Text("Waypoint");
       UI::SameLine();
-      if(UI::Button("Delete", 0, 1024 + i))
+      if(UI::Button("Delete"))
       {
-        DeleteWaypointIndex                               = i;
+        DeleteWaypointIndex                           = i;
         GameState->SplineSystem.SelectedWaypointIndex = -1;
       }
       else
@@ -1682,7 +1651,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
           UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.2f, 0.2f, 1, 1 });
           UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 0.5f, 0.5f, 1, 1 });
         }
-        if(UI::Button("Select", 0, 1024 + i))
+        if(UI::Button("Select"))
         {
           GameState->SplineSystem.SelectedWaypointIndex = i;
         }
@@ -1691,9 +1660,10 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
           UI::PopStyleColor();
           UI::PopStyleColor();
         }
-        UI::NewLine();
       }
+			UI::PopID();
     }
+    UI::PopID();
     if(DeleteWaypointIndex != -1)
     {
       GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Remove(DeleteWaypointIndex);
@@ -1944,7 +1914,6 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
       }
     }
-    UI::NewLine();
   }
 
   {

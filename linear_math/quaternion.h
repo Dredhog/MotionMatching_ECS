@@ -262,6 +262,15 @@ namespace Math
     return Result;
   }
 
+	inline quat
+	QuatAxisAngle(vec3 Axis, float Angle)
+	{
+		quat Result;
+    Result.V = sinf(Angle / 2) * Math::Normalized(Axis);
+    Result.S = cosf(Angle / 2);
+    return Result;
+  }
+
   inline quat
   QuatLerp(quat Q0, quat Q1, float t)
   {
@@ -285,4 +294,10 @@ namespace Math
     Normalize(&Result);
     return Result;
   }
+
+	/*inline quat
+	QuatSlerp(const quat& A, const quat&B, float t)
+	{
+    return (A * sinf(1 - t) + B * sinf(t)) * (1 / sinf(t));
+  }*/
 }
