@@ -13,18 +13,12 @@
 
 #define MM_CONTROLLER_MAX_COUNT 20
 
-enum spline_loop_type
-{
-  SPLINE_LoopToStart,
-  SPLINE_ReverseWhenEnded,
-};
-
 struct spline_follow_state
 {
   int32_t SplineIndex;
 
   int32_t  NextWaypointIndex;
-  uint32_t LoopType;
+  bool     Loop;
   bool     MovingInPositive;
 };
 
@@ -62,7 +56,6 @@ struct mm_input_controller
 
 struct mm_entity_data
 {
-  // Serializable data
   int32_t Count;
   FOR_ALL_NAMES(GENERATE_MM_DATA_ARRAY_FIELDS);
 };
@@ -103,7 +96,7 @@ SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
   *MMEntityData->FollowSpline    = false;
   *MMEntityData->SplineState     = { .SplineIndex       = -1,
                                  .NextWaypointIndex = 0,
-                                 .LoopType          = 0,
+                                 .Loop              = 0,
                                  .MovingInPositive  = true };
   InitTrajectory(MMEntityData->Trajectory);
   *MMEntityData->InputController = { .MaxSpeed      = 1.0f,
@@ -174,7 +167,8 @@ transform GetAnimRootMotionDelta(Anim::animation*                  RootMotionAni
 
 void SortMMEntityDataByUsage(int32_t* OutInputControlledCount,
                              int32_t* OutTrajectoryControlledStart,
-                             int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData);
+                             int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData,
+                             const spline_system* Splines);
 
 void FetchMMControllerDataPointers(Resource::resource_manager* Resources,
                                    mm_controller_data** OutMMControllers, rid* MMControllerRIDs,
@@ -211,10 +205,14 @@ void GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredG
                             const int32_t* EntityIndices, int32_t Count, const entity* Entities,
                             const game_input* Input, vec3 CameraForward);
 
-void GenerateGoalsFromSplines(mm_frame_info* OutGoals, const spline_follow_state* SplineStates,
+void GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutGoals,
+                              mm_frame_info* OutMirroredGoals, trajectory* Trajectories,
+                              spline_follow_state*                     SplineStates,
+                              const mm_controller_data* const*         MMControllers,
                               const Anim::animation_controller* const* ACs,
-                              const blend_stack* BlendStacks, int32_t Count,
-                              const movement_spline* Splines);
+                              const blend_stack* BlendStacks, const int32_t* EntityIndices,
+                              int32_t Count, const movement_spline* Splines,
+                              int32_t DebugSplineCount, const entity* Entities);
 
 void MotionMatchGoals(blend_stack*                       OutBlendStacks,
                       Anim::animation_controller* const* AnimControllers,

@@ -192,7 +192,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     int FirstSplineControlledIndex;
     int SplineControlledCount;
     SortMMEntityDataByUsage(&InputControlledCount, &FirstSplineControlledIndex,
-                            &SplineControlledCount, &MMEntityData);
+                            &SplineControlledCount, &MMEntityData, &SplineSystem);
     int TotalControllerCount = InputControlledCount + SplineControlledCount;
 
     FetchMMControllerDataPointers(&Resources, MMEntityData.MMControllers,
@@ -208,11 +208,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                            &MMEntityData.InputControllers[0], &MMEntityData.EntityIndices[0],
                            InputControlledCount, Entities, Input, CameraForward);
     // TODO(Lukas) make sure that all motion spline indices are valid by prevention or correction
-    GenerateGoalsFromSplines(&MMEntityData.AnimGoals[FirstSplineControlledIndex],
+    GenerateGoalsFromSplines(TempStack, &MMEntityData.AnimGoals[FirstSplineControlledIndex],
+                             &MMEntityData.MirroredAnimGoals[FirstSplineControlledIndex],
+                             &MMEntityData.Trajectories[FirstSplineControlledIndex],
                              &MMEntityData.SplineStates[FirstSplineControlledIndex],
+                             &MMEntityData.MMControllers[FirstSplineControlledIndex],
                              &MMEntityData.AnimControllers[FirstSplineControlledIndex],
                              &MMEntityData.BlendStacks[FirstSplineControlledIndex],
-                             SplineControlledCount, SplineSystem.Splines.Elements);
+                             &MMEntityData.EntityIndices[FirstSplineControlledIndex],
+                             SplineControlledCount, SplineSystem.Splines.Elements,
+                             SplineSystem.Splines.Count, Entities);
     MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.AnimControllers,
                      MMEntityData.LastMatchedGoals, MMEntityData.AnimGoals,
                      MMEntityData.MirroredAnimGoals, MMEntityData.MMControllers,
@@ -257,7 +262,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             : NULL;
       }
 
-			int MMEntityIndex = -1;
+      int MMEntityIndex = -1;
       if((MMEntityIndex = GetEntityMMDataIndex(e, &GameState->MMEntityData)) != -1)
       {
         mm_aos_entity_data MMEntity = GetEntityAOSMMData(MMEntityIndex, &GameState->MMEntityData);
@@ -270,8 +275,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         }
       }
       else
-			{
-        Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+      {
+        //Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
       }
 
       // TODO(Lukas): remove most parts of this code as it is repeated multiple times in different

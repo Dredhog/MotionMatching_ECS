@@ -9,9 +9,22 @@ void DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame,
 void DrawTrajectory(mat4 CoordinateFrame, const trajectory* Trajectory, vec3 PastColor, vec3 PresentColor,
                     vec3 FutureColor);
 
+bool
+IsSplineAtIndexValid(int32_t Index, const spline_system* SplineSystem)
+{
+	if(0 <= Index && Index < SplineSystem->Splines.Count)
+	{
+		if(SplineSystem->Splines[Index].Waypoints.Count > 0)
+		{
+			return true;
+		}
+	}
+  return false;
+}
+
 void
 SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectoryControlledStart,
-                        int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData)
+                        int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData, const spline_system* Splines)
 {
   for(int i = 0; i < MMEntityData->Count - 1; i++)
   {
@@ -21,7 +34,9 @@ SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectory
       if(MMEntityData->MMControllerRIDs[j].Value > 0)
       {
         if(MMEntityData->MMControllerRIDs[SmallestIndex].Value <= 0 ||
-           (MMEntityData->FollowSpline[SmallestIndex] && !MMEntityData->FollowSpline[j]))
+           (MMEntityData->FollowSpline[SmallestIndex] &&
+            IsSplineAtIndexValid(MMEntityData->SplineStates[SmallestIndex].SplineIndex, Splines) &&
+            !MMEntityData->FollowSpline[j]))
         {
           SmallestIndex = j;
         }
@@ -44,7 +59,10 @@ SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectory
     {
       if(MMEntityData->FollowSpline[i])
       {
-        (*OutTrajectoryControlledCount)++;
+        if(IsSplineAtIndexValid(MMEntityData->SplineStates[i].SplineIndex, Splines))
+        {
+          (*OutTrajectoryControlledCount)++;
+        }
       }
       else
       {
@@ -294,11 +312,64 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
 }
 
 void
-GenerateGoalsFromSplines(mm_frame_info* OutGoals, const spline_follow_state* SplineStates,
+GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutGoals,
+                         mm_frame_info* OutMirroredGoals, trajectory* Trajectories,
+                         spline_follow_state*                     SplineStates,
+                         const mm_controller_data* const*         MMControllers,
                          const Anim::animation_controller* const* ACs,
-                         const blend_stack* BlendStacks, int32_t Count,
-                         const movement_spline* Splines)
+                         const blend_stack* BlendStacks, const int32_t* EntityIndices,
+                         int32_t Count, const movement_spline* Splines, int32_t DebugSplineCount,
+                         const entity* Entities)
 {
+  for(int e = 0; e < Count; e++)
+  {
+
+    const float WaypointRadius  = 0.5f;
+    const float Inputdt  = 1/60.0f;
+    transform   EntityTransform = Entities[EntityIndices[e]].Transform;
+
+    quat InvR = EntityTransform.R;
+    InvR.V *= -1;
+
+    spline_follow_state& EntitySplineState = SplineStates[e];
+    assert(0 <= EntitySplineState.SplineIndex && EntitySplineState.SplineIndex < DebugSplineCount);
+
+    const movement_spline* Spline = &Splines[EntitySplineState.SplineIndex];
+
+    vec3 WorldDiff =
+      Spline->Waypoints[EntitySplineState.NextWaypointIndex].Position - EntityTransform.T;
+    vec3 LocalEntityToWaypoint = Math::MulMat3Vec3(Math::QuatToMat3(InvR), WorldDiff);
+    vec3 LocalDir              = Math::Normalized(LocalEntityToWaypoint);
+
+    vec3 GoalVelocity = LocalDir;
+    vec3 GoalFacing   = LocalDir;
+
+    blend_in_info DominantBlend = BlendStacks[e].Peek();
+
+    GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc,
+              DominantBlend.AnimStateIndex, DominantBlend.Mirror, ACs[e], GoalVelocity, GoalFacing,
+              MMControllers[e]->Params.FixedParams, Inputdt);
+
+    if(Math::Length(LocalEntityToWaypoint) < WaypointRadius)
+    {
+      if(EntitySplineState.Loop)
+      {
+        int Forward           = (EntitySplineState.MovingInPositive) ? 1 : -1;
+        int NextWaypointIndex = EntitySplineState.NextWaypointIndex + Forward;
+        if(NextWaypointIndex < 0 || NextWaypointIndex > Spline->Waypoints.Count - 1)
+        {
+          NextWaypointIndex -= 2 * Forward;
+        }
+        EntitySplineState.NextWaypointIndex =
+          ClampInt32InIn(0, NextWaypointIndex, Spline->Waypoints.Count - 1);
+      }
+      else // Travel backwards
+      {
+        EntitySplineState.NextWaypointIndex =
+          (EntitySplineState.NextWaypointIndex + 1) % Spline->Waypoints.Count;
+      }
+    }
+  }
 }
 
 // Only used to visualize the mirrored match, not adequate way to flip for searching mirrors
