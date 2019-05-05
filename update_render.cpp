@@ -216,12 +216,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.AnimControllers,
                      MMEntityData.LastMatchedGoals, MMEntityData.AnimGoals,
                      MMEntityData.MirroredAnimGoals, MMEntityData.MMControllers,
-                     TotalControllerCount);
+                     MMEntityData.EntityIndices, TotalControllerCount, Entities);
     DrawGoalFrameInfos(MMEntityData.AnimGoals, MMEntityData.EntityIndices, TotalControllerCount,
                        Entities, &MMDebug.CurrentGoal);
-    DrawGoalFrameInfos(MMEntityData.LastMatchedGoals, MMEntityData.EntityIndices,
-                       TotalControllerCount, Entities, &MMDebug.MatchedGoal, { 1, 1, 0 },
-                       { 0, 1, 0 }, { 1, 0, 0 });
+    DrawGoalFrameInfos(MMEntityData.LastMatchedGoals, MMEntityData.BlendStacks,
+                       TotalControllerCount, &MMDebug.MatchedGoal, { 1, 1, 0 }, { 0, 1, 0 },
+                       { 1, 0, 0 });
     ComputeLocalRootMotion(MMEntityData.OutDeltaRootMotions, MMEntityData.AnimControllers,
                            MMEntityData.BlendStacks, TotalControllerCount, Input->dt);
     if(MMDebug.ApplyRootMotion)
@@ -229,8 +229,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       ApplyRootMotion(Entities, MMEntityData.Trajectories, MMEntityData.OutDeltaRootMotions,
                       MMEntityData.EntityIndices, TotalControllerCount);
     }
-    DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
-                            TotalControllerCount, Entities);
+    /*DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
+                            TotalControllerCount, Entities);*/
   }
 
   if(GameState->R.ShowLightPosition)

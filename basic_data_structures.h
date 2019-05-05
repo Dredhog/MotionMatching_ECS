@@ -423,6 +423,15 @@ struct circular_stack
     return m_Entries[Index];
   }
 
+  T&
+  Peek()
+  {
+    assert(0 < m_Count);
+    int Index = (m_StartIndex + Capacity + (m_Count - 1)) % Capacity;
+    return m_Entries[Index];
+  }
+
+
   void
   Clear()
   {

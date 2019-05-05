@@ -805,7 +805,7 @@ UI::TreeNode(const char* Label, bool* IsExpanded)
   gui_context& g = *GetContext();
 
   UI::PushStyleColor(COLOR_HeaderNormal, {});
-  bool Expanded = UI::CollapsingHeader(Label, IsExpanded);
+  bool Expanded = UI::CollapsingHeader(Label, IsExpanded, false);
   UI::PopStyleColor();
 
   if(Expanded)
@@ -824,16 +824,32 @@ UI::TreePop()
 }
 
 bool
-UI::CollapsingHeader(const char* Label, bool* IsExpanded)
+UI::CollapsingHeader(const char* Label, bool* IsExpanded, bool UseAvailableWidth)
 {
   gui_context& g      = *GetContext();
   gui_window&  Window = *GetCurrentWindow();
 
   ui_id ID = Window.GetID(Label);
 
-  const float Height = Window.GetItemSize().Y;
-  const vec3  Size   = { GetAvailableWidth(), Height };
-  const rect& Rect   = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  const float BoxHeight        = Window.GetItemSize().Y;
+  const float IconWidth        = BoxHeight;
+  const float ArrowIconOffsetX = g.Style.Vars[UI::VAR_BoxPaddingX];
+  const float TextOffsetX      = ArrowIconOffsetX + BoxHeight + g.Style.Vars[UI::VAR_BoxPaddingX];
+
+  vec3 Size = {};
+  if(UseAvailableWidth)
+  {
+    Size = { GetAvailableWidth(), BoxHeight };
+  }
+  else
+  {
+    int TextWidth, TextHeight;
+    Text::GetTextSize(g.Font, Label, &TextWidth, &TextHeight);
+    Size = vec3{ ArrowIconOffsetX + IconWidth + (float)TextWidth, (float)TextHeight } +
+           2 * vec3{ g.Style.Vars[UI::VAR_BoxPaddingX], g.Style.Vars[UI::VAR_BoxPaddingY] };
+  }
+
+  const rect& Rect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
   AddSize(Size);
 
   if(!TestIfVisible(Rect))
@@ -844,16 +860,12 @@ UI::CollapsingHeader(const char* Label, bool* IsExpanded)
   bool Result = ButtonBehavior(Rect, ID);
   *IsExpanded = (Result) ? !*IsExpanded : *IsExpanded;
 
-  const float ArrowIconOffsetX = g.Style.Vars[UI::VAR_BoxPaddingX];
-  const float TextOffsetX      = ArrowIconOffsetX + Size.Y + g.Style.Vars[UI::VAR_BoxPaddingX];
-
   vec4 InnerColor = (ID == g.ActiveID) ? _GetGUIColor(HeaderPressed)
                                        : ((ID == g.HotID) ? _GetGUIColor(HeaderHovered)
                                                           : _GetGUIColor(HeaderNormal));
   DrawBox({ Rect.MinP.X, Rect.MinP.Y }, Size, InnerColor, _GetGUIColor(Border));
   DrawText(vec3{ Rect.MinP.X, Rect.MinP.Y } +
-             vec3{ TextOffsetX /*Size.Y + g.Style.Vars[UI::VAR_BoxPaddingX]*/,
-                   Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] },
+             vec3{ TextOffsetX, Size.Y - g.Style.Vars[UI::VAR_BoxPaddingY] },
            Label);
 
   // draw square icon

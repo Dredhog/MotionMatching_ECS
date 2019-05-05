@@ -153,20 +153,36 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
   }
   else
   {
-    if(UI::TreeNode("Skeleton", &s_TargetSkeletonDropdown))
+    if(UI::CollapsingHeader("Skeleton", &s_TargetSkeletonDropdown))
     {
       if(UI::TreeNode("Skeletal Hierarchy", &s_SkeletalHieararchyDropdown))
       {
+        int ParentIndex = -1;
         for(int i = 0; i < MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount; i++)
         {
+          while(ParentIndex != MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[i].ParentIndex)
+          {
+            ParentIndex =
+              MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[ParentIndex].ParentIndex;
+            UI::Unindent();
+          }
+          // bool Open = false;
+          // UI::TreeNode(MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[i].Name, &Open);
+					UI::Indent();
           UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[i].Name);
+          ParentIndex = i;
+        }
+        while(ParentIndex != -1)
+        {
+          ParentIndex = MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[ParentIndex].ParentIndex;
+          UI::Unindent();
         }
         UI::TreePop();
       }
       if(UI::TreeNode("Mirror Info", &s_SkeletonMirrorInfoDropdown))
       {
         int RemovedPairIndex = -1;
-        UI::PushWidth(200);
+        UI::PushWidth(260);
         for(int i = 0; i < MMEditor->ActiveProfile.DynamicParams.MirrorInfo.PairCount; i++)
         {
           int& IndA = MMEditor->ActiveProfile.DynamicParams.MirrorInfo.BoneMirrorIndices[i].a;
@@ -178,10 +194,10 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
             RemovedPairIndex = i;
           }
           UI::SameLine();
-          UI::Combo("Left Side", &IndA, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
+          UI::Combo("Left", &IndA, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
                     MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString, 5);
           UI::SameLine();
-          UI::Combo("Right Side", &IndB, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
+          UI::Combo("Right", &IndB, MMEditor->ActiveProfile.FixedParams.Skeleton.Bones,
                     MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount, BoneArrayToString, 5);
           UI::PopID();
         }
@@ -198,10 +214,6 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         }
         UI::TreePop();
       }
-      UI::Checkbox("Match MirroredAnimations",
-                   &MMEditor->ActiveProfile.DynamicParams.MatchMirroredAnimations);
-
-      UI::TreePop();
     }
 
     if(UI::CollapsingHeader("Bones To Match", &s_MatchingPointSelectionDropdown))
@@ -237,7 +249,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
       }
     }
 
-    if(UI::CollapsingHeader("Scalar parameters", &s_GeneralParametersDropdown))
+    if(UI::CollapsingHeader("Matching Parameters", &s_GeneralParametersDropdown))
     {
 			UI::Text("Cost Computation Parameters");
       UI::SliderFloat("Bone Position Influence",
@@ -250,15 +262,17 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
                       &MMEditor->ActiveProfile.DynamicParams.TrajVCoefficient, 0, 1);
       UI::SliderFloat("Trajectory Angle Influence",
                       &MMEditor->ActiveProfile.DynamicParams.TrajAngleCoefficient, 0, 1);
-			UI::Text("Playback Parameters");
-      UI::SliderFloat("BlendInTime", &MMEditor->ActiveProfile.DynamicParams.BelndInTime, 0, 1);
-      UI::SliderFloat("Min Time Offset Threshold",
-                      &MMEditor->ActiveProfile.DynamicParams.MinTimeOffsetThreshold, 0, 1);
       UI::Text("Metadata Generation Parameters");
       UI::SliderFloat("Metadata Sampling Frequency",
                       &MMEditor->ActiveProfile.FixedParams.MetadataSamplingFrequency, 15, 240);
       UI::SliderFloat("Trajectory Time Horizon",
                       &MMEditor->ActiveProfile.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
+      UI::Text("Playback Parameters");
+      UI::SliderFloat("BlendInTime", &MMEditor->ActiveProfile.DynamicParams.BelndInTime, 0, 1);
+      UI::SliderFloat("Min Time Offset Threshold",
+                      &MMEditor->ActiveProfile.DynamicParams.MinTimeOffsetThreshold, 0, 1);
+      UI::Checkbox("Match MirroredAnimations",
+                   &MMEditor->ActiveProfile.DynamicParams.MatchMirroredAnimations);
     }
     if(UI::CollapsingHeader("Animations", &s_AnimationDropdown))
     {

@@ -19,8 +19,8 @@ namespace Resource
                            Memory::stack_allocator* TemporaryStack)
   {
     *this                         = {};
-    uint32_t ModelHeapSize        = (uint32_t)((float)TotalMemorySize * 0.2f);
-    uint32_t AnimationHeapSize    = (uint32_t)((float)TotalMemorySize * 0.7f);
+    uint32_t ModelHeapSize        = (uint32_t)((float)TotalMemorySize * 0.5f);
+    uint32_t AnimationHeapSize    = (uint32_t)((float)TotalMemorySize * 0.4f);
     uint32_t MMControllerHeapSize = (uint32_t)((float)TotalMemorySize * 0.05f);
     uint32_t MaterialStackSize =
       TotalMemorySize - ModelHeapSize - AnimationHeapSize - MMControllerHeapSize;

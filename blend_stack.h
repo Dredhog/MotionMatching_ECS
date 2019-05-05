@@ -10,6 +10,7 @@ struct blend_in_info
   float     Duration;
   int32_t   AnimStateIndex;
   bool      Mirror;
+  transform Transform;
 };
 
 typedef circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> blend_stack;

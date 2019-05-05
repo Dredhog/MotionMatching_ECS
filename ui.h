@@ -107,7 +107,7 @@ namespace UI
   void Indent(float IndentWidth = 0);
   void Unindent(float IndentWidth = 0);
 
-  bool CollapsingHeader(const char* Text, bool* IsExpanded);
+  bool CollapsingHeader(const char* Text, bool* IsExpanded, bool UseAvaiableWidth = true);
   bool TreeNode(const char* Label, bool* IsExpanded);
   void TreePop();
   bool Button(const char* Text, float Width = 0);

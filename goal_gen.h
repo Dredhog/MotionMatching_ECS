@@ -42,7 +42,7 @@ GetLongtermGoal(mm_frame_info* OutGoal, trajectory* Trajectory, vec3 StartVeloci
   quat StartRotation = Math::QuatIdent();
   assert(acosf(StartRotation.S) == 0);
   float GoalAngle       = atan2f(DesiredVelocity.X, DesiredVelocity.Z);
-  quat  GoalRotation    = Math::QuatAxisAngle({ 0, 1, 0 }, GoalAngle);
+  //quat  GoalRotation    = Math::QuatAxisAngle({ 0, 1, 0 }, GoalAngle);
 #endif
 
   vec3  CurrentPoint    = {};
@@ -63,14 +63,20 @@ GetLongtermGoal(mm_frame_info* OutGoal, trajectory* Trajectory, vec3 StartVeloci
     OutGoal->TrajectoryPs[p] = CurrentPoint;
     OutGoal->TrajectoryVs[p] = Math::Length(CurrentVelocity);
     {
+#ifdef START_ANGLE_IS_0
+
+      /*float InitialAngle =
+        2 * acosf(Math::QuatLerp(StartRotation, GoalRotation, (p + 1) / float(MM_POINT_COUNT)).S);
+      (InitialAngle <= float(M_PI)) ? InitialAngle : -1.0f * (InitialAngle - float(M_PI));*/
+
+      float t = (p + 1) / float(MM_POINT_COUNT);
+
+      OutGoal->TrajectoryAngles[p] = t * GoalAngle;
+#else
       vec3  InitialXAxis = Math::Normalized(StartVelocity);
       vec3  PointXAxis   = Math::Normalized(CurrentVelocity);
       float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
       float AbsAngle     = acosf(ClampFloat(-1.0f, Math::Dot(InitialXAxis, PointXAxis), 1.0f));
-#ifdef START_ANGLE_IS_0
-      OutGoal->TrajectoryAngles[p] =
-        acosf(Math::QuatLerp(StartRotation, GoalRotation, (p + 1) / float(MM_POINT_COUNT)).S);
-#else
       OutGoal->TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
 #endif
     }

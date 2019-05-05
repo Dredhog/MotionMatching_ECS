@@ -114,6 +114,17 @@ PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, Anim::animation_controller** AC
     }
   }
 }
+void
+DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const blend_stack* BlendStacks, int32_t Count,
+                   const mm_info_debug_settings* MMInfoDebug, vec3 BoneColor, vec3 TrajectoryColor,
+                   vec3 DirectionColor)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    DrawFrameInfo(GoalInfos[i], TransformToMat4(BlendStacks[i].Peek().Transform), *MMInfoDebug,
+                  BoneColor, BoneColor, TrajectoryColor, DirectionColor);
+  }
+}
 
 void
 DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityIndices, int32_t Count,
@@ -309,7 +320,8 @@ void
 MotionMatchGoals(blend_stack* OutBlendStacks, Anim::animation_controller* const* AnimControllers,
                  mm_frame_info* LastMatchedGoals, const mm_frame_info* AnimGoals,
                  const mm_frame_info*             MirroredAnimGoals,
-                 const mm_controller_data* const* MMControllers, int32_t Count)
+                 const mm_controller_data* const* MMControllers, const int32_t* EntityIndices,
+                 int32_t Count, entity* Entities)
 {
   for(int i = 0; i < Count; i++)
   {
@@ -348,6 +360,9 @@ MotionMatchGoals(blend_stack* OutBlendStacks, Anim::animation_controller* const*
                     MMControllers[i]->Params.AnimRIDs[NewAnimIndex],
                     MMControllers[i]->Animations[NewAnimIndex], NewAnimStartTime,
                     MMControllers[i]->Params.DynamicParams.BelndInTime, NewMatchIsMirrored);
+
+      // Store the transform of where the last match occured
+      OutBlendStacks[i].Peek().Transform = Entities[EntityIndices[i]].Transform;
     }
   }
 }

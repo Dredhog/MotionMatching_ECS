@@ -1113,7 +1113,20 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
 void
 EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 {
-  if(UI::CollapsingHeader("Entity Tools", &s_ShowEntityTools))
+  if(UI::Button("Create Entity"))
+  {
+    GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
+  }
+
+	UI::SameLine();
+  entity* SelectedEntity = {};
+  GetSelectedEntity(GameState, &SelectedEntity);
+  if(UI::Button("Delete Entity"))
+  {
+    DeleteEntity(GameState, &GameState->Resources, GameState->SelectedEntityIndex);
+    GameState->SelectedEntityIndex = -1;
+  }
+
   {
     static int32_t ActivePathIndex = 0;
     UI::Combo("Model", &ActivePathIndex, GameState->Resources.ModelPaths,
@@ -1132,22 +1145,13 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
         GameState->CurrentModelID = NewRID;
       }
     }
+  }
 
-    if(UI::Button("Create Entity"))
+  if(SelectedEntity && UI::CollapsingHeader("Entity Parameters", &s_ShowEntityTools))
+  {
+
+    if(SelectedEntity)
     {
-      GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
-    }
-
-    entity* SelectedEntity = {};
-    if(GetSelectedEntity(GameState, &SelectedEntity))
-    {
-      UI::SameLine();
-      if(UI::Button("Delete Entity"))
-      {
-        DeleteEntity(GameState, &GameState->Resources, GameState->SelectedEntityIndex);
-        GameState->SelectedEntityIndex = -1;
-      }
-
       static bool s_ShowTransformComponent = false;
       if(UI::TreeNode("Transform Component", &s_ShowTransformComponent))
       {
@@ -1241,18 +1245,24 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
           SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
             PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
         }
-        else if(SelectedEntity->AnimController &&
-                GameState->SelectedEntityIndex != GameState->AnimEditor.EntityIndex &&
-                UI::Button("Delete Animattion Player"))
-
-        {
-          RemoveAnimationPlayerComponent(GameState, &GameState->Resources,
-                                         GameState->SelectedEntityIndex);
-        }
         else if(SelectedEntity->AnimController)
         {
           static bool s_ShowAnimtionPlayerComponent = true;
-          if(UI::TreeNode("Animation Player Component", &s_ShowAnimtionPlayerComponent))
+          bool        RemovedAnimController         = false;
+
+          UI::TreeNode("Animation Player Component", &s_ShowAnimtionPlayerComponent);
+          UI::SameLine();
+          UI::PushID("Remove Anim Player");
+          if(GameState->SelectedEntityIndex != GameState->AnimEditor.EntityIndex &&
+             UI::Button("Remove"))
+          {
+            RemovedAnimController = true;
+            RemoveAnimationPlayerComponent(GameState, &GameState->Resources,
+                                           GameState->SelectedEntityIndex);
+          }
+          UI::PopID();
+
+          if(s_ShowAnimtionPlayerComponent && !RemovedAnimController)
           {
             if(UI::Button("Animate Selected Entity"))
             {
@@ -1261,73 +1271,6 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                                        GameState->SelectedEntityIndex);
               // s_ShowAnimationEditor = true;
             }
-#if 0
-          if(UI::Button("Play Animation"))
-          {
-            if(GameState->CurrentAnimationID.Value > 0)
-            {
-              assert(0 && "Reset Player not implemented");
-              /*Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                    &GameState->Resources, &GameState->MMData);*/
-              if(GameState->Resources.GetAnimation(GameState->CurrentAnimationID)->ChannelCount ==
-                 SelectedModel->Skeleton->BoneCount)
-              {
-                assert(SelectedEntity->AnimController->AnimStateCount == 0);
-
-                SelectedEntity->AnimController->AnimationIDs[0] = GameState->CurrentAnimationID;
-                SelectedEntity->AnimController->AnimStateCount  = 1;
-
-                GameState->Resources.Animations.AddReference(GameState->CurrentAnimationID);
-                Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimController, 0);
-              }
-            }
-            GameState->PlayerEntityIndex = -1;
-          }
-          {
-            UI::SameLine();
-            UI::Checkbox("Play In Root Space", &GameState->PreviewAnimationsInRootSpace);
-          }
-
-          {
-            static int32_t ActivePathIndex = 0;
-            UI::Combo("Animation", &ActivePathIndex, GameState->Resources.AnimationPaths,
-                      GameState->Resources.AnimationPathCount, PathArrayToString);
-            rid NewRID = { 0 };
-            if(GameState->Resources.AnimationPathCount > 0 &&
-               !GameState->Resources
-                  .GetAnimationPathRID(&NewRID,
-                                       GameState->Resources.AnimationPaths[ActivePathIndex].Name))
-            {
-              NewRID = GameState->Resources.RegisterAnimation(
-                GameState->Resources.AnimationPaths[ActivePathIndex].Name);
-            }
-            GameState->CurrentAnimationID = NewRID;
-          }
-
-          if(UI::Button("Play as entity"))
-          {
-            assert(0 && "Not Implemented");
-            /*
-            Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                  &GameState->Resources, &GameState->MMData);*/
-            GameState->PlayerEntityIndex = GameState->SelectedEntityIndex;
-          }
-          if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
-          {
-            /*
-            Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                  &GameState->Resources, &GameState->MMData);*/
-            assert(0 && "Not Implemented");
-            if(UI::Button("Stop playing as entity"))
-            {
-              /*
-              Gameplay::ResetPlayer(SelectedEntity, &GameState->PlayerBlendStack,
-                                    &GameState->Resources, &GameState->MMData); */
-              GameState->PlayerEntityIndex = -1;
-            }
-          }
-#endif
-
             {
               // Outside data used
               mm_entity_data&             MMEntityData        = GameState->MMEntityData;
@@ -1336,6 +1279,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
               Resource::resource_manager* Resources           = &GameState->Resources;
               const Anim::skeleton*       Skeleton = SelectedEntity->AnimController->Skeleton;
 
+              bool RemovedMatchingAnimController = false;
               // Actual UI
               int32_t     MMControllerIndex           = -1;
               static bool s_ShowMMControllerComponent = true;
@@ -1353,102 +1297,112 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                   MMEntityData.EntityIndices[MMEntityData.Count - 1] = SelectedEntityIndex;
                 }
               }
-              else if(UI::Button("Remove Matching Animation Controller"))
+              else
               {
-                RemoveMMControllerDataAtIndex(MMControllerIndex, Resources, &MMEntityData);
-              }
-              else if(UI::TreeNode("Matched Anim. Controller Component",
-                                   &s_ShowMMControllerComponent))
-              {
-                mm_aos_entity_data MMControllerData =
-                  GetEntityAOSMMData(MMControllerIndex, &MMEntityData);
+                UI::TreeNode("Matched Anim. Controller Component", &s_ShowMMControllerComponent);
+                UI::SameLine();
+                UI::PushID("Remove Matching Anim. Controller");
+                RemovedMatchingAnimController = UI::Button("Remove");
+                UI::PopID();
 
+                if(s_ShowMMControllerComponent)
                 {
-                  // Pick the mm controller
-                  static int32_t ShownPathIndex = -1;
-                  int32_t        UsedPathIndex  = -1;
-                  if(MMControllerData.MMControllerRID->Value > 0)
+                  mm_aos_entity_data MMControllerData =
+                    GetEntityAOSMMData(MMControllerIndex, &MMEntityData);
+
                   {
-                    UsedPathIndex =
-                      Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
-                  }
-                  bool ClickedAdd = false;
-                  {
-                    if(ShownPathIndex != UsedPathIndex)
+                    // Pick the mm controller
+                    static int32_t ShownPathIndex = -1;
+                    int32_t        UsedPathIndex  = -1;
+                    if(MMControllerData.MMControllerRID->Value > 0)
                     {
-                      UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.8f, 0.8f, 0.4f, 1 });
-                      UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 1, 1, 0.6f, 1 });
+                      UsedPathIndex =
+                        Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
                     }
-                    UI::PushID(s_ShowMMControllerComponent);
-                    ClickedAdd = UI::Button("Add");
-                    UI::PopID();
-                    if(ShownPathIndex != UsedPathIndex)
+                    bool ClickedAdd = false;
                     {
-                      UI::PopStyleColor();
-                      UI::PopStyleColor();
-                    }
-                  }
-                  UI::SameLine();
-                  UI::Combo("Controller", &ShownPathIndex, &Resources->MMControllerPaths,
-                            Resources->MMControllerPathCount, PathArrayToString);
-                  if(ClickedAdd)
-                  {
-                    if(ShownPathIndex != -1)
-                    {
-                      rid NewRID = Resources->ObtainMMControllerPathRID(
-                        Resources->MMControllerPaths[ShownPathIndex].Name);
-                      mm_controller_data* MMController = Resources->GetMMController(NewRID);
-                      if(MMController->Params.FixedParams.Skeleton.BoneCount == Skeleton->BoneCount)
+                      if(ShownPathIndex != UsedPathIndex)
                       {
-                        if(MMControllerData.MMControllerRID->Value > 0 &&
-                           MMControllerData.MMControllerRID->Value != NewRID.Value)
-                        {
-                          Resources->MMControllers.RemoveReference(
-                            *MMControllerData.MMControllerRID);
-                        }
-                        *MMControllerData.MMControllerRID = NewRID;
-                        Resources->MMControllers.AddReference(NewRID);
+                        UI::PushStyleColor(UI::COLOR_ButtonNormal, vec4{ 0.8f, 0.8f, 0.4f, 1 });
+                        UI::PushStyleColor(UI::COLOR_ButtonHovered, vec4{ 1, 1, 0.6f, 1 });
+                      }
+                      UI::PushID(s_ShowMMControllerComponent);
+                      ClickedAdd = UI::Button("Add");
+                      UI::PopID();
+                      if(ShownPathIndex != UsedPathIndex)
+                      {
+                        UI::PopStyleColor();
+                        UI::PopStyleColor();
                       }
                     }
-                    else if(MMControllerData.MMControllerRID->Value > 0)
+                    UI::SameLine();
+                    UI::Combo("Controller", &ShownPathIndex, &Resources->MMControllerPaths,
+                              Resources->MMControllerPathCount, PathArrayToString);
+                    if(ClickedAdd)
                     {
-                      Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
-                      *MMControllerData.MMControllerRID = {};
+                      if(ShownPathIndex != -1)
+                      {
+                        rid NewRID = Resources->ObtainMMControllerPathRID(
+                          Resources->MMControllerPaths[ShownPathIndex].Name);
+                        mm_controller_data* MMController = Resources->GetMMController(NewRID);
+                        if(MMController->Params.FixedParams.Skeleton.BoneCount ==
+                           Skeleton->BoneCount)
+                        {
+                          if(MMControllerData.MMControllerRID->Value > 0 &&
+                             MMControllerData.MMControllerRID->Value != NewRID.Value)
+                          {
+                            Resources->MMControllers.RemoveReference(
+                              *MMControllerData.MMControllerRID);
+                          }
+                          *MMControllerData.MMControllerRID = NewRID;
+                          Resources->MMControllers.AddReference(NewRID);
+                        }
+                      }
+                      else if(MMControllerData.MMControllerRID->Value > 0)
+                      {
+                        Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
+                        *MMControllerData.MMControllerRID = {};
+                      }
                     }
                   }
-                }
 
-                char TempBuffer[40];
-                sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
-                UI::Text(TempBuffer);
+                  char TempBuffer[40];
+                  sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
+                  UI::Text(TempBuffer);
 
-                UI::Checkbox("Control From Spline", MMControllerData.FollowSpline);
-                if(*MMControllerData.FollowSpline == true)
-                {
-                  static bool s_ShowTrajectoryControlParameters = true;
-                  if(UI::CollapsingHeader("Trajectory Control Params",
-                                          &s_ShowTrajectoryControlParameters))
+                  UI::Checkbox("Control From Spline", MMControllerData.FollowSpline);
+                  if(*MMControllerData.FollowSpline == true)
                   {
-                    UI::Combo("Follow Spline", &MMControllerData.SplineState->SplineIndex,
-                              (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
+                    static bool s_ShowTrajectoryControlParameters = true;
+                    if(UI::TreeNode("Trajectory Control Params",
+                                    &s_ShowTrajectoryControlParameters))
+                    {
+                      UI::Combo("Follow Spline", &MMControllerData.SplineState->SplineIndex,
+                                (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
+                      UI::TreePop();
+                    }
                   }
-                }
-                else
-                {
-                  static bool s_ShowInputControlParameters = true;
-                  if(UI::TreeNode("Input Control Params", &s_ShowInputControlParameters))
+                  else
                   {
-                    UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
-                                    0.0f, 5.0f);
-                    UI::SliderFloat("Position Bias",
-                                    &MMControllerData.InputController->PositionBias, 0.0f, 1.0f);
-                    UI::SliderFloat("Direction Bias",
-                                    &MMControllerData.InputController->DirectionBias, 0.0f, 1.0f);
-                    UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
-                    UI::TreePop();
+                    static bool s_ShowInputControlParameters = true;
+                    if(UI::TreeNode("Input Control Params", &s_ShowInputControlParameters))
+                    {
+                      UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
+                                      0.0f, 5.0f);
+                      UI::SliderFloat("Position Bias",
+                                      &MMControllerData.InputController->PositionBias, 0.0f, 1.0f);
+                      UI::SliderFloat("Direction Bias",
+                                      &MMControllerData.InputController->DirectionBias, 0.0f, 1.0f);
+                      UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
+                      UI::TreePop();
+                    }
                   }
+                  UI::TreePop();
                 }
-                UI::TreePop();
+                if(RemovedMatchingAnimController)
+                {
+                  RemoveMMControllerDataAtIndex(MMControllerIndex, Resources, &MMEntityData);
+                }
               }
             }
             UI::TreePop();

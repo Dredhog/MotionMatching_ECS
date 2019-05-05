@@ -190,10 +190,15 @@ void FetchAnimationPointers(Resource::resource_manager* Resources,
 void PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, Anim::animation_controller** ACs,
                                     const mm_controller_data* const* MMControllers, int32_t Count);
 
+void DrawGoalFrameInfos(const mm_frame_info* const GoalInfos, const blend_stack* const BlendStacks,
+                        int32_t Count, const mm_info_debug_settings* MMInfoDebug, vec3 BoneColor,
+                        vec3 TrajectoryColor, vec3 DirectionColor);
+
 void DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityIndices, int32_t Count,
                         const entity* Entities, const mm_info_debug_settings* MMInfoDebug,
                         vec3 BoneColor = { 1, 0, 1 }, vec3 TrajectoryColor = { 0, 0, 1 },
                         vec3 DirectionColor = { 1, 0, 0 });
+
 void DrawControlTrajectories(const trajectory* Trajectories, const int32_t* EntityIndices,
                              int32_t Count, const entity* Entities);
 
@@ -215,7 +220,8 @@ void MotionMatchGoals(blend_stack*                       OutBlendStacks,
                       Anim::animation_controller* const* AnimControllers,
                       mm_frame_info* LastMatchedGoals, const mm_frame_info* AnimGoals,
                       const mm_frame_info*             MirroredAnimGoals,
-                      const mm_controller_data* const* MMControllers, int32_t Count);
+                      const mm_controller_data* const* MMControllers, const int32_t* EntityIndices,
+                      int32_t Count, entity* Entities);
 
 void ComputeLocalRootMotion(transform*                               OutLocalDeltaRootMotions,
                             const Anim::animation_controller* const* AnimControllers,
