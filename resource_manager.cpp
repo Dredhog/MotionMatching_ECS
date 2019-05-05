@@ -601,10 +601,10 @@ namespace Resource
     this->DiffedMMControllerCount =
       Platform::ReadPaths(this->DiffedMMControllers, this->MMControllerPaths,
                           this->MMControllerStats, RESOURCE_MAX_COUNT, &this->MMControllerPathCount,
-                          "data/matching_params", "controller");
+                          "data/controllers", "controller");
     this->DiffedMMParamCount =
       Platform::ReadPaths(this->DiffedMMParams, this->MMParamPaths, this->MMParamStats,
-                          RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/matching_params",
+                          RESOURCE_MAX_COUNT, &this->MMParamPathCount, "data/controllers",
                           NULL);
 
     this->SortAllAssetDiffsPathsStats();

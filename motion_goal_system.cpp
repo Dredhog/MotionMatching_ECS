@@ -162,9 +162,9 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
 {
   // TODO(Lukas) Add joystick option here
   vec3 Dir = {};
+  vec3 ViewForward = Math::Normalized(vec3{ CameraForward.X, 0, CameraForward.Z });
   {
     vec3 YAxis       = { 0, 1, 0 };
-    vec3 ViewForward = Math::Normalized(vec3{ CameraForward.X, 0, CameraForward.Z });
     vec3 ViewRight   = Math::Cross(ViewForward, YAxis);
 
     if(Input->ArrowUp.EndedDown)
@@ -193,14 +193,17 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
   {
     quat R = Entities[EntityIndices[e]].Transform.R;
     R.V *= -1;
-    vec3 GoalVelocity =
-      Math::MulMat4Vec4(Math::Mat4Rotate(R), { InputControllers[e].MaxSpeed * Dir, 0 }).XYZ;
+    vec3 GoalVelocity = Math::MulMat3Vec3(Math::QuatToMat3(R), InputControllers[e].MaxSpeed * Dir);
+    vec3 GoalFacing =
+      InputControllers[e].UseStrafing
+        ? Math::MulMat3Vec3(Math::QuatToMat3(R), ViewForward)
+        : (Math::Length(Dir) != 0 ? Math::MulMat3Vec3(Math::QuatToMat3(R), Dir) : vec3{ 0, 0, 1 });
 
     blend_in_info DominantBlend = BlendStacks[e].Peek();
 
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc,
               DominantBlend.AnimStateIndex, DominantBlend.Mirror, AnimControllers[e], GoalVelocity,
-              MMControllers[e]->Params.FixedParams, Input->dt);
+              GoalFacing, MMControllers[e]->Params.FixedParams, Input->dt);
 #if 0
     {
       const float PositionBias    = InputControllers[e].PositionBias;

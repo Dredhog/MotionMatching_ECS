@@ -30,7 +30,7 @@ InitTrajectory(trajectory* OutTrajectory)
 
 inline void
 GetLongtermGoal(mm_frame_info* OutGoal, trajectory* Trajectory, vec3 StartVelocity,
-                vec3 DesiredVelocity, float dt)
+                vec3 DesiredVelocity, vec3 DesiredFacing, float dt)
 {
   const float TimeHorizon = 1.0f;
   const float Step       = 1 / 60.0f;
@@ -39,10 +39,8 @@ GetLongtermGoal(mm_frame_info* OutGoal, trajectory* Trajectory, vec3 StartVeloci
 #define START_ANGLE_IS_0
 
 #ifdef START_ANGLE_IS_0
-  quat StartRotation = Math::QuatIdent();
-  assert(acosf(StartRotation.S) == 0);
-  float GoalAngle       = atan2f(DesiredVelocity.X, DesiredVelocity.Z);
-  //quat  GoalRotation    = Math::QuatAxisAngle({ 0, 1, 0 }, GoalAngle);
+  assert(Math::Length(DesiredFacing) > 0.5f);
+  float GoalAngle = atan2f(DesiredFacing.X, DesiredFacing.Z);
 #endif
 
   vec3  CurrentPoint    = {};
@@ -64,11 +62,6 @@ GetLongtermGoal(mm_frame_info* OutGoal, trajectory* Trajectory, vec3 StartVeloci
     OutGoal->TrajectoryVs[p] = Math::Length(CurrentVelocity);
     {
 #ifdef START_ANGLE_IS_0
-
-      /*float InitialAngle =
-        2 * acosf(Math::QuatLerp(StartRotation, GoalRotation, (p + 1) / float(MM_POINT_COUNT)).S);
-      (InitialAngle <= float(M_PI)) ? InitialAngle : -1.0f * (InitialAngle - float(M_PI));*/
-
       float t = (p + 1) / float(MM_POINT_COUNT);
 
       OutGoal->TrajectoryAngles[p] = t * GoalAngle;
@@ -253,7 +246,7 @@ MirrorLongtermGoal(mm_frame_info* InOutInfo, vec3 MirrorMatDiagonal = { -1, 1, 1
 inline void
 GetMMGoal(mm_frame_info* OutGoal, mm_frame_info* OutMirroredGoal, trajectory* ControlTrajectory,
           Memory::stack_allocator* TempAlloc, int32_t AnimStateIndex, bool PlayingMirrored,
-          const Anim::animation_controller* Controller, vec3 DesiredVelocity,
+          const Anim::animation_controller* Controller, vec3 DesiredVelocity, vec3 DesiredFacing,
           const mm_fixed_params& Params, float dt)
 {
   mm_frame_info AnimPose         = {};
@@ -268,14 +261,15 @@ GetMMGoal(mm_frame_info* OutGoal, mm_frame_info* OutMirroredGoal, trajectory* Co
   if(PlayingMirrored)
   {
     *OutGoal = MirroredAnimPose;
-    GetLongtermGoal(OutGoal, ControlTrajectory, MirroredAnimVelocity, DesiredVelocity, dt);
+    GetLongtermGoal(OutGoal, ControlTrajectory, MirroredAnimVelocity, DesiredVelocity,
+                    DesiredFacing, dt);
 
     *OutMirroredGoal = AnimPose;
   }
   else
   {
     *OutGoal = AnimPose;
-    GetLongtermGoal(OutGoal, ControlTrajectory, AnimVelocity, DesiredVelocity, dt);
+    GetLongtermGoal(OutGoal, ControlTrajectory, AnimVelocity, DesiredVelocity, DesiredFacing, dt);
 
     *OutMirroredGoal = MirroredAnimPose;
   }

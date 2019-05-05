@@ -484,8 +484,8 @@ SetGameStatePODFields(game_state* GameState)
 
     GameState->MMDebug.CurrentGoal.ShowTrajectory       = true;
     GameState->MMDebug.MatchedGoal.ShowTrajectory       = true;
-    GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = false;
-    GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = false;
+    GameState->MMDebug.CurrentGoal.ShowTrajectoryAngles = true;
+    GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = true;
     GameState->MMDebug.CurrentGoal.ShowBonePositions    = true;
     GameState->MMDebug.MatchedGoal.ShowBonePositions    = true;
   }

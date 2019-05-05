@@ -104,13 +104,11 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
 
         FrameInfoStack[FrameInfoIndex].TrajectoryPs[p].Y = 0;
 
-        vec3  InitialXAxis = Math::Normalized({ RootMatrix.X.X, 0, RootMatrix.X.Z });
-        vec3  PointXAxis   = Math::Normalized({ CurrentHipMatrix.X.X, 0, CurrentHipMatrix.X.Z });
-        float CrossY       = Math::Cross(InitialXAxis, PointXAxis).Y;
-        float AbsAngle     = acosf(ClampFloat(-1.0f, Math::Dot(InitialXAxis, PointXAxis), 1.0f));
-        FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p] = (0 <= CrossY) ? AbsAngle : -AbsAngle;
-        assert(!isnan(FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p]));
-        assert(AbsFloat(FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p]) <= 2.0f * M_PI);
+        vec3 CurrentZInTrajectorySpace =
+          Math::MulMat4Vec4(InvRootMatrix, { CurrentHipMatrix.Z, 1 }).XYZ;
+
+        FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p] =
+          atan2f(CurrentZInTrajectorySpace.X, CurrentZInTrajectorySpace.Z);
       }
     }
 

@@ -334,7 +334,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         int PathIndex = Resources->GetAnimationPathIndex(MMEditor->ActiveProfile.AnimRIDs[i]);
         MMEditor->ActiveProfile.AnimPaths.Push(Resources->AnimationPaths[PathIndex]);
       }
-      Asset::ExportMMParams(&MMEditor->ActiveProfile, "data/matching_params/test.template");
+      Asset::ExportMMParams(&MMEditor->ActiveProfile, "data/controllers/test.template");
       MMEditor->SelectedProfile = MMEditor->ActiveProfile;
     }
     if(0 < MMEditor->ActiveProfile.AnimRIDs.Count)
@@ -343,7 +343,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
       if(UI::Button("Build Controller", LeftOfComboButtonWidth))
       {
         ExportAndSetMMController(TempStack, Resources, &MMEditor->ActiveProfile,
-                                 "data/matching_params/test.controller");
+                                 "data/controllers/test.controller");
       }
     }
     else
