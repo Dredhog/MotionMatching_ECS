@@ -240,6 +240,45 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
 }
 
 void
+UI::SliderRange(const void* IDPtr, float* LeftRange, float* RightRange, float MinValue, float MaxValue)
+{
+  assert(IDPtr);
+  assert(MinValue < MaxValue);
+  assert(*LeftRange <= *RightRange);
+  assert(MinValue <= *LeftRange);
+  assert(*RightRange <= MaxValue);
+
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  float DragSize = g.Style.Vars[UI::VAR_DragMinSize];
+  vec3  Size     = Window.GetItemSize();
+
+  ui_id ID = Window.GetID(IDPtr);
+
+  rect BoundingRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  // DrawBox(BoundingRect.MinP, BoundingRect.GetSize(), _GetGUIColor(ScrollbarBox),
+  //_GetGUIColor(ScrollbarBox));
+  AddSize(Size);
+  if(!TestIfVisible(BoundingRect))
+  {
+    return;
+  }
+
+  UI::PushID("Range");
+  UI::PushWidth(Size.X * ((*RightRange - MinValue) / (MaxValue - MinValue)));
+  UI::SliderFloat("L", LeftRange, MinValue, *RightRange);
+  UI::PopWidth();
+
+  UI::Dummy();
+  UI::SameLine(Size.X * ((*LeftRange - MinValue)/ (MaxValue-MinValue)), 0);
+  UI::PushWidth(Size.X * ((MaxValue - *LeftRange) / (MaxValue - MinValue)));
+  UI::SliderFloat("R", RightRange, *LeftRange, MaxValue);
+  UI::PopWidth();
+  UI::PopID();
+}
+
+void
 UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical)
 {
   assert(Label);
@@ -662,10 +701,10 @@ UI::Combo(const char* Label, int* CurrentItem, const void* Data, int ItemCount,
 		UI::BeginPopupWindow("Combo", PopupBB.GetSize(), WINDOW_Combo);
     gui_window* PopupWindow = GetCurrentWindow();
 
-		UI::PushStyleVar(UI::VAR_SpacingY, ItemSpacing);
+		UI::PushVar(UI::VAR_SpacingY, ItemSpacing);
     bool SelectedSomething = false;
 
-		UI::PushStyleColor(UI::COLOR_ButtonNormal, g.Style.Colors[UI::COLOR_ComboNormal]);
+		UI::PushColor(UI::COLOR_ButtonNormal, g.Style.Colors[UI::COLOR_ComboNormal]);
     if(UI::Button("    ", PopupWindow->SizeNoScroll.X))
     {
       *CurrentItem      = -1;
@@ -679,9 +718,9 @@ UI::Combo(const char* Label, int* CurrentItem, const void* Data, int ItemCount,
         SelectedSomething = true;
       }
     }
-		UI::PopStyleColor();
+		UI::PopColor();
 
-		UI::PopStyleVar();
+		UI::PopVar();
 		UI::EndPopupWindow();
     Window->CurrentPos = SavedCurrentPos;
 
@@ -804,9 +843,9 @@ UI::TreeNode(const char* Label, bool* IsExpanded)
 {
   gui_context& g = *GetContext();
 
-  UI::PushStyleColor(COLOR_HeaderNormal, {});
+  UI::PushColor(COLOR_HeaderNormal, {});
   bool Expanded = UI::CollapsingHeader(Label, IsExpanded, false);
-  UI::PopStyleColor();
+  UI::PopColor();
 
   if(Expanded)
   {
@@ -1193,7 +1232,7 @@ UI::PopID()
 }
 
 void
-UI::PushStyleVar(int32_t Index, float Value)
+UI::PushVar(int32_t Index, float Value)
 {
   gui_context& g = *GetContext();
   assert(0 <= Index && Index < UI::VAR_Count);
@@ -1206,7 +1245,7 @@ UI::PushStyleVar(int32_t Index, float Value)
 }
 
 void
-UI::PopStyleVar()
+UI::PopVar()
 {
   gui_context& g = *GetContext();
 
@@ -1216,7 +1255,7 @@ UI::PopStyleVar()
 }
 
 void
-UI::PushStyleColor(int32_t Index, vec4 Color)
+UI::PushColor(int32_t Index, vec4 Color)
 {
   gui_context& g = *GetContext();
   assert(0 <= Index && Index < UI::COLOR_Count);
@@ -1229,7 +1268,7 @@ UI::PushStyleColor(int32_t Index, vec4 Color)
 }
 
 void
-UI::PopStyleColor()
+UI::PopColor()
 {
   gui_context& g = *GetContext();
 
@@ -1303,7 +1342,7 @@ UI::DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue
     return;
   }
 
-  PushStyleVar(UI::VAR_SpacingX, 0);
+  PushVar(UI::VAR_SpacingX, 0);
   PushWidth(SingleSliderWidth);
 
   UI::DragFloat(NULL, &Value[0], MinValue, MaxValue, ScreenDelta);
@@ -1313,7 +1352,7 @@ UI::DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue
   UI::DragFloat(NULL, &Value[2], MinValue, MaxValue, ScreenDelta);
 
   PopWidth();
-  PopStyleVar();
+  PopVar();
 
   DrawText(TextPosition, Label);
 }
@@ -1337,7 +1376,7 @@ UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue
     return;
   }
 
-  PushStyleVar(UI::VAR_SpacingX, 0);
+  PushVar(UI::VAR_SpacingX, 0);
 	UI::PushWidth(SingleSliderWidth);
 
   UI::DragFloat(NULL, &Value[0], MinValue, MaxValue, ScreenDelta);
@@ -1349,7 +1388,7 @@ UI::DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue
   UI::DragFloat(NULL, &Value[3], MinValue, MaxValue, ScreenDelta);
 
   UI::PopWidth();
-  PopStyleVar();
+  PopVar();
 
   DrawText(TextPosition, Label);
 }
@@ -1410,7 +1449,7 @@ _MoveAxes(vec3* Position, const vec3 InputAxes[3])
 
   gui_context& g = *GetContext();
 
-  ui_id ID = { IDHash(&Position, sizeof(Position), 0) };
+  ui_id ID = { IDHash(&Position, sizeof(vec3*), 0) };
 
   float GizmoScale = GetGizmoScale(*Position);
 
@@ -1507,8 +1546,8 @@ _MoveAxes(vec3* Position, const vec3 InputAxes[3])
 void
 _MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f)
 {
-  gui_context& g = *GetContext();
-  ui_id ID = { IDHash(&Position, sizeof(Position), 2) };
+  gui_context& g  = *GetContext();
+  ui_id        ID = { IDHash(&Position, sizeof(vec3*), 1) };
 
   vec3 Axes[3] = { InputAxes[0], InputAxes[1], InputAxes[2] };
 
@@ -1541,11 +1580,14 @@ _MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f
     for(int i = 0; i < 3; i++)
     {
       // Construct the plane
-      ActivePlane.o = *Position;
-      ActivePlane.u = Axes[(i + 1) % 3];
-      ActivePlane.v = Axes[(i + 2) % 3];
+      parametric_plane TempPlane;
+      TempPlane.o = *Position;
+      TempPlane.u = Axes[(i + 1) % 3];
+      TempPlane.v = Axes[(i + 2) % 3];
 
-      if(IntersectRayParametricPlane(&InitialU, &InitialV, RayOrig, RayDir, ActivePlane, 0.0f,
+      float TempInitialU;
+      float TempInitialV;
+      if(IntersectRayParametricPlane(&TempInitialU, &TempInitialV, RayOrig, RayDir, TempPlane, 0.0f,
                                      PlaneWorldWidth))
       {
         SetHot(ID);
@@ -1553,6 +1595,9 @@ _MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f
         {
           SetActive(ID, NULL);
           ActivePlaneIndex = i;
+          ActivePlane      = TempPlane;
+          InitialU         = TempInitialU;
+          InitialV         = TempInitialV;
           break;
         }
       }
@@ -1613,7 +1658,7 @@ UI::SelectSphere(vec3* Position, float Radius, vec4 Color, bool PerspectiveInvar
 {
   gui_context& g = *GetContext();
 
-  ui_id ID = { IDHash(&Position, sizeof(Position), 2) };
+  ui_id ID = { IDHash(&Position, sizeof(vec3*), 2) };
 
   static float ClosestActiveT  = -FLT_MAX;
 
@@ -1690,3 +1735,4 @@ UI::MoveGizmo(transform* Transform, bool UseLocalAxes)
   _MovePlanes(&Transform->T, Axes);
   _MoveAxes(&Transform->T, Axes);
 }
+

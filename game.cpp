@@ -199,33 +199,20 @@ RemoveAnimationPlayerComponent(game_state* GameState, Resource::resource_manager
   int MMControllerDataIndex = GetEntityMMDataIndex(EntityIndex, &GameState->MMEntityData);
   if(MMControllerDataIndex != -1)
 	{
-    RemoveMMControllerDataAtIndex(MMControllerDataIndex, Resources, &GameState->MMEntityData);
+    RemoveMMControllerDataAtIndex(GameState->Entities, MMControllerDataIndex, Resources,
+                                  &GameState->MMEntityData);
   }
   else
   {
     RemoveAnimationReferences(&GameState->Resources, Entity->AnimController);
   }
   Entity->AnimController = NULL;
-
-  //assert(false && "Not Implemented");
-  // TODO(Lukas) redo this part after moving onto multiple MMData support
-  /*
-
-    if(GameState->PlayerEntityIndex == GameState->SelectedEntityIndex)
-    {
-      Gameplay::ResetPlayer(&GameState->Entities[Index], &GameState->PlayerBlendStack,
-                            &GameState->Resources, &GameState->MMData);
-      GameState->PlayerEntityIndex = -1;
-    }*/
-
-  // Will remove anything that was left
-  //RemoveAnimationReferences(&GameState->Resources, GameState->Entities[Index].AnimController);
 }
 
 bool
 DeleteEntity(game_state* GameState, Resource::resource_manager* Resources, int32_t Index)
 {
-  if(0 <= Index && GameState->EntityCount)
+  if(0 <= Index && Index < GameState->EntityCount)
   {
     GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
 
@@ -235,6 +222,16 @@ DeleteEntity(game_state* GameState, Resource::resource_manager* Resources, int32
     }
 
     GameState->Entities[Index] = GameState->Entities[GameState->EntityCount - 1];
+
+    // Fix up the index of the entity data which was moved into the removed spot
+    int32_t MMEntityDataIndex;
+    if((MMEntityDataIndex =
+          GetEntityMMDataIndex(GameState->EntityCount - 1, &GameState->MMEntityData)) != -1)
+    {
+      mm_aos_entity_data MMEntity =
+        GetAOSMMDataAtIndex(MMEntityDataIndex, &GameState->MMEntityData);
+      *MMEntity.EntityIndex = Index;
+    }
 
     --GameState->EntityCount;
     return true;

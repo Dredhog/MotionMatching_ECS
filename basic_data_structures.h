@@ -368,21 +368,21 @@ struct circular_stack
 {
   T   m_Entries[Capacity];
   int m_StartIndex;
-  int m_Count;
+  int Count;
 
   void
   Push(const T& NewEntry)
   {
-    assert(0 <= m_Count && m_Count <= Capacity);
+    assert(0 <= Count && Count <= Capacity);
 
-    int WriteIndex = (m_StartIndex + m_Count) % Capacity;
-    if(m_Count == Capacity)
+    int WriteIndex = (m_StartIndex + Count) % Capacity;
+    if(Count == Capacity)
     {
       m_StartIndex = (m_StartIndex + 1) % Capacity;
     }
     else
     {
-      m_Count++;
+      Count++;
     }
     m_Entries[WriteIndex] = NewEntry;
   }
@@ -390,19 +390,19 @@ struct circular_stack
   T
   Pop()
   {
-    assert(0 < m_Count);
-    int RemovedIndex = (m_StartIndex + (m_Count - 1)) % Capacity;
-    m_Count--;
+    assert(0 < Count);
+    int RemovedIndex = (m_StartIndex + (Count - 1)) % Capacity;
+    Count--;
     return m_Entries[RemovedIndex];
   }
 
   T
   PopBack()
   {
-    assert(0 < m_Count);
+    assert(0 < Count);
     int RemovedIndex = m_StartIndex;
     m_StartIndex     = (m_StartIndex + 1) % Capacity;
-    m_Count--;
+    Count--;
 
     return m_Entries[RemovedIndex];
   }
@@ -410,7 +410,7 @@ struct circular_stack
   T
   PeekBack() const
   {
-    assert(0 < m_Count);
+    assert(0 < Count);
     T Result = m_Entries[m_StartIndex];
     return Result;
   }
@@ -418,16 +418,16 @@ struct circular_stack
   T
   Peek() const
   {
-    assert(0 < m_Count);
-    int Index = (m_StartIndex + Capacity + (m_Count - 1)) % Capacity;
+    assert(0 < Count);
+    int Index = (m_StartIndex + Capacity + (Count - 1)) % Capacity;
     return m_Entries[Index];
   }
 
   T&
   Peek()
   {
-    assert(0 < m_Count);
-    int Index = (m_StartIndex + Capacity + (m_Count - 1)) % Capacity;
+    assert(0 < Count);
+    int Index = (m_StartIndex + Capacity + (Count - 1)) % Capacity;
     return m_Entries[Index];
   }
 
@@ -436,12 +436,12 @@ struct circular_stack
   Clear()
   {
     m_StartIndex = 0;
-    m_Count      = 0;
+    Count      = 0;
   }
 
   T operator[](int Index) const
   {
-    assert(Index < m_Count);
+    assert(Index < Count);
     int SampleIndex = (m_StartIndex + Index) % Capacity;
     return m_Entries[SampleIndex];
   }
@@ -449,19 +449,19 @@ struct circular_stack
   bool
   Full() const
   {
-    return m_Count == Capacity;
+    return Count == Capacity;
   }
 
   bool
   Empty() const
   {
-    return m_Count == 0;
+    return Count == 0;
   }
 
   int
   GetCount() const
   {
-    return m_Count;
+    return Count;
   }
 
   int

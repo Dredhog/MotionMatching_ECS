@@ -26,8 +26,8 @@ namespace Anim
   {
     float StartTimeSec;
     float PlaybackRateSec;
-    bool  IsPlaying;
     bool  Loop;
+    bool  Mirror;
   };
 
   // TODO(Lukas): Move this to the asset/serialization system
@@ -114,6 +114,8 @@ namespace Anim
                                      const Anim::skeleton* Skeleton);
 
   // Helper functions
+  float GetLocalSampleTime(const Anim::animation* Animation, float SampleTime, float StartTime = 0,
+                           bool Loop = false, float PlaybackRate = 1.0f);
   float GetLocalSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
                            float GlobalTimeSec);
   float GetLocalSampleTime(const Anim::animation* Animation, const Anim::animation_state* AnimState,

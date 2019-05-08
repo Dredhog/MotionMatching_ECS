@@ -94,12 +94,12 @@ namespace UI
   void  SameLine(float PosX = 0, float SpacingWidth = -1);
   void  NewLine();
 
-  void PushStyleVar(int32_t Index, float Value);
-  void PopStyleVar();
+  void PushVar(int32_t Index, float Value);
+  void PopVar();
   void PushWidth(float Width);
   void PopWidth();
-  void PushStyleColor(int32_t Index, vec4 Color);
-  void PopStyleColor();
+  void PushColor(int32_t Index, vec4 Color);
+  void PopColor();
   void PushID(const void* ID);
   void PushID(const char* ID);
   void PushID(const int ID);
@@ -119,6 +119,7 @@ namespace UI
 
   void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
                    bool Vertical = false);
+  void SliderRange(const void* ID, float* LeftRange, float* RightRange, float MinValue, float MaxValue);
   void DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue,
                   float ScreenDelta);
   void DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue,

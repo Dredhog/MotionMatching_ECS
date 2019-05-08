@@ -268,7 +268,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
       UI::SliderFloat("Trajectory Time Horizon",
                       &MMEditor->ActiveProfile.DynamicParams.TrajectoryTimeHorizon, 0.0f, 5.0f);
       UI::Text("Playback Parameters");
-      UI::SliderFloat("BlendInTime", &MMEditor->ActiveProfile.DynamicParams.BelndInTime, 0, 1);
+      UI::SliderFloat("BlendInTime", &MMEditor->ActiveProfile.DynamicParams.BlendInTime, 0, 1);
       UI::SliderFloat("Min Time Offset Threshold",
                       &MMEditor->ActiveProfile.DynamicParams.MinTimeOffsetThreshold, 0, 1);
       UI::Checkbox("Match MirroredAnimations",

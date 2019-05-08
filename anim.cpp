@@ -6,38 +6,37 @@ float
 Anim::GetLocalSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
                          float GlobalTimeSec)
 {
-  const animation_state* State        = &Controller->States[AnimationIndex];
-  const animation*       Animation    = Controller->Animations[AnimationIndex];
-  const float            AnimDuration = GetAnimDuration(Animation);
-
-  float SampleTime = State->PlaybackRateSec * (GlobalTimeSec - State->StartTimeSec);
-  if(State->Loop && AnimDuration < SampleTime)
-  {
-    SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
-  }
-  else if(AnimDuration < SampleTime)
-  {
-    SampleTime = AnimDuration;
-  }
-  return SampleTime;
+  const animation_state* State     = &Controller->States[AnimationIndex];
+  const animation*       Animation = Controller->Animations[AnimationIndex];
+  return Anim::GetLocalSampleTime(Animation, State, GlobalTimeSec);
 }
 
 float
 Anim::GetLocalSampleTime(const Anim::animation* Animation, const Anim::animation_state* AnimState,
                          float GlobalSampleTime)
 {
+  return Anim::GetLocalSampleTime(Animation, GlobalSampleTime, AnimState->StartTimeSec,
+                                  AnimState->Loop, AnimState->PlaybackRateSec);
+}
+
+float
+Anim::GetLocalSampleTime(const Anim::animation* Animation, float GlobalSampleTime,
+                         float GlobalStartTime, bool Loop, float PlaybackRate)
+{
+	assert(Animation->SampleTimes[0] == 0);
   const float AnimDuration = GetAnimDuration(Animation);
 
-  float SampleTime = AnimState->PlaybackRateSec * (GlobalSampleTime - AnimState->StartTimeSec);
-  if(AnimState->Loop && AnimDuration < SampleTime)
+  float LocalSampleTime = PlaybackRate * (GlobalSampleTime - GlobalStartTime);
+  if(Loop && AnimDuration < LocalSampleTime)
   {
-    SampleTime = SampleTime - AnimDuration * (float)((int)(SampleTime / AnimDuration));
+    LocalSampleTime =
+      LocalSampleTime - AnimDuration * (float)((int)(LocalSampleTime / AnimDuration));
   }
-  else if(AnimDuration < SampleTime)
+  else if(AnimDuration < LocalSampleTime)
   {
-    SampleTime = AnimDuration;
+    LocalSampleTime = AnimDuration;
   }
-  return SampleTime;
+  return LocalSampleTime;
 }
 
 void
@@ -186,7 +185,6 @@ Anim::StartAnimationAtGlobalTime(Anim::animation_controller* Controller, int Ani
   assert(0 <= AnimationIndex && AnimationIndex <= ANIM_CONTROLLER_MAX_ANIM_COUNT);
   Controller->States[AnimationIndex]                 = {};
   Controller->States[AnimationIndex].StartTimeSec    = Controller->GlobalTimeSec - LocalStartTime;
-  Controller->States[AnimationIndex].IsPlaying       = true;
   Controller->States[AnimationIndex].PlaybackRateSec = 1.0f;
   Controller->States[AnimationIndex].Loop            = Loop;
 }
@@ -316,7 +314,7 @@ void
 Anim::GetRootAndInvRootMatrices(mat4* OutRootMatrix, mat4* OutInvRootMatrix, mat4 HipMatrix)
 {
   vec3 Up      = { 0, 1, 0 };
-  vec3 Left   = Math::Normalized(Math::Cross(Up, HipMatrix.Z));
+  vec3 Left    = Math::Normalized(Math::Cross(Up, HipMatrix.Z));
   vec3 Forward = Math::Cross(Left, Up);
 
   mat4 Mat4Root = Math::Mat4Ident();
@@ -457,13 +455,13 @@ Anim::GenerateSkeletonMirroringInfo(Anim::skeleton_mirror_info* OutMirrorInfo,
     }
     assert(SearchForLeft != SearchForRight);
 
-    char TempBuff[BONE_NAME_LENGTH + 1];
+    char        TempBuff[BONE_NAME_LENGTH + 1];
     size_t      FirstStartLength   = FirstMiddle - FirstStart;
     const char* SecondMiddleString = (SearchForRight) ? "Right" : "Left";
-    size_t  SecondMiddleLength = strlen(SecondMiddleString);
+    size_t      SecondMiddleLength = strlen(SecondMiddleString);
     strncpy(TempBuff, FirstStart, FirstStartLength);
     strncpy(TempBuff + FirstStartLength, SecondMiddleString, SecondMiddleLength);
-    //Using sprintf instead of snprintf to get the '\0' at the end
+    // Using sprintf instead of snprintf to get the '\0' at the end
     strcpy(TempBuff + FirstStartLength + SecondMiddleLength, FirstEnd);
 
     int B = -1;

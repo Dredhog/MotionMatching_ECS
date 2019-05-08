@@ -2,12 +2,12 @@
 #include "basic_data_structures.h"
 
 #define SPHERE_MAX_COUNT 500
-#define GIZMO_MAX_COUNT 300
+#define GIZMO_MAX_COUNT 200
 #define TEXTURED_QUAD_MAX_COUNT 500
 #define COLORED_QUAD_MAX_COUNT 500
 #define LINE_INSTRUCTION_COUNT 500
 #define LINE_POINT_COUNT 1000
-#define SHADED_BONE_MAX_COUNT 200
+#define SHADED_BONE_MAX_COUNT 400
 
 mat4    g_SphereMatrices[SPHERE_MAX_COUNT];
 vec4    g_SphereColors[SPHERE_MAX_COUNT];

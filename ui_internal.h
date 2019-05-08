@@ -671,7 +671,6 @@ Init(gui_context* Context, game_state* GameState)
   Context->Style.Colors[UI::COLOR_WindowBorder]     = { 0.4f, 0.4f, 0.4f, 0.5f };
   Context->Style.Colors[UI::COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
 
-  Context->Style.Vars[UI::VAR_FontSize]        = (float)GameState->Font.SizedFonts[0].Size;
   Context->Style.Vars[UI::VAR_WindowPaddingX]  = 7;
   Context->Style.Vars[UI::VAR_WindowPaddingY]  = 7;
   Context->Style.Vars[UI::VAR_BorderThickness] = 1;
@@ -683,6 +682,16 @@ Init(gui_context* Context, game_state* GameState)
   Context->Style.Vars[UI::VAR_SpacingY]        = 5;
   Context->Style.Vars[UI::VAR_InternalSpacing] = 5;
   Context->Style.Vars[UI::VAR_IndentSpacing]   = 20;
+
+#if 0
+  Context->Style.Vars[UI::VAR_FontSize] = (float)GameState->Font.SizedFonts[0].Size;
+#else
+	int32_t FontHeight;
+  Text::GetTextSize(&GameState->Font, "TestString", NULL, &FontHeight);
+  Context->Style.Vars[UI::VAR_FontSize] = (float)FontHeight;
+  //assert(LabelHeight == Context->Style.Vars[UI::VAR_FontSize]);
+#endif
+
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;

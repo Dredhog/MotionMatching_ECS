@@ -114,7 +114,21 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   //--------------------WORLD UPDATE------------------------
 
-  UpdateCamera(&GameState->Camera, Input);
+#if 0
+	{
+    entity* SelectedEntity = {};
+    if(Camera->OrbitSelected && GetSelectedEntity(&SelectedEntity, GameState))
+    {
+      UpdateCamera(&GameState->Camera, SelectedEntity->Transform.T, Input);
+    }
+    else
+    {
+      UpdateCamera(&GameState->Camera, Input);
+    }
+  }
+#else
+      UpdateCamera(&GameState->Camera, Input);
+#endif
 
   {
     TIMED_BLOCK(Physics);
@@ -197,38 +211,42 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     FetchMMControllerDataPointers(&Resources, MMEntityData.MMControllers,
                                   MMEntityData.MMControllerRIDs, TotalControllerCount);
-    FetchAnimControllerPointers(MMEntityData.AnimControllers, MMEntityData.EntityIndices, Entities,
-                                TotalControllerCount);
+    FetchSkeletonPointers(MMEntityData.Skeletons, MMEntityData.EntityIndices, Entities,
+                          TotalControllerCount);
     FetchAnimationPointers(&Resources, MMEntityData.MMControllers, TotalControllerCount);
-    PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.AnimControllers,
+    PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.GlobalPlayTimes,
                                    MMEntityData.MMControllers, TotalControllerCount);
     GenerateGoalsFromInput(&MMEntityData.AnimGoals[0], &MMEntityData.MirroredAnimGoals[0],
                            &MMEntityData.Trajectories[0], TempStack, &MMEntityData.BlendStacks[0],
-                           &MMEntityData.AnimControllers[0], &MMEntityData.MMControllers[0],
-                           &MMEntityData.InputControllers[0], &MMEntityData.EntityIndices[0],
-                           InputControlledCount, Entities, Input, CameraForward);
+                           &MMEntityData.GlobalPlayTimes[0], &MMEntityData.Skeletons[0],
+                           &MMEntityData.MMControllers[0], &MMEntityData.InputControllers[0],
+                           &MMEntityData.EntityIndices[0], InputControlledCount, Entities, Input,
+                           CameraForward);
     // TODO(Lukas) make sure that all motion spline indices are valid by prevention or correction
     GenerateGoalsFromSplines(TempStack, &MMEntityData.AnimGoals[FirstSplineControlledIndex],
                              &MMEntityData.MirroredAnimGoals[FirstSplineControlledIndex],
                              &MMEntityData.Trajectories[FirstSplineControlledIndex],
                              &MMEntityData.SplineStates[FirstSplineControlledIndex],
                              &MMEntityData.MMControllers[FirstSplineControlledIndex],
-                             &MMEntityData.AnimControllers[FirstSplineControlledIndex],
                              &MMEntityData.BlendStacks[FirstSplineControlledIndex],
+                             &MMEntityData.GlobalPlayTimes[FirstSplineControlledIndex],
+                             &MMEntityData.Skeletons[FirstSplineControlledIndex],
                              &MMEntityData.EntityIndices[FirstSplineControlledIndex],
                              SplineControlledCount, SplineSystem.Splines.Elements,
                              SplineSystem.Splines.Count, Entities);
-    MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.AnimControllers,
-                     MMEntityData.LastMatchedGoals, MMEntityData.AnimGoals,
+    MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.LastMatchedGoals,
+                     MMEntityData.LastMatchedTransforms, MMEntityData.AnimGoals,
                      MMEntityData.MirroredAnimGoals, MMEntityData.MMControllers,
-                     MMEntityData.EntityIndices, TotalControllerCount, Entities);
+                     MMEntityData.GlobalPlayTimes, MMEntityData.EntityIndices, TotalControllerCount,
+                     Entities);
     DrawGoalFrameInfos(MMEntityData.AnimGoals, MMEntityData.EntityIndices, TotalControllerCount,
                        Entities, &MMDebug.CurrentGoal);
     DrawGoalFrameInfos(MMEntityData.LastMatchedGoals, MMEntityData.BlendStacks,
-                       TotalControllerCount, &MMDebug.MatchedGoal, { 1, 1, 0 }, { 0, 1, 0 },
-                       { 1, 0, 0 });
-    ComputeLocalRootMotion(MMEntityData.OutDeltaRootMotions, MMEntityData.AnimControllers,
-                           MMEntityData.BlendStacks, TotalControllerCount, Input->dt);
+                       MMEntityData.LastMatchedTransforms, TotalControllerCount,
+                       &MMDebug.MatchedGoal, { 1, 1, 0 }, { 0, 1, 0 }, { 1, 0, 0 });
+    ComputeLocalRootMotion(MMEntityData.OutDeltaRootMotions, MMEntityData.Skeletons,
+                           MMEntityData.BlendStacks, MMEntityData.GlobalPlayTimes,
+                           TotalControllerCount, Input->dt);
     if(MMDebug.ApplyRootMotion)
     {
       ApplyRootMotion(Entities, MMEntityData.Trajectories, MMEntityData.OutDeltaRootMotions,
@@ -236,6 +254,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     /*DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
                             TotalControllerCount, Entities);*/
+    AdvanceGlobalPlayTimes(MMEntityData.GlobalPlayTimes, TotalControllerCount, Input->dt);
+    RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.GlobalPlayTimes,
+                                         TotalControllerCount);
+    CopyMMAnimDataToAnimationPlayers(Entities, MMEntityData.BlendStacks,
+                                     MMEntityData.GlobalPlayTimes, MMEntityData.EntityIndices,
+                                     TotalControllerCount);
   }
 
   if(GameState->R.ShowLightPosition)
@@ -256,16 +280,17 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       for(int i = 0; i < Controller->AnimStateCount; i++)
       {
-        Controller->Animations[i] =
-          (0 < Controller->AnimationIDs[i].Value)
-            ? GameState->Resources.GetAnimation(Controller->AnimationIDs[i])
-            : NULL;
+        if(Controller->AnimationIDs[i].Value > 0)
+        {
+          Controller->Animations[i] =
+            GameState->Resources.GetAnimation(Controller->AnimationIDs[i]);
+        }
       }
 
       int MMEntityIndex = -1;
       if((MMEntityIndex = GetEntityMMDataIndex(e, &GameState->MMEntityData)) != -1)
       {
-        mm_aos_entity_data MMEntity = GetEntityAOSMMData(MMEntityIndex, &GameState->MMEntityData);
+        mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
         playback_info      PlaybackInfo = {};
         PlaybackInfo.BlendStack         = MMEntity.BlendStack;
         if(MMEntity.MMControllerRID->Value > 0 && MMEntity.MMController)
@@ -276,7 +301,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
       else
       {
-        //Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+				//NOTE(Lukas): this prevents a null dereference after removing a blend state
+        assert(Controller->BlendFunc == NULL);
+        Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
       }
 
       // TODO(Lukas): remove most parts of this code as it is repeated multiple times in different

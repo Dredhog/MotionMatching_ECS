@@ -7,6 +7,15 @@ actor_dir='data/built/'
 ybot_dir='data/animations/ybot_retargeted/fbx/'
 sampling_frequency='--sampling_frequency 15'
 
+#$build 'data/models_actors/armadillo.fbx' 'data/built/armadillo' '--actor' '--root_bone' 'mixamorig:Hips' #'--scale' '0.01'
+
+#for i in $src_dir*.fbx; do
+	#if [[ $i == *"sword"* ]]; then
+		#echo "building " $i
+		#$build $i $dst_dir`basename $i .fbx` '--animation' '--target_actor' 'data/built/armadillo.actor' $sampling_frequency
+	#fi
+#done
+
 $build 'data/models_actors/xbot.fbx' 'data/built/xbot' '--actor' '--root_bone' 'mixamorig:Hips' '--scale' '0.01'
 
 for i in $src_dir*.fbx; do

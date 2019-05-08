@@ -36,8 +36,8 @@ struct mm_fixed_params
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> ComparisonBoneIndices;
   fixed_stack<int32_t, MM_COMPARISON_BONE_COUNT> MirrorBoneIndices;
 
-  Anim::skeleton Skeleton;
-  float          MetadataSamplingFrequency;
+  Anim::skeleton             Skeleton;
+  float                      MetadataSamplingFrequency;
 };
 
 struct mm_dynamic_params
@@ -48,7 +48,7 @@ struct mm_dynamic_params
   float                      TrajPCoefficient;
   float                      TrajVCoefficient;
   float                      TrajAngleCoefficient;
-  float                      BelndInTime;
+  float                      BlendInTime;
   float                      MinTimeOffsetThreshold;
   bool                       MatchMirroredAnimations;
   Anim::skeleton_mirror_info MirrorInfo;
@@ -107,7 +107,7 @@ ResetMMParamsToDefault(mm_params* Params)
   Params->DynamicParams.TrajAngleCoefficient    = 0.0f;
   Params->DynamicParams.TrajectoryTimeHorizon   = 1.0f;
   Params->DynamicParams.MinTimeOffsetThreshold  = 0.2f;
-  Params->DynamicParams.BelndInTime             = 0.2f;
+  Params->DynamicParams.BlendInTime             = 0.2f;
   Params->DynamicParams.MatchMirroredAnimations = false;
   Params->FixedParams.MetadataSamplingFrequency = 30.0f;
 }
