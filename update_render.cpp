@@ -214,11 +214,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     FetchSkeletonPointers(MMEntityData.Skeletons, MMEntityData.EntityIndices, Entities,
                           TotalControllerCount);
     FetchAnimationPointers(&Resources, MMEntityData.MMControllers, TotalControllerCount);
-    PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.GlobalPlayTimes,
+    PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                    MMEntityData.MMControllers, TotalControllerCount);
     GenerateGoalsFromInput(&MMEntityData.AnimGoals[0], &MMEntityData.MirroredAnimGoals[0],
                            &MMEntityData.Trajectories[0], TempStack, &MMEntityData.BlendStacks[0],
-                           &MMEntityData.GlobalPlayTimes[0], &MMEntityData.Skeletons[0],
+                           &MMEntityData.AnimPlayerTimes[0], &MMEntityData.Skeletons[0],
                            &MMEntityData.MMControllers[0], &MMEntityData.InputControllers[0],
                            &MMEntityData.EntityIndices[0], InputControlledCount, Entities, Input,
                            CameraForward);
@@ -229,7 +229,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                              &MMEntityData.SplineStates[FirstSplineControlledIndex],
                              &MMEntityData.MMControllers[FirstSplineControlledIndex],
                              &MMEntityData.BlendStacks[FirstSplineControlledIndex],
-                             &MMEntityData.GlobalPlayTimes[FirstSplineControlledIndex],
+                             &MMEntityData.AnimPlayerTimes[FirstSplineControlledIndex],
                              &MMEntityData.Skeletons[FirstSplineControlledIndex],
                              &MMEntityData.EntityIndices[FirstSplineControlledIndex],
                              SplineControlledCount, SplineSystem.Splines.Elements,
@@ -237,7 +237,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.LastMatchedGoals,
                      MMEntityData.LastMatchedTransforms, MMEntityData.AnimGoals,
                      MMEntityData.MirroredAnimGoals, MMEntityData.MMControllers,
-                     MMEntityData.GlobalPlayTimes, MMEntityData.EntityIndices, TotalControllerCount,
+                     MMEntityData.AnimPlayerTimes, MMEntityData.EntityIndices, TotalControllerCount,
                      Entities);
     DrawGoalFrameInfos(MMEntityData.AnimGoals, MMEntityData.EntityIndices, TotalControllerCount,
                        Entities, &MMDebug.CurrentGoal);
@@ -245,7 +245,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                        MMEntityData.LastMatchedTransforms, TotalControllerCount,
                        &MMDebug.MatchedGoal, { 1, 1, 0 }, { 0, 1, 0 }, { 1, 0, 0 });
     ComputeLocalRootMotion(MMEntityData.OutDeltaRootMotions, MMEntityData.Skeletons,
-                           MMEntityData.BlendStacks, MMEntityData.GlobalPlayTimes,
+                           MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                            TotalControllerCount, Input->dt);
     if(MMDebug.ApplyRootMotion)
     {
@@ -254,11 +254,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     /*DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
                             TotalControllerCount, Entities);*/
-    AdvanceGlobalPlayTimes(MMEntityData.GlobalPlayTimes, TotalControllerCount, Input->dt);
-    RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.GlobalPlayTimes,
+    AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, TotalControllerCount, Input->dt);
+    RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                          TotalControllerCount);
     CopyMMAnimDataToAnimationPlayers(Entities, MMEntityData.BlendStacks,
-                                     MMEntityData.GlobalPlayTimes, MMEntityData.EntityIndices,
+                                     MMEntityData.AnimPlayerTimes, MMEntityData.EntityIndices,
                                      TotalControllerCount);
   }
 

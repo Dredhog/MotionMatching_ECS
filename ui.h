@@ -23,7 +23,11 @@ namespace UI
     COLOR_WindowBorder,
     COLOR_ChildWindowBackground,
     COLOR_ScrollbarBox,
-    COLOR_ScrollbarDrag,
+    COLOR_ScrollbarDragNormal,
+    COLOR_ScrollbarDragPressed,
+    COLOR_SliderBox,
+    COLOR_SliderDragNormal,
+    COLOR_SliderDragPressed,
     COLOR_Text,
     COLOR_Count
   };
@@ -119,7 +123,8 @@ namespace UI
 
   void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
                    bool Vertical = false);
-  void SliderRange(const void* ID, float* LeftRange, float* RightRange, float MinValue, float MaxValue);
+  void SliderRange(const void* ID, float* LeftRange, float* RightRange, float MinValue,
+                   float MaxValue);
   void DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue,
                   float ScreenDelta);
   void DragFloat4(const char* Label, float Value[4], float MinValue, float MaxValue,
@@ -144,6 +149,7 @@ namespace UI
   void PlaneGizmo(transform* Position, vec3 PlaneNormal);
   // void PlaneGizmo(transform* Position, parametric_plane);
 
+  bool     IsItemActive();
   uint32_t GetActiveID();
   uint32_t GetHotID();
 

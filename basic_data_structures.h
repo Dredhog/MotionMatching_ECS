@@ -166,7 +166,7 @@ struct stack_handle
   }
 
   array_handle<T, IndexType>
-  GetArrayHandle()
+  GetArrayHandle() const
   {
     array_handle<T, IndexType> NewArrayHandle;
     NewArrayHandle.Init(Elements, Count);

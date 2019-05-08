@@ -223,11 +223,11 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
     *Value = floorf(*Value + 0.5f);
   }
 
-  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox),
-          _GetGUIColor(ScrollbarBox));
+  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(SliderBox),
+          _GetGUIColor(SliderBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(),
-          Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag),
-          _GetGUIColor(ScrollbarDrag));
+          Held ? _GetGUIColor(SliderDragPressed) : _GetGUIColor(SliderDragNormal),
+          _GetGUIColor(SliderDragPressed));
   DrawText(SliderRect.MaxP +
              vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] },
            Label);
@@ -315,11 +315,11 @@ UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxVa
   ValueF = NormValue * ValueRange + MinValueF;
   *Value = (int32_t)(ValueF + 0.5f);
 
-  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(ScrollbarBox),
-          _GetGUIColor(ScrollbarBox));
+  DrawBox(SliderRect.MinP, SliderRect.GetSize(), _GetGUIColor(SliderBox),
+          _GetGUIColor(SliderBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(),
-          Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag),
-          _GetGUIColor(ScrollbarDrag));
+          Held ? _GetGUIColor(SliderDragPressed) : _GetGUIColor(SliderDragNormal),
+          _GetGUIColor(ScrollbarDragPressed));
   DrawText(SliderRect.MaxP +
              vec3{ g.Style.Vars[UI::VAR_InternalSpacing], -g.Style.Vars[UI::VAR_BoxPaddingY] },
            Label);
@@ -378,8 +378,8 @@ Scrollbar(gui_window* Window, bool Vertical)
   DrawBox(ScrollRect.MinP, ScrollRect.GetSize(), _GetGUIColor(ScrollbarBox),
           _GetGUIColor(ScrollbarBox));
   DrawBox(DragRect.MinP, DragRect.GetSize(),
-          Held ? _GetGUIColor(ScrollbarBox) : _GetGUIColor(ScrollbarDrag),
-          _GetGUIColor(ScrollbarDrag));
+          Held ? _GetGUIColor(ScrollbarDragPressed) : _GetGUIColor(ScrollbarDragNormal),
+          _GetGUIColor(ScrollbarDragPressed));
 
   if(Vertical)
   {

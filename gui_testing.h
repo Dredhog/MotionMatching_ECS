@@ -614,17 +614,29 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::EndWindow();
   }
 
+	if(s_ShowMotionMatchingTimelineWindow)
+  {
+    int32_t SelectedEntityIndex = GameState->SelectedEntityIndex;
+    mm_entity_data* MMEntityData            = &GameState->MMEntityData;
+
+    UI::BeginWindow("MM Animation Visualizer", { 300, 600 }, { 1500, 400 });
+
+    int32_t MMEntityIndex;
+    if((MMEntityIndex = GetEntityMMDataIndex(SelectedEntityIndex, MMEntityData)) != -1)
+		{
+			mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, MMEntityData);
+			if(*MMEntity.MMController)
+			{
+        MMTimelineWindow(*MMEntity.BlendStack, MMEntity.AnimPlayerTime, *MMEntity.MMController, Input);
+      }
+    }
+    UI::EndWindow();
+  }
   if(s_ShowMotionMatchingWindow)
   {
     UI::BeginWindow("Motion Matching", { 100, 20 }, { 750, 700 });
     MMControllerEditorGUI(&GameState->MMEditor, GameState->TemporaryMemStack,
                           &GameState->Resources);
-    UI::EndWindow();
-  }
-	if(s_ShowMotionMatchingTimelineWindow)
-  {
-    UI::BeginWindow("MM Animation Visualizer", { 300, 600 }, { 1500, 400 });
-    MMTimelineWindow();
     UI::EndWindow();
   }
   if(s_ShowMMDebugSettingsWindow)
@@ -1309,6 +1321,8 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
                   SetDefaultMMControllerFileds(&MMControllerData);
                   MMEntityData.EntityIndices[MMEntityData.Count - 1] = SelectedEntityIndex;
+
+                  RemoveAnimationReferences(Resources, SelectedEntity->AnimController);
                 }
               }
               else

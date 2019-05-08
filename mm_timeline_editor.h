@@ -22,8 +22,7 @@
 #define GENERATE_TIMELINE_EDITOR_MODE_ENUM(Name, String) TIMELINE_EDITOR_MODE_##Name,
 enum timeline_editor_mode
 {
-	EDITOR_MODE(GENERATE_TIMELINE_EDITOR_MODE_ENUM)
-	TIMELINE_EDITOR_MODE_EnumCount
+  EDITOR_MODE(GENERATE_TIMELINE_EDITOR_MODE_ENUM) TIMELINE_EDITOR_MODE_EnumCount
 };
 #undef GENERATE_TIMELINE_EDITOR_MODE_ENUM
 
@@ -44,7 +43,8 @@ enum anim_scale_option
 #define GENERATE_STRING(Name, String) #String,
 static const char* g_OrderByOptions[ORDER_BY_EnumCount]       = { ORDER_BY(GENERATE_STRING) };
 static const char* g_RangeScaleOptions[RANGE_SCALE_EnumCount] = { RANGE_SCALE(GENERATE_STRING) };
-static const char* g_TimelineEditorModeOptions[TIMELINE_EDITOR_MODE_EnumCount] = { EDITOR_MODE(GENERATE_STRING) };
+static const char* g_TimelineEditorModeOptions[TIMELINE_EDITOR_MODE_EnumCount] = { EDITOR_MODE(
+  GENERATE_STRING) };
 #undef GENERATE_STRING
 
 #undef RANGE_SCALE
@@ -59,95 +59,178 @@ static const char* g_TimelineEditorModeOptions[TIMELINE_EDITOR_MODE_EnumCount] =
 
 struct used_range
 {
-	float StartTime;
-  float EndTime
+  float StartTime;
+  float EndTime;
 };
 
 void
-MMTimelineWindow(blend_stack* BlendStack, float* PlayerGlobalTime,
-                 const used_range** AnimUsedRanges, const int32_t* AnimRangeCounts,
-                 const mm_frame_info_range* AnimRanges, int32_t AnimationCount)
+MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_data* MMController, const game_input* Input)
 {
-  const float InfoSamplingFrequency = 60;
-  float       AnimationFrameInfoCounts[ARRAY_COUNT(AnimationRanges)];
-  float       AnimationLengths[ARRAY_COUNT(AnimationRanges)];
+  assert(AnimPlayerTime);
+  assert(MMController);
 
-  static float PlayHead      = 0.0f;
-  static int   OrderByOption = 0;
-  static int   RangeScaleOption;
-  static bool  ShowAvoidedRegions  = true;
-  static bool  ShowUnusableRegions = true;
-  static int   TimelineEditorMode  = 0;
+	static bool Paused = false;
+  static float LastSavedTime;
+  if(Input->Space.EndedDown && Input->Space.Changed)
+	{
+    Paused = !Paused;
+    LastSavedTime = *AnimPlayerTime;
+  }
 
-  UI::PushWidth(200);
-  UI::Combo("Editor Mode", &TimelineEditorMode, COMBO_ARRAY_ARG(g_TimelineEditorModeOptions));
-  TimelineEditorMode = ClampInt32InIn(0, TimelineEditorMode, TIMELINE_EDITOR_MODE_EnumCount - 1);
-  UI::SameLine();
-  // UI::Combo("Order By", &OrderByOption, COMBO_ARRAY_ARG(g_OrderByOptions));
-  // UI::SameLine(300);
-  RangeScaleOption = ClampInt32InIn(0, RangeScaleOption, RANGE_SCALE_EnumCount - 1);
-  UI::Combo("Animation Ranges", &RangeScaleOption, COMBO_ARRAY_ARG(g_RangeScaleOptions));
-  UI::PopWidth();
-  RangeScaleOption = ClampInt32InIn(0, RangeScaleOption, RANGE_SCALE_EnumCount - 1);
-  UI::SameLine();
-  UI::Checkbox("Show avoided regions", &ShowAvoidedRegions);
-  UI::SameLine();
-  UI::Checkbox("Show unusable regions", &ShowUnusableRegions);
-	static float LeftRange = 1;
-	static float RightRange = 2;
-  UI::SliderRange("Range Widget Test", &LeftRange, &RightRange, 0, 3);
+	if(Paused)
+	{
+    *AnimPlayerTime = LastSavedTime;
+  }
 
-  // Timeline child window
-  UI::BeginChildWindow("Controller Animation Timeline", { UI::GetAvailableWidth(), 300 });
+
+  // Definin what will be used from mm_controller_data
+  const array_handle<Anim::animation*>    Animations = MMController->Animations.GetArrayHandle();
+  const array_handle<mm_frame_info_range> AnimInfoRanges =
+    MMController->AnimFrameInfoRanges.GetArrayHandle();
+  float InfoSamplingFrequency = MMController->Params.FixedParams.MetadataSamplingFrequency;
+  // const used_range** AnimUsedRanges;
+  // const int32_t*     AnimRangeCounts;
+
+  assert(Animations.Count == AnimInfoRanges.Count);
+  for(int i = 0; i < Animations.Count; i++)
+  {
+    assert(Animations[i]);
+    assert(AnimInfoRanges[i].StartTimeInAnim >= 0);
+    assert(AnimInfoRanges[i].Start < AnimInfoRanges[i].End);
+  }
+
+  static int  OrderByOption = 0;
+  static int  RangeScaleOption;
+  static bool ShowAvoidedRegions  = true;
+  static bool ShowUnusableRegions = true;
+  static int  TimelineEditorMode  = 0;
+
+  float   AnimationLengths[MM_ANIM_CAPACITY];
+  float   AnimationPlayheads[MM_ANIM_CAPACITY];
+  int32_t BlendStackIndices[MM_ANIM_CAPACITY];
+  // TOP LINE VISUALIZATION PARAMETER UI
+  {
+    UI::PushWidth(200);
+    UI::Combo("Editor Mode", &TimelineEditorMode, COMBO_ARRAY_ARG(g_TimelineEditorModeOptions));
+    TimelineEditorMode = ClampInt32InIn(0, TimelineEditorMode, TIMELINE_EDITOR_MODE_EnumCount - 1);
+    UI::SameLine();
+    // UI::Combo("Order By", &OrderByOption, COMBO_ARRAY_ARG(g_OrderByOptions));
+    // UI::SameLine(300);
+    RangeScaleOption = ClampInt32InIn(0, RangeScaleOption, RANGE_SCALE_EnumCount - 1);
+    UI::Combo("Animation Ranges", &RangeScaleOption, COMBO_ARRAY_ARG(g_RangeScaleOptions));
+    UI::PopWidth();
+    RangeScaleOption = ClampInt32InIn(0, RangeScaleOption, RANGE_SCALE_EnumCount - 1);
+    UI::SameLine();
+    UI::Checkbox("Show avoided regions", &ShowAvoidedRegions);
+    UI::SameLine();
+    UI::Checkbox("Show unusable regions", &ShowUnusableRegions);
+    // RANGE WIDGET TEST
+#if 0
+    {
+      static float LeftRange  = 1;
+      static float RightRange = 2;
+      UI::SliderRange("Range Widget Test", &LeftRange, &RightRange, 0, 3);
+    }
+#endif
+  }
+
+  // TIMELINE CHILD WINDOW
+  UI::BeginChildWindow("Controller Animation Timeline",
+                       { UI::GetAvailableWidth() /*- 10 * (1 + sinf(*AnimPlayerTime))*/, 200 });
   {
     const float FullWidth = UI::GetAvailableWidth();
-
-    // Computing lengths and frame info counts and finding max length
-    float MaxAnimationLength = 0;
-    for(int a = 0; a < ARRAY_COUNT(AnimationRanges); a++)
+    if(TimelineEditorMode == TIMELINE_EDITOR_MODE_RuntimeAnalysis)
     {
-      AnimationFrameInfoCounts[a] = float(int(AnimationRanges[a][1] * InfoSamplingFrequency));
-
-      int AnimPartCount   = ARRAY_COUNT(AnimationRanges[0]);
-      AnimationLengths[a] = 0;
-      for(int i = 0; i < AnimPartCount; i++)
+      // Computing lengths and frame info counts and finding max length
+      float MaxAnimationLength = 0;
+      for(int a = 0; a < Animations.Count; a++)
       {
-        AnimationLengths[a] +=
-          (!ShowUnusableRegions && (i % 2 == 0)) ? 0.0f : AnimationRanges[a][i];
+        AnimationLengths[a]  = Anim::GetAnimDuration(Animations[a]);
+        MaxAnimationLength   = MaxFloat(MaxAnimationLength, AnimationLengths[a]);
+        BlendStackIndices[a] = -1;
+        AnimationPlayheads[a] = 0;
+        for(int b = 0; b < BlendStack.Count; b++)
+        {
+          if(BlendStack[b].Animation == Animations[a])
+          {
+            AnimationPlayheads[a] = *AnimPlayerTime - BlendStack[b].GlobalAnimStartTime;
+            BlendStackIndices[a]  = b;
+            break;
+          }
+        }
       }
-      MaxAnimationLength = MaxFloat(MaxAnimationLength, AnimationLengths[a]);
+
+      // Drawing the ranges
+      UI::PushColor(UI::COLOR_SliderDragPressed, { 1, 1, 0, 1 });
+      UI::PushColor(UI::COLOR_SliderDragNormal, { 0, 1, 0, 1 });
+      UI::PushVar(UI::VAR_DragMinSize, 4);
+      for(int a = 0; a < Animations.Count; a++)
+      {
+        // Finding scale factor to transform ranges in seconds to widths in pixels
+        const float PixelsPerSecond =
+          FullWidth /
+          ((RangeScaleOption == RANGE_SCALE_Relative) ? MaxAnimationLength : AnimationLengths[a]);
+
+        UI::PushID(a);
+
+        float LeftSliderLimit = Animations[a]->SampleTimes[0];
+        float RightSliderLimit = Animations[a]->SampleTimes[Animations[a]->KeyframeCount - 1];
+        float AnimSliderWidth  = AnimationLengths[a] * PixelsPerSecond;
+
+        if(ShowUnusableRegions)
+        {
+          LeftSliderLimit = AnimInfoRanges[a].StartTimeInAnim;
+          RightSliderLimit =
+            AnimInfoRanges[a].StartTimeInAnim +
+            float(AnimInfoRanges[a].End - AnimInfoRanges[a].Start) / InfoSamplingFrequency;
+          assert(LeftSliderLimit < RightSliderLimit);
+          AnimSliderWidth = (RightSliderLimit - LeftSliderLimit) * PixelsPerSecond;
+          UI::Dummy(LeftSliderLimit * PixelsPerSecond, 0);
+					UI::SameLine(0,0);
+        }
+
+        if(BlendStackIndices[a] == BlendStack.Count - 1)
+          UI::PushColor(UI::COLOR_SliderDragNormal, { 1, 0, 1, 1 });
+
+        UI::PushWidth(AnimSliderWidth);
+        float NewPlayheadTime = AnimationPlayheads[a];
+        UI::SliderFloat("Playhead", &NewPlayheadTime, LeftSliderLimit, RightSliderLimit);
+        UI::PopWidth();
+
+        if(BlendStackIndices[a] == BlendStack.Count - 1)
+          UI::PopColor();
+
+        if(ShowUnusableRegions)
+        {
+          float UnusedWidth =
+            (Animations[a]->SampleTimes[Animations[a]->KeyframeCount - 1] - RightSliderLimit) *
+            PixelsPerSecond;
+					UI::SameLine(0, 0);
+          UI::Button("U", UnusedWidth);
+        }
+
+        UI::PopID();
+
+        bool SliderIsActive = false;
+        if(SliderIsActive)
+        {
+          bool MirrorModified =
+            (BlendStackIndices[a] != -1) ? BlendStack[BlendStackIndices[a]].Mirror : false;
+
+          BlendStack.Clear();
+          PlayAnimation(&BlendStack, Animations[a], NewPlayheadTime, *AnimPlayerTime, 0,
+                        MirrorModified, false);
+          for(int i = 0; i < MM_ANIM_CAPACITY; i++)
+          {
+            AnimationPlayheads[i] = 0;
+            BlendStackIndices[i]  = -1;
+          }
+        }
+      }
+			UI::PopVar();
+      UI::PopColor();
+      UI::PopColor();
     }
-
-    // Drawing the ranges
-    UI::PushColor(UI::COLOR_ScrollbarDrag, { 0, 1, 0, 1 });
-    for(int a = 0; a < ARRAY_COUNT(AnimationRanges); a++)
-    {
-      // Finding scale factor to transform ranges in seconds to widths in pixels
-      const float PixelsPerSecond =
-        FullWidth /
-        ((RangeScaleOption == RANGE_SCALE_Relative) ? MaxAnimationLength : AnimationLengths[a]);
-
-      UI::PushID(a);
-
-      if(ShowUnusableRegions)
-      {
-        UI::Button("L", AnimationRanges[a][0] * PixelsPerSecond);
-        UI::SameLine(0, 0);
-      }
-
-      UI::PushWidth(AnimationRanges[a][1] * PixelsPerSecond);
-      UI::SliderFloat("Playhead", &PlayHead, 0, 1);
-      UI::PopWidth();
-
-      if(ShowUnusableRegions)
-      {
-        UI::SameLine(0, 0);
-        UI::Button("R", AnimationRanges[a][2] * PixelsPerSecond);
-      }
-
-      UI::PopID();
-    }
-    UI::PopColor();
   }
   UI::EndChildWindow();
 }

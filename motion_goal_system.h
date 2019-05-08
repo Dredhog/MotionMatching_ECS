@@ -40,7 +40,7 @@ struct mm_input_controller
   DO_FUNC(mm_input_controller, InputController, InputControllers)                                  \
   DO_FUNC(mm_controller_data*, MMController, MMControllers)                                        \
   DO_FUNC(Anim::skeleton*, Skeleton, Skeletons)                                                    \
-  DO_FUNC(float, GlobalPlayTime, GlobalPlayTimes)                                                  \
+  DO_FUNC(float, AnimPlayerTime, AnimPlayerTimes)                                      \
   DO_FUNC(mm_frame_info, LastMatchedGoal, LastMatchedGoals)                                        \
   DO_FUNC(transform, LastMatchedTransform, LastMatchedTransforms)                                  \
   DO_FUNC(mm_frame_info, MirroredAnimGoal, MirroredAnimGoals)                                      \
@@ -113,7 +113,7 @@ SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
   *MMEntityData->MirroredAnimGoal     = {};
   *MMEntityData->AnimGoal             = {};
   *MMEntityData->LastMatchedTransform = IdentityTransform();
-  *MMEntityData->GlobalPlayTime       = 0;
+  *MMEntityData->AnimPlayerTime       = 0;
 }
 
 inline void
@@ -708,11 +708,11 @@ ApplyRootMotion(entity* InOutEntities, trajectory* Trajectories,
 }
 
 inline void
-AdvanceGlobalPlayTimes(float* InOutGlobalPlayTimes, int32_t Count, float dt)
+AdvanceAnimPlayerTimes(float* InOutAnimPlayerTimes, int32_t Count, float dt)
 {
   for(int i = 0; i < Count; i++)
   {
-    InOutGlobalPlayTimes[i] += dt;
+    InOutAnimPlayerTimes[i] += dt;
   }
 }
 

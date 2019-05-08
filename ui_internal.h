@@ -654,22 +654,26 @@ CloseInactivePopups()
 void
 Init(gui_context* Context, game_state* GameState)
 {
-  Context->Style.Colors[UI::COLOR_Border]           = { 0.1f, 0.1f, 0.1f, 0.5f };
-  Context->Style.Colors[UI::COLOR_ComboNormal]      = { 0.35f, 0.35f, 0.35f, 1 };
-  Context->Style.Colors[UI::COLOR_ButtonNormal]     = { 0.4f, 0.4f, 0.4f, 1 };
-  Context->Style.Colors[UI::COLOR_ButtonHovered]    = { 0.5f, 0.5f, 0.5f, 1 };
-  Context->Style.Colors[UI::COLOR_ButtonPressed]    = { 0.3f, 0.3f, 0.3f, 1 };
-  Context->Style.Colors[UI::COLOR_HeaderNormal]     = { 0.2f, 0.35f, 0.55f, 1 };
-  Context->Style.Colors[UI::COLOR_HeaderHovered]    = { 0.3f, 0.5f, 0.7f, 1 };
-  Context->Style.Colors[UI::COLOR_HeaderPressed]    = { 0.1f, 0.3f, 0.5f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxNormal]   = { 0.4f, 0.4f, 0.4f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxHovered]  = { 0.5f, 0.5f, 0.5f, 1 };
-  Context->Style.Colors[UI::COLOR_CheckboxPressed]  = { 0.7f, 0.7f, 0.7f, 1 };
-  Context->Style.Colors[UI::COLOR_ScrollbarBox]     = { 0.3f, 0.3f, 0.5f, 0.5f };
-  Context->Style.Colors[UI::COLOR_ScrollbarDrag]    = { 0.2f, 0.2f, 0.4f, 0.5f };
-  Context->Style.Colors[UI::COLOR_WindowBackground] = { 0.2f, 0.25f, 0.25f, 0.85f };
-  Context->Style.Colors[UI::COLOR_WindowBorder]     = { 0.4f, 0.4f, 0.4f, 0.5f };
-  Context->Style.Colors[UI::COLOR_Text]             = { 1.0f, 1.0f, 1.0f, 1 };
+  Context->Style.Colors[UI::COLOR_Border]               = { 0.1f, 0.1f, 0.1f, 0.5f };
+  Context->Style.Colors[UI::COLOR_ComboNormal]          = { 0.35f, 0.35f, 0.35f, 1 };
+  Context->Style.Colors[UI::COLOR_ButtonNormal]         = { 0.4f, 0.4f, 0.4f, 1 };
+  Context->Style.Colors[UI::COLOR_ButtonHovered]        = { 0.5f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_ButtonPressed]        = { 0.3f, 0.3f, 0.3f, 1 };
+  Context->Style.Colors[UI::COLOR_HeaderNormal]         = { 0.2f, 0.35f, 0.55f, 1 };
+  Context->Style.Colors[UI::COLOR_HeaderHovered]        = { 0.3f, 0.5f, 0.7f, 1 };
+  Context->Style.Colors[UI::COLOR_HeaderPressed]        = { 0.1f, 0.3f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxNormal]       = { 0.4f, 0.4f, 0.4f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxHovered]      = { 0.5f, 0.5f, 0.5f, 1 };
+  Context->Style.Colors[UI::COLOR_CheckboxPressed]      = { 0.7f, 0.7f, 0.7f, 1 };
+  Context->Style.Colors[UI::COLOR_ScrollbarBox]         = { 0.3f, 0.3f, 0.5f, 0.5f };
+  Context->Style.Colors[UI::COLOR_ScrollbarDragNormal]  = { 0.2f, 0.2f, 0.4f, 0.5f };
+  Context->Style.Colors[UI::COLOR_ScrollbarDragPressed] = { 0.25f, 0.25f, 0.45f, 0.5f };
+  Context->Style.Colors[UI::COLOR_SliderBox]            = { 0.3f, 0.3f, 0.5f, 0.5f };
+  Context->Style.Colors[UI::COLOR_SliderDragNormal]     = { 0.2f, 0.2f, 0.4f, 0.5f };
+  Context->Style.Colors[UI::COLOR_SliderDragPressed]    = { 0.25f, 0.25f, 0.45f, 0.5f };
+  Context->Style.Colors[UI::COLOR_WindowBackground]     = { 0.2f, 0.25f, 0.25f, 0.85f };
+  Context->Style.Colors[UI::COLOR_WindowBorder]         = { 0.4f, 0.4f, 0.4f, 0.5f };
+  Context->Style.Colors[UI::COLOR_Text]                 = { 1.0f, 1.0f, 1.0f, 1 };
 
   Context->Style.Vars[UI::VAR_WindowPaddingX]  = 7;
   Context->Style.Vars[UI::VAR_WindowPaddingY]  = 7;
@@ -686,12 +690,11 @@ Init(gui_context* Context, game_state* GameState)
 #if 0
   Context->Style.Vars[UI::VAR_FontSize] = (float)GameState->Font.SizedFonts[0].Size;
 #else
-	int32_t FontHeight;
+  int32_t FontHeight;
   Text::GetTextSize(&GameState->Font, "TestString", NULL, &FontHeight);
   Context->Style.Vars[UI::VAR_FontSize] = (float)FontHeight;
-  //assert(LabelHeight == Context->Style.Vars[UI::VAR_FontSize]);
+  // assert(LabelHeight == Context->Style.Vars[UI::VAR_FontSize]);
 #endif
-
 
   Context->InitChecksum = CONTEXT_CHECKSUM;
   Context->Font         = &GameState->Font;
