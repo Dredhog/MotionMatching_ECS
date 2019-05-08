@@ -52,8 +52,8 @@ struct mm_input_controller
 #define GENERATE_MM_DATA_POINTER_FIELDS(Type, SingularName, PluralName) Type * const SingularName;
 #define GENERATE_MM_DATA_SRC_TO_DEST_ASSIGNMENT(Type, SingularName, PluralName) *Dest  PLACE_TOKEN(->)  SingularName = *Src PLACE_TOKEN(->) SingularName;
 #define GENERATE_MM_DATA_TEMP_COPIES(Type, SingularName, PluralName) Type Temp##SingularName = *A PLACE_TOKEN(->) SingularName;
-#define GENERATE_MM_DATA_ASSIGNMENT_A_TO_B(Type, SingularName, PluralName) *B  PLACE_TOKEN(->)  SingularName = *A PLACE_TOKEN(->) SingularName;
 #define GENERATE_MM_DATA_ASSIGNMENT_B_TO_A(Type, SingularName, PluralName) *A  PLACE_TOKEN(->)  SingularName = *B PLACE_TOKEN(->) SingularName;
+#define GENERATE_MM_DATA_ASSIGNMENT_TEMP_TO_B(Type, SingularName, PluralName) *B  PLACE_TOKEN(->)  SingularName = Temp##SingularName;
 #define GENERATE_MM_DATA_INIT_FIELDS(Type, SingularName, PluralName) PLACE_TOKEN(.) SingularName = PLACE_TOKEN(&) MMEntityData->PluralName[MMDataIndex],
 
 struct mm_entity_data
@@ -78,7 +78,7 @@ SwapMMEntityData(mm_aos_entity_data* A, mm_aos_entity_data* B)
 {
   FOR_ALL_NAMES(GENERATE_MM_DATA_TEMP_COPIES);
   FOR_ALL_NAMES(GENERATE_MM_DATA_ASSIGNMENT_B_TO_A);
-  FOR_ALL_NAMES(GENERATE_MM_DATA_ASSIGNMENT_A_TO_B);
+  FOR_ALL_NAMES(GENERATE_MM_DATA_ASSIGNMENT_TEMP_TO_B);
 }
 
 inline mm_aos_entity_data
@@ -194,6 +194,51 @@ IsSplineAtIndexValid(int32_t Index, const spline_system* SplineSystem)
   return false;
 }
 
+inline bool
+ShouldSwap(int LeftIndex, int RightIndex, const mm_entity_data* MMData,
+           const spline_system* SplineSystem)
+{
+  if(MMData->MMControllerRIDs[LeftIndex].Value > 0) // Left has controller
+  {
+    if(MMData->MMControllerRIDs[RightIndex].Value > 0) // Right has controller
+    {
+      if(!MMData->FollowSpline[LeftIndex]) // left is input controlled
+      {
+        return false;
+      }
+      else // Left is spline controlled
+      {
+        if(!MMData->FollowSpline[RightIndex]) // Right is input controlled
+        {
+          return true;
+        }
+        else // Both are spline controlled
+        {
+          if(IsSplineAtIndexValid(MMData->SplineStates[LeftIndex].SplineIndex,
+                                  SplineSystem)) // Left has valid spline
+          {
+            return false;
+          }
+          else // Left has invalid spline
+          {
+            if(IsSplineAtIndexValid(MMData->SplineStates[RightIndex].SplineIndex,
+                                    SplineSystem)) // Right has valid spline
+            {
+              return true;
+            }
+            else
+            {
+              return false;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+  return true;
+}
+
 inline void
 SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectoryControlledStart,
                         int32_t* OutTrajectoryControlledCount, mm_entity_data* MMEntityData,
@@ -204,15 +249,9 @@ SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectory
     int SmallestIndex = i;
     for(int j = i + 1; j < MMEntityData->Count; j++)
     {
-      if(MMEntityData->MMControllerRIDs[j].Value > 0)
+      if(ShouldSwap(SmallestIndex, j, MMEntityData, Splines))
       {
-        if(MMEntityData->MMControllerRIDs[SmallestIndex].Value <= 0 ||
-           (MMEntityData->FollowSpline[SmallestIndex] &&
-            IsSplineAtIndexValid(MMEntityData->SplineStates[SmallestIndex].SplineIndex, Splines) &&
-            !MMEntityData->FollowSpline[j]))
-        {
-          SmallestIndex = j;
-        }
+        SmallestIndex = j;
       }
     }
     if(SmallestIndex != i)
@@ -220,12 +259,11 @@ SortMMEntityDataByUsage(int32_t* OutInputControlledCount, int32_t* OutTrajectory
       mm_aos_entity_data A = GetAOSMMDataAtIndex(i, MMEntityData);
       mm_aos_entity_data B = GetAOSMMDataAtIndex(SmallestIndex, MMEntityData);
       SwapMMEntityData(&A, &B);
-      continue;
     }
   }
+
   *OutInputControlledCount      = 0;
   *OutTrajectoryControlledCount = 0;
-  *OutTrajectoryControlledStart = 0;
   for(int i = 0; i < MMEntityData->Count; i++)
   {
     if(MMEntityData->MMControllerRIDs[i].Value > 0)
@@ -481,6 +519,22 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
 #endif
     }
 #endif
+  }
+}
+
+inline void
+AsserSplineIndicesAndClampWaypointIndices(spline_follow_state* SplineStates, int32_t Count,
+                                          const movement_spline* Splines, int32_t DebugSplineCount)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    int SplineIndex = SplineStates[i].SplineIndex;
+
+    assert(0 <= SplineIndex && SplineIndex < DebugSplineCount);
+    assert(Splines[SplineIndex].Waypoints.Count > 0);
+
+    SplineStates[i].NextWaypointIndex =
+      ClampInt32InIn(0, SplineStates[i].NextWaypointIndex, Splines[SplineIndex].Waypoints.Count - 1);
   }
 }
 
@@ -746,7 +800,7 @@ CopyMMAnimDataToAnimationPlayers(entity* OutEntities, const blend_stack* BlendSt
   for(int e = 0; e < Count; e++)
   {
     Anim::animation_controller* C = OutEntities[EntityIndices[e]].AnimController;
-		C->BlendFunc = BlendStackBlendFunc;
+    C->BlendFunc                  = BlendStackBlendFunc;
     C->GlobalTimeSec              = GlobalPlayTimes[e];
     for(int i = 0; i < ANIM_CONTROLLER_MAX_ANIM_COUNT; i++)
     {
@@ -756,12 +810,12 @@ CopyMMAnimDataToAnimationPlayers(entity* OutEntities, const blend_stack* BlendSt
 
     for(int a = 0; a < C->AnimStateCount; a++)
     {
-      const blend_in_info BlendInfo  = BlendStacks[e][a];
-      C->Animations[a]               = BlendInfo.Animation;
-      C->States[a].StartTimeSec      = BlendInfo.GlobalAnimStartTime;
-      C->States[a].Mirror            = BlendInfo.Mirror;
-      C->States[a].Loop              = BlendInfo.Loop;
-      C->States[a].PlaybackRateSec   = 1.0f;
+      const blend_in_info BlendInfo = BlendStacks[e][a];
+      C->Animations[a]              = BlendInfo.Animation;
+      C->States[a].StartTimeSec     = BlendInfo.GlobalAnimStartTime;
+      C->States[a].Mirror           = BlendInfo.Mirror;
+      C->States[a].Loop             = BlendInfo.Loop;
+      C->States[a].PlaybackRateSec  = 1.0f;
     }
   }
 }

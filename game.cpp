@@ -175,15 +175,18 @@ AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, transform Transf
 
 // Note(Lukas): Currently should not be used as no references are actually added
 void
-RemoveAnimationReferences(Resource::resource_manager* Resources,
-                          Anim::animation_controller* Controller)
+RemoveReferencesAndResetAnimPlayer(Resource::resource_manager* Resources,
+                                   Anim::animation_controller* Controller)
 {
   for(int i = 0; i < Controller->AnimStateCount; i++)
   {
     Resources->Animations.RemoveReference(Controller->AnimationIDs[i]);
     Controller->AnimationIDs[i] = {};
-    Controller->Animations[i] = {};
+    Controller->Animations[i]   = {};
+    Controller->States[i]       = {};
   }
+  Controller->AnimStateCount = 0;
+  Controller->BlendFunc = NULL;
 }
 
 void
@@ -204,7 +207,7 @@ RemoveAnimationPlayerComponent(game_state* GameState, Resource::resource_manager
   }
   else
   {
-    RemoveAnimationReferences(&GameState->Resources, Entity->AnimController);
+    RemoveReferencesAndResetAnimPlayer(&GameState->Resources, Entity->AnimController);
   }
   Entity->AnimController = NULL;
 }

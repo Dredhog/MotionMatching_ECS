@@ -156,8 +156,8 @@ void     DrawSkeleton(const Anim::skeleton* Skeleton, const mat4* HierarchicalMo
 
 void AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, transform Transform);
 bool DeleteEntity(game_state* GameState, Resource::resource_manager* Resources, int32_t Index);
-void RemoveAnimationReferences(Resource::resource_manager* Resources,
-                               Anim::animation_controller* Controller);
+void RemoveReferencesAndResetAnimPlayer(Resource::resource_manager* Resources,
+                                        Anim::animation_controller* Controller);
 void RemoveAnimationPlayerComponent(game_state* GameState, Resource::resource_manager* Resources,
                                     int32_t EntityIndex);
 bool GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityIndex);

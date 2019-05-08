@@ -1315,14 +1315,14 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 if(MMEntityData.Count < MM_CONTROLLER_MAX_COUNT &&
                    UI::Button("Add Matched Animation Controller"))
                 {
+                  RemoveReferencesAndResetAnimPlayer(Resources, SelectedEntity->AnimController);
+
                   MMEntityData.Count++;
                   mm_aos_entity_data MMControllerData =
                     GetAOSMMDataAtIndex(MMEntityData.Count - 1, &MMEntityData);
 
                   SetDefaultMMControllerFileds(&MMControllerData);
-                  MMEntityData.EntityIndices[MMEntityData.Count - 1] = SelectedEntityIndex;
-
-                  RemoveAnimationReferences(Resources, SelectedEntity->AnimController);
+                  *MMControllerData.EntityIndex = SelectedEntityIndex;
                 }
               }
               else
@@ -1407,6 +1407,10 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                     {
                       UI::Combo("Follow Spline", &MMControllerData.SplineState->SplineIndex,
                                 (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
+                      UI::Checkbox("Loop Back To Start", &MMControllerData.SplineState->Loop);
+                      UI::Checkbox("Following Positive Direction",
+                                   &MMControllerData.SplineState->MovingInPositive);
+
                       UI::TreePop();
                     }
                   }

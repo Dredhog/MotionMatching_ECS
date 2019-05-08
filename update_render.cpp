@@ -222,7 +222,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                            &MMEntityData.MMControllers[0], &MMEntityData.InputControllers[0],
                            &MMEntityData.EntityIndices[0], InputControlledCount, Entities, Input,
                            CameraForward);
-    // TODO(Lukas) make sure that all motion spline indices are valid by prevention or correction
+    AsserSplineIndicesAndClampWaypointIndices(&MMEntityData
+                                                 .SplineStates[FirstSplineControlledIndex],
+                                              SplineControlledCount, SplineSystem.Splines.Elements,
+                                              SplineSystem.Splines.Count);
     GenerateGoalsFromSplines(TempStack, &MMEntityData.AnimGoals[FirstSplineControlledIndex],
                              &MMEntityData.MirroredAnimGoals[FirstSplineControlledIndex],
                              &MMEntityData.Trajectories[FirstSplineControlledIndex],
