@@ -331,6 +331,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           PlaybackInfo.MirrorInfo = &(*MMEntity.MMController)->Params.DynamicParams.MirrorInfo;
           Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc, &PlaybackInfo);
         }
+        else
+        {
+          assert(Controller->BlendFunc == NULL);
+          Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+        }
       }
       else
       {

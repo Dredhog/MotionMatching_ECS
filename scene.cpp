@@ -196,6 +196,9 @@ ImportScene(game_state* GameState, const char* Path)
   GameState->Resources.WipeAllTextureData();
   GameState->Resources.WipeAllMaterialData();
   GameState->Resources.WipeAllMMControllerData();
+	
+	//Clear MMData
+	GameState->MMEntityData.Count = 0;
 
   RegisterDebugModels(GameState);
   for(int i = 0; i < Scene->ModelCount; i++)
