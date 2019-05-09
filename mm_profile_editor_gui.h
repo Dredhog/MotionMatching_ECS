@@ -316,7 +316,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
             i--;
           }
           else // NOTE(Lukas) this branch is only expected to be taken if the path array changes
-               // behind our back e.g. when reloading the scen
+               // behind our back e.g. when reloading the scene
           {
             UI::NewLine();
           }

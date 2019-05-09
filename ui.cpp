@@ -170,7 +170,16 @@ UI::EndFrame()
   g.LatestClipRectIndex = 0;
 }
 
-// TODO(Lukas) For debuggig use only (REMOVE)
+bool
+UI::IsItemActive()
+{
+  gui_context& g            = *GetContext();
+  gui_window&  Window       = *GetCurrentWindow();
+  bool         LastIsActive = g.ActiveID == Window.LastItemID;
+  return LastIsActive;
+}
+
+// TODO(Lukas) For debuggig use only (REMOVE LATER)
 uint32_t
 UI::GetActiveID()
 {
@@ -184,6 +193,7 @@ UI::GetHotID()
   gui_context& g = *GetContext();
   return g.HotID;
 }
+//-------------------------------------------
 
 void
 UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue, bool Vertical)
@@ -208,7 +218,7 @@ UI::SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
 
   rect SliderRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
   AddSize(Size);
-  if(!TestIfVisible(SliderRect))
+  if(!TestIfVisibleAndStoreID(SliderRect, ID))
   {
     return;
   }
@@ -260,7 +270,7 @@ UI::SliderRange(const void* IDPtr, float* LeftRange, float* RightRange, float Mi
   // DrawBox(BoundingRect.MinP, BoundingRect.GetSize(), _GetGUIColor(ScrollbarBox),
   //_GetGUIColor(ScrollbarBox));
   AddSize(Size);
-  if(!TestIfVisible(BoundingRect))
+  if(!TestIfVisibleAndStoreID(BoundingRect, ID))
   {
     return;
   }
@@ -303,7 +313,7 @@ UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxVa
 
   rect SliderRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
   AddSize(Size);
-  if(!TestIfVisible(SliderRect))
+  if(!TestIfVisibleAndStoreID(SliderRect, ID))
   {
     return;
   }
@@ -669,7 +679,7 @@ UI::Combo(const char* Label, int* CurrentItem, const void* Data, int ItemCount,
   const rect  PopupBB     = NewRect({ ButtonBB.MinP.X, ButtonBB.MaxP.Y },
                                { ButtonBB.MaxP.X, ButtonBB.MaxP.Y + PopupHeight });
 
-  if(!TestIfVisible(ButtonBB))
+  if(!TestIfVisibleAndStoreID(ButtonBB, ID))
   {
     AddSize(ButtonBB.GetSize());
     UI::SameLine();
@@ -774,7 +784,7 @@ UI::Button(const char* Label, float Width)
   const rect& Rect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
 
   AddSize(Size);
-  if(!TestIfVisible(Rect))
+  if(!TestIfVisibleAndStoreID(Rect, ID))
   {
     return false;
   }
@@ -813,7 +823,7 @@ UI::Checkbox(const char* Label, bool* Toggle)
               vec3{ LabelSize.X + 2 * g.Style.Vars[UI::VAR_InternalSpacing], 0 });
 
   AddSize(HitRegionBB.GetSize());
-  if(!TestIfVisible(HitRegionBB))
+  if(!TestIfVisibleAndStoreID(HitRegionBB, ID))
   {
     return;
   }
@@ -1654,7 +1664,8 @@ _MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f
 }
 
 bool
-UI::SelectSphere(vec3* Position, float Radius, vec4 Color, bool PerspectiveInvariant)
+UI::SelectSphere(vec3* Position, float Radius, vec4 Color, bool PerspectiveInvariant,
+                 bool DrawSphere)
 {
   gui_context& g = *GetContext();
 
@@ -1698,7 +1709,10 @@ UI::SelectSphere(vec3* Position, float Radius, vec4 Color, bool PerspectiveInvar
     ClosestActiveT = -FLT_MAX;
   }
 
-  Debug::PushWireframeSphere(*Position, Radius, Color);
+	if(DrawSphere)
+	{
+    Debug::PushWireframeSphere(*Position, Radius, Color);
+  }
 
   return Result;
 }

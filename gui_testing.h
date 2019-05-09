@@ -58,7 +58,7 @@ TestGui(game_state* GameState, const game_input* Input)
   static bool s_ShowMotionMatchingWindow         = false;
   static bool s_ShowMMDebugSettingsWindow        = false;
 
-  UI::BeginWindow("Editor Window", { 1200, 50 }, { 700, 600 });
+  UI::BeginWindow("Editor Window", { 1200, 20 }, { 650, 550 });
   {
     {
       // char TempBuffer[32];
@@ -89,8 +89,8 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Motion Matching Debug", &s_ShowMMDebugSettingsWindow);
     UI::SameLine(220);
     UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
-		UI::SameLine(400);
-    UI::Checkbox("Motion Matching Timelines", &s_ShowMotionMatchingTimelineWindow);
+    UI::SameLine(400);
+    UI::Checkbox("Debug Timeline", &s_ShowMotionMatchingTimelineWindow);
 
     EntityGUI(GameState, s_ShowEntityTools);
     MaterialGUI(GameState, s_ShowMaterialEditor);
@@ -227,7 +227,7 @@ TestGui(game_state* GameState, const game_input* Input)
 
                   const float* EventColor = &TIMER_UI_COLOR_TABLE[CurrentEvent.NameTableIndex][0];
                   UI::PushColor(UI::COLOR_ButtonNormal,
-                                     vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
+                                vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
                   {
                     float DummyWidth = EventLeft - CurrentHorizontalPosition;
                     UI::Dummy(EventLeft - CurrentHorizontalPosition);
@@ -397,7 +397,7 @@ TestGui(game_state* GameState, const game_input* Input)
             {
               const float* EventColor = &TIMER_UI_COLOR_TABLE[Chunk->Header.ArchetypeIndex][0];
               UI::PushColor(UI::COLOR_ButtonNormal,
-                                 vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
+                            vec4{ EventColor[0], EventColor[1], EventColor[2], 1 });
               if(UI::Button(TempBuffer, ChunkWidthInPixels))
               {
                 SelectedChunkIndex = ChunkIndex;
@@ -514,6 +514,8 @@ TestGui(game_state* GameState, const game_input* Input)
   {
     UI::BeginWindow("Physics Window", { 150, 50 }, { 500, 380 });
     {
+      UI::Checkbox("Update Physics Subsystem", &GameState->UpdatePhysics);
+
       physics_params&   Params   = GameState->Physics.Params;
       physics_switches& Switches = GameState->Physics.Switches;
       UI::Checkbox("Simulating Dynamics", &Switches.SimulateDynamics);
@@ -614,34 +616,35 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::EndWindow();
   }
 
-	if(s_ShowMotionMatchingTimelineWindow)
+  if(s_ShowMotionMatchingTimelineWindow)
   {
-    int32_t SelectedEntityIndex = GameState->SelectedEntityIndex;
-    mm_entity_data* MMEntityData            = &GameState->MMEntityData;
+    int32_t         SelectedEntityIndex = GameState->SelectedEntityIndex;
+    mm_entity_data* MMEntityData        = &GameState->MMEntityData;
 
-    UI::BeginWindow("MM Animation Visualizer", { 300, 600 }, { 1500, 400 });
+    UI::BeginWindow("MM Animation Visualizer", { 250, 820 }, { 1500, 250 });
 
     int32_t MMEntityIndex;
     if((MMEntityIndex = GetEntityMMDataIndex(SelectedEntityIndex, MMEntityData)) != -1)
-		{
-			mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, MMEntityData);
-			if(*MMEntity.MMController)
-			{
-        MMTimelineWindow(*MMEntity.BlendStack, MMEntity.AnimPlayerTime, *MMEntity.MMController, Input);
+    {
+      mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, MMEntityData);
+      if(*MMEntity.MMController)
+      {
+        MMTimelineWindow(*MMEntity.BlendStack, MMEntity.AnimPlayerTime, *MMEntity.MMController,
+                         Input);
       }
     }
     UI::EndWindow();
   }
   if(s_ShowMotionMatchingWindow)
   {
-    UI::BeginWindow("Motion Matching", { 100, 20 }, { 750, 700 });
+    UI::BeginWindow("Motion Matching", { 60, 20 }, { 750, 700 });
     MMControllerEditorGUI(&GameState->MMEditor, GameState->TemporaryMemStack,
                           &GameState->Resources);
     UI::EndWindow();
   }
   if(s_ShowMMDebugSettingsWindow)
   {
-    UI::BeginWindow("Matching Debug Settings", { 800, 20 }, { 700, 700 });
+    UI::BeginWindow("Matching Debug Settings", { 840, 20 }, { 320, 450 });
 
     mm_debug_settings& MMDebug = GameState->MMDebug;
     UI::Text("Debug Display");
@@ -1140,7 +1143,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
     GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
   }
 
-	UI::SameLine();
+  UI::SameLine();
   entity* SelectedEntity = {};
   GetSelectedEntity(GameState, &SelectedEntity);
   if(UI::Button("Delete Entity"))
@@ -1571,10 +1574,10 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
     }
     // Loop over
     int DeleteSplineIndex = -1;
-		UI::PushID("Spline");
+    UI::PushID("Spline");
     for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
     {
-			UI::PushID(i);
+      UI::PushID(i);
       UI::Text("Spline");
       UI::SameLine();
       if(UI::Button("Delete"))
@@ -1607,21 +1610,21 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
           UI::PopColor();
         }
       }
-			UI::PopID();
+      UI::PopID();
     }
-		UI::PopID();
+    UI::PopID();
     if(DeleteSplineIndex != -1)
     {
       GameState->SplineSystem.Splines.Remove(DeleteSplineIndex);
     }
     int CurrentSplineIndex  = GameState->SplineSystem.SelectedSplineIndex;
     int DeleteWaypointIndex = -1;
-		UI::PushID("Waypoint");
+    UI::PushID("Waypoint");
     for(int i = 0; CurrentSplineIndex != -1 &&
                    i < GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Count;
         i++)
     {
-			UI::PushID(i);
+      UI::PushID(i);
       UI::Text("Waypoint");
       UI::SameLine();
       if(UI::Button("Delete"))
@@ -1648,7 +1651,7 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
           UI::PopColor();
         }
       }
-			UI::PopID();
+      UI::PopID();
     }
     UI::PopID();
     if(DeleteWaypointIndex != -1)

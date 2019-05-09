@@ -29,7 +29,7 @@ bool IsWindowHoverable(const gui_window* Window);
 bool IsHovered(const rect& BB, ui_id ID);
 
 void AddSize(const vec3& Size);
-bool TestIfVisible(const rect& Rect);
+bool AddItem(const rect& Rect, const ui_id* ID);
 
 bool IsPopupOpen();
 void ClosePopup(ui_id ID);
@@ -171,6 +171,7 @@ struct gui_window
   vec3  PreviousLinePos; // The cursor's position in screen space if it stayed on the same line
   vec3  MaxPos;          // Position in screen space of the furthest the contents went last frame
   float IndentX; // The offset from the left of the window in screen space to start a new line
+  ui_id LastItemID; // The ID of the item which was just run
 
   // Used for finding the cursor's position on the next line when there are several items of
   // different heights on the current line
@@ -561,6 +562,17 @@ TestIfVisible(const rect& Rect)
   gui_context& g        = *GetContext();
   rect         ClipRect = g.ClipRectStack.Peek();
   return Rect.Intersects(ClipRect);
+}
+
+bool
+TestIfVisibleAndStoreID(const rect& Rect, const ui_id& ID)
+{
+  gui_window&  Window = *GetCurrentWindow();
+  Window.LastItemID   = ID;
+  if(!TestIfVisible(Rect))
+    return false;
+
+  return true;
 }
 
 vec3

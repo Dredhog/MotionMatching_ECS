@@ -169,6 +169,29 @@ GetEntityMMDataIndex(int32_t EntityIndex, const mm_entity_data* MMEntityData)
   return MMDataIndex;
 }
 
+inline void
+ClearAnimationData(blend_stack* BlendStacks, int32_t* EntityIndices, int32_t Count,
+                   entity* Entities, int32_t DebugEntityCount)
+{
+  for(int i = 0; i < Count; i++)
+  {
+    int EntityIndex = EntityIndices[i];
+    assert(0 <= EntityIndex && EntityIndex < DebugEntityCount);
+    BlendStacks[i].Clear();
+
+    // Clear out anim plaer
+    Anim::animation_controller* AnimPlayer = Entities[EntityIndex].AnimController;
+    AnimPlayer->BlendFunc                  = NULL;
+    for(int a = 0; a < AnimPlayer->AnimStateCount; a++)
+		{
+      assert(AnimPlayer->AnimationIDs[a].Value == 0);
+      AnimPlayer->Animations[a] = NULL;
+      AnimPlayer->States[a]     = {};
+    }
+    AnimPlayer->AnimStateCount = 0;
+  }
+}
+
 void DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityIndices, int32_t Count,
                         const entity* Entities, const mm_info_debug_settings* MMInfoDebug,
                         vec3 BoneColor = { 1, 0, 1 }, vec3 TrajectoryColor = { 0, 0, 1 },

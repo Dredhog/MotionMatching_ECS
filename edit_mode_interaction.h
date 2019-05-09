@@ -91,31 +91,18 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
     UI::MoveGizmo(WaypointPositionPtr);
   }
 
-  // Waypoint debug visualizaiton
-  for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
+	for(int i = 0 ; i < GameState->SplineSystem.Splines.Count;i++)
   {
-    waypoint PreviousWaypoint = {};
     for(int j = 0; j < GameState->SplineSystem.Splines[i].Waypoints.Count; j++)
     {
       waypoint CurrentWaypoint = GameState->SplineSystem.Splines[i].Waypoints[j];
-			if(j > 0)
-			{
-        Debug::PushLine(PreviousWaypoint.Position, CurrentWaypoint.Position);
-      }
-      vec4 WaypointColor = { 1, 0, 0, 1 };
-      if(GameState->SplineSystem.SelectedSplineIndex == i && GameState->SplineSystem.SelectedWaypointIndex == j)
-			{
-        WaypointColor = { 0, 0, 1, 1 };
-      }
-      if(UI::SelectSphere(&CurrentWaypoint.Position, 0.1f, WaypointColor))
-			{
+      if(UI::SelectSphere(&CurrentWaypoint.Position, 0.1f))
+      {
         GameState->SplineSystem.SelectedSplineIndex   = i;
         GameState->SplineSystem.SelectedWaypointIndex = j;
       }
-      PreviousWaypoint = CurrentWaypoint;
     }
   }
-
 
   // Entity creation
   if(GameState->IsEntityCreationMode && Input->MouseLeft.EndedDown && Input->MouseLeft.Changed &&

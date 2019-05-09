@@ -82,6 +82,7 @@ struct game_state
 
   bool UseHotReloading;
   bool UpdatePathList;
+	bool UpdatePhysics;
 
   // Models
   rid SphereModelID;

@@ -82,8 +82,7 @@ MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_d
     *AnimPlayerTime = LastSavedTime;
   }
 
-
-  // Definin what will be used from mm_controller_data
+  // Defining what will be used from mm_controller_data
   const array_handle<Anim::animation*>    Animations = MMController->Animations.GetArrayHandle();
   const array_handle<mm_frame_info_range> AnimInfoRanges =
     MMController->AnimFrameInfoRanges.GetArrayHandle();
@@ -96,7 +95,7 @@ MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_d
   {
     assert(Animations[i]);
     assert(AnimInfoRanges[i].StartTimeInAnim >= 0);
-    assert(AnimInfoRanges[i].Start < AnimInfoRanges[i].End);
+    //assert(AnimInfoRanges[i].Start < AnimInfoRanges[i].End);
   }
 
   static int  OrderByOption = 0;
@@ -135,8 +134,7 @@ MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_d
   }
 
   // TIMELINE CHILD WINDOW
-  UI::BeginChildWindow("Controller Animation Timeline",
-                       { UI::GetAvailableWidth() /*- 10 * (1 + sinf(*AnimPlayerTime))*/, 200 });
+  UI::BeginChildWindow("Controller Animation Timeline", { UI::GetAvailableWidth(), 200 });
   {
     const float FullWidth = UI::GetAvailableWidth();
     if(TimelineEditorMode == TIMELINE_EDITOR_MODE_RuntimeAnalysis)
@@ -183,7 +181,7 @@ MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_d
           RightSliderLimit =
             AnimInfoRanges[a].StartTimeInAnim +
             float(AnimInfoRanges[a].End - AnimInfoRanges[a].Start) / InfoSamplingFrequency;
-          assert(LeftSliderLimit < RightSliderLimit);
+          //assert(LeftSliderLimit < RightSliderLimit);
           AnimSliderWidth = (RightSliderLimit - LeftSliderLimit) * PixelsPerSecond;
           UI::Dummy(LeftSliderLimit * PixelsPerSecond, 0);
 					UI::SameLine(0,0);
@@ -192,10 +190,16 @@ MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_d
         if(BlendStackIndices[a] == BlendStack.Count - 1)
           UI::PushColor(UI::COLOR_SliderDragNormal, { 1, 0, 1, 1 });
 
-        UI::PushWidth(AnimSliderWidth);
-        float NewPlayheadTime = AnimationPlayheads[a];
-        UI::SliderFloat("Playhead", &NewPlayheadTime, LeftSliderLimit, RightSliderLimit);
-        UI::PopWidth();
+        bool IsSliderWidgetActive = false;
+        float NewPlayheadTime      = AnimationPlayheads[a];
+        if(AnimSliderWidth > UI::GetStyle()->Vars[UI::VAR_DragMinSize])
+        {
+          UI::PushWidth(AnimSliderWidth);
+          UI::SliderFloat(" ", &NewPlayheadTime, LeftSliderLimit, RightSliderLimit);
+          UI::PopWidth();
+          IsSliderWidgetActive = UI::IsItemActive();
+        }
+
 
         if(BlendStackIndices[a] == BlendStack.Count - 1)
           UI::PopColor();
@@ -211,8 +215,7 @@ MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_d
 
         UI::PopID();
 
-        bool SliderIsActive = false;
-        if(SliderIsActive)
+        if(IsSliderWidgetActive)
         {
           bool MirrorModified =
             (BlendStackIndices[a] != -1) ? BlendStack[BlendStackIndices[a]].Mirror : false;

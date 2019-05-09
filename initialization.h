@@ -453,6 +453,7 @@ SetGameStatePODFields(game_state* GameState)
 
   GameState->UseHotReloading = true;
   GameState->UpdatePathList  = false;
+  GameState->UpdatePhysics   = false;
 
   GameState->DrawCubemap              = true;
   GameState->DrawDebugSpheres         = true;

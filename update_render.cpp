@@ -130,6 +130,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       UpdateCamera(&GameState->Camera, Input);
 #endif
 
+	if(GameState->UpdatePhysics)
   {
     TIMED_BLOCK(Physics);
 
@@ -194,37 +195,39 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Runtime motion matching start to finish
   {
-    mm_entity_data&             MMEntityData  = GameState->MMEntityData;
-    mm_debug_settings&          MMDebug       = GameState->MMDebug;
-    spline_system&              SplineSystem  = GameState->SplineSystem;
-    entity*                     Entities      = GameState->Entities;
-    Resource::resource_manager& Resources     = GameState->Resources;
-    vec3                        CameraForward = GameState->Camera.Forward;
-    Memory::stack_allocator*    TempStack     = GameState->TemporaryMemStack;
+    mm_entity_data&             MMEntityData     = GameState->MMEntityData;
+    mm_debug_settings&          MMDebug          = GameState->MMDebug;
+    spline_system&              SplineSystem     = GameState->SplineSystem;
+    entity*                     Entities         = GameState->Entities;
+    int32_t                     DebugEntityCount = GameState->EntityCount;
+    Resource::resource_manager& Resources        = GameState->Resources;
+    vec3                        CameraForward    = GameState->Camera.Forward;
+    Memory::stack_allocator*    TempStack        = GameState->TemporaryMemStack;
 
-    int InputControlledCount;
+    int ActiveInputControlledCount;
     int FirstSplineControlledIndex;
-    int SplineControlledCount;
-    SortMMEntityDataByUsage(&InputControlledCount, &FirstSplineControlledIndex,
-                            &SplineControlledCount, &MMEntityData, &SplineSystem);
-    int TotalControllerCount = InputControlledCount + SplineControlledCount;
+    int ActiveSplineControlledCount;
+    SortMMEntityDataByUsage(&ActiveInputControlledCount, &FirstSplineControlledIndex,
+                            &ActiveSplineControlledCount, &MMEntityData, &SplineSystem);
+    int ActiveControllerCount = ActiveInputControlledCount + ActiveSplineControlledCount;
 
     FetchMMControllerDataPointers(&Resources, MMEntityData.MMControllers,
-                                  MMEntityData.MMControllerRIDs, TotalControllerCount);
+                                  MMEntityData.MMControllerRIDs, ActiveControllerCount);
     FetchSkeletonPointers(MMEntityData.Skeletons, MMEntityData.EntityIndices, Entities,
-                          TotalControllerCount);
-    FetchAnimationPointers(&Resources, MMEntityData.MMControllers, TotalControllerCount);
+                          ActiveControllerCount);
+    FetchAnimationPointers(&Resources, MMEntityData.MMControllers, ActiveControllerCount);
     PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
-                                   MMEntityData.MMControllers, TotalControllerCount);
+                                   MMEntityData.MMControllers, ActiveControllerCount);
     GenerateGoalsFromInput(&MMEntityData.AnimGoals[0], &MMEntityData.MirroredAnimGoals[0],
                            &MMEntityData.Trajectories[0], TempStack, &MMEntityData.BlendStacks[0],
                            &MMEntityData.AnimPlayerTimes[0], &MMEntityData.Skeletons[0],
                            &MMEntityData.MMControllers[0], &MMEntityData.InputControllers[0],
-                           &MMEntityData.EntityIndices[0], InputControlledCount, Entities, Input,
-                           CameraForward);
+                           &MMEntityData.EntityIndices[0], ActiveInputControlledCount, Entities,
+                           Input, CameraForward);
     AsserSplineIndicesAndClampWaypointIndices(&MMEntityData
                                                  .SplineStates[FirstSplineControlledIndex],
-                                              SplineControlledCount, SplineSystem.Splines.Elements,
+                                              ActiveSplineControlledCount,
+                                              SplineSystem.Splines.Elements,
                                               SplineSystem.Splines.Count);
     GenerateGoalsFromSplines(TempStack, &MMEntityData.AnimGoals[FirstSplineControlledIndex],
                              &MMEntityData.MirroredAnimGoals[FirstSplineControlledIndex],
@@ -235,34 +238,61 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                              &MMEntityData.AnimPlayerTimes[FirstSplineControlledIndex],
                              &MMEntityData.Skeletons[FirstSplineControlledIndex],
                              &MMEntityData.EntityIndices[FirstSplineControlledIndex],
-                             SplineControlledCount, SplineSystem.Splines.Elements,
+                             ActiveSplineControlledCount, SplineSystem.Splines.Elements,
                              SplineSystem.Splines.Count, Entities);
     MotionMatchGoals(MMEntityData.BlendStacks, MMEntityData.LastMatchedGoals,
                      MMEntityData.LastMatchedTransforms, MMEntityData.AnimGoals,
                      MMEntityData.MirroredAnimGoals, MMEntityData.MMControllers,
-                     MMEntityData.AnimPlayerTimes, MMEntityData.EntityIndices, TotalControllerCount,
-                     Entities);
-    DrawGoalFrameInfos(MMEntityData.AnimGoals, MMEntityData.EntityIndices, TotalControllerCount,
+                     MMEntityData.AnimPlayerTimes, MMEntityData.EntityIndices,
+                     ActiveControllerCount, Entities);
+    DrawGoalFrameInfos(MMEntityData.AnimGoals, MMEntityData.EntityIndices, ActiveControllerCount,
                        Entities, &MMDebug.CurrentGoal);
     DrawGoalFrameInfos(MMEntityData.LastMatchedGoals, MMEntityData.BlendStacks,
-                       MMEntityData.LastMatchedTransforms, TotalControllerCount,
+                       MMEntityData.LastMatchedTransforms, ActiveControllerCount,
                        &MMDebug.MatchedGoal, { 1, 1, 0 }, { 0, 1, 0 }, { 1, 0, 0 });
     ComputeLocalRootMotion(MMEntityData.OutDeltaRootMotions, MMEntityData.Skeletons,
                            MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
-                           TotalControllerCount, Input->dt);
+                           ActiveControllerCount, Input->dt);
     if(MMDebug.ApplyRootMotion)
     {
       ApplyRootMotion(Entities, MMEntityData.Trajectories, MMEntityData.OutDeltaRootMotions,
-                      MMEntityData.EntityIndices, TotalControllerCount);
+                      MMEntityData.EntityIndices, ActiveControllerCount);
     }
     /*DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
-                            TotalControllerCount, Entities);*/
-    AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, TotalControllerCount, Input->dt);
+                            ActiveControllerCount, Entities);*/
     RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
-                                         TotalControllerCount);
+                                         ActiveControllerCount);
     CopyMMAnimDataToAnimationPlayers(Entities, MMEntityData.BlendStacks,
                                      MMEntityData.AnimPlayerTimes, MMEntityData.EntityIndices,
-                                     TotalControllerCount);
+                                     ActiveControllerCount);
+    AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, ActiveControllerCount, Input->dt);
+
+    int FirstInactiveControllerIndex = ActiveControllerCount;
+    int InactiveControllerCount      = MMEntityData.Count - ActiveControllerCount;
+    ClearAnimationData(&MMEntityData.BlendStacks[FirstInactiveControllerIndex],
+                       &MMEntityData.EntityIndices[FirstInactiveControllerIndex],
+                       InactiveControllerCount, Entities, DebugEntityCount);
+  }
+
+  // Waypoint debug visualizaiton
+  for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
+  {
+    waypoint PreviousWaypoint = {};
+    for(int j = 0; j < GameState->SplineSystem.Splines[i].Waypoints.Count; j++)
+    {
+      waypoint CurrentWaypoint = GameState->SplineSystem.Splines[i].Waypoints[j];
+			if(j > 0)
+			{
+        Debug::PushLine(PreviousWaypoint.Position, CurrentWaypoint.Position);
+      }
+      vec4 WaypointColor = { 1, 0, 0, 1 };
+      if(GameState->SplineSystem.SelectedSplineIndex == i && GameState->SplineSystem.SelectedWaypointIndex == j)
+			{
+        WaypointColor = { 0, 0, 1, 1 };
+      }
+      Debug::PushWireframeSphere(CurrentWaypoint.Position, 0.1f, WaypointColor);
+      PreviousWaypoint = CurrentWaypoint;
+    }
   }
 
   if(GameState->R.ShowLightPosition)
