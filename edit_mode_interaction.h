@@ -67,9 +67,10 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
 
   {
     entity* SelectedEntity = {};
-    if(GetSelectedEntity(GameState, &SelectedEntity))
+    if(GetSelectedEntity(GameState, &SelectedEntity) && GameState->DrawGizmos)
     {
       UI::MoveGizmo(&SelectedEntity->Transform, false);
+      GameState->MMTimelineState.SavedTransform = SelectedEntity->Transform;
       // Testing translation manipulator (second argument is used coordinate axes: world/local)
       // UI::MoveGizmo(&TestTransform.T);
       // UI::TranslationPlane(&TestTransform, 1, true, parametric_plane Optioal);

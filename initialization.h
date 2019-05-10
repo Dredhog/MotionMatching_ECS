@@ -457,14 +457,13 @@ SetGameStatePODFields(game_state* GameState)
 
   GameState->DrawCubemap              = true;
   GameState->DrawDebugSpheres         = true;
-  GameState->DrawTimeline             = true;
   GameState->DrawGizmos               = true;
   GameState->DrawDebugLines           = true;
   GameState->DrawDebugSpheres         = true;
   GameState->DrawActorMeshes          = true;
   GameState->DrawActorSkeletons       = true;
   GameState->DrawShadowCascadeVolumes = false;
-  GameState->BoneSphereRadius         = 0.01f;
+  GameState->BoneSphereRadius         = 0.005f;
 
   GameState->PreviewAnimationsInRootSpace = false;
   GameState->IsAnimationPlaying = false;
@@ -476,12 +475,14 @@ SetGameStatePODFields(game_state* GameState)
 
   // Motion Matching
   {
-    GameState->MMDebug                       = {};
-    GameState->MMDebug.TrajectoryDuration    = 1;
-    GameState->MMDebug.TrajectorySampleCount = 20;
-    GameState->MMDebug.ApplyRootMotion       = true;
-    GameState->MMDebug.ShowRootTrajectories  = false;
-    GameState->MMDebug.ShowHipTrajectories   = false;
+    GameState->MMTimelineState                          = {};
+    GameState->MMTimelineState.SavedControllerHash      = 0;
+    GameState->MMDebug                                  = {};
+    GameState->MMDebug.TrajectoryDuration               = 1;
+    GameState->MMDebug.TrajectorySampleCount            = 20;
+    GameState->MMDebug.ApplyRootMotion                  = true;
+    GameState->MMDebug.ShowRootTrajectories             = false;
+    GameState->MMDebug.ShowHipTrajectories              = false;
 
     GameState->MMDebug.CurrentGoal.ShowTrajectory       = true;
     GameState->MMDebug.MatchedGoal.ShowTrajectory       = true;

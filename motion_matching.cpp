@@ -44,11 +44,12 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
     const float PositionSamplingPeriod =
       Params.DynamicParams.TrajectoryTimeHorizon / float(MM_POINT_COUNT);
 
-    const int32_t NewFrameInfoCount =
-      int32_t(MaxFloat(0.0f, ((AnimDuration - Params.DynamicParams.TrajectoryTimeHorizon) *
-                              Params.FixedParams.MetadataSamplingFrequency)));
-
     const float AnimStartSkipTime = Anim->SampleTimes[0] + FrameDuration * float(g_SkipFrameCount);
+
+    const int32_t NewFrameInfoCount = int32_t(
+      MaxFloat(0.0f,
+               ((AnimDuration - AnimStartSkipTime - Params.DynamicParams.TrajectoryTimeHorizon) *
+                Params.FixedParams.MetadataSamplingFrequency)));
 
     mm_frame_info_range CurrentRange = {};
     {
@@ -95,7 +96,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
         transform SampleHipTransform =
           Anim::LinearAnimationBoneSample(Anim, HipIndex,
                                           CurrentSampleTime + (p + 1) * PositionSamplingPeriod);
-        // TODO(Lukas) this should use the root bone if animation has a dedicated one
+        // NOTE(Lukas) this should use the root bone if animation has a dedicated one
         mat4 CurrentHipMatrix = TransformToMat4(SampleHipTransform);
         vec3 SamplePoint      = SampleHipTransform.T;
         vec4 SamplePointHomog = { SamplePoint, 1 };
@@ -175,6 +176,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
 					break;
         }
       }
+      // TODO(Lukas) Make sura that the bones selected are always in the mirror info stack
       assert(BoneB != -1 && "Search bone does not have a mirror");
       MMData->Params.FixedParams.MirrorBoneIndices.Push(BoneB);
     }
@@ -220,6 +222,56 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
     vec2 Diff = DirA - DirB;
     TrajDirDiffSum += Math::Dot(Diff, Diff);
   }
+
+  float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum +
+               TrajVCoef * TrajVDiffSum + TrajAngleCoef * TrajDirDiffSum;
+
+  return Cost;
+}
+
+float
+ComputeCostComponents(float* BonePCost, float* BoneVCost, float* TrajPCost, float* TrajVCost,
+                      float* TrajACost, const mm_frame_info& A, const mm_frame_info& B,
+                      float PosCoef, float VelCoef, float TrajCoef, float TrajVCoef,
+                      float TrajAngleCoef)
+{
+  float PosDiffSum = 0.0f;
+  for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
+  {
+    vec3 Diff = A.BonePs[b] - B.BonePs[b];
+    PosDiffSum += Math::Dot(Diff, Diff);
+  }
+
+  float VelDiffSum = 0.0f;
+  for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
+  {
+    vec3 VelDiff = A.BoneVs[b] - B.BoneVs[b];
+    VelDiffSum += Math::Dot(VelDiff, VelDiff);
+  }
+
+  float TrajDiffSum  = 0.0f;
+  float TrajVDiffSum = 0.0f;
+  for(int p = 0; p < MM_POINT_COUNT; p++)
+  {
+    vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
+    TrajDiffSum += Math::Dot(Diff, Diff);
+    float VDiff = A.TrajectoryVs[p] - B.TrajectoryVs[p];
+    TrajVDiffSum += VDiff * VDiff;
+  }
+
+  float TrajDirDiffSum = 0.0f;
+  for(int p = 0; p < MM_POINT_COUNT; p++)
+  {
+    vec2 DirA = { sinf(A.TrajectoryAngles[p]), cosf(A.TrajectoryAngles[p]) };
+    vec2 DirB = { sinf(B.TrajectoryAngles[p]), cosf(B.TrajectoryAngles[p]) };
+    vec2 Diff = DirA - DirB;
+    TrajDirDiffSum += Math::Dot(Diff, Diff);
+  }
+  *BonePCost = PosDiffSum * PosCoef;
+  *BoneVCost = VelDiffSum * VelCoef;
+  *TrajPCost = TrajDiffSum * TrajCoef;
+  *TrajVCost = TrajVDiffSum * TrajVCoef;
+  *TrajACost = TrajDirDiffSum * TrajAngleCoef;
 
   float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum +
                TrajVCoef * TrajVDiffSum + TrajAngleCoef * TrajDirDiffSum;

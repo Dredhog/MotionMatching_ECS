@@ -22,6 +22,18 @@ struct spline_follow_state
   bool     MovingInPositive;
 };
 
+struct mm_timeline_state
+{
+  blend_stack SavedBlendStack;
+  transform   SavedTransform;
+  float       SavedAnimPlayerTime;
+  uintptr_t   SavedControllerHash;
+
+  bool Paused;
+  bool Scrubbing;
+  bool BreakOnMatch;
+};
+
 struct mm_input_controller
 {
   float MaxSpeed;

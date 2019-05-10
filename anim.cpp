@@ -130,11 +130,11 @@ void
 Anim::UpdateController(Anim::animation_controller* Controller, float dt,
                        void BlendFunc(animation_controller*, void*), void* UserData)
 {
-  Controller->GlobalTimeSec += dt;
   if(0 < Controller->AnimStateCount)
   {
     if(BlendFunc == NULL)
     {
+      Controller->GlobalTimeSec += dt;
       SampleAtGlobalTime(Controller, 0, 0);
     }
     else

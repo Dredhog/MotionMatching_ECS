@@ -195,14 +195,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   // Runtime motion matching start to finish
   {
-    mm_entity_data&             MMEntityData     = GameState->MMEntityData;
-    mm_debug_settings&          MMDebug          = GameState->MMDebug;
-    spline_system&              SplineSystem     = GameState->SplineSystem;
-    entity*                     Entities         = GameState->Entities;
-    int32_t                     DebugEntityCount = GameState->EntityCount;
-    Resource::resource_manager& Resources        = GameState->Resources;
-    vec3                        CameraForward    = GameState->Camera.Forward;
-    Memory::stack_allocator*    TempStack        = GameState->TemporaryMemStack;
+    mm_entity_data&             MMEntityData        = GameState->MMEntityData;
+    mm_debug_settings&          MMDebug             = GameState->MMDebug;
+    spline_system&              SplineSystem        = GameState->SplineSystem;
+    entity*                     Entities            = GameState->Entities;
+    int32_t                     DebugEntityCount    = GameState->EntityCount;
+    Resource::resource_manager& Resources           = GameState->Resources;
+    vec3                        CameraForward       = GameState->Camera.Forward;
+    Memory::stack_allocator*    TempStack           = GameState->TemporaryMemStack;
+    mm_timeline_state*          MMTimelineState     = &GameState->MMTimelineState;
+    int32_t                     SelectedEntityIndex = GameState->SelectedEntityIndex;
 
     int ActiveInputControlledCount;
     int FirstSplineControlledIndex;
@@ -260,12 +262,14 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
     /*DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
                             ActiveControllerCount, Entities);*/
+    AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, ActiveControllerCount, Input->dt);
     RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                          ActiveControllerCount);
+    OverwriteSelectedMMEntity(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
+                              MMTimelineState, Entities, &MMEntityData, SelectedEntityIndex);
     CopyMMAnimDataToAnimationPlayers(Entities, MMEntityData.BlendStacks,
                                      MMEntityData.AnimPlayerTimes, MMEntityData.EntityIndices,
                                      ActiveControllerCount);
-    AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, ActiveControllerCount, Input->dt);
 
     int FirstInactiveControllerIndex = ActiveControllerCount;
     int InactiveControllerCount      = MMEntityData.Count - ActiveControllerCount;
@@ -339,7 +343,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
       else
       {
-				//NOTE(Lukas): this prevents a null dereference after removing a blend state
         assert(Controller->BlendFunc == NULL);
         Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
       }
@@ -351,12 +354,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         const Anim::animation*       CurrentAnimation = Controller->Animations[a];
         const Anim::animation_state* CurrentState     = &Controller->States[a];
 
-        if(!CurrentAnimation)
-        {
-          continue;
-        }
+        assert(CurrentAnimation);
 
-        if(GameState->MMDebug.ShowRootTrajectories || GameState->MMDebug.ShowHipTrajectories)
+          if(GameState->MMDebug.ShowRootTrajectories || GameState->MMDebug.ShowHipTrajectories)
         {
           const float AnimDuration = Anim::GetAnimDuration(CurrentAnimation);
 

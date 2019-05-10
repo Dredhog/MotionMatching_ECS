@@ -629,8 +629,10 @@ TestGui(game_state* GameState, const game_input* Input)
       mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, MMEntityData);
       if(*MMEntity.MMController)
       {
-        MMTimelineWindow(*MMEntity.BlendStack, MMEntity.AnimPlayerTime, *MMEntity.MMController,
-                         Input);
+        MMTimelineWindow(&GameState->MMTimelineState, *MMEntity.BlendStack,
+                         *MMEntity.AnimPlayerTime, *MMEntity.AnimGoal, *MMEntity.MMController,
+                         GameState->Entities[SelectedEntityIndex].Transform, Input,
+                         &GameState->Font);
       }
     }
     UI::EndWindow();

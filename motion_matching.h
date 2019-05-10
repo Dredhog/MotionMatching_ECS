@@ -116,6 +116,15 @@ ResetMMParamsToDefault(mm_params* Params)
 mm_controller_data* PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
                                             array_handle<Anim::animation*> Animations,
                                             const mm_params&               Params);
+// Cost function used for search
+float ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float VelCoef,
+                  float TrajCoef, float TrajVCoef, float TrajAngleCoef);
+
+float ComputeCostComponents(float* BonePComp, float* BoneVComp, float* TrajPComp, float* TrajVComp,
+                            float* TrajAComp, const mm_frame_info& A, const mm_frame_info& B,
+                            float PosCoef, float VelCoef, float TrajCoef, float TrajVCoef,
+                            float TrajAngleCoef);
+
 // Runtime API
 float MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,
                   const mm_controller_data* MMData, mm_frame_info Goal);

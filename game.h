@@ -74,8 +74,7 @@ struct game_state
   // Motion Matching
   mm_profile_editor MMEditor;
   mm_debug_settings MMDebug;
-  // blend_stack        PlayerBlendStack;
-  // float              PlayerSpeed;
+  mm_timeline_state MMTimelineState;
 
   spline_system SplineSystem;
   mm_entity_data    MMEntityData;
@@ -114,7 +113,6 @@ struct game_state
   bool  DrawDebugLines;
   bool  DrawDebugSpheres;
   bool  DrawShadowCascadeVolumes;
-  bool  DrawTimeline;
   bool  DrawActorMeshes;
   bool  DrawActorSkeletons;
   bool  IsAnimationPlaying;

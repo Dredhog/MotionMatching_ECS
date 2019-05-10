@@ -212,6 +212,11 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
           TempRemovalStackHandle.Remove(RemovedPairIndex);
           MMEditor->ActiveProfile.DynamicParams.MirrorInfo.PairCount = TempRemovalStackHandle.Count;
         }
+        if(UI::Button("Regenerate Pairs", LeftOfComboButtonWidth))
+        {
+          GenerateSkeletonMirroringInfo(&MMEditor->ActiveProfile.DynamicParams.MirrorInfo,
+                                        &MMEditor->ActiveProfile.FixedParams.Skeleton);
+        }
         UI::TreePop();
       }
     }

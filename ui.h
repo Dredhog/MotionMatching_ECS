@@ -94,6 +94,7 @@ namespace UI
   // void  TextBox(const char* Text, Width = 0);
   // void  Box(vec2 Size = {});
   float GetWindowWidth();
+  float GetUsableWindowWidth();
   float GetAvailableWidth();
   void  SameLine(float PosX = 0, float SpacingWidth = -1);
   void  NewLine();
@@ -123,6 +124,16 @@ namespace UI
 
   void SliderFloat(const char* Label, float* Value, float MinValue, float MaxValue,
                    bool Vertical = false);
+	struct colored_range
+  {
+    float   Start;
+    float   End;
+    int32_t ID;
+    vec4    Color;
+  };
+  void AnimInfoSlider(const char* Label, float* Values, const vec4* DragColors, int32_t ValueCount,
+                      float MinValue, float MaxValue, const colored_range* Ranges,
+                      int32_t RangeCount, float ClampDistance, float ClampOrigin);
   void SliderRange(const void* ID, float* LeftRange, float* RightRange, float MinValue,
                    float MaxValue);
   void DragFloat3(const char* Label, float Value[3], float MinValue, float MaxValue,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "motion_matching.h"
+#include "motion_goal_system.h"
 #include "ui.h"
 
 #define ORDER_BY(DO_FUNC)                                                                          \
@@ -57,62 +58,100 @@ static const char* g_TimelineEditorModeOptions[TIMELINE_EDITOR_MODE_EnumCount] =
 #define ANIM_DESCRIPTION_NEXT_RANGE
 #define ANIM_DESCRIPTION_
 
-struct used_range
+bool
+AreBlendStackTopsEqual(const blend_stack& A, const blend_stack& B)
 {
-  float StartTime;
-  float EndTime;
-};
+  if(A.Count < 1 || B.Count < 1)
+  {
+    return false;
+  }
+  blend_in_info InfoA = A.Peek();
+  blend_in_info InfoB = B.Peek();
+  if(memcmp(&InfoA, &InfoB, sizeof(blend_in_info)) != 0)
+  {
+    return false;
+  }
+  return true;
+}
 
 void
-MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_data* MMController, const game_input* Input)
+OverwriteSelectedMMEntity(blend_stack* BlendStacks, float* AnimPlayerTimes,
+                          mm_timeline_state* MMTimelineState, entity* Entities,
+                          mm_entity_data* MMEntityData, int32_t SelectedEntityIndex)
 {
-  assert(AnimPlayerTime);
-  assert(MMController);
-
-	static bool Paused = false;
-  static float LastSavedTime;
-  if(Input->Space.EndedDown && Input->Space.Changed)
-	{
-    Paused = !Paused;
-    LastSavedTime = *AnimPlayerTime;
+  int MMEntityIndex = GetEntityMMDataIndex(SelectedEntityIndex, MMEntityData);
+  if(MMEntityIndex == -1)
+  {
+    MMTimelineState->Paused    = false;
+    MMTimelineState->Scrubbing = false;
   }
+  else
+  {
+    bool HasNewMatchOccured =
+      !AreBlendStackTopsEqual(BlendStacks[MMEntityIndex], MMTimelineState->SavedBlendStack);
+    if(HasNewMatchOccured && MMTimelineState->BreakOnMatch && !MMTimelineState->Paused &&
+       !MMTimelineState->Scrubbing)
+    {
+      MMTimelineState->SavedBlendStack     = BlendStacks[MMEntityIndex];
+      MMTimelineState->SavedAnimPlayerTime = AnimPlayerTimes[MMEntityIndex];
+      MMTimelineState->SavedTransform      = Entities[SelectedEntityIndex].Transform;
+      MMTimelineState->Paused              = true;
+    }
 
-	if(Paused)
-	{
-    *AnimPlayerTime = LastSavedTime;
+    if(MMTimelineState->Scrubbing || MMTimelineState->Paused)
+    {
+      BlendStacks[MMEntityIndex]              = MMTimelineState->SavedBlendStack;
+      Entities[SelectedEntityIndex].Transform = MMTimelineState->SavedTransform;
+      AnimPlayerTimes[MMEntityIndex]          = MMTimelineState->SavedAnimPlayerTime;
+    }
+  }
+}
+
+void
+MMTimelineWindow(mm_timeline_state* TimelineState, blend_stack BlendStack,
+                 const float AnimPlayerTime, mm_frame_info AnimGoal,
+                 mm_controller_data* MMController, transform Transform, const game_input* Input,
+                 const Text::font* UIFont)
+{
+  assert(MMController);
+  if(TimelineState->SavedControllerHash != (uintptr_t)MMController)
+  {
+    TimelineState->SavedControllerHash = (uintptr_t)MMController;
+    TimelineState->SavedBlendStack     = (TimelineState->Paused) ? blend_stack{} : BlendStack;
+    TimelineState->Scrubbing           = false;
+    TimelineState->SavedAnimPlayerTime = AnimPlayerTime;
+    TimelineState->SavedTransform      = Transform;
   }
 
   // Defining what will be used from mm_controller_data
   const array_handle<Anim::animation*>    Animations = MMController->Animations.GetArrayHandle();
   const array_handle<mm_frame_info_range> AnimInfoRanges =
     MMController->AnimFrameInfoRanges.GetArrayHandle();
-  float InfoSamplingFrequency = MMController->Params.FixedParams.MetadataSamplingFrequency;
-  // const used_range** AnimUsedRanges;
-  // const int32_t*     AnimRangeCounts;
+  const array_handle<path> AnimPaths = MMController->Params.AnimPaths.GetArrayHandle();
+  float InfoSamplingFrequency        = MMController->Params.FixedParams.MetadataSamplingFrequency;
 
   assert(Animations.Count == AnimInfoRanges.Count);
   for(int i = 0; i < Animations.Count; i++)
   {
     assert(Animations[i]);
     assert(AnimInfoRanges[i].StartTimeInAnim >= 0);
-    //assert(AnimInfoRanges[i].Start < AnimInfoRanges[i].End);
+    // assert(AnimInfoRanges[i].Start < AnimInfoRanges[i].End);
   }
 
-  static int  OrderByOption = 0;
-  static int  RangeScaleOption;
-  static bool ShowAvoidedRegions  = true;
+  static int OrderByOption = 0;
+  static int RangeScaleOption;
+  // static bool ShowAvoidedRegions  = true;
+  static bool ShowAnimationNames  = false;
   static bool ShowUnusableRegions = true;
   static int  TimelineEditorMode  = 0;
 
-  float   AnimationLengths[MM_ANIM_CAPACITY];
-  float   AnimationPlayheads[MM_ANIM_CAPACITY];
-  int32_t BlendStackIndices[MM_ANIM_CAPACITY];
+  float AnimDurations[MM_ANIM_CAPACITY];
   // TOP LINE VISUALIZATION PARAMETER UI
   {
     UI::PushWidth(200);
-    UI::Combo("Editor Mode", &TimelineEditorMode, COMBO_ARRAY_ARG(g_TimelineEditorModeOptions));
-    TimelineEditorMode = ClampInt32InIn(0, TimelineEditorMode, TIMELINE_EDITOR_MODE_EnumCount - 1);
-    UI::SameLine();
+    // UI::Combo("Editor Mode", &TimelineEditorMode, COMBO_ARRAY_ARG(g_TimelineEditorModeOptions));
+    // TimelineEditorMode = ClampInt32InIn(0, TimelineEditorMode, TIMELINE_EDITOR_MODE_EnumCount -
+    // 1);  UI::SameLine();
     // UI::Combo("Order By", &OrderByOption, COMBO_ARRAY_ARG(g_OrderByOptions));
     // UI::SameLine(300);
     RangeScaleOption = ClampInt32InIn(0, RangeScaleOption, RANGE_SCALE_EnumCount - 1);
@@ -120,120 +159,211 @@ MMTimelineWindow(blend_stack& BlendStack, float* AnimPlayerTime, mm_controller_d
     UI::PopWidth();
     RangeScaleOption = ClampInt32InIn(0, RangeScaleOption, RANGE_SCALE_EnumCount - 1);
     UI::SameLine();
-    UI::Checkbox("Show avoided regions", &ShowAvoidedRegions);
+    // UI::Checkbox("Show avoided regions", &ShowAvoidedRegions);
+    // UI::SameLine();
+    UI::Checkbox("Show animation names", &ShowAnimationNames);
     UI::SameLine();
     UI::Checkbox("Show unusable regions", &ShowUnusableRegions);
-    // RANGE WIDGET TEST
-#if 0
-    {
-      static float LeftRange  = 1;
-      static float RightRange = 2;
-      UI::SliderRange("Range Widget Test", &LeftRange, &RightRange, 0, 3);
-    }
-#endif
+    UI::SameLine();
+    UI::Checkbox("Break On Match", &TimelineState->BreakOnMatch);
   }
 
+  bool Scrubbing = false;
   // TIMELINE CHILD WINDOW
-  UI::BeginChildWindow("Controller Animation Timeline", { UI::GetAvailableWidth(), 200 });
+  UI::BeginChildWindow("Controller Animation Timeline", { UI::GetAvailableWidth(), 150 });
   {
     const float FullWidth = UI::GetAvailableWidth();
     if(TimelineEditorMode == TIMELINE_EDITOR_MODE_RuntimeAnalysis)
     {
       // Computing lengths and frame info counts and finding max length
-      float MaxAnimationLength = 0;
+      float MaxAnimDuration   = 0;
+      int   MaxAnimNameLength = 0;
       for(int a = 0; a < Animations.Count; a++)
       {
-        AnimationLengths[a]  = Anim::GetAnimDuration(Animations[a]);
-        MaxAnimationLength   = MaxFloat(MaxAnimationLength, AnimationLengths[a]);
-        BlendStackIndices[a] = -1;
-        AnimationPlayheads[a] = 0;
-        for(int b = 0; b < BlendStack.Count; b++)
-        {
-          if(BlendStack[b].Animation == Animations[a])
-          {
-            AnimationPlayheads[a] = *AnimPlayerTime - BlendStack[b].GlobalAnimStartTime;
-            BlendStackIndices[a]  = b;
-            break;
-          }
-        }
+        AnimDurations[a] = Anim::GetAnimDuration(Animations[a]);
+        MaxAnimDuration  = MaxFloat(MaxAnimDuration, AnimDurations[a]);
+        MaxAnimNameLength =
+          MaxInt32(MaxAnimNameLength, int32_t(strlen(strrchr(AnimPaths[a].Name, '/') + 1)));
       }
+      // NOTE(Lukas) the 2 here is arbitrary
+      float AnimNameWidth = UIFont->AverageSymbolWidth * (MaxAnimNameLength + 1);
 
       // Drawing the ranges
       UI::PushColor(UI::COLOR_SliderDragPressed, { 1, 1, 0, 1 });
-      UI::PushColor(UI::COLOR_SliderDragNormal, { 0, 1, 0, 1 });
-      UI::PushVar(UI::VAR_DragMinSize, 4);
+      float MinDragSize = 4;
+      UI::PushVar(UI::VAR_DragMinSize, MinDragSize);
       for(int a = 0; a < Animations.Count; a++)
       {
+        const float TotalWidthAfterText =
+          MaxFloat(MinDragSize, ShowAnimationNames ? (FullWidth - AnimNameWidth) : FullWidth);
+
         // Finding scale factor to transform ranges in seconds to widths in pixels
         const float PixelsPerSecond =
-          FullWidth /
-          ((RangeScaleOption == RANGE_SCALE_Relative) ? MaxAnimationLength : AnimationLengths[a]);
+          TotalWidthAfterText /
+          ((RangeScaleOption == RANGE_SCALE_Relative) ? MaxAnimDuration : AnimDurations[a]);
 
-        UI::PushID(a);
+        const float AnimStartTime = Animations[a]->SampleTimes[0];
+        const float AnimEndTime   = Animations[a]->SampleTimes[Animations[a]->KeyframeCount - 1];
+        const float InfoRangeStartTime = AnimInfoRanges[a].StartTimeInAnim;
+        const float InfoRangeEndTime =
+          InfoRangeStartTime +
+          float(AnimInfoRanges[a].End - AnimInfoRanges[a].Start) / InfoSamplingFrequency;
 
-        float LeftSliderLimit = Animations[a]->SampleTimes[0];
-        float RightSliderLimit = Animations[a]->SampleTimes[Animations[a]->KeyframeCount - 1];
-        float AnimSliderWidth  = AnimationLengths[a] * PixelsPerSecond;
-
-        if(ShowUnusableRegions)
-        {
-          LeftSliderLimit = AnimInfoRanges[a].StartTimeInAnim;
-          RightSliderLimit =
-            AnimInfoRanges[a].StartTimeInAnim +
-            float(AnimInfoRanges[a].End - AnimInfoRanges[a].Start) / InfoSamplingFrequency;
-          //assert(LeftSliderLimit < RightSliderLimit);
-          AnimSliderWidth = (RightSliderLimit - LeftSliderLimit) * PixelsPerSecond;
-          UI::Dummy(LeftSliderLimit * PixelsPerSecond, 0);
-					UI::SameLine(0,0);
-        }
-
-        if(BlendStackIndices[a] == BlendStack.Count - 1)
-          UI::PushColor(UI::COLOR_SliderDragNormal, { 1, 0, 1, 1 });
-
-        bool IsSliderWidgetActive = false;
-        float NewPlayheadTime      = AnimationPlayheads[a];
-        if(AnimSliderWidth > UI::GetStyle()->Vars[UI::VAR_DragMinSize])
-        {
-          UI::PushWidth(AnimSliderWidth);
-          UI::SliderFloat(" ", &NewPlayheadTime, LeftSliderLimit, RightSliderLimit);
-          UI::PopWidth();
-          IsSliderWidgetActive = UI::IsItemActive();
-        }
-
-
-        if(BlendStackIndices[a] == BlendStack.Count - 1)
-          UI::PopColor();
+        fixed_stack<UI::colored_range, 3> ColoredRanges = {};
 
         if(ShowUnusableRegions)
+          ColoredRanges.Push({ AnimStartTime, InfoRangeStartTime, 0, { 0.2f, 0.45f, 0.3f, 0.9f } });
+
+        ColoredRanges.Push({ InfoRangeStartTime, InfoRangeEndTime, 1, { 0.5f, 0.5f, 0.5f, 0.9f } });
+
+        if(ShowUnusableRegions)
+          ColoredRanges.Push({ InfoRangeEndTime, AnimEndTime, 0, { 0.2f, 0.5f, 0.3f, 0.9f } });
+
+        fixed_stack<float, ANIM_CONTROLLER_MAX_ANIM_COUNT>   AnimPlayheads      = {};
+        fixed_stack<vec4, ANIM_CONTROLLER_MAX_ANIM_COUNT>    AnimPlayheadColors = {};
+        fixed_stack<int32_t, ANIM_CONTROLLER_MAX_ANIM_COUNT> BlendStackIndices  = {};
+        for(int i = BlendStack.Count - 1; i >= 0; i--)
         {
-          float UnusedWidth =
-            (Animations[a]->SampleTimes[Animations[a]->KeyframeCount - 1] - RightSliderLimit) *
-            PixelsPerSecond;
-					UI::SameLine(0, 0);
-          UI::Button("U", UnusedWidth);
-        }
-
-        UI::PopID();
-
-        if(IsSliderWidgetActive)
-        {
-          bool MirrorModified =
-            (BlendStackIndices[a] != -1) ? BlendStack[BlendStackIndices[a]].Mirror : false;
-
-          BlendStack.Clear();
-          PlayAnimation(&BlendStack, Animations[a], NewPlayheadTime, *AnimPlayerTime, 0,
-                        MirrorModified, false);
-          for(int i = 0; i < MM_ANIM_CAPACITY; i++)
+          vec4 PlayheadColor = { 0, 1, 0, 1 };
+          if(BlendStack[i].Animation == Animations[a])
           {
-            AnimationPlayheads[i] = 0;
-            BlendStackIndices[i]  = -1;
+            AnimPlayheads.Push(AnimPlayerTime - BlendStack[i].GlobalAnimStartTime);
+            BlendStackIndices.Push(i);
+            if(i == BlendStack.Count - 1)
+            {
+              PlayheadColor = { 1, 0.5f, 0.3f, 1 };
+            }
+            AnimPlayheadColors.Push(PlayheadColor);
+          }
+        }
+
+        if(AnimPlayheads.Empty())
+        {
+          AnimPlayheadColors.Push({});
+          AnimPlayheads.Push(AnimStartTime);
+        }
+
+        const float LeftSliderLimit  = (ShowUnusableRegions) ? AnimStartTime : InfoRangeStartTime;
+        const float RightSliderLimit = (ShowUnusableRegions) ? AnimEndTime : InfoRangeEndTime;
+
+        const float AnimSliderWidth = (RangeScaleOption == RANGE_SCALE_Relative)
+                                        ? ((RightSliderLimit - LeftSliderLimit) * PixelsPerSecond)
+                                        : TotalWidthAfterText;
+
+        if(ShowAnimationNames)
+        {
+          UI::Text(strrchr(AnimPaths[a].Name, '/') + 1);
+          UI::SameLine(AnimNameWidth, 0);
+        }
+
+        if(AnimSliderWidth > MinDragSize && LeftSliderLimit < RightSliderLimit)
+        {
+          UI::PushID(a);
+          UI::PushWidth(AnimSliderWidth);
+          UI::AnimInfoSlider("Anim", AnimPlayheads.Elements, AnimPlayheadColors.Elements,
+                             AnimPlayheads.Count, LeftSliderLimit, RightSliderLimit,
+                             ColoredRanges.Elements, ColoredRanges.Count, 1 / InfoSamplingFrequency,
+                             InfoRangeStartTime);
+          UI::PopWidth();
+          UI::PopID();
+
+          if(UI::IsItemActive())
+          {
+            Scrubbing = true;
+            bool MirrorModified =
+              !BlendStackIndices.Empty() ? BlendStack[BlendStackIndices[0]].Mirror : false;
+
+            BlendStack.Clear();
+            PlayAnimation(&BlendStack, Animations[a], AnimPlayheads[0], AnimPlayerTime, 0,
+                          MirrorModified, false);
           }
         }
       }
-			UI::PopVar();
-      UI::PopColor();
+      UI::PopVar();
       UI::PopColor();
     }
   }
   UI::EndChildWindow();
+  if(BlendStack.Count > 1)
+  {
+    blend_in_info CandidateBlend = BlendStack.Peek();
+    blend_in_info CurrentBlend   = BlendStack[BlendStack.Count - 2];
+    int32_t       IndexInSet     = -1;
+    for(int i = 0; i < Animations.Count; i++)
+    {
+      if(Animations[i] == CandidateBlend.Animation)
+      {
+        IndexInSet = i;
+        break;
+      }
+    }
+    assert(IndexInSet != -1);
+    float CandidateLocalTime     = AnimPlayerTime - CandidateBlend.GlobalAnimStartTime;
+    float CandidateAnimStartTime = CandidateBlend.Animation->SampleTimes[0];
+    float CandidateAnimEndTime =
+      CandidateBlend.Animation->SampleTimes[CandidateBlend.Animation->KeyframeCount - 1];
+    assert(CandidateAnimStartTime <= CandidateLocalTime &&
+           CandidateLocalTime <= CandidateAnimEndTime);
+    int32_t FrameInfoIndex =
+      AnimInfoRanges[IndexInSet].Start +
+      int32_t((CandidateLocalTime - AnimInfoRanges[IndexInSet].StartTimeInAnim) /
+              InfoSamplingFrequency);
+
+    // UI::PushWidth(0.5f*UI::GetAvailableWidth())
+    const mm_dynamic_params& Params = MMController->Params.DynamicParams;
+
+    float BonePCost;
+    float BoneVCost;
+    float TrajPCost;
+    float TrajVCost;
+    float TrajACost;
+    float Cost =
+      ComputeCostComponents(&BonePCost, &BoneVCost, &TrajPCost, &TrajVCost, &TrajACost, AnimGoal,
+                            MMController->FrameInfos[FrameInfoIndex], Params.BonePCoefficient,
+                            Params.BoneVCoefficient, Params.TrajPCoefficient,
+                            Params.TrajVCoefficient, Params.TrajAngleCoefficient);
+    float FullCostWidth = 0.3f * UI::GetUsableWindowWidth() * Cost;
+    UI::Button("Cost", FullCostWidth);
+
+    float PixelsPerCost = FullCostWidth / Cost;
+
+    assert(BonePCost + BoneVCost + TrajPCost + TrajVCost + TrajACost == Cost);
+    // Show individual components
+    if(FullCostWidth > UI::GetStyle()->Vars[UI::VAR_DragMinSize])
+    {
+      fixed_stack<UI::colored_range, 5> ColoredRanges = {};
+
+      float CumulativeSum = 0;
+      ColoredRanges.Push({ CumulativeSum, CumulativeSum + BonePCost, 0, { 1, 1, 0, 0.9f } });
+      CumulativeSum += BonePCost;
+      ColoredRanges.Push({ CumulativeSum, CumulativeSum + BoneVCost, 0, { 1, 0, 1, 0.9f } });
+      CumulativeSum += BoneVCost;
+      ColoredRanges.Push({ CumulativeSum, CumulativeSum + TrajPCost, 0, { 0, 1, 0, 0.9f } });
+      CumulativeSum += TrajPCost;
+      ColoredRanges.Push({ CumulativeSum, CumulativeSum + TrajVCost, 0, { 0, 1, 1, 0.9f } });
+      CumulativeSum += TrajVCost;
+      ColoredRanges.Push({ CumulativeSum, CumulativeSum + TrajACost, 0, { 1, 0, 0, 0.9f } });
+      UI::PushWidth(FullCostWidth);
+      float DummyFloat = 0;
+      vec4  DummyColor = {};
+      UI::AnimInfoSlider("Cost Components", &DummyFloat, &DummyColor, 1, 0.0f, Cost,
+                         ColoredRanges.Elements, ColoredRanges.Count, 1, 0);
+      UI::PopWidth();
+    }
+    // UI::PopWidth();
+  }
+
+  TimelineState->SavedTransform = Transform;
+  TimelineState->Scrubbing      = Scrubbing;
+
+  if(!TimelineState->Paused || TimelineState->Scrubbing)
+  {
+    TimelineState->SavedBlendStack     = BlendStack;
+    TimelineState->SavedAnimPlayerTime = AnimPlayerTime;
+  }
+
+  if(Input->Space.EndedDown && Input->Space.Changed)
+  {
+    TimelineState->Paused = !TimelineState->Paused;
+  }
 }

@@ -289,6 +289,78 @@ UI::SliderRange(const void* IDPtr, float* LeftRange, float* RightRange, float Mi
 }
 
 void
+UI::AnimInfoSlider(const char* Label, float* Values, const vec4* DragColors, int32_t ValueCount,
+                   float MinValue, float MaxValue, const colored_range* Ranges, int32_t RangeCount,
+                   float ClampDistance, float ClampOrigin)
+{
+  assert(Label);
+  assert(MinValue < MaxValue);
+  assert(ClampDistance > FLT_EPSILON);
+
+  gui_context& g      = *GetContext();
+  gui_window&  Window = *GetCurrentWindow();
+
+  vec3  Size = Window.GetItemSize();
+  ui_id ID   = Window.GetID(Label);
+
+
+  const float ValueRange   = MaxValue - MinValue;
+  const float NormDragSize = g.Style.Vars[VAR_DragMinSize] / Size.X;
+
+  rect SliderRect = NewRect(Window.CurrentPos, Window.CurrentPos + Size);
+  AddSize(Size);
+  if(!TestIfVisibleAndStoreID(SliderRect, ID))
+  {
+    return;
+  }
+
+  for(int i = 0; i < RangeCount; i++)
+  {
+    colored_range Range = Ranges[i];
+    assert(Range.Start <= Range.End);
+    assert(MinValue <= Range.Start);
+    assert(Range.End <= MaxValue + FLT_EPSILON);
+    float StartOffsetInPixel = Size.X * ((Range.Start - MinValue) / ValueRange);
+    float WidthInPixels      = Size.X * ((Range.End - Range.Start) / ValueRange);
+    DrawBox(SliderRect.MinP + vec3{ StartOffsetInPixel, 0 }, vec3{ WidthInPixels, Size.Y },
+            Range.Color, Range.Color);
+  }
+
+  bool Held    = false;
+  bool Hovered = false;
+
+  float NormValue = ((Values[0]) - MinValue) / ValueRange;
+  rect  DragRect = SliderBehavior(ID, SliderRect, &NormValue, NormDragSize, false, &Held, &Hovered);
+  if(ValueCount > 0 )
+  {
+    if(Held)
+    {
+      Values[0] = NormValue * ValueRange + MinValue;
+      if(g.Input->LeftCtrl.EndedDown)
+      {
+        Values[0] =
+          ClampOrigin + ClampDistance * floorf(((Values[0] - ClampOrigin) / ClampDistance) + 0.5f);
+      }
+    }
+    DrawBox(DragRect.MinP, DragRect.GetSize(),
+            Held ? _GetGUIColor(SliderDragPressed) : DragColors[0],
+            _GetGUIColor(SliderDragPressed));
+    if(!Held)
+    {
+      // Draw remaining playheads
+      for(int i = 1; i < ValueCount; i++)
+      {
+        float LeftDragPosition =
+          ClampFloat(0, ((Values[i] - MinValue) / ValueRange), 1) * SliderRect.GetSize().X -
+          0.5f * DragRect.GetSize().X;
+        DrawBox(SliderRect.MinP + vec3{ LeftDragPosition, 0 }, DragRect.GetSize(),
+                Held ? _GetGUIColor(SliderDragPressed) : DragColors[i], _GetGUIColor(SliderDragPressed));
+      }
+    }
+  }
+}
+
+void
 UI::SliderInt(const char* Label, int32_t* Value, int32_t MinValue, int32_t MaxValue, bool Vertical)
 {
   assert(Label);
@@ -1203,6 +1275,12 @@ UI::GetWindowWidth()
 {
   gui_window& Window = *GetCurrentWindow();
   return Window.Size.X;
+}
+float 
+UI::GetUsableWindowWidth()
+{
+  gui_window& Window = *GetCurrentWindow();
+  return MaxFloat(0, Window.SizeNoScroll.X - 2 * Window.Padding.X);
 }
 
 float
