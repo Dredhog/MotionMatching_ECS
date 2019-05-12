@@ -116,7 +116,7 @@ SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
   InitTrajectory(MMEntityData->Trajectory);
   *MMEntityData->InputController = { .MaxSpeed      = 1.0f,
                                      .PositionBias  = 0.08f,
-                                     .DirectionBias = 0.1f,
+                                     .DirectionBias = 0.85f,
                                      .UseStrafing   = false };
 
   *MMEntityData->Skeleton             = NULL;
@@ -468,7 +468,7 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
               GoalFacing, MMControllers[e]->Params.FixedParams);
-#if 0
+#if 1
     {
       const float PositionBias    = InputControllers[e].PositionBias;
       const float DirectionBias   = InputControllers[e].DirectionBias;
@@ -480,11 +480,18 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
       vec2 DesiredLinearDisplacement =
         vec2{ DesiredVelocity.X, DesiredVelocity.Z } / SampleFrequency;
 
-      if(Math::Length(Dir) > FLT_MIN)
-      {
-        Trajectories[e].TargetAngle =
-          atan2f(DesiredLinearDisplacement.X, DesiredLinearDisplacement.Y);
+			if(InputControllers[e].UseStrafing)
+			{
+        Trajectories[e].TargetAngle = atan2f(ViewForward.X, ViewForward.Z);
       }
+      else
+      {
+        if(Math::Length(Dir) > FLT_MIN)
+        {
+          Trajectories[e].TargetAngle =
+            atan2f(DesiredLinearDisplacement.X, DesiredLinearDisplacement.Y);
+        }
+			}
 
       quat TargetRotation = Math::QuatAxisAngle({ 0, 1, 0 }, Trajectories[e].TargetAngle);
 
@@ -493,7 +500,7 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
 
       for(int i = 1; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
       {
-        float Fraction         = float(i) / float(HALF_TRAJECTORY_TRANSFORM_COUNT);
+        float Fraction         = float(i) / float(HALF_TRAJECTORY_TRANSFORM_COUNT-1);
         float OneMinusFraction = 1.0f - Fraction;
         float TranslationBlend = 1.0f - powf(OneMinusFraction, PositionBias);
         float RotationBlend    = 1.0f - powf(OneMinusFraction, DirectionBias);
@@ -507,8 +514,8 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
         TrajectoryPositions[i] = TrajectoryPositions[i - 1] + AdjustedPointDisplacement;
 
         Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].R =
-          Math::QuatLerp(Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].R,
-                         TargetRotation, RotationBlend);
+          Math::QuatLerp(Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT].R, TargetRotation,
+                         RotationBlend);
       }
 
       for(int i = 1; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
@@ -542,14 +549,16 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
             Math::MulMat4Vec4(InvEntityMatrix, { PointTransform.T.X, 0, PointTransform.T.Y, 1 })
               .XYZ;
 
-#if 0
-          quat InvEntityR = quat{ .V = -EntityTransform.R.V, .S = EntityTransform.R.S };
-          OutGoals[e].TrajectoryAngles[i] = 2 * acosf(PointTransform.R.S);
-#endif
+          vec3 LocalDirection =
+            Math::MulMat3Vec3(Math::Mat4ToMat3(InvEntityMatrix),
+                              Math::MulMat3Vec3(Math::QuatToMat3(PointTransform.R), { 0, 0, 1 }));
+          OutGoals[e].TrajectoryAngles[i] = atan2f(LocalDirection.X, LocalDirection.Z);
 
-          OutMirroredGoals[e] = OutGoals[e];
-          MirrorLongtermGoal(&OutMirroredGoals[e]);
+          OutMirroredGoals[e].TrajectoryPs[i]     = OutGoals[e].TrajectoryPs[i];
+          OutMirroredGoals[e].TrajectoryAngles[i] = OutGoals[e].TrajectoryAngles[i];
+          OutMirroredGoals[e].TrajectoryVs[i]     = OutGoals[e].TrajectoryVs[i];
         }
+        MirrorLongtermGoal(&OutMirroredGoals[e]);
       }
 #endif
     }

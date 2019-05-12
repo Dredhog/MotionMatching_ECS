@@ -3,7 +3,7 @@
 #include "motion_matching.h"
 #include "misc.h"
 
-#define HALF_TRAJECTORY_TRANSFORM_COUNT 30
+#define HALF_TRAJECTORY_TRANSFORM_COUNT 60
 #define TRAJECTORY_TRANSFORM_COUNT (2 * HALF_TRAJECTORY_TRANSFORM_COUNT)
 
 struct trajectory_transform

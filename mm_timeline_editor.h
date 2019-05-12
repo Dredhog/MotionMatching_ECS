@@ -224,14 +224,14 @@ MMTimelineWindow(mm_timeline_state* TimelineState, blend_stack BlendStack,
         fixed_stack<int32_t, ANIM_CONTROLLER_MAX_ANIM_COUNT> BlendStackIndices  = {};
         for(int i = BlendStack.Count - 1; i >= 0; i--)
         {
-          vec4 PlayheadColor = { 0, 1, 0, 1 };
+          vec4 PlayheadColor = { 1, 0.5f, 0.3f, 1 };
           if(BlendStack[i].Animation == Animations[a])
           {
             AnimPlayheads.Push(AnimPlayerTime - BlendStack[i].GlobalAnimStartTime);
             BlendStackIndices.Push(i);
             if(i == BlendStack.Count - 1)
             {
-              PlayheadColor = { 1, 0.5f, 0.3f, 1 };
+              PlayheadColor = { 0, 1, 0, 1 };
             }
             AnimPlayheadColors.Push(PlayheadColor);
           }

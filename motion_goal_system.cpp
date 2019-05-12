@@ -50,7 +50,7 @@ DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settin
   }
 }
 
-inline void
+void
 DrawTrajectory(mat4 CoordinateFrame, const trajectory* Trajectory, vec3 PastColor,
                vec3 PresentColor, vec3 FutureColor)
 {

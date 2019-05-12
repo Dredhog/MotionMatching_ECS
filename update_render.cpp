@@ -260,8 +260,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       ApplyRootMotion(Entities, MMEntityData.Trajectories, MMEntityData.OutDeltaRootMotions,
                       MMEntityData.EntityIndices, ActiveControllerCount);
     }
-    /*DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
-                            ActiveControllerCount, Entities);*/
+    DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
+                            ActiveControllerCount, Entities);
     AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, ActiveControllerCount, Input->dt);
     RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                          ActiveControllerCount);
