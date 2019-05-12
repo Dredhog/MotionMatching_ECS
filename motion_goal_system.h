@@ -465,104 +465,15 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
     float         LocalAnimTime = GetLocalSampleTime(DominantBlend.Animation, GlobalTimes[e],
                                              DominantBlend.GlobalAnimStartTime);
 
+    mat4 InvEntityMatrix = Math::InvMat4(TransformToMat4(Entities[EntityIndices[e]].Transform));
+    trajectory_update_args TrajectoryArgs =
+      { .PositionBias    = InputControllers[e].PositionBias,
+        .DirectionBias   = InputControllers[e].DirectionBias,
+        .InvEntityMatrix = InvEntityMatrix };
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
-              GoalFacing, MMControllers[e]->Params.FixedParams);
-#if 1
-    {
-      const float PositionBias    = InputControllers[e].PositionBias;
-      const float DirectionBias   = InputControllers[e].DirectionBias;
-      float       SampleFrequency = HALF_TRAJECTORY_TRANSFORM_COUNT;
-      trajectory* Trajectory      = &Trajectories[e];
-
-      vec3 DesiredVelocity = InputControllers[e].MaxSpeed * Dir;
-      // Update the trajectory transform array
-      vec2 DesiredLinearDisplacement =
-        vec2{ DesiredVelocity.X, DesiredVelocity.Z } / SampleFrequency;
-
-			if(InputControllers[e].UseStrafing)
-			{
-        Trajectories[e].TargetAngle = atan2f(ViewForward.X, ViewForward.Z);
-      }
-      else
-      {
-        if(Math::Length(Dir) > FLT_MIN)
-        {
-          Trajectories[e].TargetAngle =
-            atan2f(DesiredLinearDisplacement.X, DesiredLinearDisplacement.Y);
-        }
-			}
-
-      quat TargetRotation = Math::QuatAxisAngle({ 0, 1, 0 }, Trajectories[e].TargetAngle);
-
-      vec2 TrajectoryPositions[HALF_TRAJECTORY_TRANSFORM_COUNT];
-      TrajectoryPositions[0] = Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT].T;
-
-      for(int i = 1; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
-      {
-        float Fraction         = float(i) / float(HALF_TRAJECTORY_TRANSFORM_COUNT-1);
-        float OneMinusFraction = 1.0f - Fraction;
-        float TranslationBlend = 1.0f - powf(OneMinusFraction, PositionBias);
-        float RotationBlend    = 1.0f - powf(OneMinusFraction, DirectionBias);
-
-        vec2 TrajectoryPointDisplacement =
-          Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].T -
-          Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i - 1].T;
-        vec2 AdjustedPointDisplacement = (1 - TranslationBlend) * TrajectoryPointDisplacement +
-                                         TranslationBlend * DesiredLinearDisplacement;
-
-        TrajectoryPositions[i] = TrajectoryPositions[i - 1] + AdjustedPointDisplacement;
-
-        Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].R =
-          Math::QuatLerp(Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT].R, TargetRotation,
-                         RotationBlend);
-      }
-
-      for(int i = 1; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
-      {
-        Trajectory->Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + i].T = TrajectoryPositions[i];
-      }
-
-      // vec2 OriginalNext = Trajectory->Transforms[1].T;
-      for(int i = 0; i < HALF_TRAJECTORY_TRANSFORM_COUNT; i++)
-      {
-        Trajectory->Transforms[i] = Trajectory->Transforms[i + 1];
-      }
-
-#if 1
-      // TESTING THE NEW TRAJECTORY
-			//
-      {
-        transform EntityTransform = Entities[EntityIndices[e]].Transform;
-        mat4      InvEntityMatrix = Math::InvMat4(TransformToMat4(EntityTransform));
-
-        // Generate a goal from this array
-        for(int i = 0; i < MM_POINT_COUNT; i++)
-        {
-          int TrajectoryPointIndex =
-            int(float(i + 1) * float(HALF_TRAJECTORY_TRANSFORM_COUNT - 1) / float(MM_POINT_COUNT));
-
-          trajectory_transform PointTransform =
-            Trajectories[e].Transforms[HALF_TRAJECTORY_TRANSFORM_COUNT + TrajectoryPointIndex];
-
-          OutGoals[e].TrajectoryPs[i] =
-            Math::MulMat4Vec4(InvEntityMatrix, { PointTransform.T.X, 0, PointTransform.T.Y, 1 })
-              .XYZ;
-
-          vec3 LocalDirection =
-            Math::MulMat3Vec3(Math::Mat4ToMat3(InvEntityMatrix),
-                              Math::MulMat3Vec3(Math::QuatToMat3(PointTransform.R), { 0, 0, 1 }));
-          OutGoals[e].TrajectoryAngles[i] = atan2f(LocalDirection.X, LocalDirection.Z);
-
-          OutMirroredGoals[e].TrajectoryPs[i]     = OutGoals[e].TrajectoryPs[i];
-          OutMirroredGoals[e].TrajectoryAngles[i] = OutGoals[e].TrajectoryAngles[i];
-          OutMirroredGoals[e].TrajectoryVs[i]     = OutGoals[e].TrajectoryVs[i];
-        }
-        MirrorLongtermGoal(&OutMirroredGoals[e]);
-      }
-#endif
-    }
-#endif
+              GoalFacing, MMControllers[e]->Params.DynamicParams.TrajectoryTimeHorizon,
+              MMControllers[e]->Params.FixedParams, &TrajectoryArgs);
   }
 }
 
@@ -621,7 +532,8 @@ GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutG
 
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
-              GoalFacing, MMControllers[e]->Params.FixedParams);
+              GoalFacing, MMControllers[e]->Params.DynamicParams.TrajectoryTimeHorizon,
+              MMControllers[e]->Params.FixedParams, NULL);
 
     if(Math::Length(LocalEntityToWaypoint) < WaypointRadius)
     {
