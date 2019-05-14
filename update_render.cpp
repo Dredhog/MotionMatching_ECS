@@ -298,6 +298,29 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       PreviousWaypoint = CurrentWaypoint;
     }
   }
+	
+  //------------Performing Measurements------------
+	// Measure Ground Truth
+#if 0
+	{
+		for(int i = 0; i < LegSkidControlEntities.Count; i++)
+	}
+  // MeasureControllers
+  {
+    for(int i = 0; i < LegSkidEntities.Count; i++)
+    {
+    }
+
+    for(int i = 0; i < SplineOffsetEntities.Count; i++)
+    {
+    }
+
+    for(int i = 0; i < DirectionChangeEntities.Count.Count; i++)
+    {
+    }
+  }
+#endif
+
 
   if(GameState->R.ShowLightPosition)
   {

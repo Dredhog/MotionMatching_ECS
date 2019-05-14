@@ -162,7 +162,7 @@ inline void
 GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootVelocity,
             vec3* OutMirrorRootVelocity, Memory::stack_allocator* TempAlloc,
             const Anim::skeleton* Skeleton, const Anim::animation* Animation, float LocalAnimTime,
-            const mm_fixed_params& Params)
+            const mm_fixed_params& Params, const float Delta = 1 / 60.0f)
 {
   Memory::marker StackMarker = TempAlloc->GetMarker();
 
@@ -220,7 +220,6 @@ GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootV
   // Compute bone velocities
   vec3 RootVelocity = {};
   {
-    const float Delta = 1 / 60.0f;
 
     // Sample the most recent animation's next frame
     {

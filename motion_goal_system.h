@@ -1,6 +1,6 @@
 #pragma once
 
-#include "trajectory.h"
+#include "movement_spline.h"
 #include "motion_matching.h"
 #include "goal_gen.h"
 #include "rid.h"

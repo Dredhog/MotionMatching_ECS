@@ -21,7 +21,7 @@
 #include "dynamics.h"
 #include "motion_matching.h"
 #include "ecs_management.h"
-#include "trajectory.h"
+#include "movement_spline.h"
 #include "blend_stack.h"
 #include "motion_goal_system.h"
 

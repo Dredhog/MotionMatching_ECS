@@ -10,9 +10,12 @@
 void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
-void MiscGUI(game_state* GameState, bool& ShowLightSettings, bool& ShowDisplaySet,
-             bool& ShowCameraSettings, bool& ShowSceneSettings, bool& ShowPostProcessingSettings,
-             bool& ShowTrajectorySettings);
+void TrajectoryGUI(game_state* GameState, bool& ShowTrajectoryEditor);
+void TestGUI(game_state* GameState, bool& ShowTestGUI);
+void RenderingGUI(game_state* GameState, bool& ShowRenderingSettings, bool& ShowLightSettings,
+                  bool& ShowDisplaySet, bool& ShowCameraSettings, bool& ShowSceneSettings,
+                  bool& ShowPostProcessingSettings);
+void SceneGUI(game_state* GameState, bool& ShowSceneGUI);
 
 const char*
 PathArrayToString(const void* Data, int Index)
@@ -76,7 +79,9 @@ TestGui(game_state* GameState, const game_input* Input)
     static bool s_ShowCameraSettings         = false;
     static bool s_ShowSceneSettings          = false;
     static bool s_ShowPostProcessingSettings = false;
-    static bool s_ShowTrajectorySetting      = false;
+    static bool s_ShowTrajectoryTools        = false;
+    static bool s_ShowRenderingSettings      = false;
+    static bool s_ShowTestEditor             = false;
 
     UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
     UI::SameLine(220);
@@ -93,10 +98,18 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Debug Timeline", &s_ShowMotionMatchingTimelineWindow);
 
     EntityGUI(GameState, s_ShowEntityTools);
+    TrajectoryGUI(GameState, s_ShowTrajectoryTools);
+    TestGUI(GameState, s_ShowTestEditor);
     MaterialGUI(GameState, s_ShowMaterialEditor);
     AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
-    MiscGUI(GameState, s_ShowLightSettings, s_ShowDisplaySet, s_ShowCameraSettings,
-            s_ShowSceneSettings, s_ShowPostProcessingSettings, s_ShowTrajectorySetting);
+    RenderingGUI(GameState, s_ShowRenderingSettings, s_ShowLightSettings, s_ShowDisplaySet,
+                 s_ShowCameraSettings, s_ShowSceneSettings, s_ShowPostProcessingSettings);
+    SceneGUI(GameState, s_ShowSceneSettings);
+		{
+      char TempBuffer[32];
+      sprintf(TempBuffer, "Selected Entity Index: %d", GameState->SelectedEntityIndex);
+			UI::Text(TempBuffer);
+		}
   }
   UI::EndWindow();
 
@@ -594,6 +607,11 @@ TestGui(game_state* GameState, const game_input* Input)
         snprintf(TempBuff, sizeof(TempBuff), "delta time: %f ms", Input->dt);
         UI::Text(TempBuff);
 
+        sprintf(TempBuff, "ActiveID: %u", UI::GetActiveID());
+        UI::Text(TempBuff);
+        sprintf(TempBuff, "HotID: %u", UI::GetHotID());
+        UI::Text(TempBuff);
+
         UI::Checkbox("Show Image", &s_Checkbox0);
         if(s_Checkbox0)
         {
@@ -666,6 +684,34 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
     UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
 
+    {
+      static vec3 A          = { -1, 0, 0 };
+      static vec3 B          = {};
+      static vec3 C          = { 1, 0, 0 };
+      static vec3 D          = { 2, 0, 0 };
+      static int  PointCount = 10;
+      UI::Text("Catmull Rom Test");
+      UI::SliderInt("Spline Viz Point Count", &PointCount, 1, 30);
+      UI::DragFloat3("A", &A.X, -3, 3, 6);
+      UI::DragFloat3("B", &B.X, -3, 3, 6);
+      UI::DragFloat3("C", &C.X, -3, 3, 6);
+      UI::DragFloat3("D", &D.X, -3, 3, 6);
+
+      Debug::PushWireframeSphere(A, 0.1f, { 0, 1, 0, 0.1f });
+			Debug::PushLine(A, B, {1, 0, 0, 1});
+      Debug::PushWireframeSphere(B, 0.1f, { 0, 1, 1, 0.3f });
+      Debug::PushWireframeSphere(C, 0.1f, { 0, 0, 0, 0.7f });
+			Debug::PushLine(C, D, {1, 0, 0, 1});
+      Debug::PushWireframeSphere(D, 0.1f, { 1, 1, 0, 1 });
+
+      for(int i = 0; i < PointCount && PointCount > 1; i++)
+      {
+        float t = float(i) / float(PointCount - 1);
+
+        vec3 CatmullRomPoint = GetCatmullRomPoint(A, B, C, D, t);
+        Debug::PushWireframeSphere(CatmullRomPoint, 0.05f, { 1, 0.2f, 0.2f, 1 });
+      }
+    }
     UI::EndWindow();
   }
 #if 0
@@ -1145,13 +1191,17 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
     GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
   }
 
-  UI::SameLine();
   entity* SelectedEntity = {};
   GetSelectedEntity(GameState, &SelectedEntity);
-  if(UI::Button("Delete Entity"))
+
+	if(SelectedEntity)
   {
-    DeleteEntity(GameState, &GameState->Resources, GameState->SelectedEntityIndex);
-    GameState->SelectedEntityIndex = -1;
+    UI::SameLine();
+    if(UI::Button("Delete Entity"))
+    {
+      DeleteEntity(GameState, &GameState->Resources, GameState->SelectedEntityIndex);
+      GameState->SelectedEntityIndex = -1;
+    }
   }
 
   {
@@ -1553,13 +1603,10 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
   }
 }
 
-// TODO(Lukas) Add bit mask checkbox to the UI API
 void
-MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet,
-        bool& s_ShowCameraSettings, bool& s_ShowSceneSettings, bool& s_ShowPostProcessingSettings,
-        bool& s_ShowTrajectorySettings)
+TrajectoryGUI(game_state* GameState, bool& s_ShowTrajectoryEditor)
 {
-  if(UI::CollapsingHeader("Trajectory settings", &s_ShowTrajectorySettings))
+  if(UI::CollapsingHeader("Trajectory Editor", &s_ShowTrajectoryEditor))
   {
     if(!GameState->SplineSystem.Splines.Full())
     {
@@ -1667,215 +1714,257 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
       GameState->SplineSystem.IsWaypointPlacementMode = true;
     }
   }
-  if(UI::CollapsingHeader("Camera", &s_ShowCameraSettings))
+}
+
+// TODO(Lukas) Add bit mask checkbox to the UI API
+void
+RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowLightSettings,
+             bool& s_ShowDisplaySet, bool& s_ShowCameraSettings, bool& s_ShowSceneSettings,
+             bool& s_ShowPostProcessingSettings)
+{
+	if(UI::CollapsingHeader("Rendering Settings", &s_ShowRenderingSettings))
   {
-    UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
-    UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
-    UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane,
-                    GameState->Camera.NearClipPlane, 500);
-    UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
-  }
-  if(UI::CollapsingHeader("Light Settings", &s_ShowLightSettings))
-  {
-    UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
-    UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 10, 5);
-    UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
-    UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
-
-    UI::DragFloat3("Diffuse", &GameState->R.Sun.DiffuseColor.X, 0, 1, 5);
-    UI::DragFloat3("Ambient", &GameState->R.Sun.AmbientColor.X, 0, 1, 5);
-
-    UI::SliderFloat("Sun Z Angle", &GameState->R.Sun.RotationZ, 0.0f, 90.0f);
-    UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.RotationY, -180, 180);
-
-    if(1 < SHADOWMAP_CASCADE_COUNT)
+    if(UI::TreeNode("Camera", &s_ShowCameraSettings))
     {
-      UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0,
-                    SHADOWMAP_CASCADE_COUNT - 1);
+      UI::SliderFloat("FieldOfView", &GameState->Camera.FieldOfView, 0, 180);
+      UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
+      UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane,
+                      GameState->Camera.NearClipPlane, 500);
+      UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
+			UI::TreePop();
     }
-    UI::Checkbox("Display sun-perspective depth map", &GameState->R.DrawShadowMap);
-    UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
-    if(UI::Button("Recompute Directional Shadows"))
+    if(UI::TreeNode("Lighting", &s_ShowLightSettings))
     {
-      GameState->R.RecomputeDirectionalShadows = true;
-    }
+      UI::DragFloat3("Diffuse", &GameState->R.LightDiffuseColor.X, 0, 10, 5);
+      UI::DragFloat3("Ambient", &GameState->R.LightAmbientColor.X, 0, 10, 5);
+      UI::DragFloat3("Position", &GameState->R.LightPosition.X, -INFINITY, INFINITY, 5);
+      UI::Checkbox("Show gizmo", &GameState->R.ShowLightPosition);
 
-    if(UI::Button("Clear Directional Shadows"))
-    {
-      GameState->R.ClearDirectionalShadows = true;
-    }
-  }
+      UI::DragFloat3("Diffuse", &GameState->R.Sun.DiffuseColor.X, 0, 1, 5);
+      UI::DragFloat3("Ambient", &GameState->R.Sun.AmbientColor.X, 0, 1, 5);
 
-  if(UI::CollapsingHeader("Post-processing", &s_ShowPostProcessingSettings))
-  {
-    bool HDRTonemap   = GameState->R.PPEffects & POST_HDRTonemap;
-    bool Bloom        = GameState->R.PPEffects & POST_Bloom;
-    bool FXAA         = GameState->R.PPEffects & POST_FXAA;
-    bool Blur         = GameState->R.PPEffects & POST_Blur;
-    bool DepthOfField = GameState->R.PPEffects & POST_DepthOfField;
-    bool Grayscale    = GameState->R.PPEffects & POST_Grayscale;
-    bool NightVision  = GameState->R.PPEffects & POST_NightVision;
-    bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
-    bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
-    bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
-    bool Noise        = GameState->R.PPEffects & POST_Noise;
-    bool Test         = GameState->R.PPEffects & POST_Test;
+      UI::SliderFloat("Sun Z Angle", &GameState->R.Sun.RotationZ, 0.0f, 90.0f);
+      UI::SliderFloat("Sun Y Angle", &GameState->R.Sun.RotationY, -180, 180);
 
-    UI::Checkbox("HDRTonemap", &HDRTonemap);
-    UI::Checkbox("Bloom", &Bloom);
-    UI::Checkbox("FXAA", &FXAA);
-    UI::Checkbox("Blur", &Blur);
-    UI::Checkbox("DepthOfField", &DepthOfField);
-    UI::Checkbox("MotionBlur", &MotionBlur);
-    UI::Checkbox("Grayscale", &Grayscale);
-    UI::Checkbox("NightVision", &NightVision);
-    UI::Checkbox("EdgeOutline", &EdgeOutline);
-    UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
-    UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
-    UI::Checkbox("SimpleFog", &SimpleFog);
-    UI::Checkbox("VolumetricScattering", &GameState->R.RenderVolumetricScattering);
-    UI::Checkbox("Noise", &Noise);
-    UI::Checkbox("Test", &Test);
+      if(1 < SHADOWMAP_CASCADE_COUNT)
+      {
+        UI::SliderInt("Current Cascade Index", &GameState->R.Sun.CurrentCascadeIndex, 0,
+                      SHADOWMAP_CASCADE_COUNT - 1);
+      }
+      UI::Checkbox("Display sun-perspective depth map", &GameState->R.DrawShadowMap);
+      UI::Checkbox("Real-time shadows", &GameState->R.RealTimeDirectionalShadows);
+      if(UI::Button("Recompute Directional Shadows"))
+      {
+        GameState->R.RecomputeDirectionalShadows = true;
+      }
 
-    if(HDRTonemap)
-    {
-      GameState->R.PPEffects |= POST_HDRTonemap;
-      UI::SliderFloat("HDR Exposure", &GameState->R.ExposureHDR, 0.01f, 8.0f);
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_HDRTonemap;
+      if(UI::Button("Clear Directional Shadows"))
+      {
+        GameState->R.ClearDirectionalShadows = true;
+      }
+			UI::TreePop();
     }
 
-    if(Bloom)
+    if(UI::TreeNode("Post-processing", &s_ShowPostProcessingSettings))
     {
-      GameState->R.PPEffects |= POST_Bloom;
-      UI::SliderFloat("Bloom Threshold", &GameState->R.BloomLuminanceThreshold, 0.01f, 5.0f);
-      UI::SliderInt("Bloom Blur Iterations", &GameState->R.BloomBlurIterationCount, 0, 5);
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_Bloom;
-    }
+      bool HDRTonemap   = GameState->R.PPEffects & POST_HDRTonemap;
+      bool Bloom        = GameState->R.PPEffects & POST_Bloom;
+      bool FXAA         = GameState->R.PPEffects & POST_FXAA;
+      bool Blur         = GameState->R.PPEffects & POST_Blur;
+      bool DepthOfField = GameState->R.PPEffects & POST_DepthOfField;
+      bool Grayscale    = GameState->R.PPEffects & POST_Grayscale;
+      bool NightVision  = GameState->R.PPEffects & POST_NightVision;
+      bool MotionBlur   = GameState->R.PPEffects & POST_MotionBlur;
+      bool EdgeOutline  = GameState->R.PPEffects & POST_EdgeOutline;
+      bool SimpleFog    = GameState->R.PPEffects & POST_SimpleFog;
+      bool Noise        = GameState->R.PPEffects & POST_Noise;
+      bool Test         = GameState->R.PPEffects & POST_Test;
 
-    if(FXAA)
-    {
-      GameState->R.PPEffects |= POST_FXAA;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_FXAA;
-    }
+      UI::Checkbox("HDRTonemap", &HDRTonemap);
+      UI::Checkbox("Bloom", &Bloom);
+      UI::Checkbox("FXAA", &FXAA);
+      UI::Checkbox("Blur", &Blur);
+      UI::Checkbox("DepthOfField", &DepthOfField);
+      UI::Checkbox("MotionBlur", &MotionBlur);
+      UI::Checkbox("Grayscale", &Grayscale);
+      UI::Checkbox("NightVision", &NightVision);
+      UI::Checkbox("EdgeOutline", &EdgeOutline);
+      UI::Checkbox("DepthBuffer", &GameState->R.DrawDepthBuffer);
+      UI::Checkbox("SSAO", &GameState->R.RenderSSAO);
+      UI::Checkbox("SimpleFog", &SimpleFog);
+      UI::Checkbox("VolumetricScattering", &GameState->R.RenderVolumetricScattering);
+      UI::Checkbox("Noise", &Noise);
+      UI::Checkbox("Test", &Test);
 
-    if(Blur)
-    {
-      GameState->R.PPEffects |= POST_Blur;
-      UI::SliderFloat("StdDev", &GameState->R.PostBlurStdDev, 0.01f, 10.0f);
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_Blur;
-    }
+      if(HDRTonemap)
+      {
+        GameState->R.PPEffects |= POST_HDRTonemap;
+        UI::SliderFloat("HDR Exposure", &GameState->R.ExposureHDR, 0.01f, 8.0f);
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_HDRTonemap;
+      }
 
-    if(DepthOfField)
-    {
-      GameState->R.PPEffects |= POST_DepthOfField;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_DepthOfField;
-    }
+      if(Bloom)
+      {
+        GameState->R.PPEffects |= POST_Bloom;
+        UI::SliderFloat("Bloom Threshold", &GameState->R.BloomLuminanceThreshold, 0.01f, 5.0f);
+        UI::SliderInt("Bloom Blur Iterations", &GameState->R.BloomBlurIterationCount, 0, 5);
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_Bloom;
+      }
 
-    if(MotionBlur)
-    {
-      GameState->R.PPEffects |= POST_MotionBlur;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_MotionBlur;
-    }
+      if(FXAA)
+      {
+        GameState->R.PPEffects |= POST_FXAA;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_FXAA;
+      }
 
-    if(Grayscale)
-    {
-      GameState->R.PPEffects |= POST_Grayscale;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_Grayscale;
-    }
+      if(Blur)
+      {
+        GameState->R.PPEffects |= POST_Blur;
+        UI::SliderFloat("StdDev", &GameState->R.PostBlurStdDev, 0.01f, 10.0f);
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_Blur;
+      }
 
-    if(NightVision)
-    {
-      GameState->R.PPEffects |= POST_NightVision;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_NightVision;
-    }
+      if(DepthOfField)
+      {
+        GameState->R.PPEffects |= POST_DepthOfField;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_DepthOfField;
+      }
 
-    if(EdgeOutline)
-    {
-      GameState->R.PPEffects |= POST_EdgeOutline;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_EdgeOutline;
-    }
+      if(MotionBlur)
+      {
+        GameState->R.PPEffects |= POST_MotionBlur;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_MotionBlur;
+      }
 
-    if(GameState->R.RenderSSAO)
-    {
-      UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.02f, 0.2f);
+      if(Grayscale)
+      {
+        GameState->R.PPEffects |= POST_Grayscale;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_Grayscale;
+      }
+
+      if(NightVision)
+      {
+        GameState->R.PPEffects |= POST_NightVision;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_NightVision;
+      }
+
+      if(EdgeOutline)
+      {
+        GameState->R.PPEffects |= POST_EdgeOutline;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_EdgeOutline;
+      }
+
+      if(GameState->R.RenderSSAO)
+      {
+        UI::SliderFloat("SSAO Sample Radius", &GameState->R.SSAOSamplingRadius, 0.02f, 0.2f);
 #if 0
     	UI::Image("Material preview", GameState->R.SSAOTexID, { 700, (int)(700.0 * (3.0f / 5.0f)) });
 #endif
+      }
+
+      // UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
+
+      if(SimpleFog)
+      {
+        GameState->R.PPEffects |= POST_SimpleFog;
+        UI::SliderFloat("FogDensity", &GameState->R.FogDensity, 0.01f, 0.5f);
+        UI::SliderFloat("FogGradient", &GameState->R.FogGradient, 1.0f, 10.0f);
+        UI::SliderFloat("FogColor", &GameState->R.FogColor, 0.0f, 1.0f);
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_SimpleFog;
+      }
+
+      if(Noise)
+      {
+        GameState->R.PPEffects |= POST_Noise;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_Noise;
+      }
+
+      if(Test)
+      {
+        GameState->R.PPEffects |= POST_Test;
+      }
+      else
+      {
+        GameState->R.PPEffects &= ~POST_Test;
+      }
+			UI::TreePop();
     }
 
-    // UI::Image("ScenePreview", GameState->R.LightScatterTextures[0], { 500, 300 });
-
-    if(SimpleFog)
+    if(UI::TreeNode("What To Draw", &s_ShowDisplaySet))
     {
-      GameState->R.PPEffects |= POST_SimpleFog;
-      UI::SliderFloat("FogDensity", &GameState->R.FogDensity, 0.01f, 0.5f);
-      UI::SliderFloat("FogGradient", &GameState->R.FogGradient, 1.0f, 10.0f);
-      UI::SliderFloat("FogColor", &GameState->R.FogColor, 0.0f, 1.0f);
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_SimpleFog;
-    }
-
-    if(Noise)
-    {
-      GameState->R.PPEffects |= POST_Noise;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_Noise;
-    }
-
-    if(Test)
-    {
-      GameState->R.PPEffects |= POST_Test;
-    }
-    else
-    {
-      GameState->R.PPEffects &= ~POST_Test;
+      UI::Checkbox("Cubemap", &GameState->DrawCubemap);
+      UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
+      UI::Checkbox("Draw Debug Lines", &GameState->DrawDebugLines);
+      UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
+      UI::Checkbox("Draw Actor Meshes", &GameState->DrawActorMeshes);
+      UI::Checkbox("Draw Actor Skeletons", &GameState->DrawActorSkeletons);
+      UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
+      // UI::Checkbox("Timeline", &GameState->DrawTimeline);
+			UI::TreePop();
     }
   }
+}
 
-  if(UI::CollapsingHeader("Render Switches", &s_ShowDisplaySet))
-  {
-    UI::Checkbox("Cubemap", &GameState->DrawCubemap);
-    UI::Checkbox("Draw Gizmos", &GameState->DrawGizmos);
-    UI::Checkbox("Draw Debug Lines", &GameState->DrawDebugLines);
-    UI::Checkbox("Draw Debug Spheres", &GameState->DrawDebugSpheres);
-    UI::Checkbox("Draw Actor Meshes", &GameState->DrawActorMeshes);
-    UI::Checkbox("Draw Actor Skeletons", &GameState->DrawActorSkeletons);
-    UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
-    // UI::Checkbox("Timeline", &GameState->DrawTimeline);
+void
+TestGUI(game_state* GameState, bool& s_ShowTestGUI)
+{
+	if(UI::CollapsingHeader("Test Editor", &s_ShowTestGUI))
+	{
+		static bool ExpandFootSkate;
+		if(UI::TreeNode("Test Foot Skate", &ExpandFootSkate))
+		{
+			UI::TreePop();
+		}
+		static bool ExpandSplineFollowing;
+		if(UI::TreeNode("Test Spline Following", &ExpandSplineFollowing))
+		{
+			UI::TreePop();
+		}
+		static bool ExpandDirectionChanging;
+		if(UI::TreeNode("Test Direction Changing", &ExpandDirectionChanging))
+		{
+			UI::TreePop();
+		}
   }
+}
 
-  if(UI::CollapsingHeader("Scene", &s_ShowSceneSettings))
+void
+SceneGUI(game_state* GameState, bool& s_ShowSceneGUI)
+{
+  if(UI::CollapsingHeader("Scene", &s_ShowSceneGUI))
   {
     static int32_t SelectedSceneIndex = 0;
     UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
@@ -1906,15 +1995,5 @@ MiscGUI(game_state* GameState, bool& s_ShowLightSettings, bool& s_ShowDisplaySet
         ExportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
       }
     }
-  }
-
-  {
-    char TempBuffer[32];
-    sprintf(TempBuffer, "ActiveID: %u", UI::GetActiveID());
-    UI::Text(TempBuffer);
-    sprintf(TempBuffer, "HotID: %u", UI::GetHotID());
-    UI::Text(TempBuffer);
-    sprintf(TempBuffer, "Selected Entity Index: %d", GameState->SelectedEntityIndex);
-    UI::Text(TempBuffer);
   }
 }
