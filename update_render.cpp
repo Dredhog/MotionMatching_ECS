@@ -4,8 +4,6 @@
 #include "linear_math/vector.h"
 #include "linear_math/distribution.h"
 
-// TODO(Lukas) make sure that animations references are properly managed
-
 #include "game.h"
 #include "mesh.h"
 #include "model.h"
@@ -88,27 +86,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+	//Editor
   if(Input->IsMouseInEditorMode)
   {
-    // TODO(LUkas) Move this material check to somewhere more appropriate
-    if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
-    {
-      GameState->CurrentMaterialID = {};
-    }
-    if(GameState->CurrentMaterialID.Value <= 0)
-    {
-      if(GameState->Resources.MaterialPathCount > 0)
-      {
-        GameState->CurrentMaterialID =
-          GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[0].Name);
-      }
-      else
-      {
-        GameState->CurrentMaterialID =
-          GameState->Resources.CreateMaterial(NewPhongMaterial(), "data/materials/default.mat");
-      }
-    }
-
     EditWorldAndInteractWithGUI(GameState, Input);
   }
 
@@ -127,7 +107,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 #else
-      UpdateCamera(&GameState->Camera, Input);
+  UpdateCamera(&GameState->Camera, Input);
 #endif
 
 	if(GameState->UpdatePhysics)
@@ -300,26 +280,67 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 	
   //------------Performing Measurements------------
-	// Measure Ground Truth
-#if 0
-	{
-		for(int i = 0; i < LegSkidControlEntities.Count; i++)
-	}
-  // MeasureControllers
   {
-    for(int i = 0; i < LegSkidEntities.Count; i++)
+	// Measure Ground Truth
+    testing_system& Tests = GameState->TestingSystem;
+    for(int i = 0; i < Tests.ActiveTests.Count; i++)
     {
+      active_test& Test = Tests.ActiveTests[i];
+      if(Test.Type == TEST_AnimationFootSkate)
+      {
+        entity*          Entity = &GameState->Entities[Test.EntityIndex];
+        Anim::animation* Anim = GameState->Resources.GetAnimation(Test.FootSkateTest.AnimationRID);
+
+        foot_skate_data_row FootSkateTableRow =
+          MeasureFootSkate(GameState->TemporaryMemStack, &Test.FootSkateTest,
+                           Entity->AnimController->Skeleton, Anim, Test.FootSkateTest.ElapsedTime,
+                           1 / 60.0f);
+        AddRow(&Test.DataTable, &FootSkateTableRow, sizeof(FootSkateTableRow));
+        Test.FootSkateTest.ElapsedTime += Input->dt;
+        if(Test.FootSkateTest.ElapsedTime >= Anim::GetAnimDuration(Anim))
+        {
+          int32_t TestIndex = Tests.GetEntityTestIndex(Test.EntityIndex, Test.Type);
+          Tests.WriteTestToCSV(TestIndex);
+          Tests.DestroyTest(&GameState->Resources, TestIndex);
+          i--;
+        }
+      }
     }
 
+    // MeasureControllers
+    for(int i = 0; i < Tests.ActiveTests.Count; i++)
+		{
+      active_test& Test = Tests.ActiveTests[i];
+      if(Test.Type == TEST_ControllerFootSkate)
+      {
+        entity* Entity        = &GameState->Entities[Test.EntityIndex];
+        int32_t MMEntityIndex = GetEntityMMDataIndex(Test.EntityIndex, &GameState->MMEntityData);
+        mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
+        blend_stack*       BlendStack = MMEntity.BlendStack;
+        const Anim::skeleton_mirror_info* MirrorInfo =
+          &(**MMEntity.MMController).Params.DynamicParams.MirrorInfo;
+
+        foot_skate_data_row FootSkateTableRow =
+          MeasureFootSkate(&Test.FootSkateTest, Entity->AnimController, MirrorInfo, BlendStack,
+                           TransformToMat4(Entity->Transform), *MMEntity.OutDeltaRootMotion,
+                           Test.FootSkateTest.ElapsedTime, Input->dt);
+        AddRow(&Test.DataTable, &FootSkateTableRow, sizeof(FootSkateTableRow));
+        Test.FootSkateTest.ElapsedTime += Input->dt;
+      }
+    }
+
+#if 0
+    //Trajectory
     for(int i = 0; i < SplineOffsetEntities.Count; i++)
     {
     }
 
+		//Direction
     for(int i = 0; i < DirectionChangeEntities.Count.Count; i++)
     {
     }
-  }
 #endif
+  }
 
 
   if(GameState->R.ShowLightPosition)

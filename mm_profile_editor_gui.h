@@ -223,7 +223,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
 
     if(UI::CollapsingHeader("Bones To Match", &s_MatchingPointSelectionDropdown))
     {
-      bool ClickedAddBone = UI::Button("AddBone", LeftOfComboButtonWidth);
+      bool ClickedAddBone = UI::Button("Add Bone", LeftOfComboButtonWidth);
       UI::SameLine();
       static int32_t ActiveBoneIndex = 0;
       UI::PushWidth(-ComboRightEdgeDistanceFromRightSize);

@@ -24,6 +24,7 @@
 #include "movement_spline.h"
 #include "blend_stack.h"
 #include "motion_goal_system.h"
+#include "testing_system.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
 const int32_t ENTITY_SELECTION_MAX_COUNT = 400;
@@ -76,12 +77,14 @@ struct game_state
   mm_debug_settings MMDebug;
   mm_timeline_state MMTimelineState;
 
-  spline_system SplineSystem;
-  mm_entity_data    MMEntityData;
+  testing_system TestingSystem;
+
+  spline_system  SplineSystem;
+  mm_entity_data MMEntityData;
 
   bool UseHotReloading;
   bool UpdatePathList;
-	bool UpdatePhysics;
+  bool UpdatePhysics;
 
   // Models
   rid SphereModelID;

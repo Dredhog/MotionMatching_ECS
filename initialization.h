@@ -490,6 +490,9 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = true;
     GameState->MMDebug.CurrentGoal.ShowBonePositions    = true;
     GameState->MMDebug.MatchedGoal.ShowBonePositions    = true;
+
+    // Testing system
+		// Default constructed :(
   }
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;

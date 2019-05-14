@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <float.h>
 #include "linear_math/vector.h"
-#include "game.h"
+//#include "game.h"
 #include "debug_drawing.h"
 #include "mesh.h"
 #include "profile.h"

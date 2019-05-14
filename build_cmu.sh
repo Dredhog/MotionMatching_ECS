@@ -5,7 +5,7 @@ src_dir='data/animations/'
 dst_dir='data/animations/'
 actor_dir='data/built/'
 ybot_dir='data/animations/ybot_retargeted/fbx/'
-sampling_frequency='--sample_rate 30'
+sampling_frequency='--sample_rate 120'
 
 $build 'data/animations/69_01.bvh' 'data/built/69' '--actor' '--root_bone' 'Hips' '--scale' '0.056444'
 

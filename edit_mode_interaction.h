@@ -5,6 +5,28 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
 {
   TIMED_BLOCK(Editor);
   UI::BeginFrame(GameState, Input);
+
+  {
+    // NOTE(Lukas) Move this material check to somewhere more appropriate
+    if(GameState->CurrentMaterialID.Value > 0 && GameState->Resources.MaterialPathCount <= 0)
+    {
+      GameState->CurrentMaterialID = {};
+    }
+    if(GameState->CurrentMaterialID.Value <= 0)
+    {
+      if(GameState->Resources.MaterialPathCount > 0)
+      {
+        GameState->CurrentMaterialID =
+          GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[0].Name);
+      }
+      else
+      {
+        GameState->CurrentMaterialID =
+          GameState->Resources.CreateMaterial(NewPhongMaterial(), "data/materials/default.mat");
+      }
+    }
+  }
+
   TestGui(GameState, Input);
 
   if(Input->MouseRight.EndedDown && Input->MouseRight.Changed)

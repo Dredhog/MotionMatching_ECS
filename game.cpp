@@ -252,8 +252,9 @@ GetEntityAtIndex(game_state* GameState, entity** OutputEntity, int32_t EntityInd
       *OutputEntity = &GameState->Entities[EntityIndex];
       return true;
     }
-    return false;
   }
+
+  *OutputEntity = NULL;
   return false;
 }
 

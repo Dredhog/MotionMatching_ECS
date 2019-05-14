@@ -1,6 +1,6 @@
 #pragma once
 
-struct facing_rech_time_data_row
+struct facing_change_time_data_row
 {
   float t;
   float dt;
@@ -12,16 +12,39 @@ struct facing_rech_time_data_row
   int32_t TestNum;
 };
 
-struct facing_test_instance
+struct facing_test
 {
+  float AngleThreshold;
+  float MaxWaitTime;
+  float MinimalSpeedToStart;
+  float MaxTestAngle;
+  bool  TestLeftSideTurns;
+  bool  TestRightSideTurns;
+
+  float   DesiredWordlFacing;
+  int32_t RemainingDirectionTests;
 };
 
-facing_rech_time_data_row
+inline facing_test
+GetDefaultFacingTest()
+{
+  facing_test Result = {
+    .AngleThreshold      = 5,
+    .MaxWaitTime         = 1,
+    .MinimalSpeedToStart = 0.3f,
+    .MaxTestAngle        = 0.3f,
+    .TestLeftSideTurns   = true,
+    .TestRightSideTurns  = true,
+  };
+  return Result;
+};
+
+inline facing_change_time_data_row
 MeasureFacingAngleDeviation(float DesiredAngle, float CurrentAngle, float t, float dt,
                             bool UsingMirrors)
 {
-	facing_rech_time_data_row Result = {};
-	//Get StartAngle
+  facing_change_time_data_row Result = {};
+  // Get StartAngle
 
   // if(UsingMirrors)
   // Only generate angles on the same side
@@ -34,16 +57,4 @@ MeasureFacingAngleDeviation(float DesiredAngle, float CurrentAngle, float t, flo
   // Store Data
 
   return Result;
-}
-
-struct ground_truth_movement_object
-{
-	float Position;
-}
-
-facing_reach_time_data_row
-MeasureAndUpdateControlObjectFacingAngleDeviation(ground_truth_movement_object* GTObject,
-                                                  float DesiredAngle, float t, float dt)
-{
-	
 }

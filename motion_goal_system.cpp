@@ -74,7 +74,7 @@ DrawTrajectory(mat4 CoordinateFrame, const trajectory* Trajectory, vec3 PastColo
     vec3 PointColor = (i < HALF_TRAJECTORY_TRANSFORM_COUNT)
                         ? PastColor
                         : ((i == HALF_TRAJECTORY_TRANSFORM_COUNT) ? PresentColor : FutureColor);
-    Debug::PushWireframeSphere(CurrentWorldPos, 0.005f, { PointColor, 0.5 });
+    //Debug::PushWireframeSphere(CurrentWorldPos, 0.005f, { PointColor, 0.5 });
     Debug::PushLine(CurrentWorldPos, CurrentWorldPos + FacingDir * 0.1f, { 0, 1, 1, 1 });
   }
 }

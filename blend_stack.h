@@ -20,8 +20,8 @@ typedef circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> blend_stac
 
 struct playback_info
 {
-  Anim::skeleton_mirror_info* MirrorInfo;
-  blend_stack*                BlendStack;
+  const Anim::skeleton_mirror_info* MirrorInfo;
+  const blend_stack*                BlendStack;
 };
 
 void PlayAnimation(blend_stack* BlendStack, Anim::animation* NewAnim, float LocalStartTime,

@@ -6,12 +6,13 @@
 #include "blend_stack.h"
 #include "mm_profile_editor_gui.h"
 #include "mm_timeline_editor.h"
+#include "testing_system.h"
 
 void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
 void AnimationGUI(game_state* GameState, bool& ShowAnimationEditor, bool& ShowEntityTools);
 void TrajectoryGUI(game_state* GameState, bool& ShowTrajectoryEditor);
-void TestGUI(game_state* GameState, bool& ShowTestGUI);
+void TestGUI(game_state* GameState);
 void RenderingGUI(game_state* GameState, bool& ShowRenderingSettings, bool& ShowLightSettings,
                   bool& ShowDisplaySet, bool& ShowCameraSettings, bool& ShowSceneSettings,
                   bool& ShowPostProcessingSettings);
@@ -81,7 +82,6 @@ TestGui(game_state* GameState, const game_input* Input)
     static bool s_ShowPostProcessingSettings = false;
     static bool s_ShowTrajectoryTools        = false;
     static bool s_ShowRenderingSettings      = false;
-    static bool s_ShowTestEditor             = false;
 
     UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
     UI::SameLine(220);
@@ -99,17 +99,17 @@ TestGui(game_state* GameState, const game_input* Input)
 
     EntityGUI(GameState, s_ShowEntityTools);
     TrajectoryGUI(GameState, s_ShowTrajectoryTools);
-    TestGUI(GameState, s_ShowTestEditor);
+    TestGUI(GameState);
     MaterialGUI(GameState, s_ShowMaterialEditor);
     AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
     RenderingGUI(GameState, s_ShowRenderingSettings, s_ShowLightSettings, s_ShowDisplaySet,
                  s_ShowCameraSettings, s_ShowSceneSettings, s_ShowPostProcessingSettings);
     SceneGUI(GameState, s_ShowSceneSettings);
-		{
+    {
       char TempBuffer[32];
       sprintf(TempBuffer, "Selected Entity Index: %d", GameState->SelectedEntityIndex);
-			UI::Text(TempBuffer);
-		}
+      UI::Text(TempBuffer);
+    }
   }
   UI::EndWindow();
 
@@ -698,10 +698,10 @@ TestGui(game_state* GameState, const game_input* Input)
       UI::DragFloat3("D", &D.X, -3, 3, 6);
 
       Debug::PushWireframeSphere(A, 0.1f, { 0, 1, 0, 0.1f });
-			Debug::PushLine(A, B, {1, 0, 0, 1});
+      Debug::PushLine(A, B, { 1, 0, 0, 1 });
       Debug::PushWireframeSphere(B, 0.1f, { 0, 1, 1, 0.3f });
       Debug::PushWireframeSphere(C, 0.1f, { 0, 0, 0, 0.7f });
-			Debug::PushLine(C, D, {1, 0, 0, 1});
+      Debug::PushLine(C, D, { 1, 0, 0, 1 });
       Debug::PushWireframeSphere(D, 0.1f, { 1, 1, 0, 1 });
 
       for(int i = 0; i < PointCount && PointCount > 1; i++)
@@ -1194,7 +1194,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
   entity* SelectedEntity = {};
   GetSelectedEntity(GameState, &SelectedEntity);
 
-	if(SelectedEntity)
+  if(SelectedEntity)
   {
     UI::SameLine();
     if(UI::Button("Delete Entity"))
@@ -1722,7 +1722,7 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
              bool& s_ShowDisplaySet, bool& s_ShowCameraSettings, bool& s_ShowSceneSettings,
              bool& s_ShowPostProcessingSettings)
 {
-	if(UI::CollapsingHeader("Rendering Settings", &s_ShowRenderingSettings))
+  if(UI::CollapsingHeader("Rendering Settings", &s_ShowRenderingSettings))
   {
     if(UI::TreeNode("Camera", &s_ShowCameraSettings))
     {
@@ -1731,7 +1731,7 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
       UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane,
                       GameState->Camera.NearClipPlane, 500);
       UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
-			UI::TreePop();
+      UI::TreePop();
     }
     if(UI::TreeNode("Lighting", &s_ShowLightSettings))
     {
@@ -1762,7 +1762,7 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
       {
         GameState->R.ClearDirectionalShadows = true;
       }
-			UI::TreePop();
+      UI::TreePop();
     }
 
     if(UI::TreeNode("Post-processing", &s_ShowPostProcessingSettings))
@@ -1920,7 +1920,7 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
       {
         GameState->R.PPEffects &= ~POST_Test;
       }
-			UI::TreePop();
+      UI::TreePop();
     }
 
     if(UI::TreeNode("What To Draw", &s_ShowDisplaySet))
@@ -1933,31 +1933,233 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
       UI::Checkbox("Draw Actor Skeletons", &GameState->DrawActorSkeletons);
       UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
       // UI::Checkbox("Timeline", &GameState->DrawTimeline);
-			UI::TreePop();
+      UI::TreePop();
     }
   }
 }
 
-void
-TestGUI(game_state* GameState, bool& s_ShowTestGUI)
+struct test_gui_state
 {
-	if(UI::CollapsingHeader("Test Editor", &s_ShowTestGUI))
-	{
-		static bool ExpandFootSkate;
-		if(UI::TreeNode("Test Foot Skate", &ExpandFootSkate))
-		{
-			UI::TreePop();
-		}
-		static bool ExpandSplineFollowing;
-		if(UI::TreeNode("Test Spline Following", &ExpandSplineFollowing))
-		{
-			UI::TreePop();
-		}
-		static bool ExpandDirectionChanging;
-		if(UI::TreeNode("Test Direction Changing", &ExpandDirectionChanging))
-		{
-			UI::TreePop();
-		}
+  int32_t SelectedEntityIndex; // Always up to date with game state, used to reset UI, when changed
+  int32_t SelectedBoneIndex;
+  int32_t SelectedAnimationIndex;
+
+  bool Expanded;
+  bool ExpandedFootSkate;
+  bool ExpandedBonesToMeasure;
+  bool ExpandedSplineFollowing;
+  bool ExpandedDirectionChanging;
+  bool ExpandedActiveTests;
+
+  foot_skate_test FootSkateTest;
+  follow_test     FollowTest;
+  facing_test     FacingTest;
+};
+
+void
+TestGUI(game_state* GameState)
+{
+  testing_system&       Tests = GameState->TestingSystem;
+  static test_gui_state GUI   = { .SelectedEntityIndex = -1,
+                                .SelectedBoneIndex   = -1,
+                                .FacingTest          = GetDefaultFacingTest() };
+
+  // Reseting GUI when selected entity changes
+  if(GameState->SelectedEntityIndex != GUI.SelectedEntityIndex)
+  {
+    GUI.SelectedEntityIndex = -1;
+    GUI.SelectedBoneIndex   = -1;
+    GUI.FootSkateTest       = { .TopMargin = 0.1f };
+    GUI.FollowTest          = {};
+    GUI.FacingTest          = GetDefaultFacingTest();
+    GUI.SelectedEntityIndex = GameState->SelectedEntityIndex;
+  };
+
+  if(UI::CollapsingHeader("Test Editor", &GUI.Expanded))
+  {
+    entity* SelectedEntity;
+    GetSelectedEntity(GameState, &SelectedEntity);
+
+    UI::PushID("Test");
+    if(SelectedEntity && SelectedEntity->AnimController)
+    {
+      int32_t MMEntityIndex =
+        GetEntityMMDataIndex(GameState->SelectedEntityIndex, &GameState->MMEntityData);
+      if(UI::TreeNode("Test Foot Skate", &GUI.ExpandedFootSkate))
+      {
+        UI::PushID("Skate");
+
+        if(UI::TreeNode("Bones To Measure", &GUI.ExpandedBonesToMeasure))
+        {
+          bool ClickedAddBone = UI::Button("AddBone");
+          UI::SameLine();
+          UI::PushWidth(-UI::GetWindowWidth() * 0.35f);
+          UI::Combo("Bone", &GUI.SelectedBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
+                    SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
+          UI::PopWidth();
+
+          if(ClickedAddBone && GUI.SelectedBoneIndex != -1 &&
+             !GUI.FootSkateTest.TestBoneIndices.Full())
+          {
+            GUI.FootSkateTest.TestBoneIndices.Push(GUI.SelectedBoneIndex);
+          }
+
+          int RemoveIndex = -1;
+          for(int i = 0; i < GUI.FootSkateTest.TestBoneIndices.Count; i++)
+          {
+            UI::PushID(i);
+            RemoveIndex = UI::Button("Remove") ? i : RemoveIndex;
+
+            UI::SameLine();
+            UI::Text(
+              SelectedEntity->AnimController->Skeleton->Bones[GUI.FootSkateTest.TestBoneIndices[i]]
+                .Name);
+
+            UI::PopID();
+          }
+          if(RemoveIndex != -1)
+          {
+            GUI.FootSkateTest.TestBoneIndices.Remove(RemoveIndex);
+          }
+
+          UI::TreePop();
+        }
+
+        if(MMEntityIndex == -1)
+        {
+          bool ClickedAddAnimation = UI::Button("Set");
+          UI::SameLine();
+          UI::Combo("Animation", &GUI.SelectedAnimationIndex, GameState->Resources.AnimationPaths,
+                    GameState->Resources.AnimationPathCount, PathArrayToString);
+          if(GUI.SelectedAnimationIndex >= 0 && ClickedAddAnimation)
+          {
+            rid NewRID = GameState->Resources.ObtainAnimationPathRID(
+              GameState->Resources.AnimationPaths[GUI.SelectedAnimationIndex].Name);
+            if(GameState->Resources.GetAnimation(NewRID)->ChannelCount ==
+               SelectedEntity->AnimController->Skeleton->BoneCount)
+            {
+              GUI.FootSkateTest.AnimationRID = NewRID;
+            }
+          }
+        }
+
+        UI::SliderFloat("Bottom Range", &GUI.FootSkateTest.BottomMargin, 0, 0.2f);
+        UI::SliderFloat("Top Range", &GUI.FootSkateTest.TopMargin, 0, 0.2f);
+
+        int32_t TestIndex = Tests.GetEntityTestIndex(GameState->SelectedEntityIndex);
+        if(TestIndex == -1)
+        {
+          if(!GUI.FootSkateTest.TestBoneIndices.Empty())
+          {
+            if(MMEntityIndex == -1)
+            {
+							UI::PushID("A");
+              if(GUI.FootSkateTest.AnimationRID.Value > 0 && UI::Button("Start"))
+              {
+                Tests.CreateAnimationFootSkateTest(&GameState->Resources, GUI.FootSkateTest,
+                                                   GameState->SelectedEntityIndex);
+              }
+              UI::PopID();
+            }
+            else
+            {
+              mm_aos_entity_data MMEntity =
+                GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
+              rid ControllerRID = *MMEntity.MMControllerRID;
+              UI::PushID("C");
+              if(ControllerRID.Value > 0 && UI::Button("Start"))
+              {
+                Tests.CreateControllerFootSkateTest(&GameState->Resources, GUI.FootSkateTest,
+                                                    ControllerRID, GameState->SelectedEntityIndex);
+              }
+							UI::PopID();
+            }
+          }
+        }
+        else
+        {
+          if(UI::Button("Stop"))
+          {
+            Tests.WriteTestToCSV(TestIndex);
+            Tests.DestroyTest(&GameState->Resources, TestIndex);
+          }
+          UI::SameLine();
+
+          UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
+          if(UI::Button("Abort"))
+          {
+            Tests.DestroyTest(&GameState->Resources, TestIndex);
+          }
+          UI::PopColor();
+        }
+
+        UI::PopID();
+
+        UI::TreePop();
+      }
+
+      if(UI::TreeNode("Test Spline Following", &GUI.ExpandedSplineFollowing))
+      {
+        UI::PushID("Spline");
+
+        UI::Button("Start");
+        UI::SameLine();
+        UI::Button("Stop");
+        UI::SameLine();
+        UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
+        UI::Button("Abort");
+        UI::PopColor();
+
+        UI::PopID();
+
+        UI::TreePop();
+      }
+      if(UI::TreeNode("Test Direction Changing", &GUI.ExpandedDirectionChanging))
+      {
+        UI::PushID("Dir");
+        UI::SliderFloat("Test Angle Threshold", &GUI.FacingTest.AngleThreshold, 0, 180);
+        UI::SliderFloat("Maximal Wait Time", &GUI.FacingTest.MaxWaitTime, 0, 3);
+        UI::SliderFloat("Mimimal Speed To Start", &GUI.FacingTest.MinimalSpeedToStart, 0, 3);
+        UI::SliderFloat("Maximal Test Angle", &GUI.FacingTest.MaxTestAngle, 0, 180);
+        UI::Checkbox("Test Left Side Turns", &GUI.FacingTest.TestLeftSideTurns);
+        UI::SameLine();
+        UI::Checkbox("Test Right Side Turns", &GUI.FacingTest.TestRightSideTurns);
+        UI::Button("Start");
+        UI::SameLine();
+        UI::Button("Stop");
+        UI::SameLine();
+        UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
+        UI::Button("Abort");
+        UI::PopColor();
+
+        UI::PopID();
+
+        UI::TreePop();
+      }
+    }
+
+    if(!Tests.ActiveTests.Empty() && UI::TreeNode("ActiveTests", &GUI.ExpandedActiveTests))
+    {
+      for(int i = 0; i < Tests.ActiveTests.Count; i++)
+      {
+        UI::PushID(i);
+
+        char        TempBuffer[300];
+        const char* TestTypeString = (Tests.ActiveTests[i].Type == TEST_AnimationFootSkate)
+                                       ? "Anim Foot Skate"
+                                       : "Not Implemented";
+        snprintf(TempBuffer, ARRAY_COUNT(TempBuffer), "#%d: Name: %s", i,
+                 Tests.ActiveTests[i].DataTable.Name);
+        UI::Text(TempBuffer);
+        snprintf(TempBuffer, ARRAY_COUNT(TempBuffer), " Entity: #%d, Type: %s",
+                 Tests.ActiveTests[i].EntityIndex, TestTypeString);
+        UI::Text(TempBuffer);
+
+        UI::PopID();
+      }
+      UI::TreePop();
+    }
+    UI::PopID();
   }
 }
 
