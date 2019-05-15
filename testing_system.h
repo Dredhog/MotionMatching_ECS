@@ -59,6 +59,10 @@ struct testing_system
               offsetof(foot_skate_data_row, RightFootZVel));
     AddColumn(&NewTest.DataTable.Header, "r_h", COLUMN_TYPE_float,
               offsetof(foot_skate_data_row, RightFootHeight));
+    AddColumn(&NewTest.DataTable.Header, "anim_count", COLUMN_TYPE_int32,
+              offsetof(foot_skate_data_row, AnimCount));
+    AddColumn(&NewTest.DataTable.Header, "anim_index", COLUMN_TYPE_int32,
+              offsetof(foot_skate_data_row, AnimIndex));
     // Allocate table
     const int32_t MaxRowCount = 100 * 90;
     CreateTable(&NewTest.DataTable, FileName, MaxRowCount, sizeof(foot_skate_data_row));
@@ -86,17 +90,32 @@ struct testing_system
   }
 
   inline void
+  GenerateControllerTestName(char* OutName, size_t MaxNameLength,
+                             Resource::resource_manager* Resources, rid ControllerRID,
+                             int32_t TestType)
+  {
+    path ControllerPath =
+      Resources->MMControllerPaths[Resources->GetMMControllerPathIndex(ControllerRID)];
+    mm_params* Params = &Resources->GetMMController(ControllerRID)->Params;
+
+    assert(TestType == TEST_ControllerFootSkate || TestType == TEST_FacingChange ||
+           TestType == TEST_TrajectoryFollowing);
+    const char* TestFileString = TestType == TEST_ControllerFootSkate
+                                   ? "ctrl_skate"
+                                   : (TestType == TEST_FacingChange ? "facing" : "follow");
+
+    snprintf(OutName, MaxNameLength, "%s_%s%s", strrchr(ControllerPath.Name, '/') + 1,
+             TestFileString, Params->DynamicParams.MatchMirroredAnimations ? "_mirror" : "");
+  }
+
+  inline void
   CreateControllerFootSkateTest(Resource::resource_manager* Resources, const foot_skate_test& Test,
                                 rid ControllerRID, int32_t EntityIndex)
   {
     // Creat table name
     char Name[MAX_TABLE_NAME_LENGTH];
-    path ControllerPath =
-      Resources->MMControllerPaths[Resources->GetMMControllerPathIndex(ControllerRID)];
-    mm_params* Params = &Resources->GetMMController(ControllerRID)->Params;
-
-    sprintf(Name, "%s_foot_skate%s", strrchr(ControllerPath.Name, '/') + 1,
-            Params->DynamicParams.MatchMirroredAnimations ? "Mirror" : "");
+    GenerateControllerTestName(Name, ArrayCount(Name), Resources, ControllerRID,
+                               TEST_ControllerFootSkate);
 
     // Create the table and the active_test structure
     CreateFootSkateTestAndTable(Resources, Name, TEST_ControllerFootSkate, Test, EntityIndex);
@@ -112,13 +131,33 @@ struct testing_system
   }
 
   inline void
-  CreateFacingChangeTest(foot_skate_test Test, int32_t EntityIndex)
+  CreateFacingChangeTest(Resource::resource_manager* Resources, rid ControllerRID,
+                         foot_skate_test Test, int32_t EntityIndex)
   {
-    // Create table name
+    active_test NewTest = {};
+
+    // Copy data to new active_test struct
+    NewTest.EntityIndex   = EntityIndex;
+    NewTest.FootSkateTest = Test;
+    NewTest.Type          = TEST_FacingChange;
+
+    char FileName[MAX_TABLE_NAME_LENGTH];
+    GenerateControllerTestName(FileName, ArrayCount(FileName), Resources, ControllerRID,
+                               TEST_FacingChange);
 
     // Create table columns
+    AddColumn(&NewTest.DataTable.Header, "turn_time", COLUMN_TYPE_float,
+              offsetof(foot_skate_data_row, t));
+    AddColumn(&NewTest.DataTable.Header, "angle", COLUMN_TYPE_float,
+              offsetof(foot_skate_data_row, t));
+    AddColumn(&NewTest.DataTable.Header, "reach_success", COLUMN_TYPE_float,
+              offsetof(foot_skate_data_row, t));
+    // Allocate table
+    const int32_t MaxRowCount = 100 * 90;
+    CreateTable(&NewTest.DataTable, FileName, MaxRowCount, sizeof(foot_skate_data_row));
 
     // Add active test to stack
+    ActiveTests.Push(NewTest);
   }
 
   inline void

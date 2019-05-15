@@ -8,6 +8,7 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
 {
   foot_skate_data_row Result = {};
 
+  // NOTE(Lukas) this is stale by one dt
   mat4 LocalDeltaRootMatrix = TransformToMat4(LocalDeltaRoot);
 
   vec3 CurrentPs[MAX_TEST_BONE_COUNT];
@@ -112,6 +113,8 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
   Result.LeftFootZVel  = Velocities[0].Z;
   Result.RightFootXVel = Velocities[1].X;
   Result.RightFootZVel = Velocities[1].Z;
+  Result.AnimCount     = 1;
+  Result.AnimIndex     = 0;
 
   return Result;
 }
@@ -184,6 +187,8 @@ MeasureFootSkate(Memory::stack_allocator* TempAlloc, foot_skate_test* Test,
   Result.LeftFootZVel  = Velocities[0].Z;
   Result.RightFootXVel = Velocities[1].X;
   Result.RightFootZVel = Velocities[1].Z;
+  Result.AnimCount     = 1;
+  Result.AnimIndex     = 0;
 
   TempAlloc->FreeToMarker(StackMarker);
   return Result;

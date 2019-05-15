@@ -1453,36 +1453,42 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                   sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
                   UI::Text(TempBuffer);
 
-                  UI::Checkbox("Control From Spline", MMControllerData.FollowSpline);
-                  if(*MMControllerData.FollowSpline == true)
+									static bool s_ShowInputControlParameters = false;
+                  if(UI::TreeNode("Movement Control Options", &s_ShowInputControlParameters))
                   {
-                    static bool s_ShowTrajectoryControlParameters = true;
-                    if(UI::TreeNode("Trajectory Control Params",
-                                    &s_ShowTrajectoryControlParameters))
+                    UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
+                                    0.0f, 5.0f);
+                    UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
+                    UI::Checkbox("Use Smoothed Goal",
+                                 &MMControllerData.InputController->UseSmoothGoal);
+                    UI::Checkbox("Use Trajectory Control", MMControllerData.FollowSpline);
+                    static bool s_ShowSmoothTrajectoryParams = false;
+                    if(MMControllerData.InputController->UseSmoothGoal &&
+                       UI::TreeNode("Smooth Goal Params", &s_ShowSmoothTrajectoryParams))
                     {
-                      UI::Combo("Follow Spline", &MMControllerData.SplineState->SplineIndex,
-                                (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
-                      UI::Checkbox("Loop Back To Start", &MMControllerData.SplineState->Loop);
-                      UI::Checkbox("Following Positive Direction",
-                                   &MMControllerData.SplineState->MovingInPositive);
-
-                      UI::TreePop();
-                    }
-                  }
-                  else
-                  {
-                    static bool s_ShowInputControlParameters = true;
-                    if(UI::TreeNode("Input Control Params", &s_ShowInputControlParameters))
-                    {
-                      UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
-                                      0.0f, 5.0f);
                       UI::SliderFloat("Position Bias",
                                       &MMControllerData.InputController->PositionBias, 0.0f, 1.0f);
                       UI::SliderFloat("Direction Bias",
                                       &MMControllerData.InputController->DirectionBias, 0.0f, 1.0f);
-                      UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
                       UI::TreePop();
                     }
+
+                    if(*MMControllerData.FollowSpline == true)
+                    {
+                      static bool s_ShowTrajectoryControlParameters = true;
+                      if(UI::TreeNode("Trajectory Control Params",
+                                      &s_ShowTrajectoryControlParameters))
+                      {
+                        UI::Combo("Trajectory Index", &MMControllerData.SplineState->SplineIndex,
+                                  (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
+                        UI::Checkbox("Loop Back To Start", &MMControllerData.SplineState->Loop);
+                        UI::Checkbox("Following Positive Direction",
+                                     &MMControllerData.SplineState->MovingInPositive);
+
+                        UI::TreePop();
+                      }
+                    }
+                    UI::TreePop();
                   }
                   UI::TreePop();
                 }

@@ -16,6 +16,9 @@ struct foot_skate_data_row
   float LeftFootZVel;
   float RightFootXVel;
   float RightFootZVel;
+
+  int32_t AnimCount;
+  int32_t AnimIndex;
 };
 
 #define MAX_TEST_BONE_COUNT 5

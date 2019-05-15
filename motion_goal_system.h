@@ -40,6 +40,7 @@ struct mm_input_controller
   float PositionBias;
   float DirectionBias;
   bool  UseStrafing;
+  bool  UseSmoothGoal;
 };
 
 #define FOR_ALL_NAMES(DO_FUNC)                                                                     \
@@ -117,7 +118,8 @@ SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
   *MMEntityData->InputController = { .MaxSpeed      = 1.0f,
                                      .PositionBias  = 0.08f,
                                      .DirectionBias = 0.85f,
-                                     .UseStrafing   = false };
+                                     .UseStrafing   = false,
+                                     .UseSmoothGoal = true };
 
   *MMEntityData->Skeleton             = NULL;
   *MMEntityData->MMController         = NULL;
@@ -473,13 +475,14 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
               GoalFacing, MMControllers[e]->Params.DynamicParams.TrajectoryTimeHorizon,
-              MMControllers[e]->Params.FixedParams, &TrajectoryArgs);
+              MMControllers[e]->Params.FixedParams,
+              InputControllers[e].UseSmoothGoal ? &TrajectoryArgs : NULL);
   }
 }
 
 inline void
-AsserSplineIndicesAndClampWaypointIndices(spline_follow_state* SplineStates, int32_t Count,
-                                          const movement_spline* Splines, int32_t DebugSplineCount)
+AssertSplineIndicesAndClampWaypointIndices(spline_follow_state* SplineStates, int32_t Count,
+                                           const movement_spline* Splines, int32_t DebugSplineCount)
 {
   for(int i = 0; i < Count; i++)
   {
@@ -497,6 +500,7 @@ inline void
 GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutGoals,
                          mm_frame_info* OutMirroredGoals, trajectory* Trajectories,
                          spline_follow_state*             SplineStates,
+                         const mm_input_controller*       InputControllers,
                          const mm_controller_data* const* MMControllers,
                          const blend_stack* BlendStacks, const float* AnimPlayerTimes,
                          const Anim::skeleton* const* Skeletons, const int32_t* EntityIndices,
@@ -530,10 +534,15 @@ GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutG
     float         LocalAnimTime = GetLocalSampleTime(DominantBlend.Animation, AnimPlayerTimes[e],
                                              DominantBlend.GlobalAnimStartTime);
 
+    trajectory_update_args TrajectoryArgs = { .PositionBias  = InputControllers[e].PositionBias,
+                                              .DirectionBias = InputControllers[e].DirectionBias,
+                                              .InvEntityMatrix =
+                                                Math::InvMat4(TransformToMat4(EntityTransform)) };
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
               GoalFacing, MMControllers[e]->Params.DynamicParams.TrajectoryTimeHorizon,
-              MMControllers[e]->Params.FixedParams, NULL);
+              MMControllers[e]->Params.FixedParams,
+              InputControllers[e].UseSmoothGoal ? &TrajectoryArgs : NULL);
 
     if(Math::Length(LocalEntityToWaypoint) < WaypointRadius)
     {

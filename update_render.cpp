@@ -206,15 +206,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                            &MMEntityData.MMControllers[0], &MMEntityData.InputControllers[0],
                            &MMEntityData.EntityIndices[0], ActiveInputControlledCount, Entities,
                            Input, CameraForward);
-    AsserSplineIndicesAndClampWaypointIndices(&MMEntityData
-                                                 .SplineStates[FirstSplineControlledIndex],
-                                              ActiveSplineControlledCount,
-                                              SplineSystem.Splines.Elements,
-                                              SplineSystem.Splines.Count);
+    AssertSplineIndicesAndClampWaypointIndices(&MMEntityData
+                                                  .SplineStates[FirstSplineControlledIndex],
+                                               ActiveSplineControlledCount,
+                                               SplineSystem.Splines.Elements,
+                                               SplineSystem.Splines.Count);
     GenerateGoalsFromSplines(TempStack, &MMEntityData.AnimGoals[FirstSplineControlledIndex],
                              &MMEntityData.MirroredAnimGoals[FirstSplineControlledIndex],
                              &MMEntityData.Trajectories[FirstSplineControlledIndex],
                              &MMEntityData.SplineStates[FirstSplineControlledIndex],
+                             &MMEntityData.InputControllers[FirstSplineControlledIndex],
                              &MMEntityData.MMControllers[FirstSplineControlledIndex],
                              &MMEntityData.BlendStacks[FirstSplineControlledIndex],
                              &MMEntityData.AnimPlayerTimes[FirstSplineControlledIndex],
