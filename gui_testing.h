@@ -2052,7 +2052,13 @@ TestGUI(game_state* GameState)
         UI::SliderFloat("Bottom Range", &GUI.FootSkateTest.BottomMargin, 0, 0.2f);
         UI::SliderFloat("Top Range", &GUI.FootSkateTest.TopMargin, 0, 0.2f);
 
-        int32_t TestIndex = Tests.GetEntityTestIndex(GameState->SelectedEntityIndex);
+        int32_t AnimTestIndex =
+          Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_AnimationFootSkate);
+        int32_t ControllerTestIndex =
+          Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_ControllerFootSkate);
+        assert(AnimTestIndex == -1 || ControllerTestIndex == -1);
+
+        int TestIndex = (AnimTestIndex != -1) ? AnimTestIndex : ControllerTestIndex;
         if(TestIndex == -1)
         {
           if(!GUI.FootSkateTest.TestBoneIndices.Empty())
@@ -2104,43 +2110,93 @@ TestGUI(game_state* GameState)
         UI::TreePop();
       }
 
-      if(UI::TreeNode("Test Spline Following", &GUI.ExpandedSplineFollowing))
+			if(MMEntityIndex != -1)
       {
-        UI::PushID("Spline");
+        mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
+				if(MMEntity.MMControllerRID->Value != 0)
+        {
+          if(UI::TreeNode("Test Direction Changing", &GUI.ExpandedDirectionChanging))
+          {
+            UI::PushID("Dir");
+            UI::SliderFloat("Test Angle Threshold", &GUI.FacingTest.TargetAngleThreshold, 0, 180);
+            UI::SliderFloat("Maximal Wait Time", &GUI.FacingTest.MaxWaitTime, 0, 3);
+            UI::SliderFloat("Mimimal Speed To Start", &GUI.FacingTest.MinimalSpeedToStart, 0, 3);
+            UI::SliderFloat("Maximal Test Angle", &GUI.FacingTest.MaxTestAngle, 0, 180);
+            UI::SliderInt("Total Angle Test Count", &GUI.FacingTest.RemainingCaseCount, 0, 200);
+            /*UI::Checkbox("Test Left Side Turns", &GUI.FacingTest.TestLeftSideTurns);
+            UI::SameLine();
+            UI::Checkbox("Test Right Side Turns", &GUI.FacingTest.TestRightSideTurns);
+            */
+            int32_t FacingTestIndex =
+              Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_FacingChange);
+            if(FacingTestIndex == -1)
+            {
+              if(UI::Button("Start"))
+              {
+                Tests.CreateFacingChangeTest(&GameState->Resources, *MMEntity.MMControllerRID,
+                                             GUI.FacingTest, GameState->SelectedEntityIndex);
+              }
+            }
+						else
+            {
+              if(UI::Button("Stop"))
+              {
+                Tests.WriteTestToCSV(FacingTestIndex);
+                Tests.DestroyTest(&GameState->Resources, FacingTestIndex);
+              }
+              UI::SameLine();
 
-        UI::Button("Start");
-        UI::SameLine();
-        UI::Button("Stop");
-        UI::SameLine();
-        UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
-        UI::Button("Abort");
-        UI::PopColor();
+              UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
+              if(UI::Button("Abort"))
+              {
+                Tests.DestroyTest(&GameState->Resources, FacingTestIndex);
+              }
+              UI::PopColor();
+            }
 
-        UI::PopID();
+            UI::PopID();
 
-        UI::TreePop();
-      }
-      if(UI::TreeNode("Test Direction Changing", &GUI.ExpandedDirectionChanging))
-      {
-        UI::PushID("Dir");
-        UI::SliderFloat("Test Angle Threshold", &GUI.FacingTest.AngleThreshold, 0, 180);
-        UI::SliderFloat("Maximal Wait Time", &GUI.FacingTest.MaxWaitTime, 0, 3);
-        UI::SliderFloat("Mimimal Speed To Start", &GUI.FacingTest.MinimalSpeedToStart, 0, 3);
-        UI::SliderFloat("Maximal Test Angle", &GUI.FacingTest.MaxTestAngle, 0, 180);
-        UI::Checkbox("Test Left Side Turns", &GUI.FacingTest.TestLeftSideTurns);
-        UI::SameLine();
-        UI::Checkbox("Test Right Side Turns", &GUI.FacingTest.TestRightSideTurns);
-        UI::Button("Start");
-        UI::SameLine();
-        UI::Button("Stop");
-        UI::SameLine();
-        UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
-        UI::Button("Abort");
-        UI::PopColor();
+            UI::TreePop();
+          }
+          if(UI::TreeNode("Test Spline Following", &GUI.ExpandedSplineFollowing))
+          {
+            UI::PushID("Spline");
 
-        UI::PopID();
+            int TestIndex =
+              Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_TrajectoryFollowing);
+            if(TestIndex == -1)
+            {
+              if(*MMEntity.FollowSpline && MMEntity.SplineState->SplineIndex != -1)
+              {
+                if(UI::Button("Start"))
+                {
+                  Tests.CreateTrajectoryDeviationTest(&GameState->Resources,
+                                                      *MMEntity.MMControllerRID, GUI.FollowTest,
+                                                      GameState->SelectedEntityIndex);
+                }
+              }
+            }
+						else
+            {
+              if(UI::Button("Stop"))
+							{
+                Tests.WriteTestToCSV(TestIndex);
+                Tests.DestroyTest(&GameState->Resources, TestIndex);
+              }
+              UI::SameLine();
+              UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
+              if(UI::Button("Abort"))
+							{
+                Tests.DestroyTest(&GameState->Resources, TestIndex);
+              }
+              UI::PopColor();
+            }
 
-        UI::TreePop();
+            UI::PopID();
+
+            UI::TreePop();
+          }
+        }
       }
     }
 
@@ -2151,9 +2207,13 @@ TestGUI(game_state* GameState)
         UI::PushID(i);
 
         char        TempBuffer[300];
-        const char* TestTypeString = (Tests.ActiveTests[i].Type == TEST_AnimationFootSkate)
-                                       ? "Anim Foot Skate"
-                                       : "Not Implemented";
+        int         TestType       = Tests.ActiveTests[i].Type;
+        const char* TestTypeString =
+          TestType == TEST_AnimationFootSkate
+            ? "Anim Foot Skate"
+            : (TestType == TEST_ControllerFootSkate
+                 ? "Ctrl Foot Skate"
+                 : (TestType == TEST_FacingChange ? "Facing Change" : "Trajectory Follow"));
         snprintf(TempBuffer, ARRAY_COUNT(TempBuffer), "#%d: Name: %s", i,
                  Tests.ActiveTests[i].DataTable.Name);
         UI::Text(TempBuffer);

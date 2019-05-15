@@ -123,7 +123,7 @@ WriteDataTableToCSV(data_table Table, const char* FileName = NULL)
       {
         case COLUMN_TYPE_float:
         {
-          fprintf(FilePointer, "%.3f", (double)*(float*)CellAddress);
+          fprintf(FilePointer, "%.4f", (double)*(float*)CellAddress);
           break;
         }
         case COLUMN_TYPE_int32:

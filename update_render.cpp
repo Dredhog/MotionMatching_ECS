@@ -86,13 +86,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-	//Editor
+  // Editor
   if(Input->IsMouseInEditorMode)
   {
     EditWorldAndInteractWithGUI(GameState, Input);
   }
 
-  //--------------------WORLD UPDATE------------------------
+    //--------------------WORLD UPDATE------------------------
 
 #if 0
 	{
@@ -110,7 +110,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   UpdateCamera(&GameState->Camera, Input);
 #endif
 
-	if(GameState->UpdatePhysics)
+  if(GameState->UpdatePhysics)
   {
     TIMED_BLOCK(Physics);
 
@@ -185,6 +185,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     Memory::stack_allocator*    TempStack           = GameState->TemporaryMemStack;
     mm_timeline_state*          MMTimelineState     = &GameState->MMTimelineState;
     int32_t                     SelectedEntityIndex = GameState->SelectedEntityIndex;
+    testing_system*             TestingSystem       = &GameState->TestingSystem;
 
     int ActiveInputControlledCount;
     int FirstSplineControlledIndex;
@@ -200,12 +201,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     FetchAnimationPointers(&Resources, MMEntityData.MMControllers, ActiveControllerCount);
     PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                    MMEntityData.MMControllers, ActiveControllerCount);
+
+    entity_goal_input InputOverrides[MAX_SIMULTANEOUS_TEST_COUNT];
+    int               InputOverrideCount = 0;
+#if 1
+    for(int i = 0; i < TestingSystem->ActiveTests.Count; i++)
+    {
+      active_test& Test = TestingSystem->ActiveTests[i];
+      if(Test.Type == TEST_FacingChange)
+      {
+        InputOverrides[InputOverrideCount++] =
+          entity_goal_input{ .EntityIndex = Test.EntityIndex,
+                             .WorldDir    = Test.FacingTest.TargetWorldFacing };
+      }
+    }
+#endif
+
     GenerateGoalsFromInput(&MMEntityData.AnimGoals[0], &MMEntityData.MirroredAnimGoals[0],
                            &MMEntityData.Trajectories[0], TempStack, &MMEntityData.BlendStacks[0],
                            &MMEntityData.AnimPlayerTimes[0], &MMEntityData.Skeletons[0],
                            &MMEntityData.MMControllers[0], &MMEntityData.InputControllers[0],
                            &MMEntityData.EntityIndices[0], ActiveInputControlledCount, Entities,
-                           Input, CameraForward);
+                           Input, InputOverrides, InputOverrideCount, CameraForward);
     AssertSplineIndicesAndClampWaypointIndices(&MMEntityData
                                                   .SplineStates[FirstSplineControlledIndex],
                                                ActiveSplineControlledCount,
@@ -241,8 +258,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       ApplyRootMotion(Entities, MMEntityData.Trajectories, MMEntityData.OutDeltaRootMotions,
                       MMEntityData.EntityIndices, ActiveControllerCount);
     }
-    DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.EntityIndices,
-                            ActiveControllerCount, Entities);
+    DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.InputControllers,
+                            MMEntityData.EntityIndices, ActiveControllerCount, Entities);
     AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, ActiveControllerCount, Input->dt);
     RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                          ActiveControllerCount);
@@ -266,23 +283,48 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     for(int j = 0; j < GameState->SplineSystem.Splines[i].Waypoints.Count; j++)
     {
       waypoint CurrentWaypoint = GameState->SplineSystem.Splines[i].Waypoints[j];
-			if(j > 0)
-			{
-        Debug::PushLine(PreviousWaypoint.Position, CurrentWaypoint.Position);
+      vec4 WaypointColor = { 0.2f, 0.2f, 1, 1 };
+      if(j > 0)
+      {
+        Debug::PushLine(PreviousWaypoint.Position, CurrentWaypoint.Position, WaypointColor);
       }
-      vec4 WaypointColor = { 1, 0, 0, 1 };
-      if(GameState->SplineSystem.SelectedSplineIndex == i && GameState->SplineSystem.SelectedWaypointIndex == j)
-			{
-        WaypointColor = { 0, 0, 1, 1 };
+      if(GameState->SplineSystem.SelectedSplineIndex == i &&
+         GameState->SplineSystem.SelectedWaypointIndex == j)
+      {
+        WaypointColor = { 1.0f, 1.0f, 0, 1 };
       }
       Debug::PushWireframeSphere(CurrentWaypoint.Position, 0.1f, WaypointColor);
       PreviousWaypoint = CurrentWaypoint;
     }
   }
-	
+
+	// Spline visualization
+	for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
+  {
+    if(GameState->SplineSystem.Splines[i].Waypoints.Count == 0)
+    {
+      continue;
+    }
+
+    movement_spline& Spline = GameState->SplineSystem.Splines[i];
+
+    vec3 PreviousPoint = Spline.CatmullRomPoint(0, 0);
+    for(int j = 1; j < Spline.Waypoints.Count; j++)
+    {
+      const int SubdivisionCount = 10;
+      for(int k = 0; k < SubdivisionCount; k++)
+      {
+        float t            = float(k + 1) / SubdivisionCount;
+        vec3  CurrentPoint = Spline.CatmullRomPoint(j, t);
+        Debug::PushLine(PreviousPoint, CurrentPoint, { 1, 0.2f, 0.2f, 1 });
+        PreviousPoint = CurrentPoint;
+      }
+    }
+  }
+
   //------------Performing Measurements------------
   {
-	// Measure Ground Truth
+    // Measure Ground Truth Foot Skate
     testing_system& Tests = GameState->TestingSystem;
     for(int i = 0; i < Tests.ActiveTests.Count; i++)
     {
@@ -308,9 +350,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
     }
 
-    // MeasureControllers
+    // Measure Controller Foot Skate
     for(int i = 0; i < Tests.ActiveTests.Count; i++)
-		{
+    {
       active_test& Test = Tests.ActiveTests[i];
       if(Test.Type == TEST_ControllerFootSkate)
       {
@@ -322,27 +364,128 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           &(**MMEntity.MMController).Params.DynamicParams.MirrorInfo;
 
         foot_skate_data_row FootSkateTableRow =
-          MeasureFootSkate(&Test.FootSkateTest, Entity->AnimController, MirrorInfo, BlendStack,
-                           TransformToMat4(Entity->Transform), *MMEntity.OutDeltaRootMotion,
-                           Test.FootSkateTest.ElapsedTime, Input->dt);
+          MeasureFootSkate(&Test.FootSkateTest, Entity->AnimController, *MMEntity.MMController,
+                           MirrorInfo, BlendStack, TransformToMat4(Entity->Transform),
+                           *MMEntity.OutDeltaRootMotion, Test.FootSkateTest.ElapsedTime, 1 / 60.0f);
         AddRow(&Test.DataTable, &FootSkateTableRow, sizeof(FootSkateTableRow));
         Test.FootSkateTest.ElapsedTime += Input->dt;
       }
     }
 
-#if 0
-    //Trajectory
-    for(int i = 0; i < SplineOffsetEntities.Count; i++)
+    // Measure Direction Goal Reach Time
+    for(int i = 0; i < Tests.ActiveTests.Count; i++)
     {
+      active_test& Test = Tests.ActiveTests[i];
+      if(Test.Type == TEST_FacingChange)
+      {
+        entity* Entity          = &GameState->Entities[Test.EntityIndex];
+        mat3    EntityRotMatrix = Math::QuatToMat3(Entity->Transform.R);
+        mat3    InvEntityRotMatrix;
+        quat    InvR = Entity->Transform.R;
+        InvR.V *= -1;
+        InvEntityRotMatrix = Math::QuatToMat3(InvR);
+
+        vec3 CurrentFacing = Math::Normalized(EntityRotMatrix.Z);
+
+        const float DegToRad = float(M_PI) / 180.0f;
+
+        Debug::PushLine(Entity->Transform.T, Entity->Transform.T + CurrentFacing, { 0, 0, 0, 1 });
+
+        facing_test& FacingTest = Test.FacingTest;
+        {
+          FacingTest.ElapsedTime += Input->dt;
+          if(FacingTest.HasActiveCase)
+          {
+            Debug::PushLine(Entity->Transform.T, Entity->Transform.T + FacingTest.TargetWorldFacing,
+                            { 1, 1, 0, 1 });
+            if(FacingTest.ElapsedTime > FacingTest.MaxWaitTime) // Failed Test
+            {
+              facing_turn_time_data_row ResultRow = { .TimeTaken = FacingTest.ElapsedTime,
+                                                      .Passed    = 0,
+                                                      .LocalTargetAngle =
+                                                        FacingTest.TestStartLocalTargetAngle,
+                                                      .AngleThreshold =
+                                                        FacingTest.TargetAngleThreshold };
+              AddRow(&Test.DataTable, &ResultRow, sizeof(ResultRow));
+              FacingTest.HasActiveCase = false;
+            }
+            else
+            {
+              // Compute target local facing
+              vec3 TargetLocalFacing =
+                Math::Normalized(Math::MulMat3Vec3(FacingTest.InvTargetBasis, CurrentFacing));
+
+              // Compute target local angle
+              float TargetLocalAngle = atan2f(TargetLocalFacing.X, TargetLocalFacing.Z);
+              if(AbsFloat(TargetLocalAngle) <=
+                 DegToRad * FacingTest.TargetAngleThreshold) // Passed test
+              {
+                facing_turn_time_data_row ResultRow = { .TimeTaken = FacingTest.ElapsedTime,
+                                                        .Passed    = 1,
+                                                        .LocalTargetAngle =
+                                                          FacingTest.TestStartLocalTargetAngle,
+                                                        .AngleThreshold =
+                                                          FacingTest.TargetAngleThreshold };
+                AddRow(&Test.DataTable, &ResultRow, sizeof(ResultRow));
+                FacingTest.HasActiveCase = false;
+              }
+            }
+          }
+          else if(FacingTest.RemainingCaseCount > 0) // Start New Case
+          {
+            FacingTest.ElapsedTime = 0.0f;
+            // Get current world angle
+            float CurrentWorldAngle = atan2f(CurrentFacing.X, CurrentFacing.Z);
+
+            // Generate goal local angle
+            FacingTest.TestStartLocalTargetAngle =
+              FacingTest.MaxTestAngle * ((float(rand()) / RAND_MAX) * 2 - 1.0f);
+
+            // Genrate goal world angle
+            float TargetWorldAngle =
+              CurrentWorldAngle + DegToRad * FacingTest.TestStartLocalTargetAngle;
+
+            // Generate goal world facing
+            FacingTest.TargetWorldFacing = { sinf(TargetWorldAngle), 0, cosf(TargetWorldAngle) };
+
+            // Generate inv target basis
+            FacingTest.InvTargetBasis = Math::Mat3RotateY(-TargetWorldAngle / DegToRad);
+            FacingTest.HasActiveCase  = true;
+
+            FacingTest.RemainingCaseCount--;
+          }
+          else
+          {
+            int32_t TestIndex = Tests.GetEntityTestIndex(Test.EntityIndex, Test.Type);
+            Tests.WriteTestToCSV(TestIndex);
+            Tests.DestroyTest(&GameState->Resources, TestIndex);
+            i--;
+          }
+        }
+      }
     }
 
-		//Direction
-    for(int i = 0; i < DirectionChangeEntities.Count.Count; i++)
+    // Measure Deviation From Trajectory
+    for(int i = 0; i < Tests.ActiveTests.Count; i++)
     {
+      active_test& Test = Tests.ActiveTests[i];
+			if(Test.Type == TEST_TrajectoryFollowing)
+      {
+        entity* Entity        = &GameState->Entities[Test.EntityIndex];
+        int32_t MMEntityIndex = GetEntityMMDataIndex(Test.EntityIndex, &GameState->MMEntityData);
+        mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
+
+        trajectory_follow_data_row TrajectoryFollowTableRow =
+          MeasureTrajectoryFollowing(Entity->Transform, MMEntity.SplineState,
+                                     &GameState->SplineSystem
+                                        .Splines[MMEntity.SplineState->SplineIndex],
+                                     Test.FollowTest.ElapsedTime, Input->dt);
+
+        AddRow(&Test.DataTable, &TrajectoryFollowTableRow, sizeof(TrajectoryFollowTableRow));
+        Test.FollowTest.ElapsedTime += Input->dt;
+      }
     }
-#endif
   }
-
 
   if(GameState->R.ShowLightPosition)
   {
@@ -401,7 +544,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         assert(CurrentAnimation);
 
-          if(GameState->MMDebug.ShowRootTrajectories || GameState->MMDebug.ShowHipTrajectories)
+        if(GameState->MMDebug.ShowRootTrajectories || GameState->MMDebug.ShowHipTrajectories)
         {
           const float AnimDuration = Anim::GetAnimDuration(CurrentAnimation);
 

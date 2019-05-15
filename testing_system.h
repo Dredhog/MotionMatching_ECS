@@ -14,6 +14,7 @@ enum test_type
   TEST_ControllerFootSkate,
   TEST_TrajectoryFollowing,
   TEST_FacingChange,
+	TEST_Count,
 };
 
 struct active_test
@@ -23,7 +24,7 @@ struct active_test
   int32_t    Type;
   union {
     foot_skate_test FootSkateTest;
-    facing_test     ControllerFacingTest;
+    facing_test     FacingTest;
     follow_test     FollowTest;
   };
 };
@@ -83,7 +84,7 @@ struct testing_system
     sprintf(Name, "%s_foot_skate", strrchr(AnimationPath.Name, '/') + 1);
 
     // Create the data table
-    CreateFootSkateTestAndTable(Resources, Name,TEST_AnimationFootSkate, Test, EntityIndex);
+    CreateFootSkateTestAndTable(Resources, Name, TEST_AnimationFootSkate, Test, EntityIndex);
 
     // Add animation reference
     Resources->Animations.AddReference(Test.AnimationRID);
@@ -122,39 +123,77 @@ struct testing_system
   }
 
   inline void
-  CreateTrajectoryDeviationTest(int32_t EntityIndex)
-  { // Create table name
-
-    // Create table columns
-
-    // Add active test to stack
-  }
-
-  inline void
   CreateFacingChangeTest(Resource::resource_manager* Resources, rid ControllerRID,
-                         foot_skate_test Test, int32_t EntityIndex)
+                         const facing_test& Test, int32_t EntityIndex)
   {
     active_test NewTest = {};
 
     // Copy data to new active_test struct
-    NewTest.EntityIndex   = EntityIndex;
-    NewTest.FootSkateTest = Test;
-    NewTest.Type          = TEST_FacingChange;
+    NewTest.EntityIndex = EntityIndex;
+    NewTest.FacingTest  = Test;
+    NewTest.Type        = TEST_FacingChange;
 
     char FileName[MAX_TABLE_NAME_LENGTH];
     GenerateControllerTestName(FileName, ArrayCount(FileName), Resources, ControllerRID,
                                TEST_FacingChange);
 
     // Create table columns
+    AddColumn(&NewTest.DataTable.Header, "padded", COLUMN_TYPE_int32,
+              offsetof(facing_turn_time_data_row, Passed));
     AddColumn(&NewTest.DataTable.Header, "turn_time", COLUMN_TYPE_float,
-              offsetof(foot_skate_data_row, t));
+              offsetof(facing_turn_time_data_row, TimeTaken));
     AddColumn(&NewTest.DataTable.Header, "angle", COLUMN_TYPE_float,
-              offsetof(foot_skate_data_row, t));
-    AddColumn(&NewTest.DataTable.Header, "reach_success", COLUMN_TYPE_float,
-              offsetof(foot_skate_data_row, t));
+              offsetof(facing_turn_time_data_row, LocalTargetAngle));
+    AddColumn(&NewTest.DataTable.Header, "angle_threshold", COLUMN_TYPE_float,
+              offsetof(facing_turn_time_data_row, AngleThreshold));
     // Allocate table
     const int32_t MaxRowCount = 100 * 90;
-    CreateTable(&NewTest.DataTable, FileName, MaxRowCount, sizeof(foot_skate_data_row));
+    CreateTable(&NewTest.DataTable, FileName, MaxRowCount, sizeof(facing_turn_time_data_row));
+
+    // Add active test to stack
+    ActiveTests.Push(NewTest);
+  }
+
+  inline void
+  CreateTrajectoryDeviationTest(Resource::resource_manager* Resources, rid ControllerRID,
+                                const follow_test& Test, int32_t EntityIndex)
+  {
+    active_test NewTest = {};
+
+    // Copy data to new active_test struct
+    NewTest.EntityIndex = EntityIndex;
+    NewTest.FollowTest  = Test;
+    NewTest.Type        = TEST_TrajectoryFollowing;
+
+    char FileName[MAX_TABLE_NAME_LENGTH];
+    GenerateControllerTestName(FileName, ArrayCount(FileName), Resources, ControllerRID,
+                               TEST_TrajectoryFollowing);
+
+    //Create table collumns
+    AddColumn(&NewTest.DataTable.Header, "t", COLUMN_TYPE_float,
+              offsetof(trajectory_follow_data_row, t));
+    AddColumn(&NewTest.DataTable.Header, "dt", COLUMN_TYPE_float,
+              offsetof(trajectory_follow_data_row, dt));
+    AddColumn(&NewTest.DataTable.Header, "distance_from_segment", COLUMN_TYPE_float,
+              offsetof(trajectory_follow_data_row, DistanceToSegment));
+    AddColumn(&NewTest.DataTable.Header, "signed_angle_from_segment", COLUMN_TYPE_float,
+              offsetof(trajectory_follow_data_row, SignedAngleFromLine));
+    AddColumn(&NewTest.DataTable.Header, "distance_from_spline", COLUMN_TYPE_float,
+              offsetof(trajectory_follow_data_row, DistanceToSpline));
+    AddColumn(&NewTest.DataTable.Header, "signed_angle_from_spline", COLUMN_TYPE_float,
+              offsetof(trajectory_follow_data_row, SignedAngleFromSpline));
+    AddColumn(&NewTest.DataTable.Header, "next_waypoint_index", COLUMN_TYPE_int32,
+              offsetof(trajectory_follow_data_row, NextWaypointIndex));
+    AddColumn(&NewTest.DataTable.Header, "total_distance_traveled", COLUMN_TYPE_int32,
+              offsetof(trajectory_follow_data_row, TotalDistanceTraveled));
+    AddColumn(&NewTest.DataTable.Header, "projected_distance_traveled", COLUMN_TYPE_int32,
+              offsetof(trajectory_follow_data_row, TotalProjectedDistanceTraveled));
+    AddColumn(&NewTest.DataTable.Header, "percentage_in_trajectory", COLUMN_TYPE_int32,
+              offsetof(trajectory_follow_data_row, PercentageInTrajectory));
+
+    //Allocate table
+    const int32_t MaxRowCount = 100 * 90;
+    CreateTable(&NewTest.DataTable, FileName, MaxRowCount, sizeof(trajectory_follow_data_row));
 
     // Add active test to stack
     ActiveTests.Push(NewTest);
@@ -196,51 +235,29 @@ struct testing_system
       {
         break;
       }
-			default:
-			{
-				assert(0 && "Assert: cannot find such test type to remove");
-				break;
-			}
+      default:
+      {
+        assert(0 && "Assert: cannot find such test type to remove");
+        break;
+      }
     }
     DestroyTable(&ActiveTests[TestIndex].DataTable);
     ActiveTests.Remove(TestIndex);
   }
 
   int32_t
-  GetEntityTestIndex(int32_t EntityIndex, int32_t TestType = -1)
+  GetEntityTestIndex(int32_t EntityIndex, int32_t TestType)
   {
+    assert(0 <= TestType && TestType < TEST_Count);
     for(int i = 0; i < ActiveTests.Count; i++)
     {
-      if(ActiveTests[i].EntityIndex == EntityIndex &&
-         (TestType == -1 || TestType == ActiveTests[i].Type))
+      if(ActiveTests[i].EntityIndex == EntityIndex && ActiveTests[i].Type == TestType)
       {
         return i;
       }
     }
     return -1;
   }
-
-  /*inline bool
-  GetEntityTestCopy(active_test* OutTest, int32_t EntityIndex, int32_t TestType = -1,
-                    int32_t* OutTestIndex = NULL)
-  {
-    int32_t TestIndex = GetEntityTestIndex(EntityIndex, TestType);
-
-    if(OutTestIndex)
-    {
-      *OutTestIndex = TestIndex;
-    }
-
-    if(TestIndex != -1)
-    {
-      if(OutTest)
-      {
-        *OutTest = ActiveTests[TestIndex];
-      }
-      return true;
-    }
-    return false;
-  }*/
 
 private:
   inline void

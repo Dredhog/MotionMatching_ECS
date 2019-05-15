@@ -3,6 +3,7 @@
 
 foot_skate_data_row
 MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
+                 const mm_controller_data*         MMController,
                  const Anim::skeleton_mirror_info* MirrorInfo, const blend_stack* BlendStack,
                  const mat4& EntityModelMatrix, transform LocalDeltaRoot, float t, float dt)
 {
@@ -113,8 +114,16 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
   Result.LeftFootZVel  = Velocities[0].Z;
   Result.RightFootXVel = Velocities[1].X;
   Result.RightFootZVel = Velocities[1].Z;
-  Result.AnimCount     = 1;
-  Result.AnimIndex     = 0;
+  Result.AnimCount     = BlendStack->Count;
+  Result.AnimIndex     = -1;
+  for(int i = 0; i < MMController->Animations.Count; i++)
+  {
+    if((*BlendStack).Peek().Animation == MMController->Animations[i])
+    {
+			Result.AnimIndex = i;
+		}
+	}
+  assert(Result.AnimIndex != -1);
 
   return Result;
 }

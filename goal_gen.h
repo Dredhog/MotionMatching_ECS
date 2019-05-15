@@ -18,6 +18,12 @@ struct trajectory
   float                TargetAngle;
 };
 
+struct entity_goal_input
+{
+  int32_t EntityIndex;
+  vec3    WorldDir;
+};
+
 inline void
 InitTrajectory(trajectory* OutTrajectory)
 {
@@ -36,15 +42,15 @@ GetGoalAndUpdateTrajectory(mm_frame_info* OutGoal, trajectory* Trajectory,
 {
   const float SampleFrequency = HALF_TRAJECTORY_TRANSFORM_COUNT;
 
-  mat3 EntityMatrix = Math::Mat4ToMat3(Math::InvMat4(InvEntityMatrix));
-  vec3 DesiredFacing = Math::MulMat3Vec3(EntityMatrix, DesiredLocalFacing);
+  mat3 EntityMatrix    = Math::Mat4ToMat3(Math::InvMat4(InvEntityMatrix));
+  vec3 DesiredFacing   = Math::MulMat3Vec3(EntityMatrix, DesiredLocalFacing);
   vec3 DesiredVelocity = Math::MulMat3Vec3(EntityMatrix, DesiredLocalVelocity);
 
   // Update the trajectory transform array
   vec2 DesiredLinearDisplacement = vec2{ DesiredVelocity.X, DesiredVelocity.Z } / SampleFrequency;
 
   if(Math::Length(DesiredVelocity) > 0.01f)
-	{
+  {
     Trajectory->TargetAngle = atan2f(DesiredFacing.X, DesiredFacing.Z);
   }
 
@@ -108,8 +114,8 @@ GetGoalAndUpdateTrajectory(mm_frame_info* OutGoal, trajectory* Trajectory,
 
 struct trajectory_update_args
 {
-	float PositionBias;
-	float DirectionBias;
+  float PositionBias;
+  float DirectionBias;
   mat4  InvEntityMatrix;
 };
 
@@ -126,8 +132,8 @@ GetLongtermGoal(mm_frame_info* OutGoal, trajectory* Trajectory, vec3 StartVeloci
   }
   else
   {
-    const float Step        = 1 / 60.0f;
-    float       PointDelta  = TimeHorizon / MM_POINT_COUNT;
+    const float Step       = 1 / 60.0f;
+    float       PointDelta = TimeHorizon / MM_POINT_COUNT;
 
     assert(Math::Length(DesiredFacing) > 0.5f);
     float GoalAngle = atan2f(DesiredFacing.X, DesiredFacing.Z);
@@ -199,8 +205,7 @@ GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootV
         int BoneIndex = Params.ComparisonBoneIndices[b];
         OutPose->BonePs[b] =
           Math::MulMat4(InvCurrentRootMatrix,
-                        Math::MulMat4(TempMatrices[BoneIndex],
-                                      Skeleton->Bones[BoneIndex].BindPose))
+                        Math::MulMat4(TempMatrices[BoneIndex], Skeleton->Bones[BoneIndex].BindPose))
             .T;
       }
 
@@ -210,8 +215,7 @@ GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootV
         int BoneIndex = Params.MirrorBoneIndices[b];
         OutMirrorPose->BonePs[b] =
           Math::MulMat4(InvCurrentRootMatrix,
-                        Math::MulMat4(TempMatrices[BoneIndex],
-                                      Skeleton->Bones[BoneIndex].BindPose))
+                        Math::MulMat4(TempMatrices[BoneIndex], Skeleton->Bones[BoneIndex].BindPose))
             .T;
       }
     }
@@ -233,17 +237,15 @@ GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootV
     {
       Anim::GetRootAndInvRootMatrices(&NextRootMatrix, &InvNextRootMatrix,
                                       Math::MulMat4(TempMatrices[HipIndex],
-                                                    Skeleton->Bones[HipIndex]
-                                                      .BindPose));
+                                                    Skeleton->Bones[HipIndex].BindPose));
       for(int b = 0; b < Params.ComparisonBoneIndices.Count; b++)
       {
         if(OutPose)
         {
           int BoneIndex = Params.ComparisonBoneIndices[b];
           OutPose->BoneVs[b] =
-            (Math::MulMat4(InvNextRootMatrix,
-                           Math::MulMat4(TempMatrices[BoneIndex],
-                                         Skeleton->Bones[BoneIndex].BindPose))
+            (Math::MulMat4(InvNextRootMatrix, Math::MulMat4(TempMatrices[BoneIndex],
+                                                            Skeleton->Bones[BoneIndex].BindPose))
                .T -
              OutPose->BonePs[b]) /
             Delta;
@@ -252,9 +254,8 @@ GetPoseGoal(mm_frame_info* OutPose, mm_frame_info* OutMirrorPose, vec3* OutRootV
         {
           int BoneIndex = Params.MirrorBoneIndices[b];
           OutMirrorPose->BoneVs[b] =
-            (Math::MulMat4(InvNextRootMatrix,
-                           Math::MulMat4(TempMatrices[BoneIndex],
-                                         Skeleton->Bones[BoneIndex].BindPose))
+            (Math::MulMat4(InvNextRootMatrix, Math::MulMat4(TempMatrices[BoneIndex],
+                                                            Skeleton->Bones[BoneIndex].BindPose))
                .T -
              OutMirrorPose->BonePs[b]) /
             Delta;

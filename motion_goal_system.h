@@ -13,15 +13,6 @@
 
 #define MM_CONTROLLER_MAX_COUNT 20
 
-struct spline_follow_state
-{
-  int32_t SplineIndex;
-
-  int32_t  NextWaypointIndex;
-  bool     Loop;
-  bool     MovingInPositive;
-};
-
 struct mm_timeline_state
 {
   blend_stack SavedBlendStack;
@@ -404,13 +395,16 @@ DrawGoalFrameInfos(const mm_frame_info* GoalInfos, const int32_t* EntityIndices,
 }
 
 inline void
-DrawControlTrajectories(const trajectory* Trajectories, const int32_t* EntityIndices, int32_t Count,
-                        const entity* Entities)
+DrawControlTrajectories(const trajectory* Trajectories, const mm_input_controller* InputControllers,
+                        const int32_t* EntityIndices, int32_t Count, const entity* Entities)
 {
   for(int i = 0; i < Count; i++)
   {
-    DrawTrajectory(TransformToMat4(Entities[EntityIndices[i]].Transform), &Trajectories[i],
-                   { 0, 1, 0 }, { 0, 0, 1 }, { 1, 1, 0 });
+		if(InputControllers[i].UseSmoothGoal)
+    {
+      DrawTrajectory(TransformToMat4(Entities[EntityIndices[i]].Transform), &Trajectories[i],
+                     { 0, 1, 0 }, { 0, 0, 1 }, { 1, 1, 0 });
+    }
   }
 }
 
@@ -422,6 +416,7 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
                        const mm_controller_data* const* MMControllers,
                        const mm_input_controller* InputControllers, const int32_t* EntityIndices,
                        int32_t Count, const entity* Entities, const game_input* Input,
+                       const entity_goal_input* InputOverrides, int32_t InputOverrideCount,
                        vec3 CameraForward)
 {
   // TODO(Lukas) Add joystick option here
@@ -455,13 +450,22 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
 
   for(int e = 0; e < Count; e++)
   {
+		vec3 InputDir = Dir;
+		for(int i = 0; i < InputOverrideCount; i++)
+		{
+			if(InputOverrides[i].EntityIndex == e)
+			{
+        InputDir = InputOverrides[i].WorldDir;
+      }
+		}
+
     quat R = Entities[EntityIndices[e]].Transform.R;
     R.V *= -1;
-    vec3 GoalVelocity = Math::MulMat3Vec3(Math::QuatToMat3(R), InputControllers[e].MaxSpeed * Dir);
+    vec3 GoalVelocity = Math::MulMat3Vec3(Math::QuatToMat3(R), InputControllers[e].MaxSpeed * InputDir);
     vec3 GoalFacing =
       InputControllers[e].UseStrafing
         ? Math::MulMat3Vec3(Math::QuatToMat3(R), ViewForward)
-        : (Math::Length(Dir) != 0 ? Math::MulMat3Vec3(Math::QuatToMat3(R), Dir) : vec3{ 0, 0, 1 });
+        : (Math::Length(InputDir) != 0 ? Math::MulMat3Vec3(Math::QuatToMat3(R), InputDir) : vec3{ 0, 0, 1 });
 
     blend_in_info DominantBlend = BlendStacks[e].Peek();
     float         LocalAnimTime = GetLocalSampleTime(DominantBlend.Animation, GlobalTimes[e],

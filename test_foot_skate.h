@@ -3,6 +3,7 @@
 #include "anim.h"
 #include "blend_stack.h"
 #include "stack_alloc.h"
+#include "motion_matching.h"
 
 struct foot_skate_data_row
 {
@@ -35,6 +36,7 @@ struct foot_skate_test
 };
 
 foot_skate_data_row MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
+                                     const mm_controller_data*         MMController,
                                      const Anim::skeleton_mirror_info* MirrorInfo,
                                      const blend_stack* BlendStack, const mat4& EntityModelMatrix,
                                      transform LocalDeltaRoot, float t, float dt);

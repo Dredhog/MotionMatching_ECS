@@ -56,18 +56,7 @@ DrawTrajectory(mat4 CoordinateFrame, const trajectory* Trajectory, vec3 PastColo
 {
   for(int i = 0; i < TRAJECTORY_TRANSFORM_COUNT; i++)
   {
-#if 0
-    vec3 CurrentWorldPos = Math::MulMat4Vec4(CoordinateFrame, { Trajectory->Transforms[i].T.X, 0,
-                                                                Trajectory->Transforms[i].T.Y, 1 })
-                             .XYZ;
-#endif
-#if 0
-    vec3 CurrentWorldPos =
-      CoordinateFrame.T + vec3{ Trajectory->Transforms[i].T.X, 0, Trajectory->Transforms[i].T.Y };
-#endif
-#if 1
     vec3 CurrentWorldPos = vec3{ Trajectory->Transforms[i].T.X, 0, Trajectory->Transforms[i].T.Y };
-#endif
     vec3 Forward = { 0, 0, 1 };
     vec3 FacingDir = Math::MulMat3Vec3(Math::QuatToMat3(Trajectory->Transforms[i].R), Forward);
 
