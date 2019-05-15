@@ -2118,9 +2118,9 @@ TestGUI(game_state* GameState)
           if(UI::TreeNode("Test Direction Changing", &GUI.ExpandedDirectionChanging))
           {
             UI::PushID("Dir");
+
             UI::SliderFloat("Test Angle Threshold", &GUI.FacingTest.TargetAngleThreshold, 0, 180);
-            UI::SliderFloat("Maximal Wait Time", &GUI.FacingTest.MaxWaitTime, 0, 3);
-            UI::SliderFloat("Mimimal Speed To Start", &GUI.FacingTest.MinimalSpeedToStart, 0, 3);
+            UI::SliderFloat("Maximal Wait Time", &GUI.FacingTest.MaxWaitTime, 0, 5);
             UI::SliderFloat("Maximal Test Angle", &GUI.FacingTest.MaxTestAngle, 0, 180);
             UI::SliderInt("Total Angle Test Count", &GUI.FacingTest.RemainingCaseCount, 0, 200);
             /*UI::Checkbox("Test Left Side Turns", &GUI.FacingTest.TestLeftSideTurns);

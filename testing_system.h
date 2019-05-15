@@ -97,7 +97,11 @@ struct testing_system
   {
     path ControllerPath =
       Resources->MMControllerPaths[Resources->GetMMControllerPathIndex(ControllerRID)];
-    mm_params* Params = &Resources->GetMMController(ControllerRID)->Params;
+		//Making sure that .controller does not appear in the .csv file name
+    char* DotBeforeExtensionPtr = strrchr(ControllerPath.Name, '.');
+    *DotBeforeExtensionPtr      = '\0';
+
+    mm_params* Params           = &Resources->GetMMController(ControllerRID)->Params;
 
     assert(TestType == TEST_ControllerFootSkate || TestType == TEST_FacingChange ||
            TestType == TEST_TrajectoryFollowing);
@@ -176,10 +180,10 @@ struct testing_system
               offsetof(trajectory_follow_data_row, dt));
     AddColumn(&NewTest.DataTable.Header, "distance_from_segment", COLUMN_TYPE_float,
               offsetof(trajectory_follow_data_row, DistanceToSegment));
-    AddColumn(&NewTest.DataTable.Header, "signed_angle_from_segment", COLUMN_TYPE_float,
-              offsetof(trajectory_follow_data_row, SignedAngleFromLine));
     AddColumn(&NewTest.DataTable.Header, "distance_from_spline", COLUMN_TYPE_float,
               offsetof(trajectory_follow_data_row, DistanceToSpline));
+    AddColumn(&NewTest.DataTable.Header, "signed_angle_from_segment", COLUMN_TYPE_float,
+              offsetof(trajectory_follow_data_row, SignedAngleFromLine));
     AddColumn(&NewTest.DataTable.Header, "signed_angle_from_spline", COLUMN_TYPE_float,
               offsetof(trajectory_follow_data_row, SignedAngleFromSpline));
     AddColumn(&NewTest.DataTable.Header, "next_waypoint_index", COLUMN_TYPE_int32,
