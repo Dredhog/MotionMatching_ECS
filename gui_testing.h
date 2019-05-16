@@ -1468,9 +1468,9 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                        UI::TreeNode("Smooth Goal Params", &s_ShowSmoothTrajectoryParams))
                     {
                       UI::SliderFloat("Position Bias",
-                                      &MMControllerData.InputController->PositionBias, 0.0f, 1.0f);
+                                      &MMControllerData.InputController->PositionBias, 0.0f, 5.0f);
                       UI::SliderFloat("Direction Bias",
-                                      &MMControllerData.InputController->DirectionBias, 0.0f, 1.0f);
+                                      &MMControllerData.InputController->DirectionBias, 0.0f, 5.0f);
                       UI::TreePop();
                     }
 
