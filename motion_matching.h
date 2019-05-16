@@ -52,6 +52,7 @@ struct mm_dynamic_params
   float                      BlendInTime;
   float                      MinTimeOffsetThreshold;
   bool                       MatchMirroredAnimations;
+  float                      TrajectoryWeights[MM_POINT_COUNT];
   Anim::skeleton_mirror_info MirrorInfo;
 };
 
@@ -111,6 +112,10 @@ ResetMMParamsToDefault(mm_params* Params)
   Params->DynamicParams.BlendInTime             = 0.2f;
   Params->DynamicParams.MatchMirroredAnimations = false;
   Params->FixedParams.MetadataSamplingFrequency = 30.0f;
+	for(int i = 0; i < MM_POINT_COUNT; i++)
+	{
+    Params->DynamicParams.TrajectoryWeights[i] = 1.0f;
+  }
 }
 
 // Main metadata precomputation
@@ -119,12 +124,12 @@ mm_controller_data* PrecomputeRuntimeMMData(Memory::stack_allocator*       TempA
                                             const mm_params&               Params);
 // Cost function used for search
 float ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float VelCoef,
-                  float TrajCoef, float TrajVCoef, float TrajAngleCoef);
+                  float TrajCoef, float TrajVCoef, float TrajAngleCoef, const float* TrajectoryWeights);
 
 float ComputeCostComponents(float* BonePComp, float* BoneVComp, float* TrajPComp, float* TrajVComp,
                             float* TrajAComp, const mm_frame_info& A, const mm_frame_info& B,
                             float PosCoef, float VelCoef, float TrajCoef, float TrajVCoef,
-                            float TrajAngleCoef);
+                            float TrajAngleCoef, const float* TrajectoryWeights);
 
 // Runtime API
 float MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutBestMatch,

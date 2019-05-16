@@ -267,6 +267,18 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
                       &MMEditor->ActiveProfile.DynamicParams.TrajVCoefficient, 0, 1);
       UI::SliderFloat("Trajectory Angle Influence",
                       &MMEditor->ActiveProfile.DynamicParams.TrajAngleCoefficient, 0, 1);
+			static bool s_ShowTrajectoryPointWeights;
+      if(UI::TreeNode("Trajectory Point Weights", &s_ShowTrajectoryPointWeights))
+			{
+				for(int i = 0; i < MM_POINT_COUNT; i++)
+        {
+          char TempBuff[32];
+          snprintf(TempBuff, ARRAY_COUNT(TempBuff), "Point #%d Weight", i + 1);
+          UI::Text(TempBuff);
+          UI::SliderFloat(TempBuff, &MMEditor->ActiveProfile.DynamicParams.TrajectoryWeights[i], 0, 1);
+        }
+        UI::TreePop();
+			}
       UI::Text("Metadata Generation Parameters");
       UI::SliderFloat("Metadata Sampling Frequency",
                       &MMEditor->ActiveProfile.FixedParams.MetadataSamplingFrequency, 15, 240);

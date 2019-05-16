@@ -317,11 +317,11 @@ MMTimelineWindow(mm_timeline_state* TimelineState, blend_stack BlendStack,
     float TrajPCost;
     float TrajVCost;
     float TrajACost;
-    float Cost =
-      ComputeCostComponents(&BonePCost, &BoneVCost, &TrajPCost, &TrajVCost, &TrajACost, AnimGoal,
-                            MMController->FrameInfos[FrameInfoIndex], Params.BonePCoefficient,
-                            Params.BoneVCoefficient, Params.TrajPCoefficient,
-                            Params.TrajVCoefficient, Params.TrajAngleCoefficient);
+    float Cost = ComputeCostComponents(&BonePCost, &BoneVCost, &TrajPCost, &TrajVCost, &TrajACost,
+                                       AnimGoal, MMController->FrameInfos[FrameInfoIndex],
+                                       Params.BonePCoefficient, Params.BoneVCoefficient,
+                                       Params.TrajPCoefficient, Params.TrajVCoefficient,
+                                       Params.TrajAngleCoefficient, Params.TrajectoryWeights);
     float FullCostWidth = 0.3f * UI::GetUsableWindowWidth() * Cost;
     UI::Button("Cost", FullCostWidth);
 

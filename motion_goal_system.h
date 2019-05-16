@@ -44,7 +44,7 @@ struct mm_input_controller
   DO_FUNC(mm_input_controller, InputController, InputControllers)                                  \
   DO_FUNC(mm_controller_data*, MMController, MMControllers)                                        \
   DO_FUNC(Anim::skeleton*, Skeleton, Skeletons)                                                    \
-  DO_FUNC(float, AnimPlayerTime, AnimPlayerTimes)                                      \
+  DO_FUNC(float, AnimPlayerTime, AnimPlayerTimes)                                                  \
   DO_FUNC(mm_frame_info, LastMatchedGoal, LastMatchedGoals)                                        \
   DO_FUNC(transform, LastMatchedTransform, LastMatchedTransforms)                                  \
   DO_FUNC(mm_frame_info, MirroredAnimGoal, MirroredAnimGoals)                                      \

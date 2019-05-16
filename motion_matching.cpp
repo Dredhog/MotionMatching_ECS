@@ -188,20 +188,20 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
 
 float
 ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float VelCoef,
-            float TrajCoef, float TrajVCoef, float TrajAngleCoef)
+            float TrajCoef, float TrajVCoef, float TrajAngleCoef, const float* TrajectoryWeights)
 {
   float PosDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 Diff = A.BonePs[b] - B.BonePs[b];
-    PosDiffSum += Math::Dot(Diff, Diff);
+    PosDiffSum += sqrt(Math::Dot(Diff, Diff));
   }
 
   float VelDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 VelDiff = A.BoneVs[b] - B.BoneVs[b];
-    VelDiffSum += Math::Dot(VelDiff, VelDiff);
+    VelDiffSum += sqrtf(Math::Dot(VelDiff, VelDiff));
   }
 
   float TrajDiffSum  = 0.0f;
@@ -209,9 +209,9 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
     vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
-    TrajDiffSum += Math::Dot(Diff, Diff);
-    float VDiff = A.TrajectoryVs[p] - B.TrajectoryVs[p];
-    TrajVDiffSum += VDiff * VDiff;
+    TrajDiffSum += TrajectoryWeights[p] * sqrtf(Math::Dot(Diff, Diff));
+    float VDiff = TrajectoryWeights[p] * fabs(A.TrajectoryVs[p] - B.TrajectoryVs[p]);
+    TrajVDiffSum += VDiff;
   }
 
   float TrajDirDiffSum = 0.0f;
@@ -220,7 +220,7 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
     vec2 DirA = { sinf(A.TrajectoryAngles[p]), cosf(A.TrajectoryAngles[p]) };
     vec2 DirB = { sinf(B.TrajectoryAngles[p]), cosf(B.TrajectoryAngles[p]) };
     vec2 Diff = DirA - DirB;
-    TrajDirDiffSum += Math::Dot(Diff, Diff);
+    TrajDirDiffSum += TrajectoryWeights[p] * sqrt(Math::Dot(Diff, Diff));
   }
 
   float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum +
@@ -233,20 +233,20 @@ float
 ComputeCostComponents(float* BonePCost, float* BoneVCost, float* TrajPCost, float* TrajVCost,
                       float* TrajACost, const mm_frame_info& A, const mm_frame_info& B,
                       float PosCoef, float VelCoef, float TrajCoef, float TrajVCoef,
-                      float TrajAngleCoef)
+                      float TrajAngleCoef, const float* TrajectoryWeights)
 {
   float PosDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 Diff = A.BonePs[b] - B.BonePs[b];
-    PosDiffSum += Math::Dot(Diff, Diff);
+    PosDiffSum += sqrtf(Math::Dot(Diff, Diff));
   }
 
   float VelDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 VelDiff = A.BoneVs[b] - B.BoneVs[b];
-    VelDiffSum += Math::Dot(VelDiff, VelDiff);
+    VelDiffSum += sqrtf(Math::Dot(VelDiff, VelDiff));
   }
 
   float TrajDiffSum  = 0.0f;
@@ -254,9 +254,9 @@ ComputeCostComponents(float* BonePCost, float* BoneVCost, float* TrajPCost, floa
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
     vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
-    TrajDiffSum += Math::Dot(Diff, Diff);
-    float VDiff = A.TrajectoryVs[p] - B.TrajectoryVs[p];
-    TrajVDiffSum += VDiff * VDiff;
+    TrajDiffSum += TrajectoryWeights[p] * sqrtf(Math::Dot(Diff, Diff));
+    float VDiff = TrajectoryWeights[p] * fabs(A.TrajectoryVs[p] - B.TrajectoryVs[p]);
+    TrajVDiffSum += VDiff;
   }
 
   float TrajDirDiffSum = 0.0f;
@@ -265,7 +265,7 @@ ComputeCostComponents(float* BonePCost, float* BoneVCost, float* TrajPCost, floa
     vec2 DirA = { sinf(A.TrajectoryAngles[p]), cosf(A.TrajectoryAngles[p]) };
     vec2 DirB = { sinf(B.TrajectoryAngles[p]), cosf(B.TrajectoryAngles[p]) };
     vec2 Diff = DirA - DirB;
-    TrajDirDiffSum += Math::Dot(Diff, Diff);
+    TrajDirDiffSum += TrajectoryWeights[p] * sqrtf(Math::Dot(Diff, Diff));
   }
   *BonePCost = PosDiffSum * PosCoef;
   *BoneVCost = VelDiffSum * VelCoef;
@@ -298,7 +298,8 @@ MotionMatch(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame_info* OutB
                     MMData->Params.DynamicParams.BoneVCoefficient,
                     MMData->Params.DynamicParams.TrajPCoefficient,
                     MMData->Params.DynamicParams.TrajVCoefficient,
-                    MMData->Params.DynamicParams.TrajAngleCoefficient);
+                    MMData->Params.DynamicParams.TrajAngleCoefficient,
+                    MMData->Params.DynamicParams.TrajectoryWeights);
       if(CurrentCost < SmallestCost)
       {
         SmallestCost       = CurrentCost;
@@ -344,7 +345,8 @@ MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame
                     MMData->Params.DynamicParams.BoneVCoefficient,
                     MMData->Params.DynamicParams.TrajPCoefficient,
                     MMData->Params.DynamicParams.TrajVCoefficient,
-                    MMData->Params.DynamicParams.TrajAngleCoefficient);
+                    MMData->Params.DynamicParams.TrajAngleCoefficient,
+                    MMData->Params.DynamicParams.TrajectoryWeights);
       if(CurrentCost < SmallestCost)
       {
         SmallestCost       = CurrentCost;
@@ -359,7 +361,8 @@ MotionMatchWithMirrors(int32_t* OutAnimIndex, float* OutLocalStartTime, mm_frame
                                        MMData->Params.DynamicParams.BoneVCoefficient,
                                        MMData->Params.DynamicParams.TrajPCoefficient,
                                        MMData->Params.DynamicParams.TrajVCoefficient,
-                                       MMData->Params.DynamicParams.TrajAngleCoefficient);
+                                       MMData->Params.DynamicParams.TrajAngleCoefficient,
+                                       MMData->Params.DynamicParams.TrajectoryWeights);
 
       if(MirroredCost < SmallestCost)
       {
