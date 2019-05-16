@@ -667,12 +667,13 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::BeginWindow("Matching Debug Settings", { 840, 20 }, { 320, 450 });
 
     mm_debug_settings& MMDebug = GameState->MMDebug;
+    UI::Checkbox("Apply Root Motion", &MMDebug.ApplyRootMotion);
     UI::Text("Debug Display");
     UI::SliderFloat("Trajectory Duration (sec)", &MMDebug.TrajectoryDuration, 0, 10);
     UI::SliderInt("Trajectory Sample Count", &MMDebug.TrajectorySampleCount, 2, 40);
     UI::Checkbox("Show Root Trajectory", &MMDebug.ShowRootTrajectories);
     UI::Checkbox("Show Hip Trajectory", &MMDebug.ShowHipTrajectories);
-    UI::Checkbox("Apply Root Motion", &MMDebug.ApplyRootMotion);
+    UI::Checkbox("Show Smooth Goals", &MMDebug.ShowSmoothGoals);
     UI::Text("Current Goal");
     UI::Checkbox("Show Current Goal", &MMDebug.CurrentGoal.ShowTrajectory);
     UI::Checkbox("Show Current Goal Directions", &MMDebug.CurrentGoal.ShowTrajectoryAngles);

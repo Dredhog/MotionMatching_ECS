@@ -121,6 +121,7 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
     if((*BlendStack).Peek().Animation == MMController->Animations[i])
     {
 			Result.AnimIndex = i;
+			break;
 		}
 	}
   assert(Result.AnimIndex != -1);

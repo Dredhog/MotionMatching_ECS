@@ -21,6 +21,7 @@ struct mm_info_debug_settings
 
 struct mm_debug_settings
 {
+  bool  ShowSmoothGoals;
   float TrajectoryDuration;
   int   TrajectorySampleCount;
   bool  ShowHipTrajectories;

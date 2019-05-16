@@ -475,14 +475,15 @@ SetGameStatePODFields(game_state* GameState)
 
   // Motion Matching
   {
-    GameState->MMTimelineState                          = {};
-    GameState->MMTimelineState.SavedControllerHash      = 0;
-    GameState->MMDebug                                  = {};
-    GameState->MMDebug.TrajectoryDuration               = 1;
-    GameState->MMDebug.TrajectorySampleCount            = 20;
-    GameState->MMDebug.ApplyRootMotion                  = true;
-    GameState->MMDebug.ShowRootTrajectories             = false;
-    GameState->MMDebug.ShowHipTrajectories              = false;
+    GameState->MMTimelineState                     = {};
+    GameState->MMTimelineState.SavedControllerHash = 0;
+    GameState->MMDebug                             = {};
+    GameState->MMDebug.TrajectoryDuration          = 1;
+    GameState->MMDebug.TrajectorySampleCount       = 20;
+    GameState->MMDebug.ApplyRootMotion             = true;
+    GameState->MMDebug.ShowRootTrajectories        = false;
+    GameState->MMDebug.ShowHipTrajectories         = false;
+    GameState->MMDebug.ShowSmoothGoals             = false;
 
     GameState->MMDebug.CurrentGoal.ShowTrajectory       = true;
     GameState->MMDebug.MatchedGoal.ShowTrajectory       = true;
@@ -492,7 +493,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.MatchedGoal.ShowBonePositions    = true;
 
     // Testing system
-		// Default constructed :(
+    // Default constructed :(
   }
 
   GameState->Physics.Params.Beta                       = (1.0f / (FRAME_TIME_MS / 1000.0f)) / 2.0f;

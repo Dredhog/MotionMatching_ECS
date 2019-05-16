@@ -254,12 +254,11 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                            MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                            ActiveControllerCount, Input->dt);
     if(MMDebug.ApplyRootMotion)
-    {
       ApplyRootMotion(Entities, MMEntityData.Trajectories, MMEntityData.OutDeltaRootMotions,
                       MMEntityData.EntityIndices, ActiveControllerCount);
-    }
-    DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.InputControllers,
-                            MMEntityData.EntityIndices, ActiveControllerCount, Entities);
+    if(MMDebug.ShowSmoothGoals)
+      DrawControlTrajectories(MMEntityData.Trajectories, MMEntityData.InputControllers,
+                              MMEntityData.EntityIndices, ActiveControllerCount, Entities);
     AdvanceAnimPlayerTimes(MMEntityData.AnimPlayerTimes, ActiveControllerCount, Input->dt);
     RemoveBlendedOutAnimsFromBlendStacks(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                          ActiveControllerCount);

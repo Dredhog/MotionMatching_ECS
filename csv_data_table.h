@@ -106,7 +106,7 @@ WriteDataTableToCSV(data_table Table, const char* FileName = NULL)
   for(int c = 0; c < Table.Header.ColumnCount; c++)
   {
     fprintf(FilePointer, "%s%s", Table.Header.ColumnNames[c],
-            (c < Table.Header.ColumnCount - 1) ? ", " : ";\n");
+            (c < Table.Header.ColumnCount - 1) ? ", " : ",\n");
   }
 
   // Write Rows
@@ -137,7 +137,7 @@ WriteDataTableToCSV(data_table Table, const char* FileName = NULL)
           break;
         }
       }
-      fprintf(FilePointer, "%s", (c < Table.Header.ColumnCount - 1) ? ", " : ";\n");
+      fprintf(FilePointer, "%s", (c < Table.Header.ColumnCount - 1) ? ", " : ",\n");
     }
   }
   fclose(FilePointer);
