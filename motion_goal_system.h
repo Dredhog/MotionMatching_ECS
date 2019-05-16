@@ -588,6 +588,28 @@ VisualFlipGoalX(const mm_frame_info& Goal)
   return FlippedGoal;
 }
 
+// Figure out if matched potition is sufficiently far away from all animations which are already
+// playing
+inline bool
+IsNewAnimSufficientlyFarAway(const Anim::animation* NewAnim, float NewAnimLocalStartTime,
+                             const blend_stack& BlendStack, float AnimPlayerTime,
+                             float TimeOffetThreshold)
+{
+  for(int a = 0; a < BlendStack.Count; a++)
+  {
+    blend_in_info ActiveAnimBlend = BlendStack[a];
+
+    float ActiveAnimLocalAnimTime = GetLocalSampleTime(ActiveAnimBlend.Animation, AnimPlayerTime,
+                                                       ActiveAnimBlend.GlobalAnimStartTime);
+    if(NewAnim == ActiveAnimBlend.Animation &&
+       AbsFloat(ActiveAnimLocalAnimTime - NewAnimLocalStartTime) < TimeOffetThreshold)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
 inline void
 MotionMatchGoals(blend_stack* OutBlendStacks, mm_frame_info* LastMatchedGoals,
                  transform* OutLastMatchedTransforms, const mm_frame_info* AnimGoals,
@@ -598,40 +620,31 @@ MotionMatchGoals(blend_stack* OutBlendStacks, mm_frame_info* LastMatchedGoals,
   for(int i = 0; i < Count; i++)
   {
     int32_t NewAnimIndex;
-    float   NewAnimStartTime;
+    float   NewAnimLocalStartTime;
     bool    NewMatchIsMirrored = false;
 
     mm_frame_info BestMatch = {};
     if(!MMControllers[i]->Params.DynamicParams.MatchMirroredAnimations)
     {
-      MotionMatch(&NewAnimIndex, &NewAnimStartTime, &BestMatch, MMControllers[i], AnimGoals[i]);
+      MotionMatch(&NewAnimIndex, &NewAnimLocalStartTime, &BestMatch, MMControllers[i],
+                  AnimGoals[i]);
     }
     else
     {
-      MotionMatchWithMirrors(&NewAnimIndex, &NewAnimStartTime, &BestMatch, &NewMatchIsMirrored,
+      MotionMatchWithMirrors(&NewAnimIndex, &NewAnimLocalStartTime, &BestMatch, &NewMatchIsMirrored,
                              MMControllers[i], AnimGoals[i], MirroredAnimGoals[i]);
     }
 
     const Anim::animation* MatchedAnim = MMControllers[i]->Animations[NewAnimIndex];
 
-    blend_in_info LastAnimBlend = OutBlendStacks[i].Peek();
-
-    const Anim::animation* ActiveAnim = LastAnimBlend.Animation;
-    float ActiveAnimLocalAnimTime     = GetLocalSampleTime(LastAnimBlend.Animation, GlobalTimes[i],
-                                                       LastAnimBlend.GlobalAnimStartTime);
-
-    // Figure out if matched frame is sufficiently far away from the current to start a new
-    // animation
-    if(MatchedAnim != ActiveAnim ||
-       (AbsFloat(ActiveAnimLocalAnimTime - NewAnimStartTime) >=
-          MMControllers[i]->Params.DynamicParams.MinTimeOffsetThreshold &&
-        NewMatchIsMirrored == LastAnimBlend.Mirror) ||
-       NewMatchIsMirrored != LastAnimBlend.Mirror)
+    if(IsNewAnimSufficientlyFarAway(MatchedAnim, NewAnimLocalStartTime, OutBlendStacks[i],
+                                    GlobalTimes[i],
+                                    MMControllers[i]->Params.DynamicParams.MinTimeOffsetThreshold))
     {
       LastMatchedGoals[i] = (NewMatchIsMirrored) ? VisualFlipGoalX(BestMatch) : BestMatch;
 
       PlayAnimation(&OutBlendStacks[i], MMControllers[i]->Animations[NewAnimIndex],
-                    NewAnimStartTime, GlobalTimes[i],
+                    NewAnimLocalStartTime, GlobalTimes[i],
                     MMControllers[i]->Params.DynamicParams.BlendInTime, NewMatchIsMirrored);
 
       // Store the transform of where the last match occured
