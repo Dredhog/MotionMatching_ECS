@@ -21,6 +21,8 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
   const float OriginalAnimPlayerTime = AnimPlayer->GlobalTimeSec;
   const int   HipBoneIndex           = 0;
 
+  // Undo the update so that the root motion which was already applied would be valid
+  AnimPlayer->GlobalTimeSec -= dt;
   // FirstPoseSample
   {
     AnimPlayer->BlendFunc(AnimPlayer, &PlaybackInfo);
@@ -79,7 +81,6 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
           .T;
     }
   }
-  AnimPlayer->GlobalTimeSec -= dt;
 
   // Compute Local Velocities
   for(int i = 0; i < Test->TestBoneIndices.Count; i++)
@@ -88,14 +89,15 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
 
     Velocities[i] = (FuturePs[i] - CurrentPs[i]) / dt;
 
-    Debug::PushWireframeSphere(CurrentPs[i] + Velocities[i], 0.02f, { 1, 1, 0, 1 });
+    // Start the visualization from the future as that is already where the model will be drawn
+    Debug::PushWireframeSphere(FuturePs[i] + Velocities[i], 0.02f, { 1, 1, 0, 1 });
     float t =
       (ClampFloat(Test->BottomMargin, CurrentPs[i].Y, Test->TopMargin) - Test->BottomMargin) /
       MaxFloat(Test->TopMargin - Test->BottomMargin, 0.001f);
 
     vec4 Color = (1 - t) * vec4{ 1, 0, 0, 1 } + t * vec4{ 1, 1, 0, 1 };
 
-    Debug::PushLine(CurrentPs[i], CurrentPs[i] + Velocities[i], Color);
+    Debug::PushLine(FuturePs[i], FuturePs[i] + Velocities[i], Color);
   }
 
   // Compute Global Velocity
@@ -111,19 +113,24 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
   Result.RightFootHeight = CurrentPs[1].Y;
 
   Result.LeftFootXVel  = Velocities[0].X;
+  Result.LeftFootYVel  = Velocities[0].Y;
   Result.LeftFootZVel  = Velocities[0].Z;
   Result.RightFootXVel = Velocities[1].X;
+  Result.RightFootYVel = Velocities[1].Y;
   Result.RightFootZVel = Velocities[1].Z;
   Result.AnimCount     = BlendStack->Count;
-  Result.AnimIndex     = -1;
+  assert(BlendStack->Count == AnimPlayer->AnimStateCount);
+  Result.LocalAnimTime =
+    Anim::GetLocalSampleTime(AnimPlayer, AnimPlayer->AnimStateCount - 1, AnimPlayer->GlobalTimeSec);
+  Result.AnimIsMirrored = BlendStack->Peek().Mirror;
   for(int i = 0; i < MMController->Animations.Count; i++)
   {
-    if((*BlendStack).Peek().Animation == MMController->Animations[i])
+    if(BlendStack->Peek().Animation == MMController->Animations[i])
     {
-			Result.AnimIndex = i;
-			break;
-		}
-	}
+      Result.AnimIndex = i;
+      break;
+    }
+  }
   assert(Result.AnimIndex != -1);
 
   return Result;
@@ -193,12 +200,16 @@ MeasureFootSkate(Memory::stack_allocator* TempAlloc, foot_skate_test* Test,
   Result.LeftFootHeight  = CurrentPs[0].Y;
   Result.RightFootHeight = CurrentPs[1].Y;
 
-  Result.LeftFootXVel  = Velocities[0].X;
-  Result.LeftFootZVel  = Velocities[0].Z;
-  Result.RightFootXVel = Velocities[1].X;
-  Result.RightFootZVel = Velocities[1].Z;
-  Result.AnimCount     = 1;
-  Result.AnimIndex     = 0;
+  Result.LeftFootXVel   = Velocities[0].X;
+  Result.LeftFootYVel   = Velocities[0].Y;
+  Result.LeftFootZVel   = Velocities[0].Z;
+  Result.RightFootXVel  = Velocities[1].X;
+  Result.RightFootYVel  = Velocities[1].Y;
+  Result.RightFootZVel  = Velocities[1].Z;
+  Result.AnimCount      = 1;
+  Result.AnimIndex      = 0;
+  Result.LocalAnimTime  = LocalAnimTime;
+  Result.AnimIsMirrored = 0;
 
   TempAlloc->FreeToMarker(StackMarker);
   return Result;

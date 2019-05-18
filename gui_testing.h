@@ -98,8 +98,8 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Debug Timeline", &s_ShowMotionMatchingTimelineWindow);
 
     EntityGUI(GameState, s_ShowEntityTools);
-    TrajectoryGUI(GameState, s_ShowTrajectoryTools);
     TestGUI(GameState);
+    TrajectoryGUI(GameState, s_ShowTrajectoryTools);
     MaterialGUI(GameState, s_ShowMaterialEditor);
     AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
     RenderingGUI(GameState, s_ShowRenderingSettings, s_ShowLightSettings, s_ShowDisplaySet,
@@ -1462,7 +1462,6 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                     UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
                     UI::Checkbox("Use Smoothed Goal",
                                  &MMControllerData.InputController->UseSmoothGoal);
-                    UI::Checkbox("Use Trajectory Control", MMControllerData.FollowSpline);
                     static bool s_ShowSmoothTrajectoryParams = false;
                     if(MMControllerData.InputController->UseSmoothGoal &&
                        UI::TreeNode("Smooth Goal Params", &s_ShowSmoothTrajectoryParams))
@@ -1473,21 +1472,22 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                                       &MMControllerData.InputController->DirectionBias, 0.0f, 5.0f);
                       UI::TreePop();
                     }
+                    UI::Checkbox("Use Trajectory Control", MMControllerData.FollowSpline);
 
                     if(*MMControllerData.FollowSpline == true)
                     {
-                      static bool s_ShowTrajectoryControlParameters = true;
+                      /*static bool s_ShowTrajectoryControlParameters = true;
                       if(UI::TreeNode("Trajectory Control Params",
                                       &s_ShowTrajectoryControlParameters))
-                      {
-                        UI::Combo("Trajectory Index", &MMControllerData.SplineState->SplineIndex,
-                                  (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
-                        UI::Checkbox("Loop Back To Start", &MMControllerData.SplineState->Loop);
-                        UI::Checkbox("Following Positive Direction",
-                                     &MMControllerData.SplineState->MovingInPositive);
+                      {*/
+                      UI::Combo("Trajectory Index", &MMControllerData.SplineState->SplineIndex,
+                                (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
+                      /*UI::Checkbox("Loop Back To Start", &MMControllerData.SplineState->Loop);
+                      UI::Checkbox("Following Positive Direction",
+                                   &MMControllerData.SplineState->MovingInPositive);
 
-                        UI::TreePop();
-                      }
+                      UI::TreePop();
+                    }*/
                     }
                     UI::TreePop();
                   }
@@ -1982,13 +1982,15 @@ TestGUI(game_state* GameState)
     GUI.SelectedEntityIndex = GameState->SelectedEntityIndex;
   };
 
-  if(UI::CollapsingHeader("Test Editor", &GUI.Expanded))
-  {
-    entity* SelectedEntity;
-    GetSelectedEntity(GameState, &SelectedEntity);
+  entity* SelectedEntity;
+  GetSelectedEntity(GameState, &SelectedEntity);
 
+  const bool EntityWithPlayerIsSelected = SelectedEntity && SelectedEntity->AnimController;
+  if((EntityWithPlayerIsSelected || !Tests.ActiveTests.Empty()) &&
+     UI::CollapsingHeader("Test Editor", &GUI.Expanded))
+  {
     UI::PushID("Test");
-    if(SelectedEntity && SelectedEntity->AnimController)
+    if(EntityWithPlayerIsSelected)
     {
       int32_t MMEntityIndex =
         GetEntityMMDataIndex(GameState->SelectedEntityIndex, &GameState->MMEntityData);
@@ -2053,57 +2055,37 @@ TestGUI(game_state* GameState)
         UI::SliderFloat("Bottom Range", &GUI.FootSkateTest.BottomMargin, 0, 0.2f);
         UI::SliderFloat("Top Range", &GUI.FootSkateTest.TopMargin, 0, 0.2f);
 
-        int32_t AnimTestIndex =
-          Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_AnimationFootSkate);
-        int32_t ControllerTestIndex =
-          Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_ControllerFootSkate);
-        assert(AnimTestIndex == -1 || ControllerTestIndex == -1);
-
-        int TestIndex = (AnimTestIndex != -1) ? AnimTestIndex : ControllerTestIndex;
-        if(TestIndex == -1)
+        if(!Tests.ActiveTests.Full() && GUI.FootSkateTest.TestBoneIndices.Count == 2)
         {
-          if(!GUI.FootSkateTest.TestBoneIndices.Empty())
-          {
-            if(MMEntityIndex == -1)
-            {
-							UI::PushID("A");
-              if(GUI.FootSkateTest.AnimationRID.Value > 0 && UI::Button("Start"))
-              {
-                Tests.CreateAnimationFootSkateTest(&GameState->Resources, GUI.FootSkateTest,
-                                                   GameState->SelectedEntityIndex);
-              }
-              UI::PopID();
-            }
-            else
-            {
-              mm_aos_entity_data MMEntity =
-                GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
-              rid ControllerRID = *MMEntity.MMControllerRID;
-              UI::PushID("C");
-              if(ControllerRID.Value > 0 && UI::Button("Start"))
-              {
-                Tests.CreateControllerFootSkateTest(&GameState->Resources, GUI.FootSkateTest,
-                                                    ControllerRID, GameState->SelectedEntityIndex);
-              }
-							UI::PopID();
-            }
-          }
-        }
-        else
-        {
-          if(UI::Button("Stop"))
-          {
-            Tests.WriteTestToCSV(TestIndex);
-            Tests.DestroyTest(&GameState->Resources, TestIndex);
-          }
-          UI::SameLine();
+          int32_t AnimTestIndex =
+            Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_AnimationFootSkate);
+          int32_t ControllerTestIndex =
+            Tests.GetEntityTestIndex(GameState->SelectedEntityIndex, TEST_ControllerFootSkate);
 
-          UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
-          if(UI::Button("Abort"))
+          assert(AnimTestIndex == -1 || ControllerTestIndex == -1);
+          if(MMEntityIndex == -1)
           {
-            Tests.DestroyTest(&GameState->Resources, TestIndex);
+            UI::PushID("A");
+            if(GUI.FootSkateTest.AnimationRID.Value > 0 && UI::Button("Start"))
+            {
+              Tests.CreateAnimationFootSkateTest(&GameState->Resources, GUI.FootSkateTest,
+                                                 GameState->SelectedEntityIndex);
+            }
+            UI::PopID();
           }
-          UI::PopColor();
+          else
+          {
+            mm_aos_entity_data MMEntity =
+              GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
+            rid ControllerRID = *MMEntity.MMControllerRID;
+            UI::PushID("C");
+            if(ControllerRID.Value > 0 && UI::Button("Start"))
+            {
+              Tests.CreateControllerFootSkateTest(&GameState->Resources, GUI.FootSkateTest,
+                                                  ControllerRID, GameState->SelectedEntityIndex);
+            }
+            UI::PopID();
+          }
         }
 
         UI::PopID();
@@ -2111,10 +2093,10 @@ TestGUI(game_state* GameState)
         UI::TreePop();
       }
 
-			if(MMEntityIndex != -1)
+      if(MMEntityIndex != -1)
       {
         mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, &GameState->MMEntityData);
-				if(MMEntity.MMControllerRID->Value != 0)
+        if(MMEntity.MMControllerRID->Value != 0)
         {
           if(UI::TreeNode("Test Direction Changing", &GUI.ExpandedDirectionChanging))
           {
@@ -2138,28 +2120,13 @@ TestGUI(game_state* GameState)
                                              GUI.FacingTest, GameState->SelectedEntityIndex);
               }
             }
-						else
-            {
-              if(UI::Button("Stop"))
-              {
-                Tests.WriteTestToCSV(FacingTestIndex);
-                Tests.DestroyTest(&GameState->Resources, FacingTestIndex);
-              }
-              UI::SameLine();
-
-              UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
-              if(UI::Button("Abort"))
-              {
-                Tests.DestroyTest(&GameState->Resources, FacingTestIndex);
-              }
-              UI::PopColor();
-            }
 
             UI::PopID();
 
             UI::TreePop();
           }
-          if(UI::TreeNode("Test Spline Following", &GUI.ExpandedSplineFollowing))
+          if(*MMEntity.FollowSpline &&
+             UI::TreeNode("Test Spline Following", &GUI.ExpandedSplineFollowing))
           {
             UI::PushID("Spline");
 
@@ -2177,21 +2144,6 @@ TestGUI(game_state* GameState)
                 }
               }
             }
-						else
-            {
-              if(UI::Button("Stop"))
-							{
-                Tests.WriteTestToCSV(TestIndex);
-                Tests.DestroyTest(&GameState->Resources, TestIndex);
-              }
-              UI::SameLine();
-              UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
-              if(UI::Button("Abort"))
-							{
-                Tests.DestroyTest(&GameState->Resources, TestIndex);
-              }
-              UI::PopColor();
-            }
 
             UI::PopID();
 
@@ -2208,7 +2160,7 @@ TestGUI(game_state* GameState)
         UI::PushID(i);
 
         char        TempBuffer[300];
-        int         TestType       = Tests.ActiveTests[i].Type;
+        int         TestType = Tests.ActiveTests[i].Type;
         const char* TestTypeString =
           TestType == TEST_AnimationFootSkate
             ? "Anim Foot Skate"
@@ -2221,6 +2173,20 @@ TestGUI(game_state* GameState)
         snprintf(TempBuffer, ARRAY_COUNT(TempBuffer), " Entity: #%d, Type: %s",
                  Tests.ActiveTests[i].EntityIndex, TestTypeString);
         UI::Text(TempBuffer);
+        if(UI::Button("Stop"))
+        {
+          Tests.WriteTestToCSV(i);
+          Tests.DestroyTest(&GameState->Resources, i);
+          i--;
+        }
+        UI::SameLine();
+        UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0.2f, 0.2f, 1 });
+        if(UI::Button("Abort"))
+        {
+          Tests.DestroyTest(&GameState->Resources, i);
+          i--;
+        }
+        UI::PopColor();
 
         UI::PopID();
       }

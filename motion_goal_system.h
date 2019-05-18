@@ -103,12 +103,12 @@ SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
   *MMEntityData->FollowSpline    = false;
   *MMEntityData->SplineState     = { .SplineIndex       = -1,
                                  .NextWaypointIndex = 0,
-                                 .Loop              = 0,
+                                 .Loop              = true,
                                  .MovingInPositive  = true };
   InitTrajectory(MMEntityData->Trajectory);
   *MMEntityData->InputController = { .MaxSpeed      = 1.0f,
                                      .PositionBias  = 0.08f,
-                                     .DirectionBias = 0.85f,
+                                     .DirectionBias = 2,
                                      .UseStrafing   = false,
                                      .UseSmoothGoal = true };
 
@@ -149,7 +149,7 @@ RemoveMMControllerDataAtIndex(entity* Entities, int32_t MMControllerIndex,
     {
       assert(AnimController->AnimationIDs[i].Value == 0);
       AnimController->Animations[i] = NULL;
-      AnimController->States[i]    = {};
+      AnimController->States[i]     = {};
     }
     AnimController->AnimStateCount = 0;
   }
@@ -188,7 +188,7 @@ ClearAnimationData(blend_stack* BlendStacks, int32_t* EntityIndices, int32_t Cou
     Anim::animation_controller* AnimPlayer = Entities[EntityIndex].AnimController;
     AnimPlayer->BlendFunc                  = NULL;
     for(int a = 0; a < AnimPlayer->AnimStateCount; a++)
-		{
+    {
       assert(AnimPlayer->AnimationIDs[a].Value == 0);
       AnimPlayer->Animations[a] = NULL;
       AnimPlayer->States[a]     = {};
@@ -400,7 +400,7 @@ DrawControlTrajectories(const trajectory* Trajectories, const mm_input_controlle
 {
   for(int i = 0; i < Count; i++)
   {
-		if(InputControllers[i].UseSmoothGoal)
+    if(InputControllers[i].UseSmoothGoal)
     {
       DrawTrajectory(TransformToMat4(Entities[EntityIndices[i]].Transform), &Trajectories[i],
                      { 0, 1, 0 }, { 0, 0, 1 }, { 1, 1, 0 });
@@ -450,32 +450,33 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
 
   for(int e = 0; e < Count; e++)
   {
-		vec3 InputDir = Dir;
-		for(int i = 0; i < InputOverrideCount; i++)
-		{
-			if(InputOverrides[i].EntityIndex == e)
-			{
+    vec3 InputDir = Dir;
+    for(int i = 0; i < InputOverrideCount; i++)
+    {
+      if(InputOverrides[i].EntityIndex == EntityIndices[e])
+      {
         InputDir = InputOverrides[i].WorldDir;
       }
-		}
+    }
 
     quat R = Entities[EntityIndices[e]].Transform.R;
     R.V *= -1;
-    vec3 GoalVelocity = Math::MulMat3Vec3(Math::QuatToMat3(R), InputControllers[e].MaxSpeed * InputDir);
+    vec3 GoalVelocity =
+      Math::MulMat3Vec3(Math::QuatToMat3(R), InputControllers[e].MaxSpeed * InputDir);
     vec3 GoalFacing =
       InputControllers[e].UseStrafing
         ? Math::MulMat3Vec3(Math::QuatToMat3(R), ViewForward)
-        : (Math::Length(InputDir) != 0 ? Math::MulMat3Vec3(Math::QuatToMat3(R), InputDir) : vec3{ 0, 0, 1 });
+        : (Math::Length(InputDir) != 0 ? Math::MulMat3Vec3(Math::QuatToMat3(R), InputDir)
+                                       : vec3{ 0, 0, 1 });
 
     blend_in_info DominantBlend = BlendStacks[e].Peek();
     float         LocalAnimTime = GetLocalSampleTime(DominantBlend.Animation, GlobalTimes[e],
                                              DominantBlend.GlobalAnimStartTime);
 
     mat4 InvEntityMatrix = Math::InvMat4(TransformToMat4(Entities[EntityIndices[e]].Transform));
-    trajectory_update_args TrajectoryArgs =
-      { .PositionBias    = InputControllers[e].PositionBias,
-        .DirectionBias   = InputControllers[e].DirectionBias,
-        .InvEntityMatrix = InvEntityMatrix };
+    trajectory_update_args TrajectoryArgs = { .PositionBias    = InputControllers[e].PositionBias,
+                                              .DirectionBias   = InputControllers[e].DirectionBias,
+                                              .InvEntityMatrix = InvEntityMatrix };
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
               GoalFacing, MMControllers[e]->Params.DynamicParams.TrajectoryTimeHorizon,
@@ -495,8 +496,8 @@ AssertSplineIndicesAndClampWaypointIndices(spline_follow_state* SplineStates, in
     assert(0 <= SplineIndex && SplineIndex < DebugSplineCount);
     assert(Splines[SplineIndex].Waypoints.Count > 0);
 
-    SplineStates[i].NextWaypointIndex =
-      ClampInt32InIn(0, SplineStates[i].NextWaypointIndex, Splines[SplineIndex].Waypoints.Count - 1);
+    SplineStates[i].NextWaypointIndex = ClampInt32InIn(0, SplineStates[i].NextWaypointIndex,
+                                                       Splines[SplineIndex].Waypoints.Count - 1);
   }
 }
 
@@ -550,22 +551,24 @@ GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutG
 
     if(Math::Length(LocalEntityToWaypoint) < WaypointRadius)
     {
-      if(EntitySplineState.Loop)
+      /*if(EntitySplineState.Loop)
+      {*/
+      EntitySplineState.NextWaypointIndex =
+        (EntitySplineState.NextWaypointIndex + 1) % Spline->Waypoints.Count;
+      /*}
+      else 
       {
+        EntitySplineState.MovingInPositive = false;
         int Forward           = (EntitySplineState.MovingInPositive) ? 1 : -1;
         int NextWaypointIndex = EntitySplineState.NextWaypointIndex + Forward;
-        if(NextWaypointIndex < 0 || NextWaypointIndex > Spline->Waypoints.Count - 1)
+        if(NextWaypointIndex < 0 ||
+           NextWaypointIndex > Spline->Waypoints.Count - 1) // Travel backwards
         {
           NextWaypointIndex -= 2 * Forward;
         }
         EntitySplineState.NextWaypointIndex =
           ClampInt32InIn(0, NextWaypointIndex, Spline->Waypoints.Count - 1);
-      }
-      else // Travel backwards
-      {
-        EntitySplineState.NextWaypointIndex =
-          (EntitySplineState.NextWaypointIndex + 1) % Spline->Waypoints.Count;
-      }
+      }*/
     }
   }
 }
@@ -655,7 +658,7 @@ MotionMatchGoals(blend_stack* OutBlendStacks, mm_frame_info* LastMatchedGoals,
 
 inline transform
 GetLocalAnimRootMotionDelta(Anim::animation* RootMotionAnim, const Anim::skeleton* Skeleton,
-                       bool MirrorRootMotionInX, float LocalSampleTime, float dt)
+                            bool MirrorRootMotionInX, float LocalSampleTime, float dt)
 {
   assert(RootMotionAnim);
 

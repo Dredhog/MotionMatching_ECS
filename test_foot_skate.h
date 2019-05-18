@@ -14,10 +14,14 @@ struct foot_skate_data_row
   float RightFootHeight;
 
   float LeftFootXVel;
+  float LeftFootYVel;
   float LeftFootZVel;
   float RightFootXVel;
+  float RightFootYVel;
   float RightFootZVel;
 
+  int32_t AnimIsMirrored;
+  float   LocalAnimTime;
   int32_t AnimCount;
   int32_t AnimIndex;
 };
@@ -29,8 +33,8 @@ struct foot_skate_test
   fixed_stack<int32_t, MAX_TEST_BONE_COUNT> TestBoneIndices;
 
   rid   AnimationRID;
-	float TopMargin;
-	float BottomMargin;
+  float TopMargin;
+  float BottomMargin;
   float ElapsedTime;
   float RemainingTime;
 };

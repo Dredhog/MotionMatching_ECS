@@ -501,7 +501,7 @@ main(int ArgCount, char** Args)
   bool PrintSkeletonHierarchy = false;
 
   float RescaleCoefficient = 1.0f;
-  float SamplingFrequency  = 30.0f;
+  float SamplingFrequency  = 120.0f;
 
   const char* RootBoneName    = "root";
   const char* TargetActorName = NULL;

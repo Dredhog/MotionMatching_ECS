@@ -365,7 +365,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         foot_skate_data_row FootSkateTableRow =
           MeasureFootSkate(&Test.FootSkateTest, Entity->AnimController, *MMEntity.MMController,
                            MirrorInfo, BlendStack, TransformToMat4(Entity->Transform),
-                           *MMEntity.OutDeltaRootMotion, Test.FootSkateTest.ElapsedTime, 1 / 60.0f);
+                           *MMEntity.OutDeltaRootMotion, Test.FootSkateTest.ElapsedTime, Input->dt);
         AddRow(&Test.DataTable, &FootSkateTableRow, sizeof(FootSkateTableRow));
         Test.FootSkateTest.ElapsedTime += Input->dt;
       }

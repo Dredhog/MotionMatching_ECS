@@ -59,7 +59,7 @@ MeasureTrajectoryFollowing(transform EntityTransform, const spline_follow_state*
     float LineAngle = atan2f(LineDir.X, LineDir.Z);
 
     // Compute Inverse 3x3 Line Transform
-    mat3 InverseLineBasis = Math::Mat3RotateY(-LineAngle);
+    mat3 InverseLineBasis = Math::Mat3RotateY(-LineAngle * RadToDeg);
 
     // Compute Signed Angle Between Line And Current Facing
     vec3 LineLocalFacing       = Math::MulMat3Vec3(InverseLineBasis, EntityFacing);
@@ -77,7 +77,7 @@ MeasureTrajectoryFollowing(transform EntityTransform, const spline_follow_state*
 
     Debug::PushLine(ClosestPointOnSpline, ClosestPointOnSpline + SplineTangent, { 1, 0, 1, 1 });
 
-    mat3 InverseTangentBasis     = Math::Mat3RotateY(-TangentAngle);
+    mat3 InverseTangentBasis     = Math::Mat3RotateY(-TangentAngle * RadToDeg);
     vec3 TangentLocalFacing      = Math::MulMat3Vec3(InverseTangentBasis, EntityFacing);
     Result.SignedAngleFromSpline = RadToDeg * atan2f(TangentLocalFacing.X, TangentLocalFacing.Z);
   }

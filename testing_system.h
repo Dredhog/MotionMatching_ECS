@@ -6,7 +6,7 @@
 #include "test_facing_change_time.h"
 #include "test_trajectory_following.h"
 
-#define MAX_SIMULTANEOUS_TEST_COUNT 10
+#define MAX_SIMULTANEOUS_TEST_COUNT 20
 
 enum test_type
 {
@@ -50,12 +50,16 @@ struct testing_system
               offsetof(foot_skate_data_row, dt));
     AddColumn(&NewTest.DataTable.Header, "l_vel_x", COLUMN_TYPE_float,
               offsetof(foot_skate_data_row, LeftFootXVel));
+    AddColumn(&NewTest.DataTable.Header, "l_vel_y", COLUMN_TYPE_float,
+              offsetof(foot_skate_data_row, LeftFootYVel));
     AddColumn(&NewTest.DataTable.Header, "l_vel_z", COLUMN_TYPE_float,
               offsetof(foot_skate_data_row, LeftFootZVel));
     AddColumn(&NewTest.DataTable.Header, "l_h", COLUMN_TYPE_float,
               offsetof(foot_skate_data_row, LeftFootHeight));
     AddColumn(&NewTest.DataTable.Header, "r_vel_x", COLUMN_TYPE_float,
               offsetof(foot_skate_data_row, RightFootXVel));
+    AddColumn(&NewTest.DataTable.Header, "r_vel_y", COLUMN_TYPE_float,
+              offsetof(foot_skate_data_row, RightFootYVel));
     AddColumn(&NewTest.DataTable.Header, "r_vel_z", COLUMN_TYPE_float,
               offsetof(foot_skate_data_row, RightFootZVel));
     AddColumn(&NewTest.DataTable.Header, "r_h", COLUMN_TYPE_float,
@@ -64,6 +68,10 @@ struct testing_system
               offsetof(foot_skate_data_row, AnimCount));
     AddColumn(&NewTest.DataTable.Header, "anim_index", COLUMN_TYPE_int32,
               offsetof(foot_skate_data_row, AnimIndex));
+    AddColumn(&NewTest.DataTable.Header, "anim_local_time", COLUMN_TYPE_float,
+              offsetof(foot_skate_data_row, LocalAnimTime));
+    AddColumn(&NewTest.DataTable.Header, "anim_is_mirrored", COLUMN_TYPE_int32,
+              offsetof(foot_skate_data_row, AnimIsMirrored));
     // Allocate table
     const int32_t MaxRowCount = 100 * 90;
     CreateTable(&NewTest.DataTable, FileName, MaxRowCount, sizeof(foot_skate_data_row));
@@ -81,7 +89,9 @@ struct testing_system
 
     path AnimationPath =
       Resources->AnimationPaths[Resources->GetAnimationPathIndex(Test.AnimationRID)];
-    sprintf(Name, "%s_foot_skate", strrchr(AnimationPath.Name, '/') + 1);
+		char* ExtensionDotPointer = strrchr(AnimationPath.Name, '.');
+    *ExtensionDotPointer      = '\0';
+    sprintf(Name, "%s_anim_foot_skate", strrchr(AnimationPath.Name, '/') + 1);
 
     // Create the data table
     CreateFootSkateTestAndTable(Resources, Name, TEST_AnimationFootSkate, Test, EntityIndex);
@@ -91,9 +101,9 @@ struct testing_system
   }
 
   inline void
-  GenerateControllerTestName(char* OutName, size_t MaxNameLength,
-                             Resource::resource_manager* Resources, rid ControllerRID,
-                             int32_t TestType)
+  GenerateControllerTestNameWriteAnims(char* OutName, size_t MaxNameLength,
+                                       Resource::resource_manager* Resources, rid ControllerRID,
+                                       int32_t TestType)
   {
     path ControllerPath =
       Resources->MMControllerPaths[Resources->GetMMControllerPathIndex(ControllerRID)];
@@ -101,16 +111,39 @@ struct testing_system
     char* DotBeforeExtensionPtr = strrchr(ControllerPath.Name, '.');
     *DotBeforeExtensionPtr      = '\0';
 
-    mm_params* Params           = &Resources->GetMMController(ControllerRID)->Params;
-
     assert(TestType == TEST_ControllerFootSkate || TestType == TEST_FacingChange ||
            TestType == TEST_TrajectoryFollowing);
     const char* TestFileString = TestType == TEST_ControllerFootSkate
                                    ? "ctrl_skate"
                                    : (TestType == TEST_FacingChange ? "facing" : "follow");
 
-    snprintf(OutName, MaxNameLength, "%s_%s%s", strrchr(ControllerPath.Name, '/') + 1,
-             TestFileString, Params->DynamicParams.MatchMirroredAnimations ? "_mirror" : "");
+    snprintf(OutName, MaxNameLength, "%s_%s", strrchr(ControllerPath.Name, '/') + 1,
+             TestFileString);
+
+    WriteOutControllerAnimPaths(Resources, ControllerRID);
+  }
+
+  inline void
+  WriteOutControllerAnimPaths(Resource::resource_manager* Resources, rid ControllerRID)
+  {
+    char FilePath[300];
+    path ControllerPath =
+      Resources->MMControllerPaths[Resources->GetMMControllerPathIndex(ControllerRID)];
+    char* ControllerName = strrchr(ControllerPath.Name, '/') + 1;
+    char* DotPosition    = strrchr(ControllerName, '.');
+    *DotPosition      = '\0';
+
+    sprintf(FilePath, "data/measurements/%s.ctrl_anims", ControllerName);
+    FILE* FilePointer = fopen(FilePath, "w");
+    assert(FilePointer);
+
+    mm_params* Params = &Resources->GetMMController(ControllerRID)->Params;
+
+    for(int i = 0; i < Params->AnimPaths.Count; i++)
+		{
+      fprintf(FilePointer, "%s,\n", strrchr(Params->AnimPaths[i].Name, '/') + 1);
+    }
+    fclose(FilePointer);
   }
 
   inline void
@@ -119,7 +152,7 @@ struct testing_system
   {
     // Creat table name
     char Name[MAX_TABLE_NAME_LENGTH];
-    GenerateControllerTestName(Name, ArrayCount(Name), Resources, ControllerRID,
+    GenerateControllerTestNameWriteAnims(Name, ArrayCount(Name), Resources, ControllerRID,
                                TEST_ControllerFootSkate);
 
     // Create the table and the active_test structure
@@ -138,7 +171,7 @@ struct testing_system
     NewTest.Type        = TEST_FacingChange;
 
     char FileName[MAX_TABLE_NAME_LENGTH];
-    GenerateControllerTestName(FileName, ArrayCount(FileName), Resources, ControllerRID,
+    GenerateControllerTestNameWriteAnims(FileName, ArrayCount(FileName), Resources, ControllerRID,
                                TEST_FacingChange);
 
     // Create table columns
@@ -170,7 +203,7 @@ struct testing_system
     NewTest.Type        = TEST_TrajectoryFollowing;
 
     char FileName[MAX_TABLE_NAME_LENGTH];
-    GenerateControllerTestName(FileName, ArrayCount(FileName), Resources, ControllerRID,
+    GenerateControllerTestNameWriteAnims(FileName, ArrayCount(FileName), Resources, ControllerRID,
                                TEST_TrajectoryFollowing);
 
     //Create table collumns
