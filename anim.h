@@ -72,9 +72,9 @@ namespace Anim
                           int OutputBlockIndex, const skeleton_mirror_info* MirrorInfo = NULL);
   void LinearBlend(animation_controller*, int AnimA, int AnimB, float t, int ResultInd);
   void AdditiveBlend(animation_controller*, int AnimBase, int AnimAdd, float t, int ResultInd);
-  void UpdateController(animation_controller*, float dt,
-                        void  BlendFunction(animation_controller*, void* UserData) = NULL,
-                        void* UserData                                             = NULL);
+  void UpdatePlayer(animation_controller*, float dt,
+                    void  BlendFunction(animation_controller*, void* UserData) = NULL,
+                    void* UserData                                             = NULL);
 
   // Animation controller interface
   void AppendAnimation(animation_controller*, rid AnimationID);

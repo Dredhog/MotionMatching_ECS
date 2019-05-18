@@ -520,18 +520,18 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         if(MMEntity.MMControllerRID->Value > 0 && MMEntity.MMController)
         {
           PlaybackInfo.MirrorInfo = &(*MMEntity.MMController)->Params.DynamicParams.MirrorInfo;
-          Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc, &PlaybackInfo);
+          Anim::UpdatePlayer(Controller, Input->dt, Controller->BlendFunc, &PlaybackInfo);
         }
         else
         {
           assert(Controller->BlendFunc == NULL);
-          Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+          Anim::UpdatePlayer(Controller, Input->dt, Controller->BlendFunc);
         }
       }
       else
       {
         assert(Controller->BlendFunc == NULL);
-        Anim::UpdateController(Controller, Input->dt, Controller->BlendFunc);
+        Anim::UpdatePlayer(Controller, Input->dt, Controller->BlendFunc);
       }
 
       // TODO(Lukas): remove most parts of this code as it is repeated multiple times in different

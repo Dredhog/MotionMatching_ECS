@@ -127,8 +127,8 @@ Anim::LinearMirroredAnimationSample(transform* OutputTransforms, mat4* TempMatri
 }
 
 void
-Anim::UpdateController(Anim::animation_controller* Controller, float dt,
-                       void BlendFunc(animation_controller*, void*), void* UserData)
+Anim::UpdatePlayer(Anim::animation_controller* Controller, float dt,
+                   void BlendFunc(animation_controller*, void*), void* UserData)
 {
   if(0 < Controller->AnimStateCount)
   {
