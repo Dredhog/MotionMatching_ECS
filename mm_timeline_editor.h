@@ -1,7 +1,7 @@
 #pragma once
 
 #include "motion_matching.h"
-#include "motion_goal_system.h"
+#include "entity_animation_control.h"
 #include "ui.h"
 
 #define ORDER_BY(DO_FUNC)                                                                          \

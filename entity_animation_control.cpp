@@ -1,4 +1,4 @@
-#include "motion_goal_system.h"
+#include "entity_animation_control.h"
 #include "debug_drawing.h"
 
 void DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame,

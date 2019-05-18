@@ -23,7 +23,7 @@
 #include "ecs_management.h"
 #include "movement_spline.h"
 #include "blend_stack.h"
-#include "motion_goal_system.h"
+#include "entity_animation_control.h"
 #include "testing_system.h"
 
 const int32_t ENTITY_MAX_COUNT           = 400;
