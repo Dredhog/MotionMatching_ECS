@@ -55,17 +55,17 @@ RemoveMMControllerDataAtIndex(entity* Entities, int32_t MMControllerIndex,
     Resources->MMControllers.RemoveReference(*RemovedController.MMControllerRID);
   }
   {
-    Anim::animation_controller* AnimController =
-      Entities[*RemovedController.EntityIndex].AnimController;
-    assert(AnimController);
-    AnimController->BlendFunc = NULL;
-    for(int i = 0; i < ANIM_CONTROLLER_MAX_ANIM_COUNT; i++)
+    Anim::animation_player* AnimPlayer =
+      Entities[*RemovedController.EntityIndex].AnimPlayer;
+    assert(AnimPlayer);
+    AnimPlayer->BlendFunc = NULL;
+    for(int i = 0; i < ANIM_PLAYER_MAX_ANIM_COUNT; i++)
     {
-      assert(AnimController->AnimationIDs[i].Value == 0);
-      AnimController->Animations[i] = NULL;
-      AnimController->States[i]     = {};
+      assert(AnimPlayer->AnimationIDs[i].Value == 0);
+      AnimPlayer->Animations[i] = NULL;
+      AnimPlayer->States[i]     = {};
     }
-    AnimController->AnimStateCount = 0;
+    AnimPlayer->AnimStateCount = 0;
   }
 
   mm_aos_entity_data LastController = GetAOSMMDataAtIndex(MMEntityData->Count - 1, MMEntityData);
@@ -99,7 +99,7 @@ ClearAnimationData(blend_stack* BlendStacks, int32_t* EntityIndices, int32_t Cou
     BlendStacks[i].Clear();
 
     // Clear out anim plaer
-    Anim::animation_controller* AnimPlayer = Entities[EntityIndex].AnimController;
+    Anim::animation_player* AnimPlayer = Entities[EntityIndex].AnimPlayer;
     AnimPlayer->BlendFunc                  = NULL;
     for(int a = 0; a < AnimPlayer->AnimStateCount; a++)
     {
@@ -233,7 +233,7 @@ FetchSkeletonPointers(Anim::skeleton** OutSkeletons, const int32_t* EntityIndice
 {
   for(int i = 0; i < Count; i++)
   {
-    OutSkeletons[i] = Entities[EntityIndices[i]].AnimController->Skeleton;
+    OutSkeletons[i] = Entities[EntityIndices[i]].AnimPlayer->Skeleton;
     assert(OutSkeletons[i]);
   }
 }
@@ -688,10 +688,10 @@ CopyMMAnimDataToAnimationPlayers(entity* OutEntities, const blend_stack* BlendSt
 {
   for(int e = 0; e < Count; e++)
   {
-    Anim::animation_controller* C = OutEntities[EntityIndices[e]].AnimController;
-    C->BlendFunc                  = BlendStackBlendFunc;
-    C->GlobalTimeSec              = GlobalPlayTimes[e];
-    for(int i = 0; i < ANIM_CONTROLLER_MAX_ANIM_COUNT; i++)
+    Anim::animation_player* C = OutEntities[EntityIndices[e]].AnimPlayer;
+    C->BlendFunc              = BlendStackBlendFunc;
+    C->GlobalTimeSec          = GlobalPlayTimes[e];
+    for(int i = 0; i < ANIM_PLAYER_MAX_ANIM_COUNT; i++)
     {
       C->States[i] = {};
     }

@@ -359,11 +359,11 @@ const int32_t SSAO_SAMPLE_VECTOR_COUNT = 9;
 
 struct mesh_instance
 {
-  Render::mesh*               Mesh;
-  material*                   Material;
-  Anim::animation_controller* AnimController;
-  mat4                        MVP;
-  mat4                        PrevMVP;
+  Render::mesh*           Mesh;
+  material*               Material;
+  Anim::animation_player* AnimPlayer;
+  mat4                    MVP;
+  mat4                    PrevMVP;
 };
 
 struct render_data

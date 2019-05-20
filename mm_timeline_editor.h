@@ -219,9 +219,9 @@ MMTimelineWindow(mm_timeline_state* TimelineState, blend_stack BlendStack,
         if(ShowUnusableRegions)
           ColoredRanges.Push({ InfoRangeEndTime, AnimEndTime, 0, { 0.2f, 0.5f, 0.3f, 0.9f } });
 
-        fixed_stack<float, ANIM_CONTROLLER_MAX_ANIM_COUNT>   AnimPlayheads      = {};
-        fixed_stack<vec4, ANIM_CONTROLLER_MAX_ANIM_COUNT>    AnimPlayheadColors = {};
-        fixed_stack<int32_t, ANIM_CONTROLLER_MAX_ANIM_COUNT> BlendStackIndices  = {};
+        fixed_stack<float, ANIM_PLAYER_MAX_ANIM_COUNT>   AnimPlayheads      = {};
+        fixed_stack<vec4, ANIM_PLAYER_MAX_ANIM_COUNT>    AnimPlayheadColors = {};
+        fixed_stack<int32_t, ANIM_PLAYER_MAX_ANIM_COUNT> BlendStackIndices  = {};
         for(int i = BlendStack.Count - 1; i >= 0; i--)
         {
           vec4 PlayheadColor = { 1, 0.5f, 0.3f, 1 };

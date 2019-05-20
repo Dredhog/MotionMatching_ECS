@@ -19,8 +19,8 @@ struct scene
   int32_t EntityCount;
   entity* Entities;
 
-  int32_t                     AnimControllerCount;
-  Anim::animation_controller* AnimControllers;
+  int32_t                 AnimPlayerCount;
+  Anim::animation_player* AnimPlayers;
 
   int32_t        ModelCount;
   rid_path_pair* ModelIDPaths;
@@ -56,8 +56,9 @@ ExportScene(game_state* GameState, const char* Path)
 
     for(int e = 0; e < Scene->EntityCount; e++)
     {
-      Render::model* CurrentModel    = GameState->Resources.GetModel(Scene->Entities[e].ModelID);
-      Scene->Entities[e].MaterialIDs = PushArray(GameState->TemporaryMemStack, CurrentModel->MeshCount, rid);
+      Render::model* CurrentModel = GameState->Resources.GetModel(Scene->Entities[e].ModelID);
+      Scene->Entities[e].MaterialIDs =
+        PushArray(GameState->TemporaryMemStack, CurrentModel->MeshCount, rid);
       for(int m = 0; m < CurrentModel->MeshCount; m++)
       {
         Scene->Entities[e].MaterialIDs[m] = GameState->Entities[e].MaterialIDs[m];
@@ -65,21 +66,23 @@ ExportScene(game_state* GameState, const char* Path)
       Scene->Entities[e].MaterialIDs = (rid*)((uint64_t)Scene->Entities[e].MaterialIDs - AssetBase);
     }
 
-    Scene->AnimControllers = (Anim::animation_controller*)GameState->TemporaryMemStack->GetMarker().Address;
+    Scene->AnimPlayers = (Anim::animation_player*)GameState->TemporaryMemStack->GetMarker().Address;
     for(int e = 0; e < Scene->EntityCount; e++)
     {
-      if(GameState->Entities[e].AnimController)
+      if(GameState->Entities[e].AnimPlayer)
       {
-        Scene->Entities[e].AnimController  = PushStruct(GameState->TemporaryMemStack, Anim::animation_controller);
-        *Scene->Entities[e].AnimController = *GameState->Entities[e].AnimController;
+        Scene->Entities[e].AnimPlayer =
+          PushStruct(GameState->TemporaryMemStack, Anim::animation_player);
+        *Scene->Entities[e].AnimPlayer = *GameState->Entities[e].AnimPlayer;
 
-        Scene->Entities[e].AnimController = (Anim::animation_controller*)((uint64_t)Scene->Entities[e].AnimController - AssetBase);
-        ++Scene->AnimControllerCount;
+        Scene->Entities[e].AnimPlayer =
+          (Anim::animation_player*)((uint64_t)Scene->Entities[e].AnimPlayer - AssetBase);
+        ++Scene->AnimPlayerCount;
       }
     }
-    if(Scene->AnimControllerCount == 0)
+    if(Scene->AnimPlayerCount == 0)
     {
-      Scene->AnimControllers = NULL;
+      Scene->AnimPlayers = NULL;
     }
   }
 
@@ -148,7 +151,7 @@ ExportScene(game_state* GameState, const char* Path)
   Scene->LightPosition = GameState->R.LightPosition;
 
   Scene->Entities         = (entity*)((uint64_t)Scene->Entities - AssetBase);
-  Scene->AnimControllers  = (Anim::animation_controller*)((uint64_t)Scene->AnimControllers - AssetBase);
+  Scene->AnimPlayers      = (Anim::animation_player*)((uint64_t)Scene->AnimPlayers - AssetBase);
   Scene->ModelIDPaths     = (rid_path_pair*)((uint64_t)Scene->ModelIDPaths - AssetBase);
   Scene->AnimationIDPaths = (rid_path_pair*)((uint64_t)Scene->AnimationIDPaths - AssetBase);
   Scene->MaterialIDPaths  = (rid_path_pair*)((uint64_t)Scene->MaterialIDPaths - AssetBase);
@@ -161,7 +164,7 @@ ExportScene(game_state* GameState, const char* Path)
 void
 ImportScene(game_state* GameState, const char* Path)
 {
-	TIMED_BLOCK(ImportScene);
+  TIMED_BLOCK(ImportScene);
   printf("---------IMPORTING-SCENE: %s---------\n", Path);
   memset(&GameState->AnimEditor, 0, sizeof(EditAnimation::animation_editor));
   GameState->SelectionMode = SELECT_Entity;
@@ -178,14 +181,15 @@ ImportScene(game_state* GameState, const char* Path)
   Scene->Entities = (entity*)((uint64_t)Scene->Entities + AssetBase);
   for(int e = 0; e < Scene->EntityCount; e++)
   {
-    if(Scene->Entities[e].AnimController)
+    if(Scene->Entities[e].AnimPlayer)
     {
-      Scene->Entities[e].AnimController = (Anim::animation_controller*)((uint64_t)Scene->Entities[e].AnimController + AssetBase);
+      Scene->Entities[e].AnimPlayer =
+        (Anim::animation_player*)((uint64_t)Scene->Entities[e].AnimPlayer + AssetBase);
     }
     Scene->Entities[e].MaterialIDs = (rid*)((uint64_t)Scene->Entities[e].MaterialIDs + AssetBase);
   }
 
-  Scene->AnimControllers  = (Anim::animation_controller*)((uint64_t)Scene->AnimControllers + AssetBase);
+  Scene->AnimPlayers      = (Anim::animation_player*)((uint64_t)Scene->AnimPlayers + AssetBase);
   Scene->ModelIDPaths     = (rid_path_pair*)((uint64_t)Scene->ModelIDPaths + AssetBase);
   Scene->AnimationIDPaths = (rid_path_pair*)((uint64_t)Scene->AnimationIDPaths + AssetBase);
   Scene->MaterialIDPaths  = (rid_path_pair*)((uint64_t)Scene->MaterialIDPaths + AssetBase);
@@ -196,25 +200,28 @@ ImportScene(game_state* GameState, const char* Path)
   GameState->Resources.WipeAllTextureData();
   GameState->Resources.WipeAllMaterialData();
   GameState->Resources.WipeAllMMControllerData();
-	
-	//Clear MMData
-	GameState->MMEntityData.Count = 0;
+
+  // Clear MMData
+  GameState->MMEntityData.Count = 0;
 
   RegisterDebugModels(GameState);
   for(int i = 0; i < Scene->ModelCount; i++)
   {
     assert(0 < Scene->ModelIDPaths[i].RID.Value);
-    GameState->Resources.AssociateModelIDToPath(Scene->ModelIDPaths[i].RID, Scene->ModelIDPaths[i].Path.Name);
+    GameState->Resources.AssociateModelIDToPath(Scene->ModelIDPaths[i].RID,
+                                                Scene->ModelIDPaths[i].Path.Name);
   }
   for(int i = 0; i < Scene->AnimationCount; i++)
   {
     assert(0 < Scene->AnimationIDPaths[i].RID.Value);
-    GameState->Resources.AssociateAnimationIDToPath(Scene->AnimationIDPaths[i].RID, Scene->AnimationIDPaths[i].Path.Name);
+    GameState->Resources.AssociateAnimationIDToPath(Scene->AnimationIDPaths[i].RID,
+                                                    Scene->AnimationIDPaths[i].Path.Name);
   }
   for(int i = 0; i < Scene->MaterialCount; i++)
   {
     assert(Scene->MaterialIDPaths[i].RID.Value > 0);
-    GameState->Resources.AssociateMaterialIDToPath(Scene->MaterialIDPaths[i].RID, Scene->MaterialIDPaths[i].Path.Name);
+    GameState->Resources.AssociateMaterialIDToPath(Scene->MaterialIDPaths[i].RID,
+                                                   Scene->MaterialIDPaths[i].Path.Name);
   }
 
   // Apply loaded scene to game state
@@ -226,29 +233,35 @@ ImportScene(game_state* GameState, const char* Path)
     assert(GameState->Entities[e].ModelID.Value > 0);
     GameState->Resources.Models.AddReference(GameState->Entities[e].ModelID);
     Render::model* Model = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
-    if(Scene->Entities[e].AnimController)
+    if(Scene->Entities[e].AnimPlayer)
     {
       // allocate memory for animation controller and assigin skeleton
-      GameState->Entities[e].AnimController  = PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
-      *GameState->Entities[e].AnimController = *Scene->Entities[e].AnimController;
+      GameState->Entities[e].AnimPlayer =
+        PushStruct(GameState->PersistentMemStack, Anim::animation_player);
+      *GameState->Entities[e].AnimPlayer = *Scene->Entities[e].AnimPlayer;
 
-      for(int a = 0; a < GameState->Entities[e].AnimController->AnimStateCount; a++)
+      for(int a = 0; a < GameState->Entities[e].AnimPlayer->AnimStateCount; a++)
       {
-        GameState->Entities[e].AnimController->Animations[a] = NULL;
-        GameState->Resources.Animations.AddReference(GameState->Entities[e].AnimController->AnimationIDs[a]);
+        GameState->Entities[e].AnimPlayer->Animations[a] = NULL;
+        GameState->Resources.Animations.AddReference(
+          GameState->Entities[e].AnimPlayer->AnimationIDs[a]);
       }
 
       assert(Model->Skeleton);
-      GameState->Entities[e].AnimController->Skeleton = Model->Skeleton;
-      GameState->Entities[e].AnimController->OutputTransforms =
+      GameState->Entities[e].AnimPlayer->Skeleton = Model->Skeleton;
+      GameState->Entities[e].AnimPlayer->OutputTransforms =
         PushArray(GameState->PersistentMemStack,
-                  ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * Model->Skeleton->BoneCount, transform);
-      GameState->Entities[e].AnimController->BoneSpaceMatrices  = PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
-      GameState->Entities[e].AnimController->ModelSpaceMatrices = PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
-      GameState->Entities[e].AnimController->HierarchicalModelSpaceMatrices = PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
+                  ANIM_PLAYER_OUTPUT_BLOCK_COUNT * Model->Skeleton->BoneCount, transform);
+      GameState->Entities[e].AnimPlayer->BoneSpaceMatrices =
+        PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
+      GameState->Entities[e].AnimPlayer->ModelSpaceMatrices =
+        PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
+      GameState->Entities[e].AnimPlayer->HierarchicalModelSpaceMatrices =
+        PushArray(GameState->PersistentMemStack, Model->Skeleton->BoneCount, mat4);
     }
 
-    GameState->Entities[e].MaterialIDs = PushArray(GameState->PersistentMemStack, Model->MeshCount, rid);
+    GameState->Entities[e].MaterialIDs =
+      PushArray(GameState->PersistentMemStack, Model->MeshCount, rid);
     for(int m = 0; m < Model->MeshCount; m++)
     {
       GameState->Entities[e].MaterialIDs[m] = Scene->Entities[e].MaterialIDs[m];
@@ -257,9 +270,9 @@ ImportScene(game_state* GameState, const char* Path)
   GameState->EntityCount = Scene->EntityCount;
 
   // Saving camera and light parameters
-  GameState->Camera            = Scene->Camera;
-  GameState->R.LightPosition   = Scene->LightPosition;
-  GameState->CurrentMaterialID = { 0 };
+  GameState->Camera              = Scene->Camera;
+  GameState->R.LightPosition     = Scene->LightPosition;
+  GameState->CurrentMaterialID   = { 0 };
   GameState->SelectedEntityIndex = -1;
 
   return;

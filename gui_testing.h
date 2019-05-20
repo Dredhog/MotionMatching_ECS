@@ -1305,28 +1305,28 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
       Render::model* SelectedModel = GameState->Resources.GetModel(SelectedEntity->ModelID);
       if(SelectedModel->Skeleton)
       {
-        if(!SelectedEntity->AnimController && UI::Button("Add Animation Player"))
+        if(!SelectedEntity->AnimPlayer && UI::Button("Add Animation Player"))
         {
-          SelectedEntity->AnimController =
-            PushStruct(GameState->PersistentMemStack, Anim::animation_controller);
-          *SelectedEntity->AnimController = {};
+          SelectedEntity->AnimPlayer =
+            PushStruct(GameState->PersistentMemStack, Anim::animation_player);
+          *SelectedEntity->AnimPlayer = {};
 
-          SelectedEntity->AnimController->Skeleton = SelectedModel->Skeleton;
-          SelectedEntity->AnimController->OutputTransforms =
+          SelectedEntity->AnimPlayer->Skeleton = SelectedModel->Skeleton;
+          SelectedEntity->AnimPlayer->OutputTransforms =
             PushArray(GameState->PersistentMemStack,
-                      ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT * SelectedModel->Skeleton->BoneCount,
+                      ANIM_PLAYER_OUTPUT_BLOCK_COUNT * SelectedModel->Skeleton->BoneCount,
                       transform);
-          SelectedEntity->AnimController->BoneSpaceMatrices =
+          SelectedEntity->AnimPlayer->BoneSpaceMatrices =
             PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
-          SelectedEntity->AnimController->ModelSpaceMatrices =
+          SelectedEntity->AnimPlayer->ModelSpaceMatrices =
             PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
-          SelectedEntity->AnimController->HierarchicalModelSpaceMatrices =
+          SelectedEntity->AnimPlayer->HierarchicalModelSpaceMatrices =
             PushArray(GameState->PersistentMemStack, SelectedModel->Skeleton->BoneCount, mat4);
         }
-        else if(SelectedEntity->AnimController)
+        else if(SelectedEntity->AnimPlayer)
         {
           static bool s_ShowAnimtionPlayerComponent = true;
-          bool        RemovedAnimController         = false;
+          bool        RemovedAnimPlayer         = false;
 
           UI::TreeNode("Animation Player Component", &s_ShowAnimtionPlayerComponent);
 
@@ -1336,14 +1336,14 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             UI::SameLine();
             if(UI::Button("Remove"))
             {
-              RemovedAnimController = true;
+              RemovedAnimPlayer = true;
               RemoveAnimationPlayerComponent(GameState, &GameState->Resources,
                                              GameState->SelectedEntityIndex);
             }
             UI::PopID();
           }
 
-          if(s_ShowAnimtionPlayerComponent && !RemovedAnimController)
+          if(s_ShowAnimtionPlayerComponent && !RemovedAnimPlayer)
           {
             if(UI::Button("Animate Selected Entity"))
             {
@@ -1358,10 +1358,10 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
               int                         SelectedEntityIndex = GameState->SelectedEntityIndex;
               const spline_system&        SplineSystem        = GameState->SplineSystem;
               Resource::resource_manager* Resources           = &GameState->Resources;
-              const Anim::skeleton*       Skeleton = SelectedEntity->AnimController->Skeleton;
+              const Anim::skeleton*       Skeleton = SelectedEntity->AnimPlayer->Skeleton;
               entity*                     Entities = GameState->Entities;
 
-              bool RemovedMatchingAnimController = false;
+              bool RemovedMatchingAnimPlayer = false;
               // Actual UI
               int32_t     MMControllerIndex           = -1;
               static bool s_ShowMMControllerComponent = true;
@@ -1371,7 +1371,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 if(MMEntityData.Count < MM_CONTROLLER_MAX_COUNT &&
                    UI::Button("Add Matched Animation Controller"))
                 {
-                  RemoveReferencesAndResetAnimPlayer(Resources, SelectedEntity->AnimController);
+                  RemoveReferencesAndResetAnimPlayer(Resources, SelectedEntity->AnimPlayer);
 
                   MMEntityData.Count++;
                   mm_aos_entity_data MMControllerData =
@@ -1386,7 +1386,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 UI::TreeNode("Matched Anim. Controller Component", &s_ShowMMControllerComponent);
                 UI::SameLine();
                 UI::PushID("Remove Matching Anim. Controller");
-                RemovedMatchingAnimController = UI::Button("Remove");
+                RemovedMatchingAnimPlayer = UI::Button("Remove");
                 UI::PopID();
 
                 if(s_ShowMMControllerComponent)
@@ -1493,7 +1493,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                   }
                   UI::TreePop();
                 }
-                if(RemovedMatchingAnimController)
+                if(RemovedMatchingAnimPlayer)
                 {
                   RemoveMMControllerDataAtIndex(Entities, MMControllerIndex, Resources,
                                                 &MMEntityData);
@@ -1536,13 +1536,13 @@ AnimationGUI(game_state* GameState, bool& s_ShowAnimationEditor, bool& s_ShowEnt
 
       if(GameState->AnimEditor.Skeleton)
       {
-        if(0 < AttachedEntity->AnimController->AnimStateCount)
+        if(0 < AttachedEntity->AnimPlayer->AnimStateCount)
         {
-          Anim::animation* Animation = AttachedEntity->AnimController->Animations[0];
+          Anim::animation* Animation = AttachedEntity->AnimPlayer->Animations[0];
           if(UI::Button("Edit Attached Animation"))
           {
             int32_t AnimationPathIndex = GameState->Resources.GetAnimationPathIndex(
-              AttachedEntity->AnimController->AnimationIDs[0]);
+              AttachedEntity->AnimPlayer->AnimationIDs[0]);
             EditAnimation::EditAnimation(&GameState->AnimEditor, Animation,
                                          GameState->Resources.AnimationPaths[AnimationPathIndex]
                                            .Name);
@@ -1985,7 +1985,7 @@ TestGUI(game_state* GameState)
   entity* SelectedEntity;
   GetSelectedEntity(GameState, &SelectedEntity);
 
-  const bool EntityWithPlayerIsSelected = SelectedEntity && SelectedEntity->AnimController;
+  const bool EntityWithPlayerIsSelected = SelectedEntity && SelectedEntity->AnimPlayer;
   if((EntityWithPlayerIsSelected || !Tests.ActiveTests.Empty()) &&
      UI::CollapsingHeader("Test Editor", &GUI.Expanded))
   {
@@ -2003,8 +2003,8 @@ TestGUI(game_state* GameState)
           bool ClickedAddBone = UI::Button("AddBone");
           UI::SameLine();
           UI::PushWidth(-UI::GetWindowWidth() * 0.35f);
-          UI::Combo("Bone", &GUI.SelectedBoneIndex, SelectedEntity->AnimController->Skeleton->Bones,
-                    SelectedEntity->AnimController->Skeleton->BoneCount, BoneArrayToString);
+          UI::Combo("Bone", &GUI.SelectedBoneIndex, SelectedEntity->AnimPlayer->Skeleton->Bones,
+                    SelectedEntity->AnimPlayer->Skeleton->BoneCount, BoneArrayToString);
           UI::PopWidth();
 
           if(ClickedAddBone && GUI.SelectedBoneIndex != -1 &&
@@ -2021,7 +2021,7 @@ TestGUI(game_state* GameState)
 
             UI::SameLine();
             UI::Text(
-              SelectedEntity->AnimController->Skeleton->Bones[GUI.FootSkateTest.TestBoneIndices[i]]
+              SelectedEntity->AnimPlayer->Skeleton->Bones[GUI.FootSkateTest.TestBoneIndices[i]]
                 .Name);
 
             UI::PopID();
@@ -2045,7 +2045,7 @@ TestGUI(game_state* GameState)
             rid NewRID = GameState->Resources.ObtainAnimationPathRID(
               GameState->Resources.AnimationPaths[GUI.SelectedAnimationIndex].Name);
             if(GameState->Resources.GetAnimation(NewRID)->ChannelCount ==
-               SelectedEntity->AnimController->Skeleton->BoneCount)
+               SelectedEntity->AnimPlayer->Skeleton->BoneCount)
             {
               GUI.FootSkateTest.AnimationRID = NewRID;
             }

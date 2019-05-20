@@ -176,17 +176,17 @@ AddEntity(game_state* GameState, rid ModelID, rid* MaterialIDs, transform Transf
 // Note(Lukas): Currently should not be used as no references are actually added
 void
 RemoveReferencesAndResetAnimPlayer(Resource::resource_manager* Resources,
-                                   Anim::animation_controller* Controller)
+                                   Anim::animation_player* Player)
 {
-  for(int i = 0; i < Controller->AnimStateCount; i++)
+  for(int i = 0; i < Player->AnimStateCount; i++)
   {
-    Resources->Animations.RemoveReference(Controller->AnimationIDs[i]);
-    Controller->AnimationIDs[i] = {};
-    Controller->Animations[i]   = {};
-    Controller->States[i]       = {};
+    Resources->Animations.RemoveReference(Player->AnimationIDs[i]);
+    Player->AnimationIDs[i] = {};
+    Player->Animations[i]   = {};
+    Player->States[i]       = {};
   }
-  Controller->AnimStateCount = 0;
-  Controller->BlendFunc = NULL;
+  Player->AnimStateCount = 0;
+  Player->BlendFunc = NULL;
 }
 
 void
@@ -195,9 +195,9 @@ RemoveAnimationPlayerComponent(game_state* GameState, Resource::resource_manager
 {
 	entity* Entity;
   assert(GetEntityAtIndex(GameState, &Entity, EntityIndex));
-	assert(Entity->AnimController);
+	assert(Entity->AnimPlayer);
 
-  // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimController and its arrays are still on
+  // TODO(Lukas): REMOVE MEMORY LEAK!!!!!! The AnimPlayer and its arrays are still on
   // the persistent stack
   int MMControllerDataIndex = GetEntityMMDataIndex(EntityIndex, &GameState->MMEntityData);
   if(MMControllerDataIndex != -1)
@@ -207,9 +207,9 @@ RemoveAnimationPlayerComponent(game_state* GameState, Resource::resource_manager
   }
   else
   {
-    RemoveReferencesAndResetAnimPlayer(&GameState->Resources, Entity->AnimController);
+    RemoveReferencesAndResetAnimPlayer(&GameState->Resources, Entity->AnimPlayer);
   }
-  Entity->AnimController = NULL;
+  Entity->AnimPlayer = NULL;
 }
 
 bool
@@ -219,7 +219,7 @@ DeleteEntity(game_state* GameState, Resource::resource_manager* Resources, int32
   {
     GameState->Resources.Models.RemoveReference(GameState->Entities[Index].ModelID);
 
-		if(GameState->Entities[Index].AnimController)
+		if(GameState->Entities[Index].AnimPlayer)
     {
       RemoveAnimationPlayerComponent(GameState, Resources, Index);
     }
@@ -264,7 +264,7 @@ void AttachEntityToAnimEditor(game_state* GameState, EditAnimation::animation_ed
 void
 DettachEntityFromAnimEditor(const game_state* GameState, EditAnimation::animation_editor* Editor)
 {
-  assert(GameState->Entities[Editor->EntityIndex].AnimController);
+  assert(GameState->Entities[Editor->EntityIndex].AnimPlayer);
   assert(Editor->Skeleton);
   memset(Editor, 0, sizeof(EditAnimation::animation_editor));
 	Editor->EntityIndex = -1;

@@ -46,11 +46,11 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
       assert(GetEntityAtIndex(GameState, &CurrentEntity, e));
       glUniformMatrix4fv(glGetUniformLocation(EntityIDShaderID, "mat_mvp"), 1, GL_FALSE,
                          GetEntityMVPMatrix(GameState, e).e);
-      if(CurrentEntity->AnimController)
+      if(CurrentEntity->AnimPlayer)
       {
         glUniformMatrix4fv(glGetUniformLocation(EntityIDShaderID, "g_boneMatrices"),
-                           CurrentEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
-                           (float*)CurrentEntity->AnimController->HierarchicalModelSpaceMatrices);
+                           CurrentEntity->AnimPlayer->Skeleton->BoneCount, GL_FALSE,
+                           (float*)CurrentEntity->AnimPlayer->HierarchicalModelSpaceMatrices);
       }
       else
       {
@@ -309,7 +309,7 @@ AnimationEditorInteraction(game_state* GameState, const game_input* Input)
          GameState->AnimEditor.EntityIndex < GameState->EntityCount);
   {
     memcpy(GameState->Entities[GameState->AnimEditor.EntityIndex]
-             .AnimController->HierarchicalModelSpaceMatrices,
+             .AnimPlayer->HierarchicalModelSpaceMatrices,
            GameState->AnimEditor.HierarchicalModelSpaceMatrices,
            sizeof(mat4) * GameState->AnimEditor.Skeleton->BoneCount);
   }

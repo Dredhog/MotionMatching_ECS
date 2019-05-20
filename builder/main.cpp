@@ -10,10 +10,7 @@
 #include "asset.h"
 #include "anim.h"
 
-#include "stack_alloc.h"
 #include "stack_alloc.cpp"
-
-#include "heap_alloc.h"
 #include "heap_alloc.cpp"
 
 #include "file_io.h"

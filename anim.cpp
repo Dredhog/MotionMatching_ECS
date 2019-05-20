@@ -3,11 +3,11 @@
 #include "basic_data_structures.h"
 
 float
-Anim::GetLocalSampleTime(const Anim::animation_controller* Controller, int AnimationIndex,
+Anim::GetLocalSampleTime(const Anim::animation_player* Player, int AnimationIndex,
                          float GlobalTimeSec)
 {
-  const animation_state* State     = &Controller->States[AnimationIndex];
-  const animation*       Animation = Controller->Animations[AnimationIndex];
+  const animation_state* State     = &Player->States[AnimationIndex];
+  const animation*       Animation = Player->Animations[AnimationIndex];
   return Anim::GetLocalSampleTime(Animation, State, GlobalTimeSec);
 }
 
@@ -23,7 +23,7 @@ float
 Anim::GetLocalSampleTime(const Anim::animation* Animation, float GlobalSampleTime,
                          float GlobalStartTime, bool Loop, float PlaybackRate)
 {
-	assert(Animation->SampleTimes[0] == 0);
+  assert(Animation->SampleTimes[0] == 0);
   const float AnimDuration = GetAnimDuration(Animation);
 
   float LocalSampleTime = PlaybackRate * (GlobalSampleTime - GlobalStartTime);
@@ -40,35 +40,31 @@ Anim::GetLocalSampleTime(const Anim::animation* Animation, float GlobalSampleTim
 }
 
 void
-Anim::SampleAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
-                         int OutputBlockIndex, const Anim::skeleton_mirror_info* MirrorInfo)
+Anim::SampleAtGlobalTime(Anim::animation_player* Player, int AnimationIndex, int OutputBlockIndex,
+                         const Anim::skeleton_mirror_info* MirrorInfo)
 {
-  assert(0 <= OutputBlockIndex && OutputBlockIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
-  float SampleTime =
-    Anim::GetLocalSampleTime(Controller, AnimationIndex, Controller->GlobalTimeSec);
+  assert(0 <= OutputBlockIndex && OutputBlockIndex < ANIM_PLAYER_MAX_ANIM_COUNT);
+  float SampleTime = Anim::GetLocalSampleTime(Player, AnimationIndex, Player->GlobalTimeSec);
   if(MirrorInfo)
   {
-    LinearMirroredAnimationSample(Controller, AnimationIndex, SampleTime, OutputBlockIndex,
-                                  MirrorInfo);
+    LinearMirroredAnimationSample(Player, AnimationIndex, SampleTime, OutputBlockIndex, MirrorInfo);
   }
   else
   {
-    LinearAnimationSample(Controller, AnimationIndex, SampleTime, OutputBlockIndex);
+    LinearAnimationSample(Player, AnimationIndex, SampleTime, OutputBlockIndex);
   }
 }
 
 void
-Anim::LinearMirroredAnimationSample(Anim::animation_controller* Controller, int AnimIndex,
-                                    float Time, int ResultIndex,
-                                    const skeleton_mirror_info* MirrorInfo)
+Anim::LinearMirroredAnimationSample(Anim::animation_player* Player, int AnimIndex, float Time,
+                                    int ResultIndex, const skeleton_mirror_info* MirrorInfo)
 {
-  assert(0 <= AnimIndex && AnimIndex < Controller->AnimStateCount);
-  assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  const Anim::animation* Animation = Controller->Animations[AnimIndex];
-  LinearMirroredAnimationSample(&Controller
-                                   ->OutputTransforms[Animation->ChannelCount * ResultIndex],
-                                Controller->ModelSpaceMatrices, Controller->Skeleton, Animation,
-                                Time, MirrorInfo);
+  assert(0 <= AnimIndex && AnimIndex < Player->AnimStateCount);
+  assert(0 <= ResultIndex && ResultIndex < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  const Anim::animation* Animation = Player->Animations[AnimIndex];
+  LinearMirroredAnimationSample(&Player->OutputTransforms[Animation->ChannelCount * ResultIndex],
+                                Player->ModelSpaceMatrices, Player->Skeleton, Animation, Time,
+                                MirrorInfo);
 }
 
 void
@@ -127,74 +123,72 @@ Anim::LinearMirroredAnimationSample(transform* OutputTransforms, mat4* TempMatri
 }
 
 void
-Anim::UpdatePlayer(Anim::animation_controller* Controller, float dt,
-                   void BlendFunc(animation_controller*, void*), void* UserData)
+Anim::UpdatePlayer(Anim::animation_player* Player, float dt,
+                   void BlendFunc(animation_player*, void*), void* UserData)
 {
-  if(0 < Controller->AnimStateCount)
+  if(0 < Player->AnimStateCount)
   {
     if(BlendFunc == NULL)
     {
-      Controller->GlobalTimeSec += dt;
-      SampleAtGlobalTime(Controller, 0, 0);
+      Player->GlobalTimeSec += dt;
+      SampleAtGlobalTime(Player, 0, 0);
     }
     else
     {
-      BlendFunc(Controller, UserData);
+      BlendFunc(Player, UserData);
     }
   }
   else
   {
-    for(int i = 0; i < Controller->Skeleton->BoneCount; i++)
+    for(int i = 0; i < Player->Skeleton->BoneCount; i++)
     {
-      Controller->OutputTransforms[i]   = {};
-      Controller->OutputTransforms[i].R = Math::QuatIdent();
-      Controller->OutputTransforms[i].S = { 1, 1, 1 };
+      Player->OutputTransforms[i]   = {};
+      Player->OutputTransforms[i].R = Math::QuatIdent();
+      Player->OutputTransforms[i].S = { 1, 1, 1 };
     }
   }
-  ComputeBoneSpacePoses(Controller->BoneSpaceMatrices, Controller->OutputTransforms,
-                        Controller->Skeleton->BoneCount);
-  ComputeModelSpacePoses(Controller->ModelSpaceMatrices, Controller->BoneSpaceMatrices,
-                         Controller->Skeleton);
-  ComputeFinalHierarchicalPoses(Controller->HierarchicalModelSpaceMatrices,
-                                Controller->ModelSpaceMatrices, Controller->Skeleton);
+  ComputeBoneSpacePoses(Player->BoneSpaceMatrices, Player->OutputTransforms,
+                        Player->Skeleton->BoneCount);
+  ComputeModelSpacePoses(Player->ModelSpaceMatrices, Player->BoneSpaceMatrices, Player->Skeleton);
+  ComputeFinalHierarchicalPoses(Player->HierarchicalModelSpaceMatrices, Player->ModelSpaceMatrices,
+                                Player->Skeleton);
 }
 
 void
-Anim::AppendAnimation(Anim::animation_controller* Controller, rid AnimationID)
+Anim::AppendAnimation(Anim::animation_player* Player, rid AnimationID)
 {
-  assert(0 <= Controller->AnimStateCount &&
-         Controller->AnimStateCount < ANIM_CONTROLLER_MAX_ANIM_COUNT);
-  SetAnimation(Controller, AnimationID, Controller->AnimStateCount);
-  Controller->AnimStateCount++;
+  assert(0 <= Player->AnimStateCount && Player->AnimStateCount < ANIM_PLAYER_MAX_ANIM_COUNT);
+  SetAnimation(Player, AnimationID, Player->AnimStateCount);
+  Player->AnimStateCount++;
 }
 
 void
-Anim::SetAnimation(Anim::animation_controller* Controller, rid AnimationID, int32_t AnimationIndex)
+Anim::SetAnimation(Anim::animation_player* Player, rid AnimationID, int32_t AnimationIndex)
 {
-  assert(0 <= AnimationIndex && AnimationIndex < ANIM_CONTROLLER_MAX_ANIM_COUNT);
+  assert(0 <= AnimationIndex && AnimationIndex < ANIM_PLAYER_MAX_ANIM_COUNT);
   assert(0 < AnimationID.Value);
 
-  Controller->States[AnimationIndex]       = {};
-  Controller->AnimationIDs[AnimationIndex] = AnimationID;
+  Player->States[AnimationIndex]       = {};
+  Player->AnimationIDs[AnimationIndex] = AnimationID;
 }
 
 void
-Anim::StartAnimationAtGlobalTime(Anim::animation_controller* Controller, int AnimationIndex,
-                                 bool Loop, float LocalStartTime)
+Anim::StartAnimationAtGlobalTime(Anim::animation_player* Player, int AnimationIndex, bool Loop,
+                                 float LocalStartTime)
 {
-  assert(0 <= AnimationIndex && AnimationIndex <= ANIM_CONTROLLER_MAX_ANIM_COUNT);
-  Controller->States[AnimationIndex]                 = {};
-  Controller->States[AnimationIndex].StartTimeSec    = Controller->GlobalTimeSec - LocalStartTime;
-  Controller->States[AnimationIndex].PlaybackRateSec = 1.0f;
-  Controller->States[AnimationIndex].Loop            = Loop;
+  assert(0 <= AnimationIndex && AnimationIndex <= ANIM_PLAYER_MAX_ANIM_COUNT);
+  Player->States[AnimationIndex]                 = {};
+  Player->States[AnimationIndex].StartTimeSec    = Player->GlobalTimeSec - LocalStartTime;
+  Player->States[AnimationIndex].PlaybackRateSec = 1.0f;
+  Player->States[AnimationIndex].Loop            = Loop;
 }
 
 void
-Anim::StopAnimation(Anim::animation_controller* Controller, int AnimationIndex)
+Anim::StopAnimation(Anim::animation_player* Player, int AnimationIndex)
 {
-  assert(0 <= AnimationIndex && AnimationIndex <= ANIM_CONTROLLER_MAX_ANIM_COUNT);
-  Controller->States[AnimationIndex] = {};
-  // Controller->AnimStateCount         = 0;
+  assert(0 <= AnimationIndex && AnimationIndex <= ANIM_PLAYER_MAX_ANIM_COUNT);
+  Player->States[AnimationIndex] = {};
+  // Player->AnimStateCount         = 0;
   assert(0 && "Invalid Code Path");
 }
 
@@ -225,29 +219,27 @@ Anim::AddTransforms(const transform* InA, const transform* InB, int TransformCou
 }
 
 void
-Anim::LinearBlend(animation_controller* Controller, int AnimAInd, int AnimBInd, float t,
-                  int ResultIndex)
+Anim::LinearBlend(animation_player* Player, int AnimAInd, int AnimBInd, float t, int ResultIndex)
 {
-  assert(0 <= AnimAInd && AnimAInd < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  assert(0 <= AnimBInd && AnimBInd < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  const int ChannelCount = Controller->Skeleton->BoneCount;
-  LerpTransforms(&Controller->OutputTransforms[AnimAInd * ChannelCount],
-                 &Controller->OutputTransforms[AnimBInd * ChannelCount], ChannelCount, t,
-                 &Controller->OutputTransforms[ResultIndex * ChannelCount]);
+  assert(0 <= AnimAInd && AnimAInd < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  assert(0 <= AnimBInd && AnimBInd < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  assert(0 <= ResultIndex && ResultIndex < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  const int ChannelCount = Player->Skeleton->BoneCount;
+  LerpTransforms(&Player->OutputTransforms[AnimAInd * ChannelCount],
+                 &Player->OutputTransforms[AnimBInd * ChannelCount], ChannelCount, t,
+                 &Player->OutputTransforms[ResultIndex * ChannelCount]);
 }
 
 void
-Anim::AdditiveBlend(animation_controller* Controller, int AnimAInd, int AnimBInd, float t,
-                    int ResultIndex)
+Anim::AdditiveBlend(animation_player* Player, int AnimAInd, int AnimBInd, float t, int ResultIndex)
 {
-  assert(0 <= AnimAInd && AnimAInd < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  assert(0 <= AnimBInd && AnimBInd < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  const int ChannelCount = Controller->Skeleton->BoneCount;
-  AddTransforms(&Controller->OutputTransforms[AnimAInd * ChannelCount],
-                &Controller->OutputTransforms[AnimBInd * ChannelCount], ChannelCount, t,
-                &Controller->OutputTransforms[ResultIndex * ChannelCount]);
+  assert(0 <= AnimAInd && AnimAInd < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  assert(0 <= AnimBInd && AnimBInd < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  assert(0 <= ResultIndex && ResultIndex < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  const int ChannelCount = Player->Skeleton->BoneCount;
+  AddTransforms(&Player->OutputTransforms[AnimAInd * ChannelCount],
+                &Player->OutputTransforms[AnimBInd * ChannelCount], ChannelCount, t,
+                &Player->OutputTransforms[ResultIndex * ChannelCount]);
 }
 
 void
@@ -279,14 +271,14 @@ Anim::LinearAnimationSample(transform* OutputTransforms, const Anim::animation* 
 }
 
 void
-Anim::LinearAnimationSample(Anim::animation_controller* Controller, int AnimIndex, float Time,
+Anim::LinearAnimationSample(Anim::animation_player* Player, int AnimIndex, float Time,
                             int ResultIndex)
 {
-  assert(0 <= AnimIndex && AnimIndex < Controller->AnimStateCount);
-  assert(0 <= ResultIndex && ResultIndex < ANIM_CONTROLLER_OUTPUT_BLOCK_COUNT);
-  const Anim::animation* Animation = Controller->Animations[AnimIndex];
-  LinearAnimationSample(&Controller->OutputTransforms[Animation->ChannelCount * ResultIndex],
-                        Animation, Time);
+  assert(0 <= AnimIndex && AnimIndex < Player->AnimStateCount);
+  assert(0 <= ResultIndex && ResultIndex < ANIM_PLAYER_OUTPUT_BLOCK_COUNT);
+  const Anim::animation* Animation = Player->Animations[AnimIndex];
+  LinearAnimationSample(&Player->OutputTransforms[Animation->ChannelCount * ResultIndex], Animation,
+                        Time);
 }
 
 transform

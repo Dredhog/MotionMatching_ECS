@@ -2,7 +2,7 @@
 #include "debug_drawing.h"
 
 foot_skate_data_row
-MeasureFootSkate(foot_skate_test* Test, Anim::animation_controller* AnimPlayer,
+MeasureFootSkate(foot_skate_test* Test, Anim::animation_player* AnimPlayer,
                  const mm_controller_data*         MMController,
                  const Anim::skeleton_mirror_info* MirrorInfo, const blend_stack* BlendStack,
                  const mat4& EntityModelMatrix, transform LocalDeltaRoot, float t, float dt)

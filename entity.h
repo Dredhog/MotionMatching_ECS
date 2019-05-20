@@ -13,5 +13,5 @@ struct entity
   rid  ModelID;
   rid* MaterialIDs;
 
-  Anim::animation_controller* AnimController;
+  Anim::animation_player* AnimPlayer;
 };

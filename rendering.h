@@ -320,10 +320,10 @@ RenderMainSceneObjects(game_state* GameState)
   uint32_t      CurrentShaderID  = 0;
   for(int i = 0; i < GameState->R.MeshInstanceCount; i++)
   {
-    mesh_instance*                MeshInstance          = &GameState->R.MeshInstances[i];
-    material*                     CurrentMaterial       = MeshInstance->Material;
-    Render::mesh*                 CurrentMesh           = MeshInstance->Mesh;
-    Anim::animation_controller*   CurrentAnimController = MeshInstance->AnimController;
+    mesh_instance*          MeshInstance          = &GameState->R.MeshInstances[i];
+    material*               CurrentMaterial       = MeshInstance->Material;
+    Render::mesh*           CurrentMesh           = MeshInstance->Mesh;
+    Anim::animation_player* CurrentAnimPlayer = MeshInstance->AnimPlayer;
 
     if(CurrentMaterial != PreviousMaterial)
     {
@@ -340,11 +340,11 @@ RenderMainSceneObjects(game_state* GameState)
       glBindVertexArray(CurrentMesh->VAO);
       PreviousMesh = CurrentMesh;
     }
-    if(CurrentMaterial->Common.IsSkeletal && CurrentAnimController)
+    if(CurrentMaterial->Common.IsSkeletal && CurrentAnimPlayer)
     {
       glUniformMatrix4fv(glGetUniformLocation(CurrentShaderID, "g_boneMatrices"),
-                         CurrentAnimController->Skeleton->BoneCount, GL_FALSE,
-                         (float*)CurrentAnimController->HierarchicalModelSpaceMatrices);
+                         CurrentAnimPlayer->Skeleton->BoneCount, GL_FALSE,
+                         (float*)CurrentAnimPlayer->HierarchicalModelSpaceMatrices);
     }
     else
     {
@@ -368,7 +368,7 @@ void
 RenderObjectSelectionHighlighting(game_state* GameState, entity* SelectedEntity)
 {
   TIMED_BLOCK(RenderSelection);
-  if(SelectedEntity->AnimController && !GameState->DrawActorMeshes)
+  if(SelectedEntity->AnimPlayer && !GameState->DrawActorMeshes)
 	{
     return;
 	}
@@ -382,11 +382,11 @@ RenderObjectSelectionHighlighting(game_state* GameState, entity* SelectedEntity)
   glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, (float*)&ColorRed);
   glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "mat_mvp"), 1, GL_FALSE,
                      GetEntityMVPMatrix(GameState, GameState->SelectedEntityIndex).e);
-  if(SelectedEntity->AnimController)
+  if(SelectedEntity->AnimPlayer)
   {
     glUniformMatrix4fv(glGetUniformLocation(ColorShaderID, "g_boneMatrices"),
-                       SelectedEntity->AnimController->Skeleton->BoneCount, GL_FALSE,
-                       (float*)SelectedEntity->AnimController->HierarchicalModelSpaceMatrices);
+                       SelectedEntity->AnimPlayer->Skeleton->BoneCount, GL_FALSE,
+                       (float*)SelectedEntity->AnimPlayer->HierarchicalModelSpaceMatrices);
   }
   else
   {

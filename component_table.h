@@ -18,7 +18,7 @@ enum Component
   COMPONENT_MMAnimationGoal,
 };*/
 
-#define FOR_ALL_NAMES(DO_FUNC) DO_FUNC(,transform) DO_FUNC(Anim,animation_controller) DO_FUNC(,rigid_body)
+#define FOR_ALL_NAMES(DO_FUNC) DO_FUNC(,transform) DO_FUNC(Anim,animation_player) DO_FUNC(,rigid_body)
 #define GENERATE_ENUM(Unused, Name) COMPONENT_##Name,
 #define GENERATE_STRING(Unused, Name) #Name,
 #define GENERATE_COMPONENT_STRUCT_INFO(Namespace, Name) { (uint8_t)alignof(Namespace::Name), (uint16_t)sizeof(Namespace::Name) },

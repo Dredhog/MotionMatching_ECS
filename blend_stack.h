@@ -16,7 +16,7 @@ struct blend_in_info
   bool  Loop;
 };
 
-typedef circular_stack<blend_in_info, ANIM_CONTROLLER_MAX_ANIM_COUNT> blend_stack;
+typedef circular_stack<blend_in_info, ANIM_PLAYER_MAX_ANIM_COUNT> blend_stack;
 
 struct playback_info
 {
@@ -26,4 +26,4 @@ struct playback_info
 
 void PlayAnimation(blend_stack* BlendStack, Anim::animation* NewAnim, float LocalStartTime,
                    float GlobalTime, float BlendInTime, bool Mirror, bool Loop = false);
-void BlendStackBlendFunc(Anim::animation_controller* C, void* UserData);
+void BlendStackBlendFunc(Anim::animation_player* P, void* UserData);

@@ -19,7 +19,7 @@ PlayAnimation(blend_stack* BlendStack, Anim::animation* NewAnim, float LocalAnim
 
 // Deferred execution inside of the animation system
 void
-BlendStackBlendFunc(Anim::animation_controller* C, void* UserData)
+BlendStackBlendFunc(Anim::animation_player* C, void* UserData)
 {
   playback_info                     PlaybackInfo = *(playback_info*)UserData;
   const Anim::skeleton_mirror_info* MirrorInfo   = PlaybackInfo.MirrorInfo;

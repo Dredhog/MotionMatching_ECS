@@ -50,7 +50,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     printf("sizeof(mm_entity_data)            : %ld\n", sizeof(mm_entity_data));
     printf("sizeof(mm_aos_entity_data)        : %ld\n", sizeof(mm_aos_entity_data));
     printf("sizeof(blend_stack)               : %ld\n", sizeof(blend_stack));
-    printf("sizeof(Anim::animation_controller): %ld\n", sizeof(Anim::animation_controller));
+    printf("sizeof(Anim::animation_player): %ld\n", sizeof(Anim::animation_player));
     printf("sizeof(transform)                 : %ld\n", sizeof(transform));
     printf("sizeof(pose_transform)            : %ld\n", sizeof(trajectory_transform));
     printf("alignof(pose_transform)           : %ld\n\n", alignof(trajectory_transform));
@@ -335,7 +335,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         foot_skate_data_row FootSkateTableRow =
           MeasureFootSkate(GameState->TemporaryMemStack, &Test.FootSkateTest,
-                           Entity->AnimController->Skeleton, Anim, Test.FootSkateTest.ElapsedTime,
+                           Entity->AnimPlayer->Skeleton, Anim, Test.FootSkateTest.ElapsedTime,
                            1 / 60.0f);
         AddRow(&Test.DataTable, &FootSkateTableRow, sizeof(FootSkateTableRow));
         Test.FootSkateTest.ElapsedTime += Input->dt;
@@ -363,7 +363,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           &(**MMEntity.MMController).Params.DynamicParams.MirrorInfo;
 
         foot_skate_data_row FootSkateTableRow =
-          MeasureFootSkate(&Test.FootSkateTest, Entity->AnimController, *MMEntity.MMController,
+          MeasureFootSkate(&Test.FootSkateTest, Entity->AnimPlayer, *MMEntity.MMController,
                            MirrorInfo, BlendStack, TransformToMat4(Entity->Transform),
                            *MMEntity.OutDeltaRootMotion, Test.FootSkateTest.ElapsedTime, Input->dt);
         AddRow(&Test.DataTable, &FootSkateTableRow, sizeof(FootSkateTableRow));
@@ -498,8 +498,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // -----------ENTITY ANIMATION UPDATE-------------
   for(int e = 0; e < GameState->EntityCount; e++)
   {
-    Anim::animation_controller* Controller               = GameState->Entities[e].AnimController;
-    mat4                        CurrentEntityModelMatrix = GetEntityModelMatrix(GameState, e);
+    Anim::animation_player* Controller               = GameState->Entities[e].AnimPlayer;
+    mat4                    CurrentEntityModelMatrix = GetEntityModelMatrix(GameState, e);
     if(Controller)
     {
       for(int i = 0; i < Controller->AnimStateCount; i++)
@@ -689,7 +689,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   for(int e = 0; e < GameState->EntityCount; e++)
   {
     Render::model* CurrentModel = GameState->Resources.GetModel(GameState->Entities[e].ModelID);
-    if(!GameState->DrawActorMeshes && GameState->Entities[e].AnimController)
+    if(!GameState->DrawActorMeshes && GameState->Entities[e].AnimPlayer)
     {
       continue;
     }
@@ -701,7 +701,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         GameState->Resources.GetMaterial(GameState->Entities[e].MaterialIDs[m]);
       MeshInstance.MVP            = GetEntityMVPMatrix(GameState, e);
       MeshInstance.PrevMVP        = GameState->PrevFrameMVPMatrices[e];
-      MeshInstance.AnimController = GameState->Entities[e].AnimController;
+      MeshInstance.AnimPlayer = GameState->Entities[e].AnimPlayer;
       AddMeshInstance(&GameState->R, MeshInstance);
     }
   }
