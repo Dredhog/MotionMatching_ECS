@@ -422,10 +422,10 @@ Anim::GenerateSkeletonMirroringInfo(Anim::skeleton_mirror_info* OutMirrorInfo,
     bool        SearchForLeft  = false;
     bool        SearchForRight = false;
     const char* FirstStart     = &Skeleton->Bones[A].Name[0];
-    char*       FirstMiddle;
-    char*       FirstEnd;
+    const char* FirstMiddle;
+    const char* FirstEnd;
     size_t      FirstLength = strlen(Skeleton->Bones[A].Name);
-    char*       Tmp;
+    const char* Tmp;
     if((Tmp = strstr(Skeleton->Bones[A].Name, "Left")) != NULL)
     {
       SearchForRight = true;

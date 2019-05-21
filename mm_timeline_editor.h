@@ -3,6 +3,7 @@
 #include "motion_matching.h"
 #include "entity_animation_control.h"
 #include "ui.h"
+#include "common.h"
 
 #define ORDER_BY(DO_FUNC)                                                                          \
   DO_FUNC(OrderInSet, Order In Set)                                                                \
@@ -52,7 +53,7 @@ static const char* g_TimelineEditorModeOptions[TIMELINE_EDITOR_MODE_EnumCount] =
 #undef ORDER_BY
 #undef EDITOR_MODE
 
-#define COMBO_ARRAY_ARG(Array) Array, ARRAY##_COUNT(Array)
+#define COMBO_ARRAY_ARG(Array) Array, ArrayCount(Array)
 
 #define ANIM_DESCRIPTION_LENGTH
 #define ANIM_DESCRIPTION_NEXT_RANGE

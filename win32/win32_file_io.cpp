@@ -108,7 +108,7 @@ Platform::ReadEntireFile(Memory::heap_allocator* Allocator, const char* FileName
 }
 
 bool
-Platform::WriteEntireFile(const char* Filename, uint64_t MemorySize, void* Memory)
+Platform::WriteEntireFile(const char* Filename, uint64_t MemorySize, const void* Memory)
 {
   HANDLE FileHandle = CreateFile(Filename, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 

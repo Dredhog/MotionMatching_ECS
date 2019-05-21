@@ -16,7 +16,7 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_player* AnimPlayer,
   vec3 FuturePs[MAX_TEST_BONE_COUNT];
   vec3 Velocities[MAX_TEST_BONE_COUNT];
 
-  playback_info PlaybackInfo = { .BlendStack = BlendStack, .MirrorInfo = MirrorInfo };
+  playback_info PlaybackInfo = playback_info{  MirrorInfo, BlendStack};
 
   const float OriginalAnimPlayerTime = AnimPlayer->GlobalTimeSec;
   const int   HipBoneIndex           = 0;

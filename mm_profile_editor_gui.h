@@ -273,7 +273,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
 				for(int i = 0; i < MM_POINT_COUNT; i++)
         {
           char TempBuff[32];
-          snprintf(TempBuff, ARRAY_COUNT(TempBuff), "Point #%d Weight", i + 1);
+          snprintf(TempBuff, ArrayCount(TempBuff), "Point #%d Weight", i + 1);
           UI::Text(TempBuff);
           UI::SliderFloat(TempBuff, &MMEditor->ActiveProfile.DynamicParams.TrajectoryWeights[i], 0, 1);
         }

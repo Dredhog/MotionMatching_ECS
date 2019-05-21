@@ -35,13 +35,12 @@ struct facing_test
 inline facing_test
 GetDefaultFacingTest()
 {
-  facing_test Result = {
-    .TargetAngleThreshold = 10,
-    .MaxWaitTime          = 3,
-    .MaxTestAngle         = 180,
-    .TestLeftSideTurns    = true,
-    .TestRightSideTurns   = true,
-    .RemainingCaseCount   = 50,
-  };
+  facing_test Result = {};
+  Result.TargetAngleThreshold = 10;
+  Result.MaxWaitTime          = 3;
+  Result.MaxTestAngle         = 180;
+  Result.TestLeftSideTurns    = true;
+  Result.TestRightSideTurns   = true;
+  Result.RemainingCaseCount   = 50;
   return Result;
 };

@@ -5,15 +5,16 @@ void
 PlayAnimation(blend_stack* BlendStack, Anim::animation* NewAnim, float LocalAnimTime,
               float GlobalTime, float BlendInTime, bool Mirror, bool Loop)
 {
-	assert(NewAnim);
-  blend_in_info NewBlend = {
-    .Animation            = NewAnim,
-    .GlobalAnimStartTime  = GlobalTime - LocalAnimTime,
-    .GlobalBlendStartTime = GlobalTime,
-    .BlendDuration        = BlendInTime,
-    .Mirror               = Mirror,
-    .Loop                 = Loop,
-  };
+  assert(NewAnim);
+
+  blend_in_info NewBlend = {};
+  NewBlend.Animation            = NewAnim;
+  NewBlend.GlobalAnimStartTime  = GlobalTime - LocalAnimTime;
+  NewBlend.GlobalBlendStartTime = GlobalTime;
+  NewBlend.BlendDuration        = BlendInTime;
+  NewBlend.Mirror               = Mirror;
+  NewBlend.Loop                 = Loop;
+
   BlendStack->Push(NewBlend);
 }
 

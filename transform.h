@@ -21,5 +21,9 @@ TransformToMat4(const transform& Transform)
 
 inline transform IdentityTransform()
 {
-  return { .R = Math::QuatIdent(), .T = {}, .S = { 1, 1, 1 } };
+  transform NewTransform;
+  NewTransform.R = Math::QuatIdent();
+  NewTransform.T = {};
+  NewTransform.S = vec3{1,1,1};
+  return NewTransform;
 }

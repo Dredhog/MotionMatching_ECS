@@ -1967,19 +1967,23 @@ void
 TestGUI(game_state* GameState)
 {
   testing_system&       Tests = GameState->TestingSystem;
-  static test_gui_state GUI   = { .SelectedEntityIndex = -1,
-                                .SelectedBoneIndex   = -1,
-                                .FacingTest          = GetDefaultFacingTest() };
+  static test_gui_state GUI   ={};
+  {
+    GUI.SelectedEntityIndex = -1;
+    GUI.SelectedBoneIndex   = -1;
+    GUI.FacingTest          = GetDefaultFacingTest();
+  }
 
   // Reseting GUI when selected entity changes
   if(GameState->SelectedEntityIndex != GUI.SelectedEntityIndex)
   {
-    GUI.SelectedEntityIndex = -1;
-    GUI.SelectedBoneIndex   = -1;
-    GUI.FootSkateTest       = { .TopMargin = 0.1f };
-    GUI.FollowTest          = {};
-    GUI.FacingTest          = GetDefaultFacingTest();
-    GUI.SelectedEntityIndex = GameState->SelectedEntityIndex;
+    GUI.SelectedEntityIndex     = -1;
+    GUI.SelectedBoneIndex       = -1;
+    GUI.FootSkateTest           = {};
+    GUI.FootSkateTest.TopMargin = 0.1f;
+    GUI.FollowTest              = {};
+    GUI.FacingTest              = GetDefaultFacingTest();
+    GUI.SelectedEntityIndex     = GameState->SelectedEntityIndex;
   };
 
   entity* SelectedEntity;
@@ -2167,10 +2171,10 @@ TestGUI(game_state* GameState)
             : (TestType == TEST_ControllerFootSkate
                  ? "Ctrl Foot Skate"
                  : (TestType == TEST_FacingChange ? "Facing Change" : "Trajectory Follow"));
-        snprintf(TempBuffer, ARRAY_COUNT(TempBuffer), "#%d: Name: %s", i,
+        snprintf(TempBuffer, ArrayCount(TempBuffer), "#%d: Name: %s", i,
                  Tests.ActiveTests[i].DataTable.Name);
         UI::Text(TempBuffer);
-        snprintf(TempBuffer, ARRAY_COUNT(TempBuffer), " Entity: #%d, Type: %s",
+        snprintf(TempBuffer, ArrayCount(TempBuffer), " Entity: #%d, Type: %s",
                  Tests.ActiveTests[i].EntityIndex, TestTypeString);
         UI::Text(TempBuffer);
         if(UI::Button("Stop"))

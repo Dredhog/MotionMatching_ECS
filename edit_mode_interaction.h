@@ -168,18 +168,19 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
     raycast_result RaycastResult =
       RayIntersectPlane(GameState->Camera.Position, RayDir, {}, { 0, 1, 0 });
     if(RaycastResult.Success)
-		{
-      waypoint NewWaypoint = {
-        .Position = RaycastResult.IntersectP,
-        .Facing   = 0.0f,
-        .Velocity = 1.0f,
+    {
+      waypoint NewWaypoint = {};
+      {
+        NewWaypoint.Position = RaycastResult.IntersectP;
+        NewWaypoint.Facing   = {0,1};
+        NewWaypoint.Velocity = 1.0f;
       };
 			assert(GameState->SplineSystem.SelectedSplineIndex != -1);
       GameState->SplineSystem.Splines[GameState->SplineSystem.SelectedSplineIndex]
         .Waypoints.Push(NewWaypoint);
       GameState->SplineSystem.IsWaypointPlacementMode = false;
     }
-	}
+  }
   UI::EndFrame();
 }
 

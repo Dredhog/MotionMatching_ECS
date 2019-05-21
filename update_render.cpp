@@ -44,7 +44,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   // GAME STATE INITIALIZATION (ONLY RUN ON FIRST FRAME)
   if(GameState->MagicChecksum != 123456)
   {
-    printf("sizeof(Anim::skeleton)            : %ld\n", sizeof(Anim::skeleton));
+    /*printf("sizeof(Anim::skeleton)            : %ld\n", sizeof(Anim::skeleton));
     printf("sizeof(mm_frame_info)             : %ld\n", sizeof(mm_frame_info));
     printf("sizeof(mm_controller_data)        : %ld\n", sizeof(mm_controller_data));
     printf("sizeof(mm_entity_data)            : %ld\n", sizeof(mm_entity_data));
@@ -53,7 +53,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     printf("sizeof(Anim::animation_player): %ld\n", sizeof(Anim::animation_player));
     printf("sizeof(transform)                 : %ld\n", sizeof(transform));
     printf("sizeof(pose_transform)            : %ld\n", sizeof(trajectory_transform));
-    printf("alignof(pose_transform)           : %ld\n\n", alignof(trajectory_transform));
+    printf("alignof(pose_transform)           : %ld\n\n", alignof(trajectory_transform));*/
 
     INIT_GPU_TIMERS();
     TIMED_BLOCK(FirstInit);
@@ -210,9 +210,12 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       active_test& Test = TestingSystem->ActiveTests[i];
       if(Test.Type == TEST_FacingChange)
       {
-        InputOverrides[InputOverrideCount++] =
-          entity_goal_input{ .EntityIndex = Test.EntityIndex,
-                             .WorldDir    = Test.FacingTest.TargetWorldFacing };
+        entity_goal_input Temp = {};
+        {
+          Temp.EntityIndex = Test.EntityIndex;
+          Temp.WorldDir    = Test.FacingTest.TargetWorldFacing;
+        }
+        InputOverrides[InputOverrideCount++] = Temp;
       }
     }
 #endif
@@ -399,12 +402,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                             { 1, 1, 0, 1 });
             if(FacingTest.ElapsedTime > FacingTest.MaxWaitTime) // Failed Test
             {
-              facing_turn_time_data_row ResultRow = { .TimeTaken = FacingTest.ElapsedTime,
-                                                      .Passed    = 0,
-                                                      .LocalTargetAngle =
-                                                        FacingTest.TestStartLocalTargetAngle,
-                                                      .AngleThreshold =
-                                                        FacingTest.TargetAngleThreshold };
+              facing_turn_time_data_row ResultRow = {};
+              {
+                ResultRow.TimeTaken = FacingTest.ElapsedTime,
+                ResultRow.Passed    = 0;
+                ResultRow.LocalTargetAngle = FacingTest.TestStartLocalTargetAngle;
+                ResultRow.AngleThreshold = FacingTest.TargetAngleThreshold;
+              }
               AddRow(&Test.DataTable, &ResultRow, sizeof(ResultRow));
               FacingTest.HasActiveCase = false;
             }
@@ -419,12 +423,13 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               if(AbsFloat(TargetLocalAngle) <=
                  DegToRad * FacingTest.TargetAngleThreshold) // Passed test
               {
-                facing_turn_time_data_row ResultRow = { .TimeTaken = FacingTest.ElapsedTime,
-                                                        .Passed    = 1,
-                                                        .LocalTargetAngle =
-                                                          FacingTest.TestStartLocalTargetAngle,
-                                                        .AngleThreshold =
-                                                          FacingTest.TargetAngleThreshold };
+                facing_turn_time_data_row ResultRow = {};
+                {
+                    ResultRow.TimeTaken = FacingTest.ElapsedTime;
+                    ResultRow.Passed    = 1;
+                    ResultRow.LocalTargetAngle = FacingTest.TestStartLocalTargetAngle;
+                    ResultRow.AngleThreshold = FacingTest.TargetAngleThreshold;
+                }
                 AddRow(&Test.DataTable, &ResultRow, sizeof(ResultRow));
                 FacingTest.HasActiveCase = false;
               }

@@ -11,7 +11,7 @@ ClosestPointToSegment(float* OutT, vec3 P, vec3 A, vec3 B)
 
   float t = (AB_Squared != 0) ? ClampFloat(0, Math::Dot(AB, AP) / AB_Squared, 1) : 0;
   if(OutT)
-	{
+  {
     *OutT = t;
   }
   return A + t * AB;
@@ -21,9 +21,12 @@ trajectory_follow_data_row
 MeasureTrajectoryFollowing(transform EntityTransform, const spline_follow_state* FollowState,
                            const movement_spline* Target, float t, float dt)
 {
-  trajectory_follow_data_row Result = { .t                 = t,
-                                        .dt                = dt,
-                                        .NextWaypointIndex = FollowState->NextWaypointIndex };
+  trajectory_follow_data_row Result = {};
+  {
+    Result.t                 = t;
+    Result.dt                = dt;
+    Result.NextWaypointIndex = FollowState->NextWaypointIndex;
+  };
 
   mat3 EntityRotationMatrix = Math::QuatToMat3(EntityTransform.R);
   vec3 EntityFacing         = EntityRotationMatrix.Z;

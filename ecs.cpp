@@ -74,6 +74,7 @@ GetComponentOffset(const archetype& Archetype, component_id ComponentID)
     }
   }
   assert(0 && "GetComponentOffset: Invalid codepath");
+  return 0;
 }
 
 // Initialization

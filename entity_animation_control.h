@@ -58,7 +58,7 @@ struct mm_input_controller
 #define GENERATE_MM_DATA_TEMP_COPIES(Type, SingularName, PluralName) Type Temp##SingularName = *A PLACE_TOKEN(->) SingularName;
 #define GENERATE_MM_DATA_ASSIGNMENT_B_TO_A(Type, SingularName, PluralName) *A  PLACE_TOKEN(->)  SingularName = *B PLACE_TOKEN(->) SingularName;
 #define GENERATE_MM_DATA_ASSIGNMENT_TEMP_TO_B(Type, SingularName, PluralName) *B  PLACE_TOKEN(->)  SingularName = Temp##SingularName;
-#define GENERATE_MM_DATA_INIT_FIELDS(Type, SingularName, PluralName) PLACE_TOKEN(.) SingularName = PLACE_TOKEN(&) MMEntityData->PluralName[MMDataIndex],
+#define GENERATE_MM_DATA_INIT_FIELDS(Type, SingularName, PluralName) PLACE_TOKEN(&) MMEntityData->PluralName[MMDataIndex],
 
 struct mm_entity_data
 {

@@ -49,8 +49,8 @@ template<typename T, typename IndexType = int32_t>
 struct stack_handle
 {
   T*      Elements;
-  int32_t Capacity;
-  int32_t Count;
+  IndexType Capacity;
+  IndexType Count;
 
   void
   Init(T* Elements, IndexType Count, IndexType Capacity)
@@ -176,7 +176,7 @@ struct stack_handle
 
 template<typename T, typename IndexType = int32_t>
 stack_handle<T, IndexType>
-CreateStackHandle(T* Elements, int32_t Count, int32_t Capacity)
+CreateStackHandle(T* Elements, IndexType Count, IndexType Capacity)
 {
   stack_handle<T, IndexType> NewStackHandle;
   NewStackHandle.Elements = Elements;

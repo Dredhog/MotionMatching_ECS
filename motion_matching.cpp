@@ -149,8 +149,10 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
     }
   }
   MMData->FrameInfos            = FrameInfoStack.GetArrayHandle();
-  Memory::marker AssetEndMarker = { .Address = (uint8_t*)(MMData->FrameInfos.Elements +
-                                                          MMData->FrameInfos.Count) };
+  Memory::marker AssetEndMarker = {};
+  {
+      AssetEndMarker.Address = (uint8_t*)(MMData->FrameInfos.Elements + MMData->FrameInfos.Count);
+  }
 
   // Set up the mirroring info for goal generation
   MMData->Params.FixedParams.MirrorBoneIndices.HardClear();

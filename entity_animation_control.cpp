@@ -15,16 +15,23 @@ SetDefaultMMControllerFileds(mm_aos_entity_data* MMEntityData)
   *MMEntityData->BlendStack      = {};
   *MMEntityData->EntityIndex     = -1;
   *MMEntityData->FollowSpline    = false;
-  *MMEntityData->SplineState     = { .SplineIndex       = -1,
-                                 .NextWaypointIndex = 0,
-                                 .Loop              = true,
-                                 .MovingInPositive  = true };
+  *MMEntityData->SplineState     = { };
+  {
+    MMEntityData->SplineState->SplineIndex       = -1;
+    MMEntityData->SplineState->NextWaypointIndex = 0;
+    MMEntityData->SplineState->Loop              = true;
+    MMEntityData->SplineState->MovingInPositive  = true;
+  }
+
   InitTrajectory(MMEntityData->Trajectory);
-  *MMEntityData->InputController = { .MaxSpeed      = 1.0f,
-                                     .PositionBias  = 0.08f,
-                                     .DirectionBias = 2,
-                                     .UseStrafing   = false,
-                                     .UseSmoothGoal = true };
+  *MMEntityData->InputController = {};
+  {
+    MMEntityData->InputController->MaxSpeed      = 1.0f;
+    MMEntityData->InputController->PositionBias  = 0.08f;
+    MMEntityData->InputController->DirectionBias = 2;
+    MMEntityData->InputController->UseStrafing   = false;
+    MMEntityData->InputController->UseSmoothGoal = true;
+  }
 
   *MMEntityData->Skeleton             = NULL;
   *MMEntityData->MMController         = NULL;
@@ -378,9 +385,12 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
                                              DominantBlend.GlobalAnimStartTime);
 
     mat4 InvEntityMatrix = Math::InvMat4(TransformToMat4(Entities[EntityIndices[e]].Transform));
-    trajectory_update_args TrajectoryArgs = { .PositionBias    = InputControllers[e].PositionBias,
-                                              .DirectionBias   = InputControllers[e].DirectionBias,
-                                              .InvEntityMatrix = InvEntityMatrix };
+    trajectory_update_args TrajectoryArgs = {};
+    {
+        TrajectoryArgs.PositionBias    = InputControllers[e].PositionBias;
+        TrajectoryArgs.DirectionBias   = InputControllers[e].DirectionBias;
+        TrajectoryArgs.InvEntityMatrix = InvEntityMatrix;
+    }
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
               GoalFacing, MMControllers[e]->Params.DynamicParams.TrajectoryTimeHorizon,
@@ -443,10 +453,13 @@ GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutG
     float         LocalAnimTime = GetLocalSampleTime(DominantBlend.Animation, AnimPlayerTimes[e],
                                              DominantBlend.GlobalAnimStartTime);
 
-    trajectory_update_args TrajectoryArgs = { .PositionBias  = InputControllers[e].PositionBias,
-                                              .DirectionBias = InputControllers[e].DirectionBias,
-                                              .InvEntityMatrix =
-                                                Math::InvMat4(TransformToMat4(EntityTransform)) };
+    trajectory_update_args TrajectoryArgs =  {};
+    {
+        TrajectoryArgs.PositionBias  = InputControllers[e].PositionBias;
+        TrajectoryArgs.DirectionBias = InputControllers[e].DirectionBias;
+        TrajectoryArgs.InvEntityMatrix = Math::InvMat4(TransformToMat4(EntityTransform));
+    }
+
     GetMMGoal(&OutGoals[e], &OutMirroredGoals[e], &Trajectories[e], TempAlloc, Skeletons[e],
               DominantBlend.Animation, DominantBlend.Mirror, LocalAnimTime, GoalVelocity,
               GoalFacing, MMControllers[e]->Params.DynamicParams.TrajectoryTimeHorizon,
