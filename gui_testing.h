@@ -7,6 +7,7 @@
 #include "mm_profile_editor_gui.h"
 #include "mm_timeline_editor.h"
 #include "testing_system.h"
+#include "inttypes.h"
 
 void MaterialGUI(game_state* GameState, bool& ShowMaterialEditor);
 void EntityGUI(game_state* GameState, bool& ShowEntityTools);
@@ -274,7 +275,7 @@ TestGui(game_state* GameState, const game_input* Input)
             UI::SameLine();
             {
               char CountBuffer[40];
-              sprintf(CountBuffer, ": %lu",
+              sprintf(CountBuffer, ": %" PRIu64,
                       GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex]
                                                       [s_BlockIndexForSummary]
                                                         .CycleCount);
@@ -293,7 +294,7 @@ TestGui(game_state* GameState, const game_input* Input)
           UI::SameLine();
           {
             char CountBuffer[40];
-            sprintf(CountBuffer, ": %lu",
+            sprintf(CountBuffer, ": %" PRIu64,
                     GLOBAL_TIMER_FRAME_SUMMARY_TABLE[s_CurrentModifiableFrameIndex][i].CycleCount);
             UI::Text(CountBuffer);
           }

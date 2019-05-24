@@ -937,15 +937,17 @@ main(int ArgCount, char** Args)
               tR       = Clamp((CurrentTick - R0) / (R1 - R0), 0, 1);
               assert(0 <= tR && tR <= 1);
             }
-            quat FirstR = { .S = Channel->mRotationKeys[CurrR].mValue.w,
-                            .V = { Channel->mRotationKeys[CurrR].mValue.x,
-                                   Channel->mRotationKeys[CurrR].mValue.y,
-                                   Channel->mRotationKeys[CurrR].mValue.z } };
+            quat FirstR = {};
+            FirstR.S = Channel->mRotationKeys[CurrR].mValue.w;
+            FirstR.V = { Channel->mRotationKeys[CurrR].mValue.x,
+                         Channel->mRotationKeys[CurrR].mValue.y,
+                         Channel->mRotationKeys[CurrR].mValue.z };
 
-            quat SecondR = { .S = Channel->mRotationKeys[NextR].mValue.w,
-                             .V = { Channel->mRotationKeys[NextR].mValue.x,
-                                    Channel->mRotationKeys[NextR].mValue.y,
-                                    Channel->mRotationKeys[NextR].mValue.z } };
+            quat SecondR = {};
+            SecondR.S = Channel->mRotationKeys[NextR].mValue.w;
+            SecondR.V = { Channel->mRotationKeys[NextR].mValue.x,
+                          Channel->mRotationKeys[NextR].mValue.y,
+                          Channel->mRotationKeys[NextR].mValue.z };
 
             LocalBoneKeyTransform.R = Math::QuatLerp(FirstR, SecondR, tR);
           }
