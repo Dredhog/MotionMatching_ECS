@@ -107,11 +107,11 @@ if show_figures:
 plt.close('all')
 print(facing_change_time_table)
 
-def measure_foot_skate(foot_skate, min_h, max_h):
+def measure_foot_skate(foot_skate, min_h, max_h, foot_side):
     h_diff = max_h-min_h
-    foot_skate['speed'] = np.sqrt(np.square(foot_skate['l_vel_x'])+np.square(foot_skate['l_vel_z']))
+    foot_skate['speed'] = np.sqrt(np.square(foot_skate[foot_side+'_vel_x'])+np.square(foot_skate[foot_side+'_vel_z']))
     foot_skate['position_differences'] = foot_skate['dt'] * foot_skate['speed']
-    foot_skate['height_exponent'] = (foot_skate['l_h'] - min_h)/h_diff
+    foot_skate['height_exponent'] = (foot_skate[foot_side+'_h'] - min_h)/h_diff
     foot_skate['clamped_height_exponent'] = np.clip(foot_skate['height_exponent'], 0, 1 )
     foot_skate['height_weights'] = 2-np.power(2,foot_skate['clamped_height_exponent'])
     #mean_pos_difference = np.sum(foot_skate['position_differences'])/foot_skate['t'].tail(1)
@@ -130,17 +130,18 @@ for t in trajectories:
         plt.figure(figsize=figure_size)
         plt.subplots_adjust(hspace=0.5)
         plt.suptitle('\"' + c + '\" valdiklio animacijų rinkinio pėdų slidinjimas')
+        foot_side = 'l'
         for ia, a in enumerate(anim_names):
             plt.subplot(len(anim_names), 1, ia+1)
 
             anim_skate_data = pd.read_csv(rel_dir+anim_names[ia].split('.')[0]+'_anim_foot_skate.csv', skipinitialspace=True)
-            a_skate_amount = measure_foot_skate(anim_skate_data, min_h, max_h)
+            a_skate_amount = measure_foot_skate(anim_skate_data, min_h, max_h, foot_side)
             print(a + " " + str(a_skate_amount) + 'm/s')
 
             plt.title("Animacijos "+a+" pėdų slydimo kiekis = " + str(a_skate_amount))
             plt.xlabel('laikas (s)')
             plt.ylabel('Atstumas (m)')
-            plt.plot(anim_skate_data['t'], anim_skate_data['l_h'], label='kairės pėdos aukštis virš žemės')
+            plt.plot(anim_skate_data['t'], anim_skate_data[foot_side+'_h'], label='kairės pėdos aukštis virš žemės')
             plt.plot(anim_skate_data['t'], anim_skate_data['height_weights'], label='greičio daugiklis')
             plt.legend(loc=1)
             #plt.plot(anim_skate_data['t'], anim_skate_data['speed'])
@@ -158,7 +159,7 @@ for t in trajectories:
             long_c_name = c+m_to_mirror_dict[m]+'_'+t
             c_skate_data = pd.read_csv(rel_dir+short_c_name+'_'+t+'_ctrl_skate.csv', skipinitialspace=True)
 
-            c_skate_amount = measure_foot_skate(c_skate_data, min_h, max_h)
+            c_skate_amount = measure_foot_skate(c_skate_data, min_h, max_h, foot_side)
             print(a + " " + str(a_skate_amount) + 'm/s')
 
             plt.figure(figsize=figure_size)

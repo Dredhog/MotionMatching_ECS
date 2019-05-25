@@ -446,7 +446,7 @@ GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutG
     vec3 LocalEntityToWaypoint = Math::MulMat3Vec3(Math::QuatToMat3(InvR), WorldDiff);
     vec3 LocalDir              = Math::Normalized(LocalEntityToWaypoint);
 
-    vec3 GoalVelocity = LocalDir;
+    vec3 GoalVelocity = LocalDir*InputControllers[e].MaxSpeed;
     vec3 GoalFacing   = LocalDir;
 
     blend_in_info DominantBlend = BlendStacks[e].Peek();

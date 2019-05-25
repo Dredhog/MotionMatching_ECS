@@ -1964,16 +1964,22 @@ struct test_gui_state
   facing_test     FacingTest;
 };
 
-void
-TestGUI(game_state* GameState)
+test_gui_state GetDefaultTestGUIState()
 {
-  testing_system&       Tests = GameState->TestingSystem;
-  static test_gui_state GUI   ={};
+  test_gui_state GUI   ={};
   {
     GUI.SelectedEntityIndex = -1;
     GUI.SelectedBoneIndex   = -1;
     GUI.FacingTest          = GetDefaultFacingTest();
   }
+	return GUI;
+}
+
+void
+TestGUI(game_state* GameState)
+{
+  testing_system&       Tests = GameState->TestingSystem;
+  static test_gui_state GUI   = GetDefaultTestGUIState();
 
   // Reseting GUI when selected entity changes
   if(GameState->SelectedEntityIndex != GUI.SelectedEntityIndex)
