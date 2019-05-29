@@ -86,14 +86,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-  // Editor
-  if(Input->IsMouseInEditorMode)
-  {
-    EditWorldAndInteractWithGUI(GameState, Input);
-  }
-
-    //--------------------WORLD UPDATE------------------------
-
 #if 0
 	{
     entity* SelectedEntity = {};
@@ -109,6 +101,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 #else
   UpdateCamera(&GameState->Camera, Input);
 #endif
+
+  // Editor
+  if(Input->IsMouseInEditorMode)
+  {
+    EditWorldAndInteractWithGUI(GameState, Input);
+  }
+
+    //--------------------WORLD UPDATE------------------------
+
 
   if(GameState->UpdatePhysics)
   {

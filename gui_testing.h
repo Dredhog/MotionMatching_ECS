@@ -686,6 +686,7 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
     UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
 
+#if 0
     {
       static vec3 A          = { -1, 0, 0 };
       static vec3 B          = {};
@@ -714,6 +715,7 @@ TestGui(game_state* GameState, const game_input* Input)
         Debug::PushWireframeSphere(CatmullRomPoint, 0.05f, { 1, 0.2f, 0.2f, 1 });
       }
     }
+#endif
     UI::EndWindow();
   }
 #if 0

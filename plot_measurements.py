@@ -14,11 +14,11 @@ mirrors = ['', '_mirror']
 m_to_mirror_dict = {'':'', '_m':'_mirror'}
 
 cm_to_inches = 2.54
-figure_size = (40/cm_to_inches, 30/cm_to_inches)
+figure_size = (40/cm_to_inches, 50/cm_to_inches)
 trajektorijų_kilmininkas = {'pentagon':'penkiakampio', 'M':'M', 'segment':'atkarpos'}
 
-show_figures = True
-write_figures = False
+show_figures = False
+write_figures = True
 
 controllers = ['main', '16', '91', '127_stiff']
 
@@ -133,7 +133,7 @@ min_h = 0.045 #np.min(foot_skate.l_h)
 max_h = 0.06
 
 controllers = ['main', '16', '91', '127_stiff']
-column_names =  controllers + [i+'_m' for i in controllers]
+controllers =  controllers + [i+'_m' for i in controllers]
 
 #FOOT SKATE TESTING
 foot_skate_table = pd.DataFrame(np.NaN, index=controllers, columns=['l_controller_skate', 'l_anim_skate', 'l_worse_frac', 'r_controller_skate', 'r_anim_skate', 'r_worse_frac'])

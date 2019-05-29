@@ -20,6 +20,9 @@ animations:
 	make mixamo
 	make cmu
 
+raw_mocap:
+	./build_raw_mocap.sh
+
 mixamo:
 	./build_mixamo.sh
 

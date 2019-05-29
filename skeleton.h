@@ -7,6 +7,8 @@
 
 #include "linear_math/matrix.h"
 
+//#define BONE_NAME_LENGTH 80
+//#define SKELETON_MAX_BONE_COUNT 200
 #define BONE_NAME_LENGTH 40
 #define SKELETON_MAX_BONE_COUNT 70
 
