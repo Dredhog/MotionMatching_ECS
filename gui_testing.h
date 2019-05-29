@@ -125,8 +125,8 @@ TestGui(game_state* GameState, const game_input* Input)
       static bool s_ShowTimelineRegion           = false;
       static bool s_ShowFrameSummaries           = false;
       static bool s_ShowGPUFrameSummaries        = false;
-      static bool s_ShowEntityEditor             = true;
-      static bool s_ShowChunkMemoryVisualization = true;
+      static bool s_ShowEntityEditor             = false;
+      static bool s_ShowChunkMemoryVisualization = false;
 
       static int s_CurrentModifiableFrameIndex = 0;
 

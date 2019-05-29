@@ -89,8 +89,13 @@ RegisterDebugModels(game_state* GameState)
   GameState->Resources.Models.AddReference(GameState->SphereModelID);
   GameState->Resources.Models.AddReference(GameState->LowPolySphereModelID);
   GameState->Resources.Models.AddReference(GameState->UVSphereModelID);
+#if 1
+  strcpy(GameState->R.Cubemap.Name, "data/textures/skybox2/SkyBox02b");
+  strcpy(GameState->R.Cubemap.Format, "tif");
+#else
   strcpy(GameState->R.Cubemap.Name, "data/textures/skybox/morning");
   strcpy(GameState->R.Cubemap.Format, "tga");
+#endif
   GetCubemapRIDs(GameState->R.Cubemap.FaceIDs, &GameState->Resources, GameState->TemporaryMemStack,
                  GameState->R.Cubemap.Name, GameState->R.Cubemap.Format);
   GameState->R.Cubemap.CubemapTexture = -1;

@@ -231,7 +231,7 @@ Debug::DrawLines(game_state* GameState)
   assert(0 < s_VAO);
   assert(0 < s_VBO);
 
-  glLineWidth(3);
+  glLineWidth(2);
   // Update line buffers
   glBindBuffer(GL_ARRAY_BUFFER, s_VBO);
   glBufferSubData(GL_ARRAY_BUFFER, 0, g_LinePoints.Count * sizeof(vec3), g_LinePoints.Elements);

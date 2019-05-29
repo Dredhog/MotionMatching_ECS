@@ -63,6 +63,10 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     InitializeECS(GameState->PersistentMemStack, &GameState->ECSRuntime, &GameState->ECSWorld,
                   Mibibytes(1));
 
+		//TODO(Lukas) MOVE THIS WHRE IT'S MORE APPROPIATE
+		glEnable(GL_LINE_SMOOTH);
+		glLineWidth(2);
+
     if(!GameState->UpdatePathList)
     {
       TIMED_BLOCK(FilesystemUpdate);
