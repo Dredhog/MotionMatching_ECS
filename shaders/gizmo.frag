@@ -7,5 +7,5 @@ out vec4 out_color;
 void 
 main()
 {
-  out_color = vec4(normalize(frag_position), 1.0);
+  out_color = vec4(mix(vec3(1), normalize(frag_position), 20*length(frag_position)), 1);
 }

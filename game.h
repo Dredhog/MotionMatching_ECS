@@ -80,6 +80,7 @@ struct game_state
   testing_system TestingSystem;
 
   spline_system  SplineSystem;
+  bool           OverlaySplines = false;
   mm_entity_data MMEntityData;
 
   bool UseHotReloading;

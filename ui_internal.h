@@ -171,7 +171,6 @@ struct gui_window
   vec3  PreviousLinePos; // The cursor's position in screen space if it stayed on the same line
   vec3  MaxPos;          // Position in screen space of the furthest the contents went last frame
   float IndentX; // The offset from the left of the window in screen space to start a new line
-  ui_id LastItemID; // The ID of the item which was just run
 
   // Used for finding the cursor's position on the next line when there are several items of
   // different heights on the current line
@@ -228,6 +227,7 @@ struct gui_context
   Text::font*   Font;
   ui_id         ActiveID;
   ui_id         HotID;
+  ui_id         LastItemID; // The ID of the item which was just run
 
   int32_t                           LatestClipRectIndex;
   fixed_stack<rect, 20>             ClipRectStack;
@@ -567,8 +567,8 @@ TestIfVisible(const rect& Rect)
 bool
 TestIfVisibleAndStoreID(const rect& Rect, const ui_id& ID)
 {
-  gui_window&  Window = *GetCurrentWindow();
-  Window.LastItemID   = ID;
+  gui_context&  g = *GetContext();
+  g.LastItemID    = ID;
   if(!TestIfVisible(Rect))
     return false;
 

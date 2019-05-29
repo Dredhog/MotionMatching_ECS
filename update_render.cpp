@@ -284,6 +284,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
 
   // Waypoint debug visualizaiton
+	const vec3 VerticalSplineOffset = {0,0.02f,0};
   for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
   {
     waypoint PreviousWaypoint = {};
@@ -293,7 +294,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       vec4 WaypointColor = { 0.2f, 0.2f, 1, 1 };
       if(j > 0)
       {
-        Debug::PushLine(PreviousWaypoint.Position, CurrentWaypoint.Position, WaypointColor);
+        Debug::PushLine(PreviousWaypoint.Position + VerticalSplineOffset,
+                        CurrentWaypoint.Position + VerticalSplineOffset, WaypointColor,
+                        GameState->OverlaySplines);
       }
       if(GameState->SplineSystem.SelectedSplineIndex == i &&
          GameState->SplineSystem.SelectedWaypointIndex == j)
@@ -323,7 +326,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       {
         float t            = float(k + 1) / SubdivisionCount;
         vec3  CurrentPoint = Spline.CatmullRomPoint(j, t);
-        Debug::PushLine(PreviousPoint, CurrentPoint, { 1, 0.2f, 0.2f, 1 });
+        Debug::PushLine(PreviousPoint + VerticalSplineOffset, CurrentPoint + VerticalSplineOffset,
+                        { 1, 0.2f, 0.2f, 1 }, GameState->OverlaySplines);
         PreviousPoint = CurrentPoint;
       }
     }
@@ -772,6 +776,16 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
       RenderObjectSelectionHighlighting(GameState, SelectedEntity);
     }
+
+		if(GameState->DrawDebugSpheres)
+		{
+			Debug::DrawWireframeSpheres(GameState);
+		}
+		if(GameState->DrawDebugLines)
+		{
+			Debug::DrawDepthTestedLines(GameState);
+		}
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
 
@@ -789,10 +803,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
   //---------------DEBUG DRAWING------------------
   BEGIN_TIMED_BLOCK(DebugDrawingSubmission);
-  if(GameState->DrawDebugSpheres)
-  {
-    Debug::DrawWireframeSpheres(GameState);
-  }
   glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   if(GameState->DrawGizmos)
   {
@@ -800,7 +810,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
   }
   if(GameState->DrawDebugLines)
   {
-    Debug::DrawLines(GameState);
+    Debug::DrawOverlayLines(GameState);
   }
   Debug::DrawQuads(GameState);
   Debug::ClearDrawArrays();

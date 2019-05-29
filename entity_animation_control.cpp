@@ -429,7 +429,7 @@ GenerateGoalsFromSplines(Memory::stack_allocator* TempAlloc, mm_frame_info* OutG
   for(int e = 0; e < Count; e++)
   {
 
-    const float WaypointRadius  = 0.5f;
+    const float WaypointRadius  = 0.8f;
     const float Inputdt         = 1 / 60.0f;
     transform   EntityTransform = Entities[EntityIndices[e]].Transform;
 
@@ -726,6 +726,7 @@ void
 DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settings DebugSettings,
               vec3 BoneColor, vec3 VelocityColor, vec3 TrajectoryColor, vec3 DirectionColor)
 {
+	const vec3 VerticalOffset{0, 0.01f, 0};
   for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
   {
     vec4 HomogLocalBoneP = { AnimGoal.BonePs[i], 1 };
@@ -740,7 +741,7 @@ DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settin
     }
     if(DebugSettings.ShowBoneVelocities)
     {
-      Debug::PushLine(WorldBoneP, WorldVEnd, { VelocityColor, 1 });
+      Debug::PushLine(WorldBoneP+VerticalOffset, WorldVEnd+VerticalOffset, { VelocityColor, 1 }, DebugSettings.Overlay);
       Debug::PushWireframeSphere(WorldVEnd, 0.01f, { VelocityColor, 1 });
     }
   }
@@ -752,7 +753,8 @@ DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settin
       vec4 HomogTrajectoryPointP = { AnimGoal.TrajectoryPs[i], 1 };
       vec3 WorldTrajectoryPointP = Math::MulMat4Vec4(CoordinateFrame, HomogTrajectoryPointP).XYZ;
       {
-        Debug::PushLine(PrevWorldTrajectoryPointP, WorldTrajectoryPointP, { TrajectoryColor, 1 });
+        Debug::PushLine(PrevWorldTrajectoryPointP+VerticalOffset, WorldTrajectoryPointP+VerticalOffset, { TrajectoryColor, 1 },
+                        DebugSettings.Overlay);
         Debug::PushWireframeSphere(WorldTrajectoryPointP, 0.02f, { TrajectoryColor, 1 });
         PrevWorldTrajectoryPointP = WorldTrajectoryPointP;
       }
@@ -763,9 +765,10 @@ DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settin
                                            cosf(AnimGoal.TrajectoryAngles[i]), 0 };
         vec3 WorldSpaceFacingDirection =
           Math::MulMat4Vec4(CoordinateFrame, LocalSpaceFacingDirection).XYZ;
-        Debug::PushLine(WorldTrajectoryPointP,
-                        WorldTrajectoryPointP + GoalDirectionLength * WorldSpaceFacingDirection,
-                        { DirectionColor, 1 });
+        Debug::PushLine(WorldTrajectoryPointP + VerticalOffset,
+                        WorldTrajectoryPointP + GoalDirectionLength * WorldSpaceFacingDirection +
+                          VerticalOffset,
+                        { DirectionColor, 1 }, DebugSettings.Overlay);
       }
     }
   }

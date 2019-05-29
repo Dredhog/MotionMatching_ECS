@@ -20,7 +20,7 @@ struct array_handle
   Init(T* Elements, IndexType Count)
   {
     assert(Elements);
-    assert(0 < Count);
+    assert(0 <= Count);
     this->Elements = Elements;
     this->Count    = Count;
   }
@@ -360,6 +360,13 @@ struct fixed_array
   {
     assert(0 <= Index && Index < Count);
     return this->Elements[Index];
+  }
+
+  array_handle<T, int>
+  GetArrayHandle()
+  {
+    array_handle<T, int> NewHandle = CreateArrayHandle(this->Elements, this->Count);
+    return NewHandle;
   }
 };
 

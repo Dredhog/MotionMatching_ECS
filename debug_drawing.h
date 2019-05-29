@@ -27,8 +27,8 @@ namespace Debug
   void PushGizmo(const camera* Camera, mat4 GizmoBase, vec3 Scale = { 1, 1, 1 });
   void PushShadedBone(mat4 GlobalBonePose, float Length);
   void PushWireframeSphere(vec3 Position, float Radius, vec4 Color = vec4{ 1, 0, 0, 1 });
-  void PushLine(vec3 PointA, vec3 PointB, vec4 Color = { 1, 0, 0, 1 });
-  void PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color = { 1, 0, 0, 1 });
+  void PushLine(vec3 PointA, vec3 PointB, vec4 Color = { 1, 0, 0, 1 }, bool Overlay = true);
+  void PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color = { 1, 0, 0, 1 }, bool Overlay = true);
 
   // These are in y down and pixel space coordinates
   void UIPushQuad(vec3 Position, vec3 Size, vec4 Color = { 0.5f, 0.5f, 0.5f, 1.0f });
@@ -41,7 +41,8 @@ namespace Debug
   void DrawQuads(game_state* GameState);
   void DrawTexturedQuads(game_state* GameState);
   void DrawWireframeSpheres(game_state* GameState);
-  void DrawLines(game_state* GameState);
+  void DrawDepthTestedLines(game_state* GameState);
+  void DrawOverlayLines(game_state* GameState);
   void ClearDrawArrays();
 }
 

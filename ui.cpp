@@ -174,8 +174,7 @@ bool
 UI::IsItemActive()
 {
   gui_context& g            = *GetContext();
-  gui_window&  Window       = *GetCurrentWindow();
-  bool         LastIsActive = g.ActiveID == Window.LastItemID;
+  bool         LastIsActive = g.ActiveID == g.LastItemID;
   return LastIsActive;
 }
 
@@ -1733,10 +1732,10 @@ _MovePlanes(vec3* Position, const vec3 InputAxes[3], float PlaneQuadWidth = 0.3f
       vec3 PtAxisA  = *Position + PlaneWorldWidth * Axes[IndA];
       vec3 PtAxisB  = *Position + PlaneWorldWidth * Axes[IndB];
       vec3 PtCorner = *Position + PlaneWorldWidth * (Axes[IndA] + Axes[IndB]);
-      Debug::PushLine(*Position, PtAxisA, PlaneColors[i]);
-      Debug::PushLine(*Position, PtAxisB, PlaneColors[i]);
-      Debug::PushLine(PtAxisA, PtCorner, PlaneColors[i]);
-      Debug::PushLine(PtAxisB, PtCorner, PlaneColors[i]);
+      Debug::PushLine(*Position, PtAxisA, PlaneColors[i], true);
+      Debug::PushLine(*Position, PtAxisB, PlaneColors[i], true);
+      Debug::PushLine(PtAxisA, PtCorner, PlaneColors[i], true);
+      Debug::PushLine(PtAxisB, PtCorner, PlaneColors[i], true);
     }
   }
 }

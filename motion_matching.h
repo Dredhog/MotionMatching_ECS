@@ -17,6 +17,7 @@ struct mm_info_debug_settings
   bool ShowTrajectoryAngles;
   bool ShowBonePositions;
   bool ShowBoneVelocities;
+  bool Overlay;
 };
 
 struct mm_debug_settings

@@ -103,7 +103,7 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
       // UI::TranslationPlane(&TestTransform.Translation, 1);
     }
   }
-	
+
   if(GameState->SplineSystem.SelectedSplineIndex >= 0 &&
      GameState->SplineSystem.SelectedWaypointIndex >= 0)
   {
@@ -114,7 +114,8 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
     UI::MoveGizmo(WaypointPositionPtr);
   }
 
-	for(int i = 0 ; i < GameState->SplineSystem.Splines.Count;i++)
+	bool SelectedNewWaypoint = false;
+  for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
   {
     for(int j = 0; j < GameState->SplineSystem.Splines[i].Waypoints.Count; j++)
     {
@@ -123,8 +124,16 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
       {
         GameState->SplineSystem.SelectedSplineIndex   = i;
         GameState->SplineSystem.SelectedWaypointIndex = j;
+
+        SelectedNewWaypoint = true;
       }
     }
+  }
+
+  if(UI::GetActiveID() == 0 && !SelectedNewWaypoint && Input->MouseLeft.EndedDown &&
+     Input->MouseLeft.Changed)
+  {
+    GameState->SplineSystem.SelectedWaypointIndex = -1;
   }
 
   // Entity creation

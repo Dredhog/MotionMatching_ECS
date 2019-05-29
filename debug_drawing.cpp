@@ -31,6 +31,9 @@ struct line_instruction
 fixed_array<line_instruction, LINE_INSTRUCTION_COUNT> g_LineInstructions;
 fixed_array<vec3, LINE_POINT_COUNT>                   g_LinePoints;
 
+fixed_array<line_instruction, LINE_INSTRUCTION_COUNT> g_OverlayLineInstructions;
+fixed_array<vec3, LINE_POINT_COUNT>                   g_OverlayLinePoints;
+
 fixed_array<mat4, SHADED_BONE_MAX_COUNT> g_ShadedBoneMatrices;
 
 void
@@ -42,16 +45,17 @@ Debug::PushShadedBone(mat4 GlobalBonePose, float Length)
 void
 Debug::SubmitShadedBoneMeshInstances(game_state* GameState, material Material)
 {
-	static material s_Material = Material;
+  static material s_Material = Material;
 
-	Render::mesh* BoneDiamondMesh= GameState->Resources.GetModel(GameState->BoneDiamondModelID)->Meshes[0];
+  Render::mesh* BoneDiamondMesh =
+    GameState->Resources.GetModel(GameState->BoneDiamondModelID)->Meshes[0];
   for(int i = 0; i < g_ShadedBoneMatrices.Count; i++)
   {
     mesh_instance BoneMeshInstance = {};
-    BoneMeshInstance.Material     = &s_Material;
-    BoneMeshInstance.Mesh         = BoneDiamondMesh;
-    BoneMeshInstance.MVP          = Math::MulMat4(GameState->Camera.VPMatrix, g_ShadedBoneMatrices[i]);
-    BoneMeshInstance.PrevMVP      = BoneMeshInstance.MVP;
+    BoneMeshInstance.Material      = &s_Material;
+    BoneMeshInstance.Mesh          = BoneDiamondMesh;
+    BoneMeshInstance.MVP     = Math::MulMat4(GameState->Camera.VPMatrix, g_ShadedBoneMatrices[i]);
+    BoneMeshInstance.PrevMVP = BoneMeshInstance.MVP;
     AddMeshInstance(&GameState->R, BoneMeshInstance);
   }
 }
@@ -156,7 +160,7 @@ Debug::DrawWireframeSpheres(game_state* GameState)
 {
   GLint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  glDisable(GL_DEPTH_TEST);
+  //glEnable(GL_DEPTH_TEST);
   glUseProgram(ColorShaderID);
   Render::model* SphereModel = GameState->Resources.GetModel(GameState->LowPolySphereModelID);
   glBindVertexArray(SphereModel->Meshes[0]->VAO);
@@ -177,40 +181,72 @@ Debug::DrawWireframeSpheres(game_state* GameState)
   }
   glBindVertexArray(0);
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  glEnable(GL_DEPTH_TEST);
+  //glDisableEnable(GL_DEPTH_TEST);
   g_SphereCount = 0;
 }
 
 void
-Debug::PushLine(vec3 PointA, vec3 PointB, vec4 Color)
+Debug::PushLine(vec3 PointA, vec3 PointB, vec4 Color, bool Overlay)
 {
-  g_LinePoints.Append(PointA);
-  g_LinePoints.Append(PointB);
+  if(Overlay)
+  {
+    g_OverlayLinePoints.Append(PointA);
+    g_OverlayLinePoints.Append(PointB);
+  }
+  else
+  {
+    g_LinePoints.Append(PointA);
+    g_LinePoints.Append(PointB);
+  }
 
   line_instruction Instruction = {};
   Instruction.Color            = Color;
-  Instruction.StartIndex       = g_LinePoints.Count - 2;
   Instruction.PointCount       = 2;
-  g_LineInstructions.Append(Instruction);
+
+  if(Overlay)
+  {
+    Instruction.StartIndex = g_OverlayLinePoints.Count - 2;
+    g_OverlayLineInstructions.Append(Instruction);
+  }
+  else
+  {
+    Instruction.StartIndex = g_LinePoints.Count - 2;
+    g_LineInstructions.Append(Instruction);
+  }
 }
 
 void
-Debug::PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color)
+Debug::PushLineStrip(vec3* Points, int32_t PointCount, vec4 Color, bool Overlay)
 {
   line_instruction Instruction = {};
   Instruction.Color            = Color;
   Instruction.StartIndex       = g_LinePoints.Count;
   Instruction.PointCount       = PointCount;
-  g_LineInstructions.Append(Instruction);
+  if(Overlay)
+  {
+    g_OverlayLineInstructions.Append(Instruction);
+  }
+  else
+  {
+    g_LineInstructions.Append(Instruction);
+  }
 
   for(int i = 0; i < PointCount; i++)
   {
-    g_LinePoints.Append(Points[i]);
+    if(Overlay)
+    {
+      g_OverlayLinePoints.Append(Points[i]);
+    }
+    else
+    {
+      g_LinePoints.Append(Points[i]);
+    }
   }
 }
 
 void
-Debug::DrawLines(game_state* GameState)
+DrawLines(game_state* GameState, array_handle<line_instruction> LineInstructions,
+          array_handle<vec3> LinePoints)
 {
   static uint32_t s_VAO = 0;
   static uint32_t s_VBO = 0;
@@ -234,7 +270,7 @@ Debug::DrawLines(game_state* GameState)
   glLineWidth(2);
   // Update line buffers
   glBindBuffer(GL_ARRAY_BUFFER, s_VBO);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, g_LinePoints.Count * sizeof(vec3), g_LinePoints.Elements);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, LinePoints.Count * sizeof(vec3), LinePoints.Elements);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   GLint ColorShaderID = GameState->Resources.GetShader(GameState->R.ShaderColor);
@@ -247,13 +283,26 @@ Debug::DrawLines(game_state* GameState)
 
   // Draw lines
   glBindVertexArray(s_VAO);
-  for(int i = 0; i < g_LineInstructions.Count; i++)
+  for(int i = 0; i < LineInstructions.Count; i++)
   {
-    line_instruction Instruction = g_LineInstructions[i];
+    line_instruction Instruction = LineInstructions[i];
     glUniform4fv(glGetUniformLocation(ColorShaderID, "g_color"), 1, &Instruction.Color.X);
     glDrawArrays(GL_LINE_STRIP, Instruction.StartIndex, Instruction.PointCount);
   }
   glBindVertexArray(0);
+}
+
+void
+Debug::DrawOverlayLines(game_state* GameState)
+{
+  DrawLines(GameState, g_OverlayLineInstructions.GetArrayHandle(),
+            g_OverlayLinePoints.GetArrayHandle());
+}
+
+void
+Debug::DrawDepthTestedLines(game_state* GameState)
+{
+  DrawLines(GameState, g_LineInstructions.GetArrayHandle(), g_LinePoints.GetArrayHandle());
 }
 
 void
@@ -321,5 +370,7 @@ Debug::ClearDrawArrays()
   g_SphereCount   = 0;
   g_LineInstructions.Clear();
   g_LinePoints.Clear();
+  g_OverlayLineInstructions.Clear();
+  g_OverlayLinePoints.Clear();
   g_ShadedBoneMatrices.Clear();
 }

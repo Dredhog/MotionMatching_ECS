@@ -449,6 +449,7 @@ SetGameStatePODFields(game_state* GameState)
     GameState->SplineSystem.IsWaypointPlacementMode = false;
     GameState->SplineSystem.SelectedSplineIndex     = -1;
     GameState->SplineSystem.SelectedWaypointIndex   = -1;
+    GameState->OverlaySplines                       = false;
   }
 
   GameState->UseHotReloading = true;
@@ -491,6 +492,8 @@ SetGameStatePODFields(game_state* GameState)
     GameState->MMDebug.MatchedGoal.ShowTrajectoryAngles = true;
     GameState->MMDebug.CurrentGoal.ShowBonePositions    = true;
     GameState->MMDebug.MatchedGoal.ShowBonePositions    = true;
+    GameState->MMDebug.CurrentGoal.Overlay              = false;
+    GameState->MMDebug.MatchedGoal.Overlay              = false;
 
     // Testing system
     // Default constructed :(

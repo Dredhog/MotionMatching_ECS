@@ -686,6 +686,14 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
     UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
 
+		//TODO(Lukas) This is retarded ;(
+    {
+      bool OverlayGoals = MMDebug.CurrentGoal.Overlay;
+      UI::Checkbox("Overlay Goals", &OverlayGoals);
+      MMDebug.CurrentGoal.Overlay = OverlayGoals ;
+      MMDebug.MatchedGoal.Overlay = OverlayGoals;
+    }
+    UI::Checkbox("Overlay Longerm Trajectories", &GameState->OverlaySplines);
 #if 0
     {
       static vec3 A          = { -1, 0, 0 };
@@ -1348,6 +1356,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
           if(s_ShowAnimtionPlayerComponent && !RemovedAnimPlayer)
           {
+#if 0
             if(UI::Button("Animate Selected Entity"))
             {
               GameState->SelectionMode = SELECT_Bone;
@@ -1355,6 +1364,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                                        GameState->SelectedEntityIndex);
               // s_ShowAnimationEditor = true;
             }
+#endif
             {
               // Outside data used
               mm_entity_data&             MMEntityData        = GameState->MMEntityData;
@@ -1717,12 +1727,24 @@ TrajectoryGUI(game_state* GameState, bool& s_ShowTrajectoryEditor)
     {
       GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Remove(DeleteWaypointIndex);
     }
+
+    bool NotPlacing = GameState->SplineSystem.IsWaypointPlacementMode;
+    if(NotPlacing)
+		{
+			UI::PushColor(UI::COLOR_ButtonNormal, vec4{ 0.8f, 0.8f, 0.4f, 1 });
+			UI::PushColor(UI::COLOR_ButtonHovered, vec4{ 0.9f, 0.9f, 0.5f, 1 });
+		}
     if(CurrentSplineIndex != -1 &&
        !GameState->SplineSystem.Splines[CurrentSplineIndex].Waypoints.Full() &&
        UI::Button("Place New Waypoint"))
     {
       GameState->SplineSystem.IsWaypointPlacementMode = true;
     }
+		if(NotPlacing)
+		{
+			UI::PopColor();
+			UI::PopColor();
+		}
   }
 }
 
