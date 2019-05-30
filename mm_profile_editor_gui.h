@@ -358,7 +358,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
 
     if(TargetIsTemplate)
     {
-      UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0, 1, 1 });
+      UI::PushColor(UI::COLOR_ButtonNormal, { 0.8f, 0.3f, 0.3f, 1 });
     }
 
     if(UI::Button("Save Template", LeftOfComboButtonWidth))
@@ -387,7 +387,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
 
       if(TargetIsController)
       {
-        UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0, 0, 1 });
+        UI::PushColor(UI::COLOR_ButtonNormal, { 0.8f, 0.3f, 0.3f, 1 });
       }
 
       if(UI::Button("Build Controller", LeftOfComboButtonWidth))
