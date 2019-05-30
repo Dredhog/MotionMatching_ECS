@@ -87,11 +87,13 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
     UI::SameLine(220);
     UI::Checkbox("Update Path List", &GameState->UpdatePathList);
+#if 0
     UI::SameLine(400);
     UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
     UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
-    UI::SameLine(220);
     UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+    UI::SameLine(220);
+#endif
     UI::Checkbox("Motion Matching Debug", &s_ShowMMDebugSettingsWindow);
     UI::SameLine(220);
     UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
@@ -106,11 +108,13 @@ TestGui(game_state* GameState, const game_input* Input)
     RenderingGUI(GameState, s_ShowRenderingSettings, s_ShowLightSettings, s_ShowDisplaySet,
                  s_ShowCameraSettings, s_ShowSceneSettings, s_ShowPostProcessingSettings);
     SceneGUI(GameState, s_ShowSceneSettings);
+#if 0
     {
       char TempBuffer[32];
       sprintf(TempBuffer, "Selected Entity Index: %d", GameState->SelectedEntityIndex);
       UI::Text(TempBuffer);
     }
+#endif
   }
   UI::EndWindow();
 

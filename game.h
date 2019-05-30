@@ -46,7 +46,6 @@ static const char* g_SelectionEnumStrings[SELECT_EnumCount] = { FOR_ALL_NAMES(GE
 
 struct mm_profile_editor
 {
-  mm_params SelectedProfile;
   mm_params ActiveProfile;
   rid       ControllerRID;
   bool      SyncDynamic;

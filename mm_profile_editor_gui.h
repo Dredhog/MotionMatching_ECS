@@ -6,7 +6,7 @@
 const char* PathArrayToString(const void* Data, int Index);
 const char* BoneArrayToString(const void* Data, int Index);
 
-#define TEMPLATE_NAME_MAX_LENGTH 100
+#define TEMPLATE_NAME_MAX_LENGTH 200
 
 // Note(Lukas) the Params have to have the names for this to export correctly
 inline void
@@ -51,8 +51,9 @@ void
 MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* TempStack,
                       Resource::resource_manager* Resources)
 {
+  bool        TargetIsTemplate                 = false;
+  bool        TargetIsController               = false;
   static int  TargetPathIndex                  = -1;
-  static bool TargetIsTemplate                 = true;
   static bool s_AnimationDropdown              = false;
   static bool s_MirrorInfoDropdown             = false;
   static bool s_GeneralParametersDropdown      = false;
@@ -64,63 +65,54 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
   const float LeftOfComboButtonWidth              = 150;
   const float ComboRightEdgeDistanceFromRightSize = 200;
   // THE LOAD/EXTRACT TEMPLATE BUTTON
-  const char* ButtonText = (TargetPathIndex == -1) ? "New Template" : "Load";
-  if(UI::Button(ButtonText, LeftOfComboButtonWidth))
-  {
-    // UPDATING MMEditor.ActiveProfile
-    MMEditor->ActiveProfile = MMEditor->SelectedProfile;
-  }
+  const char* ButtonText  = (TargetPathIndex == -1) ? "New Template" : "Load";
+  bool        PressedLoad = UI::Button(ButtonText, LeftOfComboButtonWidth);
 
-  // UPDATING MMEditor.SelectedProfile
+  // UPDATING MMEditor.ActiveProfile
   {
     UI::SameLine();
-    int NewTargetPathIndex = TargetPathIndex;
     UI::PushWidth(-ComboRightEdgeDistanceFromRightSize);
-    UI::Combo("Target File", &NewTargetPathIndex, Resources->MMParamPaths,
-              Resources->MMParamPathCount, PathArrayToString);
+    UI::Combo("Target File", &TargetPathIndex, Resources->MMParamPaths, Resources->MMParamPathCount,
+              PathArrayToString);
     UI::PopWidth();
-    if(NewTargetPathIndex != TargetPathIndex)
+    if(TargetPathIndex != -1)
     {
-      if(NewTargetPathIndex != -1)
+      char* ControllerString = strstr(Resources->MMParamPaths[TargetPathIndex].Name, ".controller");
+      char* TemplateString   = strstr(Resources->MMParamPaths[TargetPathIndex].Name, ".template");
+
+      assert(!(ControllerString && TemplateString) &&
+             (ControllerString || TemplateString)); // Path assumed to not have two extensions
+
+      TargetIsTemplate   = (TemplateString);
+      TargetIsController = (ControllerString);
+      if(PressedLoad)
       {
-        // TODO Determine the target extension ".controller/.template" and assign result to
-        // TargetIsTemplate
-        char* ControllerString =
-          strstr(Resources->MMParamPaths[NewTargetPathIndex].Name, ".controller");
-        char* TemplateString =
-          strstr(Resources->MMParamPaths[NewTargetPathIndex].Name, ".template");
-
-        assert(!(ControllerString && TemplateString) &&
-               (ControllerString || TemplateString)); // Path assumed to not have two extensions
-
-        TargetIsTemplate = (TemplateString);
         if(TargetIsTemplate)
         {
-          Asset::ImportMMParams(TempStack, &MMEditor->SelectedProfile,
-                                Resources->MMParamPaths[NewTargetPathIndex].Name);
+          Asset::ImportMMParams(TempStack, &MMEditor->ActiveProfile,
+                                Resources->MMParamPaths[TargetPathIndex].Name);
 
           // Set the animation RIDs from the paths
-          MMEditor->SelectedProfile.AnimRIDs.HardClear();
-          for(int i = 0; i < MMEditor->SelectedProfile.AnimPaths.Count; i++)
+          MMEditor->ActiveProfile.AnimRIDs.HardClear();
+          for(int i = 0; i < MMEditor->ActiveProfile.AnimPaths.Count; i++)
           {
-            MMEditor->SelectedProfile.AnimRIDs.Push(
-              Resources->ObtainAnimationPathRID(MMEditor->SelectedProfile.AnimPaths[i].Name));
+            MMEditor->ActiveProfile.AnimRIDs.Push(
+              Resources->ObtainAnimationPathRID(MMEditor->ActiveProfile.AnimPaths[i].Name));
           }
         }
-        else
+        else if(TargetIsController)
         {
           rid MMControllerRID =
-            Resources->ObtainMMControllerPathRID(Resources->MMParamPaths[NewTargetPathIndex].Name);
+            Resources->ObtainMMControllerPathRID(Resources->MMParamPaths[TargetPathIndex].Name);
           mm_controller_data* MMController = Resources->GetMMController(MMControllerRID);
-          MMEditor->SelectedProfile        = MMController->Params;
+          MMEditor->ActiveProfile          = MMController->Params;
         }
       }
-      else
-      {
-        ResetMMParamsToDefault(&MMEditor->SelectedProfile);
-      }
     }
-    TargetPathIndex = NewTargetPathIndex;
+    else if(PressedLoad)
+    {
+      ResetMMParamsToDefault(&MMEditor->ActiveProfile);
+    }
   }
 
   // Set skeleton if not already set. Otherwise give a red "switch target" button
@@ -168,7 +160,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
           }
           // bool Open = false;
           // UI::TreeNode(MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[i].Name, &Open);
-					UI::Indent();
+          UI::Indent();
           UI::Text(MMEditor->ActiveProfile.FixedParams.Skeleton.Bones[i].Name);
           ParentIndex = i;
         }
@@ -256,29 +248,30 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
 
     if(UI::CollapsingHeader("Matching Parameters", &s_GeneralParametersDropdown))
     {
-			UI::Text("Cost Computation Parameters");
+      UI::Text("Cost Computation Parameters");
       UI::SliderFloat("Bone Position Influence",
                       &MMEditor->ActiveProfile.DynamicParams.BonePCoefficient, 0, 5);
       UI::SliderFloat("Bone Velocity Influence",
                       &MMEditor->ActiveProfile.DynamicParams.BoneVCoefficient, 0, 5);
       UI::SliderFloat("Trajectory Position Influence",
                       &MMEditor->ActiveProfile.DynamicParams.TrajPCoefficient, 0, 1);
-      UI::SliderFloat("Trajectory Velocity Influence",
-                      &MMEditor->ActiveProfile.DynamicParams.TrajVCoefficient, 0, 1);
+      /*UI::SliderFloat("Trajectory Velocity Influence",
+                      &MMEditor->ActiveProfile.DynamicParams.TrajVCoefficient, 0, 1);*/
       UI::SliderFloat("Trajectory Angle Influence",
                       &MMEditor->ActiveProfile.DynamicParams.TrajAngleCoefficient, 0, 1);
-			static bool s_ShowTrajectoryPointWeights;
+      static bool s_ShowTrajectoryPointWeights;
       if(UI::TreeNode("Trajectory Point Weights", &s_ShowTrajectoryPointWeights))
-			{
-				for(int i = 0; i < MM_POINT_COUNT; i++)
+      {
+        for(int i = 0; i < MM_POINT_COUNT; i++)
         {
           char TempBuff[32];
           snprintf(TempBuff, ArrayCount(TempBuff), "Point #%d Weight", i + 1);
           UI::Text(TempBuff);
-          UI::SliderFloat(TempBuff, &MMEditor->ActiveProfile.DynamicParams.TrajectoryWeights[i], 0, 1);
+          UI::SliderFloat(TempBuff, &MMEditor->ActiveProfile.DynamicParams.TrajectoryWeights[i], 0,
+                          1);
         }
         UI::TreePop();
-			}
+      }
       UI::Text("Metadata Generation Parameters");
       UI::SliderFloat("Metadata Sampling Frequency",
                       &MMEditor->ActiveProfile.FixedParams.MetadataSamplingFrequency, 15, 240);
@@ -342,6 +335,32 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
       }
     }
 
+    char NewTemplatePath[TEMPLATE_NAME_MAX_LENGTH];
+    char NewControllerPath[TEMPLATE_NAME_MAX_LENGTH];
+    {
+      char DateTimeString[TEMPLATE_NAME_MAX_LENGTH];
+      {
+        time_t     CurrentTime;
+        struct tm* TimeInfo;
+        time(&CurrentTime);
+        TimeInfo = localtime(&CurrentTime);
+        strftime(DateTimeString, sizeof(DateTimeString), "%H_%M_%S", TimeInfo);
+      }
+      {
+        snprintf(NewTemplatePath, sizeof(NewTemplatePath), "data/controllers/new_%s.template",
+                 DateTimeString);
+      }
+      {
+        snprintf(NewControllerPath, sizeof(NewControllerPath),
+                 "data/controllers/new_%s.controller", DateTimeString);
+      }
+    }
+
+    if(TargetIsTemplate)
+    {
+      UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0, 1, 1 });
+    }
+
     if(UI::Button("Save Template", LeftOfComboButtonWidth))
     {
       MMEditor->ActiveProfile.AnimPaths.HardClear();
@@ -351,21 +370,37 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         int PathIndex = Resources->GetAnimationPathIndex(MMEditor->ActiveProfile.AnimRIDs[i]);
         MMEditor->ActiveProfile.AnimPaths.Push(Resources->AnimationPaths[PathIndex]);
       }
-      Asset::ExportMMParams(&MMEditor->ActiveProfile, "data/controllers/test.template");
-      MMEditor->SelectedProfile = MMEditor->ActiveProfile;
+
+      Asset::ExportMMParams(&MMEditor->ActiveProfile,
+                            TargetIsTemplate ? Resources->MMParamPaths[TargetPathIndex].Name
+                                             : NewTemplatePath);
     }
+
+    if(TargetIsTemplate)
+    {
+      UI::PopColor();
+    }
+
     if(0 < MMEditor->ActiveProfile.AnimRIDs.Count)
     {
       UI::SameLine();
+
+      if(TargetIsController)
+      {
+        UI::PushColor(UI::COLOR_ButtonNormal, { 1, 0, 0, 1 });
+      }
+
       if(UI::Button("Build Controller", LeftOfComboButtonWidth))
       {
         ExportAndSetMMController(TempStack, Resources, &MMEditor->ActiveProfile,
-                                 "data/controllers/test.controller");
+                                 TargetIsController ? Resources->MMParamPaths[TargetPathIndex].Name
+                                                    : NewControllerPath);
       }
-    }
-    else
-    {
-      // UI::Dummy("Build MM data");
+
+      if(TargetIsController)
+      {
+        UI::PopColor();
+      }
     }
   }
 }
