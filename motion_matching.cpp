@@ -196,24 +196,24 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 Diff = A.BonePs[b] - B.BonePs[b];
-    PosDiffSum += sqrt(Math::Dot(Diff, Diff));
+    PosDiffSum += Math::Length(Diff);
   }
 
   float VelDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 VelDiff = A.BoneVs[b] - B.BoneVs[b];
-    VelDiffSum += sqrtf(Math::Dot(VelDiff, VelDiff));
+    VelDiffSum += Math::Length(VelDiff);
   }
 
   float TrajDiffSum  = 0.0f;
-  float TrajVDiffSum = 0.0f;
+  //float TrajVDiffSum = 0.0f;
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
     vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
-    TrajDiffSum += TrajectoryWeights[p] * sqrtf(Math::Dot(Diff, Diff));
-    float VDiff = TrajectoryWeights[p] * fabs(A.TrajectoryVs[p] - B.TrajectoryVs[p]);
-    TrajVDiffSum += VDiff;
+    TrajDiffSum += TrajectoryWeights[p] * Math::Length(Diff);
+    /*float VDiff = TrajectoryWeights[p] * fabs(A.TrajectoryVs[p] - B.TrajectoryVs[p]);
+    TrajVDiffSum += VDiff;*/
   }
 
   float TrajDirDiffSum = 0.0f;
@@ -222,11 +222,11 @@ ComputeCost(const mm_frame_info& A, const mm_frame_info& B, float PosCoef, float
     vec2 DirA = { sinf(A.TrajectoryAngles[p]), cosf(A.TrajectoryAngles[p]) };
     vec2 DirB = { sinf(B.TrajectoryAngles[p]), cosf(B.TrajectoryAngles[p]) };
     vec2 Diff = DirA - DirB;
-    TrajDirDiffSum += TrajectoryWeights[p] * sqrt(Math::Dot(Diff, Diff));
+    TrajDirDiffSum += TrajectoryWeights[p] * Math::Length(Diff);
   }
 
   float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum +
-               TrajVCoef * TrajVDiffSum + TrajAngleCoef * TrajDirDiffSum;
+               /*TrajVCoef * TrajVDiffSum +*/ TrajAngleCoef * TrajDirDiffSum;
 
   return Cost;
 }
@@ -241,24 +241,24 @@ ComputeCostComponents(float* BonePCost, float* BoneVCost, float* TrajPCost, floa
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 Diff = A.BonePs[b] - B.BonePs[b];
-    PosDiffSum += sqrtf(Math::Dot(Diff, Diff));
+    PosDiffSum += Math::Length(Diff);
   }
 
   float VelDiffSum = 0.0f;
   for(int b = 0; b < MM_COMPARISON_BONE_COUNT; b++)
   {
     vec3 VelDiff = A.BoneVs[b] - B.BoneVs[b];
-    VelDiffSum += sqrtf(Math::Dot(VelDiff, VelDiff));
+    VelDiffSum += Math::Length(VelDiff);
   }
 
   float TrajDiffSum  = 0.0f;
-  float TrajVDiffSum = 0.0f;
+  //float TrajVDiffSum = 0.0f;
   for(int p = 0; p < MM_POINT_COUNT; p++)
   {
     vec3 Diff = A.TrajectoryPs[p] - B.TrajectoryPs[p];
-    TrajDiffSum += TrajectoryWeights[p] * sqrtf(Math::Dot(Diff, Diff));
-    float VDiff = TrajectoryWeights[p] * fabs(A.TrajectoryVs[p] - B.TrajectoryVs[p]);
-    TrajVDiffSum += VDiff;
+    TrajDiffSum += TrajectoryWeights[p] * Math::Length(Diff);
+    /*float VDiff = TrajectoryWeights[p] * fabs(A.TrajectoryVs[p] - B.TrajectoryVs[p]);
+    TrajVDiffSum += VDiff;*/
   }
 
   float TrajDirDiffSum = 0.0f;
@@ -267,16 +267,16 @@ ComputeCostComponents(float* BonePCost, float* BoneVCost, float* TrajPCost, floa
     vec2 DirA = { sinf(A.TrajectoryAngles[p]), cosf(A.TrajectoryAngles[p]) };
     vec2 DirB = { sinf(B.TrajectoryAngles[p]), cosf(B.TrajectoryAngles[p]) };
     vec2 Diff = DirA - DirB;
-    TrajDirDiffSum += TrajectoryWeights[p] * sqrtf(Math::Dot(Diff, Diff));
+    TrajDirDiffSum += TrajectoryWeights[p] * Math::Length(Diff);
   }
   *BonePCost = PosDiffSum * PosCoef;
   *BoneVCost = VelDiffSum * VelCoef;
   *TrajPCost = TrajDiffSum * TrajCoef;
-  *TrajVCost = TrajVDiffSum * TrajVCoef;
+  *TrajVCost = 0;//TrajVDiffSum * TrajVCoef;
   *TrajACost = TrajDirDiffSum * TrajAngleCoef;
 
   float Cost = PosCoef * PosDiffSum + VelCoef * VelDiffSum + TrajCoef * TrajDiffSum +
-               TrajVCoef * TrajVDiffSum + TrajAngleCoef * TrajDirDiffSum;
+               /*TrajVCoef * TrajVDiffSum +*/ TrajAngleCoef * TrajDirDiffSum;
 
   return Cost;
 }

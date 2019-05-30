@@ -82,6 +82,8 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_player* AnimPlayer,
     }
   }
 
+	const bool OverlayVelocities = true;
+
   // Compute Local Velocities
   for(int i = 0; i < Test->TestBoneIndices.Count; i++)
   {
@@ -97,7 +99,7 @@ MeasureFootSkate(foot_skate_test* Test, Anim::animation_player* AnimPlayer,
 
     vec4 Color = (1 - t) * vec4{ 1, 0, 0, 1 } + t * vec4{ 1, 1, 0, 1 };
 
-    Debug::PushLine(FuturePs[i], FuturePs[i] + Velocities[i], Color);
+    Debug::PushLine(FuturePs[i], FuturePs[i] + Velocities[i], Color, OverlayVelocities);
   }
 
   // Compute Global Velocity
