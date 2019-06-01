@@ -347,13 +347,15 @@ RegisterLoadInitialResources(game_state* GameState)
 void
 SetGameStatePODFields(game_state* GameState)
 {
-  GameState->SelectionMode = SELECT_Mesh;
+  GameState->SelectionMode       = SELECT_Entity;
+  GameState->SelectedEntityIndex = -1;
 
   // CAMERA FIELD INITIALIZATION
   {
     GameState->Camera.Position      = { 0, 2, 0 };
     GameState->Camera.Forward       = { 0, 0, -1 };
     GameState->Camera.Right         = { 1, 0, 0 };
+    GameState->Camera.Rotation      = { 0 };
     GameState->Camera.Rotation      = { 0 };
     GameState->Camera.NearClipPlane = 0.01f;
     GameState->Camera.FarClipPlane  = 1000.0f;

@@ -328,7 +328,7 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
                        const mm_input_controller* InputControllers, const int32_t* EntityIndices,
                        int32_t Count, const entity* Entities, const game_input* Input,
                        const entity_goal_input* InputOverrides, int32_t InputOverrideCount,
-                       vec3 CameraForward)
+                       vec3 CameraForward, bool AllowWASDControls)
 {
   // TODO(Lukas) Add joystick option here
   vec3 Dir         = {};
@@ -337,19 +337,19 @@ GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredGoals,
     vec3 YAxis     = { 0, 1, 0 };
     vec3 ViewRight = Math::Cross(ViewForward, YAxis);
 
-    if(Input->ArrowUp.EndedDown)
+    if(Input->ArrowUp.EndedDown || (Input->w.EndedDown && AllowWASDControls))
     {
       Dir += ViewForward;
     }
-    if(Input->ArrowDown.EndedDown)
+    if(Input->ArrowDown.EndedDown || (Input->s.EndedDown && AllowWASDControls))
     {
       Dir -= ViewForward;
     }
-    if(Input->ArrowRight.EndedDown)
+    if(Input->ArrowRight.EndedDown || (Input->d.EndedDown && AllowWASDControls))
     {
       Dir += ViewRight;
     }
-    if(Input->ArrowLeft.EndedDown)
+    if(Input->ArrowLeft.EndedDown || (Input->a.EndedDown && AllowWASDControls))
     {
       Dir -= ViewRight;
     }

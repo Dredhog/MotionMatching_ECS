@@ -146,7 +146,7 @@ void GenerateGoalsFromInput(mm_frame_info* OutGoals, mm_frame_info* OutMirroredG
                             const mm_input_controller*       InputControllers,
                             const int32_t* EntityIndices, int32_t Count, const entity* Entities,
                             const game_input* Input, const entity_goal_input* InputOverrides,
-                            int32_t InputOverrideCount, vec3 CameraForward);
+                            int32_t InputOverrideCount, vec3 CameraForward, bool AllowWASDControls);
 
 void AssertSplineIndicesAndClampWaypointIndices(spline_follow_state* SplineStates, int32_t Count,
                                                 const movement_spline* Splines,

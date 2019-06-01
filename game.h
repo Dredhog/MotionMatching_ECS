@@ -125,6 +125,7 @@ struct game_state
   bool  IsAnimationPlaying;
   bool  IsEntityCreationMode;
   bool  PreviewAnimationsInRootSpace;
+  bool  ShowDebugFeatures;
   float BoneSphereRadius;
 
   uint32_t MagicChecksum;

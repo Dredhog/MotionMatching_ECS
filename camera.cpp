@@ -17,9 +17,9 @@ UpdateCameraMatrices(camera* Camera)
 void
 UpdateCameraDerivedFields(camera* Camera)
 {
-  Camera->Rotation.Z = 0;
   Camera->Rotation.X = ClampFloat(-Camera->MaxTiltAngle, Camera->Rotation.X, Camera->MaxTiltAngle);
-  Camera->Forward    = Math::Normalized(Math::MulMat3Vec3(Math::Mat3Rotate(Camera->Rotation), { 0, 0, -1 }));
+  Camera->Forward    = Math::Normalized(
+    Math::MulMat3Vec3(Math::Mat3Rotate(Camera->Rotation.X, Camera->Rotation.Y, 0), { 0, 0, -1 }));
   Camera->Right      = Math::Normalized(Math::Cross(Camera->Forward, YAxis));
   UpdateCameraMatrices(Camera);
 }
@@ -27,16 +27,19 @@ UpdateCameraDerivedFields(camera* Camera)
 void
 UpdateCamera(camera* Camera, vec3 FollowPoint, const game_input* Input)
 {
+  const float DegToRad = float(M_PI) / 180.0f;
   if(!Input->IsMouseInEditorMode)
   {
-    const float DegToRad = float(M_PI) / 180.0f;
-    Camera->OrbitRotation.Y -= 0.003f * (float)Input->dMouseY;
-    Camera->OrbitRotation.X += 0.003f * (float)Input->dMouseX;
-    Camera->OrbitRotation.Y = ClampFloat(2 * DegToRad, Camera->OrbitRotation.Y, 80 * DegToRad);
+    Camera->OrbitRotation.Y =
+      ClampFloat(-10 * DegToRad, Camera->OrbitRotation.Y - 0.003f * (float)Input->dMouseY,
+                 70 * DegToRad);
+    Camera->OrbitRotation.X += 0.05f * (float)Input->dMouseX;
     Camera->OrbitRadius = MaxFloat(0, Camera->OrbitRadius + 0.1f * Input->dMouseWheelScreen);
   }
   vec3 Dir = Math::Normalized(
-    vec3{ cosf(Camera->OrbitRotation.X), -sinf(Camera->OrbitRotation.Y), sinf(Camera->OrbitRotation.X) });
+    vec3{ cosf(Camera->OrbitRotation.X * DegToRad), 0, sinf(Camera->OrbitRotation.X * DegToRad) });
+  Dir.Y            = tan(Camera->OrbitRotation.Y);
+	Dir = -Math::Normalized(Dir);
   Camera->Position = FollowPoint + -Dir * Camera->OrbitRadius;
   Camera->Forward  = Dir;
   Camera->Right    = Math::Normalized(Math::Cross(Camera->Forward, YAxis));

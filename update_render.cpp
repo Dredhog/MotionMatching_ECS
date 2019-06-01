@@ -95,16 +95,19 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     if(Input->f.EndedDown && Input->f.Changed)
     {
       GameState->Camera.OrbitSelected = !GameState->Camera.OrbitSelected;
-      if(!GameState->Camera.OrbitSelected)
-      {
-        GameState->Camera.Rotation.X = GameState->Camera.OrbitRotation.X;
-        GameState->Camera.Rotation.Y = GameState->Camera.OrbitRotation.Y;
-      }
     }
     entity* SelectedEntity = {};
     if(GameState->Camera.OrbitSelected && GetSelectedEntity(GameState, &SelectedEntity))
     {
-      UpdateCamera(&GameState->Camera, SelectedEntity->Transform.T, Input);
+      UpdateCamera(&GameState->Camera, SelectedEntity->Transform.T + vec3{ 0, 1, 0 }, Input);
+			//Keeping the first person camera rotations up to date
+      {
+        const float DegToRad         = float(M_PI) / 180.0f;
+        GameState->Camera.Rotation.X = asinf(GameState->Camera.Forward.Y) / DegToRad;
+        GameState->Camera.Rotation.Y =
+          (float(M_PI) + atan2f(GameState->Camera.Forward.X, GameState->Camera.Forward.Z)) /
+          DegToRad;
+      }
     }
     else
     {
@@ -197,6 +200,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     mm_timeline_state*          MMTimelineState     = &GameState->MMTimelineState;
     int32_t                     SelectedEntityIndex = GameState->SelectedEntityIndex;
     testing_system*             TestingSystem       = &GameState->TestingSystem;
+    bool                        AllowWASDControls   = GameState->Camera.OrbitSelected;
 
     int ActiveInputControlledCount;
     int FirstSplineControlledIndex;
@@ -236,7 +240,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                            &MMEntityData.AnimPlayerTimes[0], &MMEntityData.Skeletons[0],
                            &MMEntityData.MMControllers[0], &MMEntityData.InputControllers[0],
                            &MMEntityData.EntityIndices[0], ActiveInputControlledCount, Entities,
-                           Input, InputOverrides, InputOverrideCount, CameraForward);
+                           Input, InputOverrides, InputOverrideCount, CameraForward,
+                           AllowWASDControls);
     AssertSplineIndicesAndClampWaypointIndices(&MMEntityData
                                                   .SplineStates[FirstSplineControlledIndex],
                                                ActiveSplineControlledCount,
@@ -790,9 +795,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       RenderObjectSelectionHighlighting(GameState, SelectedEntity);
     }
 
-		glEnable(GL_LINE_SMOOTH);
-		glLineWidth(2);
-		if(GameState->DrawDebugSpheres)
+		glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    if(GameState->DrawDebugSpheres)
 		{
 			Debug::DrawWireframeSpheres(GameState);
 		}

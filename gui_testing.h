@@ -87,13 +87,14 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Use Hot Reloading", &GameState->UseHotReloading);
     UI::SameLine(220);
     UI::Checkbox("Update Path List", &GameState->UpdatePathList);
-#if 0
-    UI::SameLine(400);
-    UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
-    UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
-    UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
-    UI::SameLine(220);
-#endif
+    if(GameState->ShowDebugFeatures)
+    {
+      UI::Checkbox("Profiler Window", &s_ShowProfilerWindow);
+			UI::SameLine(220);
+      UI::Checkbox("Physics Window", &s_ShowPhysicsWindow);
+      UI::SameLine(400);
+      UI::Checkbox("GUI Params Window", &s_ShowDemoWindow);
+    }
     UI::Checkbox("Motion Matching Debug", &s_ShowMMDebugSettingsWindow);
     UI::SameLine(220);
     UI::Checkbox("Motion Matching", &s_ShowMotionMatchingWindow);
@@ -101,7 +102,10 @@ TestGui(game_state* GameState, const game_input* Input)
     UI::Checkbox("Debug Timeline", &s_ShowMotionMatchingTimelineWindow);
 
     EntityGUI(GameState, s_ShowEntityTools);
-    TestGUI(GameState);
+    if(GameState->ShowDebugFeatures)
+    {
+      TestGUI(GameState);
+    }
     TrajectoryGUI(GameState, s_ShowTrajectoryTools);
     MaterialGUI(GameState, s_ShowMaterialEditor);
     AnimationGUI(GameState, s_ShowAnimationEditor, s_ShowEntityTools);
@@ -1202,23 +1206,24 @@ MaterialGUI(game_state* GameState, bool& ShowMaterialEditor)
 void
 EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 {
-  if(UI::Button("Create Entity"))
-  {
-    GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
-  }
+
 
   entity* SelectedEntity = {};
   GetSelectedEntity(GameState, &SelectedEntity);
 
   if(SelectedEntity)
   {
-    UI::SameLine();
     if(UI::Button("Delete Entity"))
     {
       DeleteEntity(GameState, &GameState->Resources, GameState->SelectedEntityIndex);
       GameState->SelectedEntityIndex = -1;
     }
   }
+  if(UI::Button("Create"))
+  {
+    GameState->IsEntityCreationMode = !GameState->IsEntityCreationMode;
+  }
+	UI::SameLine();
 
   {
     static int32_t ActivePathIndex = 0;
@@ -1980,6 +1985,7 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
       UI::Checkbox("Draw Trajectory Lines", &GameState->DrawTrajectoryLines);
       UI::Checkbox("Draw Trajectory Splines", &GameState->DrawTrajectorySplines);
       UI::Checkbox("Draw Splines Looped", &GameState->DrawSplinesLooped);
+      UI::Checkbox("Show Debug Features", &GameState->ShowDebugFeatures);
       UI::TreePop();
     }
   }

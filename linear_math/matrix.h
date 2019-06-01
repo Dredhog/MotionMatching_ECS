@@ -62,6 +62,7 @@ namespace Math
   mat3 Mat3RotateY(float Angle);
   mat3 Mat3RotateZ(float Angle);
   mat3 Mat3Rotate(vec3 EulerAngles);
+  mat3 Mat3Rotate(float X, float Y, float Z);
   mat4 Mat4RotateY(float Angle);
   mat4 Mat4RotateZ(float Angle);
   mat4 Mat4RotateX(float Angle);

@@ -22,7 +22,7 @@ struct camera
   float OrbitRadius;
   vec2  OrbitRotation;
 
-  vec3 Rotation;
+  vec2 Rotation;
   mat4 ViewMatrix;
   mat4 ProjectionMatrix;
   mat4 VPMatrix;

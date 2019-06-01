@@ -201,11 +201,17 @@ namespace Math
   }
 
   mat3
+  Mat3Rotate(float X, float Y, float Z)
+  {
+    return MulMat3(Mat3RotateZ(Z), MulMat3(Mat3RotateY(Y), Mat3RotateX(X)));
+  }
+
+  mat3
   Mat3Rotate(vec3 EulerAngles)
   {
-    return MulMat3(Mat3RotateZ(EulerAngles.Z),
-                   MulMat3(Mat3RotateY(EulerAngles.Y), Mat3RotateX(EulerAngles.X)));
+    return Mat3Rotate(EulerAngles.X, EulerAngles.Y, EulerAngles.Z);
   }
+
 
   mat4
   Mat4RotateY(float Angle)
