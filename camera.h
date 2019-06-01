@@ -8,7 +8,6 @@
 struct camera
 {
   vec3 Position;
-  vec3 Up;
   vec3 Right;
   vec3 Forward;
 
@@ -19,6 +18,10 @@ struct camera
   float Speed;
   float MaxTiltAngle;
 
+  bool  OrbitSelected;
+  float OrbitRadius;
+  vec2  OrbitRotation;
+
   vec3 Rotation;
   mat4 ViewMatrix;
   mat4 ProjectionMatrix;
@@ -26,5 +29,6 @@ struct camera
   mat4 InvVPMatrix;
 };
 
+void UpdateCamera(camera* Camera, vec3 FollowPoint, const game_input* Input);
 void UpdateCamera(camera* Camera, const game_input* Input);
 void UpdateCameraDerivedFields(camera* Camera);

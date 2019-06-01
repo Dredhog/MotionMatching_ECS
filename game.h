@@ -118,6 +118,10 @@ struct game_state
   bool  DrawShadowCascadeVolumes;
   bool  DrawActorMeshes;
   bool  DrawActorSkeletons;
+  bool  DrawTrajectoryWaypoints;
+  bool  DrawTrajectoryLines;
+  bool  DrawTrajectorySplines;
+  bool  DrawSplinesLooped;
   bool  IsAnimationPlaying;
   bool  IsEntityCreationMode;
   bool  PreviewAnimationsInRootSpace;

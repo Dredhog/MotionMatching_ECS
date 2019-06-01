@@ -58,8 +58,10 @@ namespace Math
   vec3 GetTranslationVec3(mat4 Mat4);
 	vec3 Mat4GetScaleAndNormalize(mat4* Mat4);
   vec3 Mat3GetScaleAndNormalize(mat3* Mat3);
+  mat3 Mat3RotateX(float Angle);
   mat3 Mat3RotateY(float Angle);
   mat3 Mat3RotateZ(float Angle);
+  mat3 Mat3Rotate(vec3 EulerAngles);
   mat4 Mat4RotateY(float Angle);
   mat4 Mat4RotateZ(float Angle);
   mat4 Mat4RotateX(float Angle);

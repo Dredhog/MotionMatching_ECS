@@ -352,7 +352,6 @@ SetGameStatePODFields(game_state* GameState)
   // CAMERA FIELD INITIALIZATION
   {
     GameState->Camera.Position      = { 0, 2, 0 };
-    GameState->Camera.Up            = { 0, 1, 0 };
     GameState->Camera.Forward       = { 0, 0, -1 };
     GameState->Camera.Right         = { 1, 0, 0 };
     GameState->Camera.Rotation      = { 0 };
@@ -361,6 +360,8 @@ SetGameStatePODFields(game_state* GameState)
     GameState->Camera.FieldOfView   = 90.0f;
     GameState->Camera.MaxTiltAngle  = 90.0f;
     GameState->Camera.Speed         = 5.0f;
+    GameState->Camera.OrbitSelected = false;
+    GameState->Camera.OrbitRadius   = 5.0f;
   }
 
   {
@@ -464,6 +465,9 @@ SetGameStatePODFields(game_state* GameState)
   GameState->DrawActorMeshes          = true;
   GameState->DrawActorSkeletons       = true;
   GameState->DrawShadowCascadeVolumes = false;
+  GameState->DrawTrajectoryWaypoints  = true;
+  GameState->DrawTrajectoryLines      = true;
+  GameState->DrawTrajectorySplines    = true;
   GameState->BoneSphereRadius         = 0.005f;
 
   GameState->PreviewAnimationsInRootSpace = false;

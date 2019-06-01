@@ -1766,7 +1766,15 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
       UI::SliderFloat("Near CLip Plane", &GameState->Camera.NearClipPlane, 0.01f, 500);
       UI::SliderFloat("Far  Clip Plane", &GameState->Camera.FarClipPlane,
                       GameState->Camera.NearClipPlane, 500);
-      UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
+      UI::Checkbox("Orbit Selected", &GameState->Camera.OrbitSelected);
+			if(GameState->Camera.OrbitSelected)
+			{
+        UI::SliderFloat("Orbit Radius", &GameState->Camera.OrbitRadius, 0, 30);
+      }
+      else
+      {
+        UI::SliderFloat("Speed", &GameState->Camera.Speed, 0, 100);
+			}
       UI::TreePop();
     }
     if(UI::TreeNode("Lighting", &s_ShowLightSettings))
@@ -1968,7 +1976,10 @@ RenderingGUI(game_state* GameState, bool& s_ShowRenderingSettings, bool& s_ShowL
       UI::Checkbox("Draw Actor Meshes", &GameState->DrawActorMeshes);
       UI::Checkbox("Draw Actor Skeletons", &GameState->DrawActorSkeletons);
       UI::Checkbox("Draw Shadowmap Cascade Volumes", &GameState->DrawShadowCascadeVolumes);
-      // UI::Checkbox("Timeline", &GameState->DrawTimeline);
+      UI::Checkbox("Draw Trajectory Waypoints", &GameState->DrawTrajectoryWaypoints);
+      UI::Checkbox("Draw Trajectory Lines", &GameState->DrawTrajectoryLines);
+      UI::Checkbox("Draw Trajectory Splines", &GameState->DrawTrajectorySplines);
+      UI::Checkbox("Draw Splines Looped", &GameState->DrawSplinesLooped);
       UI::TreePop();
     }
   }
@@ -2249,8 +2260,8 @@ SceneGUI(game_state* GameState, bool& s_ShowSceneGUI)
       {
         ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
       }
+    	UI::SameLine();
     }
-    UI::SameLine();
     if(UI::Button("Export As New"))
     {
       struct tm* TimeInfo;

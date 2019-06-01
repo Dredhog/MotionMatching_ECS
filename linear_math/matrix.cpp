@@ -190,6 +190,23 @@ namespace Math
     return mat3{ Cos, Sin, 0, -Sin, Cos, 0, 0, 0, 1 };
   }
 
+  mat3
+  Mat3RotateX(float Angle)
+  {
+    Angle     = (Angle * 3.14159f) / 180.0f;
+    float Sin = sinf(Angle);
+    float Cos = cosf(Angle);
+
+    return mat3{ 1, 0, 0, 0, Cos, Sin, 0, -Sin, Cos };
+  }
+
+  mat3
+  Mat3Rotate(vec3 EulerAngles)
+  {
+    return MulMat3(Mat3RotateZ(EulerAngles.Z),
+                   MulMat3(Mat3RotateY(EulerAngles.Y), Mat3RotateX(EulerAngles.X)));
+  }
+
   mat4
   Mat4RotateY(float Angle)
   {

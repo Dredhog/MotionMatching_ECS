@@ -39,7 +39,6 @@ RenderGBufferDataToTextures(game_state* GameState)
       }
 
       // TODO(Lukas) Add logic for bone matrix submission
-
       glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_mvp"), 1, GL_FALSE,
                          MeshInstance->MVP.e);
       glUniformMatrix4fv(glGetUniformLocation(GeomPrePassShaderID, "mat_prev_mvp"), 1, GL_FALSE,
@@ -206,6 +205,23 @@ RenderShadowmapCascadesToTextures(game_state* GameState)
             glBindVertexArray(CurrentMesh->VAO);
             PreviousMesh = CurrentMesh;
           }
+
+#if 1
+          const Anim::animation_player* CurrentAnimPlayer =
+            GameState->R.MeshInstances[i].AnimPlayer;
+          if(CurrentAnimPlayer)
+					{
+            glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "g_boneMatrices"),
+                               CurrentAnimPlayer->Skeleton->BoneCount, GL_FALSE,
+                               (float*)CurrentAnimPlayer->HierarchicalModelSpaceMatrices);
+          }
+					else
+					{
+						mat4 Mat4Zeros = {};
+            glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "g_boneMatrices"), 1,
+                               GL_FALSE, Mat4Zeros.e);
+          }
+#endif
 
           glUniformMatrix4fv(glGetUniformLocation(SunDepthShaderID, "mat_model"), 1, GL_FALSE,
                              Math::MulMat4(GameState->Camera.InvVPMatrix, CurrentMVPMatrix).e);

@@ -66,6 +66,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 		//TODO(Lukas) MOVE THIS WHRE IT'S MORE APPROPIATE
 		glEnable(GL_LINE_SMOOTH);
 		glLineWidth(2);
+		//glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     if(!GameState->UpdatePathList)
     {
@@ -90,10 +91,18 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
-#if 0
-	{
+  {
+    if(Input->f.EndedDown && Input->f.Changed)
+    {
+      GameState->Camera.OrbitSelected = !GameState->Camera.OrbitSelected;
+      if(!GameState->Camera.OrbitSelected)
+      {
+        GameState->Camera.Rotation.X = GameState->Camera.OrbitRotation.X;
+        GameState->Camera.Rotation.Y = GameState->Camera.OrbitRotation.Y;
+      }
+    }
     entity* SelectedEntity = {};
-    if(Camera->OrbitSelected && GetSelectedEntity(&SelectedEntity, GameState))
+    if(GameState->Camera.OrbitSelected && GetSelectedEntity(GameState, &SelectedEntity))
     {
       UpdateCamera(&GameState->Camera, SelectedEntity->Transform.T, Input);
     }
@@ -102,9 +111,6 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       UpdateCamera(&GameState->Camera, Input);
     }
   }
-#else
-  UpdateCamera(&GameState->Camera, Input);
-#endif
 
   // Editor
   if(Input->IsMouseInEditorMode)
@@ -294,22 +300,28 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       vec4 WaypointColor = { 0.2f, 0.2f, 1, 1 };
       if(j > 0)
       {
-        Debug::PushLine(PreviousWaypoint.Position + VerticalSplineOffset,
-                        CurrentWaypoint.Position + VerticalSplineOffset, WaypointColor,
-                        GameState->OverlaySplines);
+        if(GameState->DrawTrajectoryLines)
+        {
+          Debug::PushLine(PreviousWaypoint.Position + VerticalSplineOffset,
+                          CurrentWaypoint.Position + VerticalSplineOffset, WaypointColor,
+                          GameState->OverlaySplines);
+        }
       }
       if(GameState->SplineSystem.SelectedSplineIndex == i &&
          GameState->SplineSystem.SelectedWaypointIndex == j)
       {
         WaypointColor = { 1.0f, 1.0f, 0, 1 };
       }
-      Debug::PushWireframeSphere(CurrentWaypoint.Position, 0.1f, WaypointColor);
+      if(GameState->DrawTrajectoryWaypoints)
+      {
+        Debug::PushWireframeSphere(CurrentWaypoint.Position, 0.1f, WaypointColor);
+      }
       PreviousWaypoint = CurrentWaypoint;
     }
   }
 
 	// Spline visualization
-	for(int i = 0; i < GameState->SplineSystem.Splines.Count; i++)
+  for(int i = 0; i < GameState->SplineSystem.Splines.Count && GameState->DrawTrajectorySplines; i++)
   {
     if(GameState->SplineSystem.Splines[i].Waypoints.Count == 0)
     {
@@ -318,14 +330,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     movement_spline& Spline = GameState->SplineSystem.Splines[i];
 
-    vec3 PreviousPoint = Spline.CatmullRomPoint(0, 0);
-    for(int j = 1; j < Spline.Waypoints.Count; j++)
+    vec3       PreviousPoint = Spline.CatmullRomPoint(0, 0);
+    const bool Loop          = GameState->DrawSplinesLooped;
+    for(int j = 1; j < Spline.Waypoints.Count + (Loop ? 1 : 0); j++)
     {
       const int SubdivisionCount = 10;
       for(int k = 0; k < SubdivisionCount; k++)
       {
         float t            = float(k + 1) / SubdivisionCount;
-        vec3  CurrentPoint = Spline.CatmullRomPoint(j, t);
+        vec3  CurrentPoint = Spline.CatmullRomPoint(j, t, Loop % Spline.Waypoints.Count);
         Debug::PushLine(PreviousPoint + VerticalSplineOffset, CurrentPoint + VerticalSplineOffset,
                         { 1, 0.2f, 0.2f, 1 }, GameState->OverlaySplines);
         PreviousPoint = CurrentPoint;
@@ -777,6 +790,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       RenderObjectSelectionHighlighting(GameState, SelectedEntity);
     }
 
+		glEnable(GL_LINE_SMOOTH);
+		glLineWidth(2);
 		if(GameState->DrawDebugSpheres)
 		{
 			Debug::DrawWireframeSpheres(GameState);
