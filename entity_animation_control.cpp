@@ -247,7 +247,7 @@ FetchSkeletonPointers(Anim::skeleton** OutSkeletons, const int32_t* EntityIndice
 
 void
 FetchAnimationPointers(Resource::resource_manager* Resources, mm_controller_data** MMControllers,
-                       int32_t Count)
+                       blend_stack* BlendStacks, int32_t Count)
 {
   for(int i = 0; i < Count; i++)
   {
@@ -257,6 +257,11 @@ FetchAnimationPointers(Resource::resource_manager* Resources, mm_controller_data
       Anim::animation* Anim = Resources->GetAnimation(MMControllers[i]->Params.AnimRIDs[j]);
       assert(Anim);
       MMControllers[i]->Animations.Push(Anim);
+    }
+
+    for(int j = 0; j < BlendStacks[i].Count; j++)
+    {
+      BlendStacks[i][j].Animation = MMControllers[i]->Animations[BlendStacks[i][j].IndexInSet];
     }
   }
 }
@@ -274,7 +279,7 @@ PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, float* GlobalTimes,
       const float BlendInTime    = 0.0f;
       const bool  Mirror         = false;
       GlobalTimes[i]             = 0.0f;
-      PlayAnimation(&BSs[i], MMControllers[i]->Animations[IndexInSet], LocalStartTime,
+      PlayAnimation(&BSs[i], MMControllers[i]->Animations[IndexInSet], IndexInSet, LocalStartTime,
                     GlobalTimes[i], BlendInTime, Mirror);
     }
   }
@@ -563,7 +568,7 @@ MotionMatchGoals(blend_stack* OutBlendStacks, mm_frame_info* LastMatchedGoals,
     {
       LastMatchedGoals[i] = (NewMatchIsMirrored) ? VisualFlipGoalX(BestMatch) : BestMatch;
 
-      PlayAnimation(&OutBlendStacks[i], MMControllers[i]->Animations[NewAnimIndex],
+      PlayAnimation(&OutBlendStacks[i], MMControllers[i]->Animations[NewAnimIndex], NewAnimIndex,
                     NewAnimLocalStartTime, GlobalTimes[i],
                     MMControllers[i]->Params.DynamicParams.BlendInTime, NewMatchIsMirrored);
 

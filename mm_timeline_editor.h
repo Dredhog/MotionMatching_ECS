@@ -75,6 +75,12 @@ AreBlendStackTopsEqual(const blend_stack& A, const blend_stack& B)
   return true;
 }
 
+uint32_t
+GetMMControllerHash(const mm_controller_data* MMController)
+{
+   return  UI::Hash(&MMController->Animations, sizeof(MMController->Animations), 0);
+}
+
 void
 OverwriteSelectedMMEntity(blend_stack* BlendStacks, float* AnimPlayerTimes,
                           mm_timeline_state* MMTimelineState, entity* Entities,
@@ -86,24 +92,40 @@ OverwriteSelectedMMEntity(blend_stack* BlendStacks, float* AnimPlayerTimes,
     MMTimelineState->Paused    = false;
     MMTimelineState->Scrubbing = false;
   }
-  else
+  else if(MMEntityData->MMControllerRIDs[MMEntityIndex].Value > 0)
   {
-    bool HasNewMatchOccured =
-      !AreBlendStackTopsEqual(BlendStacks[MMEntityIndex], MMTimelineState->SavedBlendStack);
-    if(HasNewMatchOccured && MMTimelineState->BreakOnMatch && !MMTimelineState->Paused &&
-       !MMTimelineState->Scrubbing)
+    bool     ControllerWasRebuildOrReloaded = false;
+    uint32_t ActiveControllerHash = GetMMControllerHash(MMEntityData->MMControllers[MMEntityIndex]);
+    if(MMTimelineState->SavedControllerHash != ActiveControllerHash)
     {
-      MMTimelineState->SavedBlendStack     = BlendStacks[MMEntityIndex];
+      MMTimelineState->SavedControllerHash = ActiveControllerHash;
+      MMTimelineState->SavedBlendStack =
+        (MMTimelineState->Paused) ? blend_stack{} : BlendStacks[MMEntityIndex];
+      MMTimelineState->Scrubbing           = false;
       MMTimelineState->SavedAnimPlayerTime = AnimPlayerTimes[MMEntityIndex];
-      MMTimelineState->SavedTransform      = Entities[SelectedEntityIndex].Transform;
-      MMTimelineState->Paused              = true;
+      MMTimelineState->SavedTransform      = Entities[MMEntityIndex].Transform;
+      ControllerWasRebuildOrReloaded       = true;
     }
 
-    if(MMTimelineState->Scrubbing || MMTimelineState->Paused)
+    if(!ControllerWasRebuildOrReloaded)
     {
-      BlendStacks[MMEntityIndex]              = MMTimelineState->SavedBlendStack;
-      Entities[SelectedEntityIndex].Transform = MMTimelineState->SavedTransform;
-      AnimPlayerTimes[MMEntityIndex]          = MMTimelineState->SavedAnimPlayerTime;
+      bool HasNewMatchOccured =
+        !AreBlendStackTopsEqual(BlendStacks[MMEntityIndex], MMTimelineState->SavedBlendStack);
+      if(HasNewMatchOccured && MMTimelineState->BreakOnMatch && !MMTimelineState->Paused &&
+         !MMTimelineState->Scrubbing)
+      {
+        MMTimelineState->SavedBlendStack     = BlendStacks[MMEntityIndex];
+        MMTimelineState->SavedAnimPlayerTime = AnimPlayerTimes[MMEntityIndex];
+        MMTimelineState->SavedTransform      = Entities[SelectedEntityIndex].Transform;
+        MMTimelineState->Paused              = true;
+      }
+
+      if(MMTimelineState->Scrubbing || MMTimelineState->Paused)
+      {
+        BlendStacks[MMEntityIndex]              = MMTimelineState->SavedBlendStack;
+        Entities[SelectedEntityIndex].Transform = MMTimelineState->SavedTransform;
+        AnimPlayerTimes[MMEntityIndex]          = MMTimelineState->SavedAnimPlayerTime;
+      }
     }
   }
 }
@@ -115,9 +137,10 @@ MMTimelineWindow(mm_timeline_state* TimelineState, blend_stack BlendStack,
                  const Text::font* UIFont)
 {
   assert(MMController);
-  if(TimelineState->SavedControllerHash != (uintptr_t)MMController)
+  uint32_t CurrentControllerHash = GetMMControllerHash(MMController);
+  if(TimelineState->SavedControllerHash != CurrentControllerHash)
   {
-    TimelineState->SavedControllerHash = (uintptr_t)MMController;
+    TimelineState->SavedControllerHash = CurrentControllerHash;
     TimelineState->SavedBlendStack     = (TimelineState->Paused) ? blend_stack{} : BlendStack;
     TimelineState->Scrubbing           = false;
     TimelineState->SavedAnimPlayerTime = AnimPlayerTime;
@@ -275,7 +298,7 @@ MMTimelineWindow(mm_timeline_state* TimelineState, blend_stack BlendStack,
               !BlendStackIndices.Empty() ? BlendStack[BlendStackIndices[0]].Mirror : false;
 
             BlendStack.Clear();
-            PlayAnimation(&BlendStack, Animations[a], AnimPlayheads[0], AnimPlayerTime, 0,
+            PlayAnimation(&BlendStack, Animations[a], a, AnimPlayheads[0], AnimPlayerTime, 0,
                           MirrorModified, false);
           }
         }

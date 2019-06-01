@@ -444,6 +444,7 @@ namespace Resource
   CREATE_ASSOCIATE_FUNCTION(Anim::animation*, Animation);
   CREATE_ASSOCIATE_FUNCTION(uint32_t, Texture);
   CREATE_ASSOCIATE_FUNCTION(material*, Material);
+  CREATE_ASSOCIATE_FUNCTION(mm_controller_data*, MMController);
 
 #define CREATE_GET_PATH_ID_FUNCTION(TYPE_NAME)                                                     \
   bool resource_manager::Get##TYPE_NAME##PathRID(rid* RID, const char* Path)                       \

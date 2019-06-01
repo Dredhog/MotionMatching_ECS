@@ -20,8 +20,8 @@ main()
 
 
   float SecondaryRadius = 3*u_SamplingRadius;
-  o_FragColor = vec4(vec3(0f), 1f);
-  float occlusion = 0f;
+  o_FragColor = vec4(vec3(0), 1);
+  float occlusion = 0;
   for(int i = 0; i < SAMPLE_VECTOR_COUNT; i++)
   {
 
@@ -36,13 +36,13 @@ main()
     vec4 test_point_uv_space = u_mat_projection * vec4(test_point_view_space, 1.0f);
     test_point_uv_space.xy = (test_point_uv_space.xy / test_point_uv_space.w) * 0.5 + 0.5;
     		
-    if(0f <= test_point_uv_space.x && test_point_uv_space.x <= 1f &&
-      0f <= test_point_uv_space.y && test_point_uv_space.y <= 1f){
+    if(0 <= test_point_uv_space.x && test_point_uv_space.x <= 1 &&
+      0 <= test_point_uv_space.y && test_point_uv_space.y <= 1){
       float sample_depth = texture(u_PositionMap, test_point_uv_space.xy).z;
-      float range_check = (abs(sample_depth - test_point_view_space.z) < SecondaryRadius) ? 1f : 0f;
+      float range_check = (abs(sample_depth - test_point_view_space.z) < SecondaryRadius) ? 1 : 0;
       occlusion += ((test_point_view_space.z < sample_depth) ? 1.0f : 0.0f) * range_check;
     }
   }
   occlusion = 1.0f - (occlusion/SAMPLE_VECTOR_COUNT);
-  o_FragColor = vec4(vec3(occlusion), 1f);
+  o_FragColor = vec4(vec3(occlusion), 1);
 }

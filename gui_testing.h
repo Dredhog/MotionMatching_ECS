@@ -52,6 +52,116 @@ AllocationInfoComparison(const void* A, const void* B)
 }
 
 void
+MMWindows(game_state* GameState, const game_input* Input, bool& s_ShowMotionMatchingTimelineWindow,
+          bool& s_ShowMotionMatchingWindow, bool& s_ShowMMDebugSettingsWindow)
+{
+  if(s_ShowMotionMatchingTimelineWindow)
+  {
+    int32_t         SelectedEntityIndex = GameState->SelectedEntityIndex;
+    mm_entity_data* MMEntityData        = &GameState->MMEntityData;
+
+    UI::BeginWindow("MM Animation Visualizer", { 250, 820 }, { 1500, 250 });
+
+    int32_t MMEntityIndex;
+    if((MMEntityIndex = GetEntityMMDataIndex(SelectedEntityIndex, MMEntityData)) != -1)
+    {
+      mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, MMEntityData);
+      if(*MMEntity.MMController)
+      {
+        MMTimelineWindow(&GameState->MMTimelineState, *MMEntity.BlendStack,
+                         *MMEntity.AnimPlayerTime, *MMEntity.AnimGoal, *MMEntity.MMController,
+                         GameState->Entities[SelectedEntityIndex].Transform, Input,
+                         &GameState->Font);
+      }
+    }
+    UI::EndWindow();
+  }
+  if(s_ShowMotionMatchingWindow)
+  {
+		rid NewControllerRID;
+
+    UI::BeginWindow("Motion Matching", { 60, 20 }, { 750, 700 });
+    MMControllerEditorGUI(&NewControllerRID, &GameState->MMEditor, GameState->TemporaryMemStack,
+                          &GameState->Resources);
+    UI::EndWindow();
+
+    if(NewControllerRID.Value > 0) // Refresh related entities
+    {
+			for(int e = 0; e < GameState->MMEntityData.Count; e++)
+			{
+        if(GameState->MMEntityData.MMControllerRIDs[e].Value == NewControllerRID.Value)
+        {
+          GameState->MMEntityData.BlendStacks[e].Clear();
+        }
+      }
+		}
+  }
+  if(s_ShowMMDebugSettingsWindow)
+  {
+    UI::BeginWindow("Matching Debug Settings", { 840, 20 }, { 320, 450 });
+
+    mm_debug_settings& MMDebug = GameState->MMDebug;
+    UI::Checkbox("Apply Root Motion", &MMDebug.ApplyRootMotion);
+    UI::Text("Debug Display");
+    UI::SliderFloat("Trajectory Duration (sec)", &MMDebug.TrajectoryDuration, 0, 10);
+    UI::SliderInt("Trajectory Sample Count", &MMDebug.TrajectorySampleCount, 2, 40);
+    UI::Checkbox("Show Root Trajectory", &MMDebug.ShowRootTrajectories);
+    UI::Checkbox("Show Hip Trajectory", &MMDebug.ShowHipTrajectories);
+    UI::Checkbox("Show Smooth Goals", &MMDebug.ShowSmoothGoals);
+    UI::Text("Current Goal");
+    UI::Checkbox("Show Current Goal", &MMDebug.CurrentGoal.ShowTrajectory);
+    UI::Checkbox("Show Current Goal Directions", &MMDebug.CurrentGoal.ShowTrajectoryAngles);
+    UI::Checkbox("Show Current Positions", &MMDebug.CurrentGoal.ShowBonePositions);
+    UI::Checkbox("Show Current Velocities", &MMDebug.CurrentGoal.ShowBoneVelocities);
+    UI::Text("Matched Goal");
+    UI::Checkbox("Show Matched Goal", &MMDebug.MatchedGoal.ShowTrajectory);
+    UI::Checkbox("Show Matched Goal Directions", &MMDebug.MatchedGoal.ShowTrajectoryAngles);
+    UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
+    UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
+
+    // TODO(Lukas) This is retarded ;(
+    {
+      bool OverlayGoals = MMDebug.CurrentGoal.Overlay;
+      UI::Checkbox("Overlay Goals", &OverlayGoals);
+      MMDebug.CurrentGoal.Overlay = OverlayGoals;
+      MMDebug.MatchedGoal.Overlay = OverlayGoals;
+    }
+    UI::Checkbox("Overlay Longerm Trajectories", &GameState->OverlaySplines);
+#if 0
+    {
+      static vec3 A          = { -1, 0, 0 };
+      static vec3 B          = {};
+      static vec3 C          = { 1, 0, 0 };
+      static vec3 D          = { 2, 0, 0 };
+      static int  PointCount = 10;
+      UI::Text("Catmull Rom Test");
+      UI::SliderInt("Spline Viz Point Count", &PointCount, 1, 30);
+      UI::DragFloat3("A", &A.X, -3, 3, 6);
+      UI::DragFloat3("B", &B.X, -3, 3, 6);
+      UI::DragFloat3("C", &C.X, -3, 3, 6);
+      UI::DragFloat3("D", &D.X, -3, 3, 6);
+
+      Debug::PushWireframeSphere(A, 0.1f, { 0, 1, 0, 0.1f });
+      Debug::PushLine(A, B, { 1, 0, 0, 1 });
+      Debug::PushWireframeSphere(B, 0.1f, { 0, 1, 1, 0.3f });
+      Debug::PushWireframeSphere(C, 0.1f, { 0, 0, 0, 0.7f });
+      Debug::PushLine(C, D, { 1, 0, 0, 1 });
+      Debug::PushWireframeSphere(D, 0.1f, { 1, 1, 0, 1 });
+
+      for(int i = 0; i < PointCount && PointCount > 1; i++)
+      {
+        float t = float(i) / float(PointCount - 1);
+
+        vec3 CatmullRomPoint = GetCatmullRomPoint(A, B, C, D, t);
+        Debug::PushWireframeSphere(CatmullRomPoint, 0.05f, { 1, 0.2f, 0.2f, 1 });
+      }
+    }
+#endif
+    UI::EndWindow();
+  }
+}
+
+void
 TestGui(game_state* GameState, const game_input* Input)
 {
   BEGIN_TIMED_BLOCK(GUI);
@@ -62,6 +172,9 @@ TestGui(game_state* GameState, const game_input* Input)
   static bool s_ShowMotionMatchingTimelineWindow = false;
   static bool s_ShowMotionMatchingWindow         = false;
   static bool s_ShowMMDebugSettingsWindow        = false;
+
+  MMWindows(GameState, Input, s_ShowMotionMatchingTimelineWindow, s_ShowMotionMatchingWindow,
+            s_ShowMMDebugSettingsWindow);
 
   UI::BeginWindow("Editor Window", { 1200, 20 }, { 650, 550 });
   {
@@ -363,7 +476,6 @@ TestGui(game_state* GameState, const game_input* Input)
               {
                 if(UI::Button("Add Component   "))
                 {
-
                   AddComponent(GameState->ECSWorld, (entity_id)SelectedEntityID,
                                (component_id)NewComponentID);
                 }
@@ -640,98 +752,6 @@ TestGui(game_state* GameState, const game_input* Input)
         }
       }
     }
-    UI::EndWindow();
-  }
-
-  if(s_ShowMotionMatchingTimelineWindow)
-  {
-    int32_t         SelectedEntityIndex = GameState->SelectedEntityIndex;
-    mm_entity_data* MMEntityData        = &GameState->MMEntityData;
-
-    UI::BeginWindow("MM Animation Visualizer", { 250, 820 }, { 1500, 250 });
-
-    int32_t MMEntityIndex;
-    if((MMEntityIndex = GetEntityMMDataIndex(SelectedEntityIndex, MMEntityData)) != -1)
-    {
-      mm_aos_entity_data MMEntity = GetAOSMMDataAtIndex(MMEntityIndex, MMEntityData);
-      if(*MMEntity.MMController)
-      {
-        MMTimelineWindow(&GameState->MMTimelineState, *MMEntity.BlendStack,
-                         *MMEntity.AnimPlayerTime, *MMEntity.AnimGoal, *MMEntity.MMController,
-                         GameState->Entities[SelectedEntityIndex].Transform, Input,
-                         &GameState->Font);
-      }
-    }
-    UI::EndWindow();
-  }
-  if(s_ShowMotionMatchingWindow)
-  {
-    UI::BeginWindow("Motion Matching", { 60, 20 }, { 750, 700 });
-    MMControllerEditorGUI(&GameState->MMEditor, GameState->TemporaryMemStack,
-                          &GameState->Resources);
-    UI::EndWindow();
-  }
-  if(s_ShowMMDebugSettingsWindow)
-  {
-    UI::BeginWindow("Matching Debug Settings", { 840, 20 }, { 320, 450 });
-
-    mm_debug_settings& MMDebug = GameState->MMDebug;
-    UI::Checkbox("Apply Root Motion", &MMDebug.ApplyRootMotion);
-    UI::Text("Debug Display");
-    UI::SliderFloat("Trajectory Duration (sec)", &MMDebug.TrajectoryDuration, 0, 10);
-    UI::SliderInt("Trajectory Sample Count", &MMDebug.TrajectorySampleCount, 2, 40);
-    UI::Checkbox("Show Root Trajectory", &MMDebug.ShowRootTrajectories);
-    UI::Checkbox("Show Hip Trajectory", &MMDebug.ShowHipTrajectories);
-    UI::Checkbox("Show Smooth Goals", &MMDebug.ShowSmoothGoals);
-    UI::Text("Current Goal");
-    UI::Checkbox("Show Current Goal", &MMDebug.CurrentGoal.ShowTrajectory);
-    UI::Checkbox("Show Current Goal Directions", &MMDebug.CurrentGoal.ShowTrajectoryAngles);
-    UI::Checkbox("Show Current Positions", &MMDebug.CurrentGoal.ShowBonePositions);
-    UI::Checkbox("Show Current Velocities", &MMDebug.CurrentGoal.ShowBoneVelocities);
-    UI::Text("Matched Goal");
-    UI::Checkbox("Show Matched Goal", &MMDebug.MatchedGoal.ShowTrajectory);
-    UI::Checkbox("Show Matched Goal Directions", &MMDebug.MatchedGoal.ShowTrajectoryAngles);
-    UI::Checkbox("Show Matched Positions", &MMDebug.MatchedGoal.ShowBonePositions);
-    UI::Checkbox("Show Matched Velocities", &MMDebug.MatchedGoal.ShowBoneVelocities);
-
-		//TODO(Lukas) This is retarded ;(
-    {
-      bool OverlayGoals = MMDebug.CurrentGoal.Overlay;
-      UI::Checkbox("Overlay Goals", &OverlayGoals);
-      MMDebug.CurrentGoal.Overlay = OverlayGoals ;
-      MMDebug.MatchedGoal.Overlay = OverlayGoals;
-    }
-    UI::Checkbox("Overlay Longerm Trajectories", &GameState->OverlaySplines);
-#if 0
-    {
-      static vec3 A          = { -1, 0, 0 };
-      static vec3 B          = {};
-      static vec3 C          = { 1, 0, 0 };
-      static vec3 D          = { 2, 0, 0 };
-      static int  PointCount = 10;
-      UI::Text("Catmull Rom Test");
-      UI::SliderInt("Spline Viz Point Count", &PointCount, 1, 30);
-      UI::DragFloat3("A", &A.X, -3, 3, 6);
-      UI::DragFloat3("B", &B.X, -3, 3, 6);
-      UI::DragFloat3("C", &C.X, -3, 3, 6);
-      UI::DragFloat3("D", &D.X, -3, 3, 6);
-
-      Debug::PushWireframeSphere(A, 0.1f, { 0, 1, 0, 0.1f });
-      Debug::PushLine(A, B, { 1, 0, 0, 1 });
-      Debug::PushWireframeSphere(B, 0.1f, { 0, 1, 1, 0.3f });
-      Debug::PushWireframeSphere(C, 0.1f, { 0, 0, 0, 0.7f });
-      Debug::PushLine(C, D, { 1, 0, 0, 1 });
-      Debug::PushWireframeSphere(D, 0.1f, { 1, 1, 0, 1 });
-
-      for(int i = 0; i < PointCount && PointCount > 1; i++)
-      {
-        float t = float(i) / float(PointCount - 1);
-
-        vec3 CatmullRomPoint = GetCatmullRomPoint(A, B, C, D, t);
-        Debug::PushWireframeSphere(CatmullRomPoint, 0.05f, { 1, 0.2f, 0.2f, 1 });
-      }
-    }
-#endif
     UI::EndWindow();
   }
 #if 0
@@ -1413,17 +1433,17 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
                 if(s_ShowMMControllerComponent)
                 {
-                  mm_aos_entity_data MMControllerData =
+                  mm_aos_entity_data MMEntity =
                     GetAOSMMDataAtIndex(MMControllerIndex, &MMEntityData);
 
                   {
                     // Pick the mm controller
                     static int32_t ShownPathIndex = -1;
                     int32_t        UsedPathIndex  = -1;
-                    if(MMControllerData.MMControllerRID->Value > 0)
+                    if(MMEntity.MMControllerRID->Value > 0)
                     {
                       UsedPathIndex =
-                        Resources->GetMMControllerPathIndex(*MMControllerData.MMControllerRID);
+                        Resources->GetMMControllerPathIndex(*MMEntity.MMControllerRID);
                     }
                     bool ClickedAdd = false;
                     {
@@ -1454,21 +1474,22 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                         if(MMController->Params.FixedParams.Skeleton.BoneCount ==
                            Skeleton->BoneCount)
                         {
-                          if(MMControllerData.MMControllerRID->Value > 0 &&
-                             MMControllerData.MMControllerRID->Value != NewRID.Value)
+                          if(MMEntity.MMControllerRID->Value > 0 &&
+                             MMEntity.MMControllerRID->Value != NewRID.Value)
                           {
-                            Resources->MMControllers.RemoveReference(
-                              *MMControllerData.MMControllerRID);
+                            Resources->MMControllers.RemoveReference(*MMEntity.MMControllerRID);
                           }
-                          *MMControllerData.MMControllerRID = NewRID;
+                          *MMEntity.MMControllerRID = NewRID;
                           Resources->MMControllers.AddReference(NewRID);
                         }
                       }
-                      else if(MMControllerData.MMControllerRID->Value > 0)
+                      else if(MMEntity.MMControllerRID->Value > 0)
                       {
-                        Resources->MMControllers.RemoveReference(*MMControllerData.MMControllerRID);
-                        *MMControllerData.MMControllerRID = {};
+                        Resources->MMControllers.RemoveReference(*MMEntity.MMControllerRID);
+                        *MMEntity.MMControllerRID = {};
+                        *MMEntity.MMController    = NULL;
                       }
+                      MMEntity.BlendStack->Clear();
                     }
                   }
 
@@ -1476,37 +1497,36 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                   sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
                   UI::Text(TempBuffer);
 
-									static bool s_ShowInputControlParameters = false;
+                  static bool s_ShowInputControlParameters = false;
                   if(UI::TreeNode("Movement Control Options", &s_ShowInputControlParameters))
                   {
-                    UI::SliderFloat("Maximum Speed", &MMControllerData.InputController->MaxSpeed,
-                                    0.0f, 5.0f);
-                    UI::Checkbox("Strafe", &MMControllerData.InputController->UseStrafing);
-                    UI::Checkbox("Use Smoothed Goal",
-                                 &MMControllerData.InputController->UseSmoothGoal);
+                    UI::SliderFloat("Maximum Speed", &MMEntity.InputController->MaxSpeed, 0.0f,
+                                    5.0f);
+                    UI::Checkbox("Strafe", &MMEntity.InputController->UseStrafing);
+                    UI::Checkbox("Use Smoothed Goal", &MMEntity.InputController->UseSmoothGoal);
                     static bool s_ShowSmoothTrajectoryParams = false;
-                    if(MMControllerData.InputController->UseSmoothGoal &&
+                    if(MMEntity.InputController->UseSmoothGoal &&
                        UI::TreeNode("Smooth Goal Params", &s_ShowSmoothTrajectoryParams))
                     {
-                      UI::SliderFloat("Position Bias",
-                                      &MMControllerData.InputController->PositionBias, 0.0f, 5.0f);
-                      UI::SliderFloat("Direction Bias",
-                                      &MMControllerData.InputController->DirectionBias, 0.0f, 5.0f);
+                      UI::SliderFloat("Position Bias", &MMEntity.InputController->PositionBias,
+                                      0.0f, 5.0f);
+                      UI::SliderFloat("Direction Bias", &MMEntity.InputController->DirectionBias,
+                                      0.0f, 5.0f);
                       UI::TreePop();
                     }
-                    UI::Checkbox("Use Trajectory Control", MMControllerData.FollowSpline);
+                    UI::Checkbox("Use Trajectory Control", MMEntity.FollowSpline);
 
-                    if(*MMControllerData.FollowSpline == true)
+                    if(*MMEntity.FollowSpline == true)
                     {
                       /*static bool s_ShowTrajectoryControlParameters = true;
                       if(UI::TreeNode("Trajectory Control Params",
                                       &s_ShowTrajectoryControlParameters))
                       {*/
-                      UI::Combo("Trajectory Index", &MMControllerData.SplineState->SplineIndex,
+                      UI::Combo("Trajectory Index", &MMEntity.SplineState->SplineIndex,
                                 (const char**)&g_SplineIndexNames[0], SplineSystem.Splines.Count);
-                      /*UI::Checkbox("Loop Back To Start", &MMControllerData.SplineState->Loop);
+                      /*UI::Checkbox("Loop Back To Start", &MMEntity.SplineState->Loop);
                       UI::Checkbox("Following Positive Direction",
-                                   &MMControllerData.SplineState->MovingInPositive);
+                                   &MMEntity.SplineState->MovingInPositive);
 
                       UI::TreePop();
                     }*/
@@ -2056,7 +2076,7 @@ TestGUI(game_state* GameState)
 
         if(UI::TreeNode("Bones To Measure", &GUI.ExpandedBonesToMeasure))
         {
-          bool ClickedAddBone = UI::Button("AddBone");
+          bool ClickedAddBone = UI::Button("Add Bone");
           UI::SameLine();
           UI::PushWidth(-UI::GetWindowWidth() * 0.35f);
           UI::Combo("Bone", &GUI.SelectedBoneIndex, SelectedEntity->AnimPlayer->Skeleton->Bones,
@@ -2258,15 +2278,18 @@ SceneGUI(game_state* GameState, bool& s_ShowSceneGUI)
   if(UI::CollapsingHeader("Scene", &s_ShowSceneGUI))
   {
     static int32_t SelectedSceneIndex = 0;
-    UI::Combo("Import Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
+    UI::Combo("Target Scene Path", &SelectedSceneIndex, GameState->Resources.ScenePaths,
               GameState->Resources.ScenePathCount, PathArrayToString);
     if(0 < GameState->Resources.ScenePathCount)
     {
-      if(UI::Button("Import"))
+      if(SelectedSceneIndex != -1)
       {
-        ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
+        if(UI::Button("Import"))
+        {
+          ImportScene(GameState, GameState->Resources.ScenePaths[SelectedSceneIndex].Name);
+        }
+        UI::SameLine();
       }
-    	UI::SameLine();
     }
     if(UI::Button("Export As New"))
     {

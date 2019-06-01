@@ -119,7 +119,8 @@ void FetchSkeletonPointers(Anim::skeleton** OutSkeletons, const int32_t* EntityI
                            const entity* Entities, int32_t Count);
 
 void FetchAnimationPointers(Resource::resource_manager* Resources,
-                            mm_controller_data** MMControllers, int32_t Count);
+                            mm_controller_data** MMControllers, blend_stack* BlendStacks,
+                            int32_t Count);
 
 void PlayAnimsIfBlendStacksAreEmpty(blend_stack* BSs, float* GlobalTimes,
                                     const mm_controller_data* const* MMControllers, int32_t Count);

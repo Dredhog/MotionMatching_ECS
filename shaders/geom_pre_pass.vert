@@ -33,6 +33,6 @@ main()
   frag.position = vec3(mat_view	* mat_model* vec4(a_position, 1.0));
   frag.texCoord = a_texCoord;
 
-  frag.position0 = mat_prev_mvp * vec4(a_position, 1f);
-  frag.position1 = mat_mvp * vec4(a_position, 1f);
+  frag.position0 = mat_prev_mvp * vec4(a_position, 1);
+  frag.position1 = mat_mvp * vec4(a_position, 1);
 }

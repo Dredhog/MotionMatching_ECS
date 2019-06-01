@@ -121,71 +121,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     EditWorldAndInteractWithGUI(GameState, Input);
   }
 
-    //--------------------WORLD UPDATE------------------------
-
-
-  if(GameState->UpdatePhysics)
-  {
-    TIMED_BLOCK(Physics);
-
-    assert(GameState->EntityCount <= RIGID_BODY_MAX_COUNT);
-    GameState->Physics.RBCount = GameState->EntityCount;
-
-    {
-      g_VisualizeContactPoints   = GameState->Physics.Switches.VisualizeContactPoints;
-      g_VisualizeContactManifold = GameState->Physics.Switches.VisualizeContactManifold;
-      // Copy entity transform state into the physics world
-      // Note: valid entiteis are always stored without gaps in their array
-      for(int i = 0; i < GameState->EntityCount; i++)
-      {
-        // Copy rigid body from entity (Mainly needed when loading scenes)
-        GameState->Physics.RigidBodies[i] = GameState->Entities[i].RigidBody;
-
-        if(FloatsEqualByThreshold(Math::Length(GameState->Entities[i].Transform.R), 0.0f, 0.0001f))
-        {
-          GameState->Entities[i].Transform.R = Math::QuatIdent();
-        }
-        else
-        {
-          Math::Normalize(&GameState->Entities[i].Transform.R);
-        }
-
-        GameState->Physics.RigidBodies[i].q = GameState->Entities[i].Transform.R;
-        GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.T;
-
-        GameState->Physics.RigidBodies[i].R =
-          Math::Mat4ToMat3(Math::Mat4Rotate(GameState->Entities[i].Transform.R));
-
-        GameState->Physics.RigidBodies[i].Mat4Scale =
-          Math::Mat4Scale(GameState->Entities[i].Transform.S);
-
-        GameState->Physics.RigidBodies[i].Collider =
-          GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
-
-        const rigid_body& RB = GameState->Physics.RigidBodies[i];
-        if(GameState->Physics.Switches.VisualizeOmega)
-        {
-          Debug::PushLine(RB.X, RB.X + RB.w, { 0, 1, 0, 1 });
-          Debug::PushWireframeSphere(RB.X + RB.w, 0.05f, { 0, 1, 0, 1 });
-        }
-        if(GameState->Physics.Switches.VisualizeV)
-        {
-          Debug::PushLine(RB.X, RB.X + RB.v, { 1, 1, 0, 1 });
-          Debug::PushWireframeSphere(RB.X + RB.v, 0.05f, { 1, 1, 0, 1 });
-        }
-      }
-    }
-
-    // Actual physics work
-    SimulateDynamics(&GameState->Physics);
-
-    for(int i = 0; i < GameState->EntityCount; i++)
-    {
-      GameState->Entities[i].RigidBody   = GameState->Physics.RigidBodies[i];
-      GameState->Entities[i].Transform.R = GameState->Physics.RigidBodies[i].q;
-      GameState->Entities[i].Transform.T = GameState->Physics.RigidBodies[i].X;
-    }
-  }
+  //--------------------WORLD UPDATE------------------------
 
   // Runtime motion matching start to finish
   {
@@ -213,7 +149,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                   MMEntityData.MMControllerRIDs, ActiveControllerCount);
     FetchSkeletonPointers(MMEntityData.Skeletons, MMEntityData.EntityIndices, Entities,
                           ActiveControllerCount);
-    FetchAnimationPointers(&Resources, MMEntityData.MMControllers, ActiveControllerCount);
+    FetchAnimationPointers(&Resources, MMEntityData.MMControllers, MMEntityData.BlendStacks,
+                           ActiveControllerCount);
     PlayAnimsIfBlendStacksAreEmpty(MMEntityData.BlendStacks, MMEntityData.AnimPlayerTimes,
                                    MMEntityData.MMControllers, ActiveControllerCount);
 
@@ -292,6 +229,87 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     ClearAnimationData(&MMEntityData.BlendStacks[FirstInactiveControllerIndex],
                        &MMEntityData.EntityIndices[FirstInactiveControllerIndex],
                        InactiveControllerCount, Entities, DebugEntityCount);
+  }
+  // TODO(Lukas) this late camera update invalidates the debug gizmos drawn between here and the
+  // first camera update. Make the gizmos use the VP matrix, when submitting the drawing primitives
+  // at the end of the frame.
+  {
+    entity* SelectedEntity = {};
+    if(GameState->Camera.OrbitSelected && GetSelectedEntity(GameState, &SelectedEntity))
+    {
+      UpdateCamera(&GameState->Camera, SelectedEntity->Transform.T + vec3{ 0, 1, 0 }, Input);
+      // Keeping the first person camera rotations up to date
+      {
+        const float DegToRad         = float(M_PI) / 180.0f;
+        GameState->Camera.Rotation.X = asinf(GameState->Camera.Forward.Y) / DegToRad;
+        GameState->Camera.Rotation.Y =
+          (float(M_PI) + atan2f(GameState->Camera.Forward.X, GameState->Camera.Forward.Z)) /
+          DegToRad;
+      }
+    }
+  }
+
+  if(GameState->UpdatePhysics)
+  {
+    TIMED_BLOCK(Physics);
+
+    assert(GameState->EntityCount <= RIGID_BODY_MAX_COUNT);
+    GameState->Physics.RBCount = GameState->EntityCount;
+
+    {
+      g_VisualizeContactPoints   = GameState->Physics.Switches.VisualizeContactPoints;
+      g_VisualizeContactManifold = GameState->Physics.Switches.VisualizeContactManifold;
+      // Copy entity transform state into the physics world
+      // Note: valid entiteis are always stored without gaps in their array
+      for(int i = 0; i < GameState->EntityCount; i++)
+      {
+        // Copy rigid body from entity (Mainly needed when loading scenes)
+        GameState->Physics.RigidBodies[i] = GameState->Entities[i].RigidBody;
+
+        if(FloatsEqualByThreshold(Math::Length(GameState->Entities[i].Transform.R), 0.0f, 0.0001f))
+        {
+          GameState->Entities[i].Transform.R = Math::QuatIdent();
+        }
+        else
+        {
+          Math::Normalize(&GameState->Entities[i].Transform.R);
+        }
+
+        GameState->Physics.RigidBodies[i].q = GameState->Entities[i].Transform.R;
+        GameState->Physics.RigidBodies[i].X = GameState->Entities[i].Transform.T;
+
+        GameState->Physics.RigidBodies[i].R =
+          Math::Mat4ToMat3(Math::Mat4Rotate(GameState->Entities[i].Transform.R));
+
+        GameState->Physics.RigidBodies[i].Mat4Scale =
+          Math::Mat4Scale(GameState->Entities[i].Transform.S);
+
+        GameState->Physics.RigidBodies[i].Collider =
+          GameState->Resources.GetModel(GameState->Entities[i].ModelID)->Meshes[0];
+
+        const rigid_body& RB = GameState->Physics.RigidBodies[i];
+        if(GameState->Physics.Switches.VisualizeOmega)
+        {
+          Debug::PushLine(RB.X, RB.X + RB.w, { 0, 1, 0, 1 });
+          Debug::PushWireframeSphere(RB.X + RB.w, 0.05f, { 0, 1, 0, 1 });
+        }
+        if(GameState->Physics.Switches.VisualizeV)
+        {
+          Debug::PushLine(RB.X, RB.X + RB.v, { 1, 1, 0, 1 });
+          Debug::PushWireframeSphere(RB.X + RB.v, 0.05f, { 1, 1, 0, 1 });
+        }
+      }
+    }
+
+    // Actual physics work
+    SimulateDynamics(&GameState->Physics);
+
+    for(int i = 0; i < GameState->EntityCount; i++)
+    {
+      GameState->Entities[i].RigidBody   = GameState->Physics.RigidBodies[i];
+      GameState->Entities[i].Transform.R = GameState->Physics.RigidBodies[i].q;
+      GameState->Entities[i].Transform.T = GameState->Physics.RigidBodies[i].X;
+    }
   }
 
   // Waypoint debug visualizaiton

@@ -97,8 +97,11 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
           Anim::LinearAnimationBoneSample(Anim, HipIndex,
                                           CurrentSampleTime + (p + 1) * PositionSamplingPeriod);
         // NOTE(Lukas) this should use the root bone if animation has a dedicated one
-        mat4 CurrentHipMatrix = TransformToMat4(SampleHipTransform);
-        vec3 SamplePoint      = SampleHipTransform.T;
+        const Anim::bone* Bone = &Params.FixedParams.Skeleton.Bones[HipIndex];
+        mat4              CurrentHipMatrix =
+          Math::MulMat4(Bone->BindPose,
+                        Math::MulMat4(TransformToMat4(SampleHipTransform), Bone->InverseBindPose));
+        vec3 SamplePoint      = CurrentHipMatrix.T;
         vec4 SamplePointHomog = { SamplePoint, 1 };
         FrameInfoStack[FrameInfoIndex].TrajectoryPs[p] =
           Math::MulMat4Vec4(InvRootMatrix, SamplePointHomog).XYZ;
@@ -106,7 +109,7 @@ PrecomputeRuntimeMMData(Memory::stack_allocator*       TempAlloc,
         FrameInfoStack[FrameInfoIndex].TrajectoryPs[p].Y = 0;
 
         vec3 CurrentZInTrajectorySpace =
-          Math::MulMat4Vec4(InvRootMatrix, { CurrentHipMatrix.Z, 1 }).XYZ;
+          Math::MulMat4Vec4(InvRootMatrix, { CurrentHipMatrix.Z, 0 }).XYZ;
 
         FrameInfoStack[FrameInfoIndex].TrajectoryAngles[p] =
           atan2f(CurrentZInTrajectorySpace.X, CurrentZInTrajectorySpace.Z);

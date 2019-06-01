@@ -31,14 +31,6 @@ ExportAndSetMMController(Memory::stack_allocator* Alloc, Resource::resource_mana
   size_t MMControllerAssetSize =
     Alloc->GetByteCountAboveMarker(MMControllerAssetStart) - AlignmentSize;
 
-  MMControllerAsset->Params.AnimPaths.HardClear();
-  // Fetch the animation names
-  for(int i = 0; i < MMControllerAsset->Params.AnimRIDs.Count; i++)
-  {
-    int PathIndex = Resources->GetAnimationPathIndex(MMControllerAsset->Params.AnimRIDs[i]);
-    MMControllerAsset->Params.AnimPaths.Push(Resources->AnimationPaths[PathIndex]);
-  }
-
   Resources->UpdateOrCreateMMController(MMControllerAsset, MMControllerAssetSize, FileName);
 
   Asset::PackMMController(MMControllerAsset);
@@ -48,9 +40,11 @@ ExportAndSetMMController(Memory::stack_allocator* Alloc, Resource::resource_mana
 }
 
 void
-MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* TempStack,
-                      Resource::resource_manager* Resources)
+MMControllerEditorGUI(rid* OutNewControllerRID, mm_profile_editor* MMEditor,
+                      Memory::stack_allocator* TempStack, Resource::resource_manager* Resources)
 {
+  *OutNewControllerRID = {};
+
   bool        TargetIsTemplate                 = false;
   bool        TargetIsController               = false;
   static int  TargetPathIndex                  = -1;
@@ -299,34 +293,30 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
         {
           rid NewRID =
             Resources->ObtainAnimationPathRID(Resources->AnimationPaths[ActivePathIndex].Name);
-          if(!MMEditor->ActiveProfile.AnimRIDs.Full() &&
+          if(!MMEditor->ActiveProfile.AnimPaths.Full() &&
              Resources->GetAnimation(NewRID)->ChannelCount ==
                MMEditor->ActiveProfile.FixedParams.Skeleton.BoneCount)
           {
-            MMEditor->ActiveProfile.AnimRIDs.Push(NewRID);
+            // MMEditor->ActiveProfile.AnimRIDs.Push(NewRID);
+            MMEditor->ActiveProfile.AnimPaths.Push(Resources->AnimationPaths[ActivePathIndex]);
           }
         }
       }
       {
-        for(int i = 0; i < MMEditor->ActiveProfile.AnimRIDs.Count; i++)
+        for(int i = 0; i < MMEditor->ActiveProfile.AnimPaths.Count; i++)
         {
-          UI::PushID(&MMEditor->ActiveProfile.AnimRIDs.Elements[i]);
+          UI::PushID((void*)&MMEditor->ActiveProfile.AnimPaths[i]);
           bool RemoveCurrent = UI::Button("Remove");
           UI::SameLine();
           {
-            char* Path;
-            if(Resources->Animations.Get(MMEditor->ActiveProfile.AnimRIDs[i], NULL, &Path))
-            {
-              UI::Text(Path);
-            }
+            UI::Text(MMEditor->ActiveProfile.AnimPaths[i].Name);
           }
           if(RemoveCurrent)
           {
-            MMEditor->ActiveProfile.AnimRIDs.Remove(i);
+            MMEditor->ActiveProfile.AnimPaths.Remove(i);
             i--;
           }
-          else // NOTE(Lukas) this branch is only expected to be taken if the path array changes
-               // behind our back e.g. when reloading the scene
+          else
           {
             UI::NewLine();
           }
@@ -351,8 +341,8 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
                  DateTimeString);
       }
       {
-        snprintf(NewControllerPath, sizeof(NewControllerPath),
-                 "data/controllers/new_%s.controller", DateTimeString);
+        snprintf(NewControllerPath, sizeof(NewControllerPath), "data/controllers/new_%s.controller",
+                 DateTimeString);
       }
     }
 
@@ -363,14 +353,6 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
 
     if(UI::Button("Save Template", LeftOfComboButtonWidth))
     {
-      MMEditor->ActiveProfile.AnimPaths.HardClear();
-      // Set the paths from the animation RIDs
-      for(int i = 0; i < MMEditor->ActiveProfile.AnimRIDs.Count; i++)
-      {
-        int PathIndex = Resources->GetAnimationPathIndex(MMEditor->ActiveProfile.AnimRIDs[i]);
-        MMEditor->ActiveProfile.AnimPaths.Push(Resources->AnimationPaths[PathIndex]);
-      }
-
       Asset::ExportMMParams(&MMEditor->ActiveProfile,
                             TargetIsTemplate ? Resources->MMParamPaths[TargetPathIndex].Name
                                              : NewTemplatePath);
@@ -381,7 +363,7 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
       UI::PopColor();
     }
 
-    if(0 < MMEditor->ActiveProfile.AnimRIDs.Count)
+    if(0 < MMEditor->ActiveProfile.AnimPaths.Count)
     {
       UI::SameLine();
 
@@ -392,9 +374,18 @@ MMControllerEditorGUI(mm_profile_editor* MMEditor, Memory::stack_allocator* Temp
 
       if(UI::Button("Build Controller", LeftOfComboButtonWidth))
       {
-        ExportAndSetMMController(TempStack, Resources, &MMEditor->ActiveProfile,
-                                 TargetIsController ? Resources->MMParamPaths[TargetPathIndex].Name
-                                                    : NewControllerPath);
+        MMEditor->ActiveProfile.AnimRIDs.HardClear();
+        for(int i = 0; i < MMEditor->ActiveProfile.AnimPaths.Count; i++)
+        {
+          rid AnimRID =
+            Resources->ObtainAnimationPathRID(MMEditor->ActiveProfile.AnimPaths[i].Name);
+          MMEditor->ActiveProfile.AnimRIDs.Push(AnimRID);
+        }
+
+        const char* ExportPath =
+          TargetIsController ? Resources->MMParamPaths[TargetPathIndex].Name : NewControllerPath;
+        ExportAndSetMMController(TempStack, Resources, &MMEditor->ActiveProfile, ExportPath);
+        Resources->MMControllers.GetPathRID(OutNewControllerRID, ExportPath);
       }
 
       if(TargetIsController)

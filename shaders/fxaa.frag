@@ -68,7 +68,7 @@ float GetPixelBlendFactor(luminance_data l)
 {
   float activation = 2*(l.n + l.s + l.w + l.e);
   activation += l.nw + l.ne + l.sw + l.se;
-  activation *= 1.0f / 12f;
+  activation *= 1.0f / 12;
   activation = abs(activation - l.m);
   activation = clamp(activation/l.contrast, 0.0, 1.0);
   activation = smoothstep(0, 1, activation);

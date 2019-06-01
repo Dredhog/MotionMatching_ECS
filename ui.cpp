@@ -1827,3 +1827,8 @@ UI::MoveGizmo(transform* Transform, bool UseLocalAxes)
   _MoveAxes(&Transform->T, Axes);
 }
 
+uint32_t
+UI::Hash(const void* data, int data_size, uint32_t seed)
+{
+  return IDHash(data, data_size, seed);
+}

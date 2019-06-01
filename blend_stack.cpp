@@ -2,13 +2,14 @@
 #include "misc.h"
 
 void
-PlayAnimation(blend_stack* BlendStack, Anim::animation* NewAnim, float LocalAnimTime,
-              float GlobalTime, float BlendInTime, bool Mirror, bool Loop)
+PlayAnimation(blend_stack* BlendStack, Anim::animation* NewAnim, int32_t IndexInSet,
+              float LocalAnimTime, float GlobalTime, float BlendInTime, bool Mirror, bool Loop)
 {
   assert(NewAnim);
 
-  blend_in_info NewBlend = {};
+  blend_in_info NewBlend        = {};
   NewBlend.Animation            = NewAnim;
+  NewBlend.IndexInSet           = IndexInSet;
   NewBlend.GlobalAnimStartTime  = GlobalTime - LocalAnimTime;
   NewBlend.GlobalBlendStartTime = GlobalTime;
   NewBlend.BlendDuration        = BlendInTime;

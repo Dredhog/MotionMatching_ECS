@@ -160,6 +160,8 @@ namespace UI
   void PlaneGizmo(transform* Position, vec3 PlaneNormal);
   // void PlaneGizmo(transform* Position, parametric_plane);
 
+  uint32_t Hash(const void* data, int data_size, uint32_t seed);
+
   bool     IsItemActive();
   uint32_t GetActiveID();
   uint32_t GetHotID();

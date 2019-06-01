@@ -7,6 +7,8 @@
 #include "text.h"
 #include <stdlib.h>
 #include "profile.h"
+#include "entity_animation_control.h"
+#include "movement_spline.h"
 
 struct rid_path_pair
 {
@@ -31,11 +33,18 @@ struct scene
   int32_t        MaterialCount;
   rid_path_pair* MaterialIDPaths;
 
+  int32_t        MMControllerCount;
+  rid_path_pair* MMControllerIDPaths;
+
   // AuxillaryElements
-  // int32_t PlayerEntityIndex;
+  mm_entity_data MMEntityData;
+  spline_system  SplineSystem;
+
   camera Camera;
 
   vec3 LightPosition;
+
+  int32_t SelectedEntityIndex;
 };
 
 void
@@ -146,15 +155,41 @@ ExportScene(game_state* GameState, const char* Path)
     Scene->MaterialIDPaths = NULL;
   }
 
-  // Saving camera and light parameters
-  Scene->Camera        = GameState->Camera;
-  Scene->LightPosition = GameState->R.LightPosition;
+  Scene->MMControllerIDPaths = (rid_path_pair*)GameState->TemporaryMemStack->GetMarker().Address;
+  for(int i = 1; i <= MM_CONTROLLER_MAX_COUNT; i++)
+  {
+    mm_controller_data* MMController = {};
+    char*               Path         = {};
+    GameState->Resources.MMControllers.Get({ i }, &MMController, &Path);
+    if(Path && MMController)
+    {
+      rid_path_pair* NewPair = PushStruct(GameState->TemporaryMemStack, rid_path_pair);
+      NewPair->RID           = { i };
+      NewPair->Path          = {};
+      strcpy(NewPair->Path.Name, Path);
+      ++Scene->MMControllerCount;
+    }
+  }
+  if(!Scene->MMControllerCount)
+  {
+    Scene->MMControllerIDPaths = NULL;
+  }
 
-  Scene->Entities         = (entity*)((uint64_t)Scene->Entities - AssetBase);
-  Scene->AnimPlayers      = (Anim::animation_player*)((uint64_t)Scene->AnimPlayers - AssetBase);
-  Scene->ModelIDPaths     = (rid_path_pair*)((uint64_t)Scene->ModelIDPaths - AssetBase);
-  Scene->AnimationIDPaths = (rid_path_pair*)((uint64_t)Scene->AnimationIDPaths - AssetBase);
-  Scene->MaterialIDPaths  = (rid_path_pair*)((uint64_t)Scene->MaterialIDPaths - AssetBase);
+  // Saving the motion matching entiities and longterm trajectories
+  memcpy(&Scene->MMEntityData, &GameState->MMEntityData, sizeof(mm_entity_data));
+  memcpy(&Scene->SplineSystem, &GameState->SplineSystem, sizeof(spline_system));
+
+  // Saving camera and light parameters
+  Scene->Camera              = GameState->Camera;
+  Scene->LightPosition       = GameState->R.LightPosition;
+  Scene->SelectedEntityIndex = GameState->SelectedEntityIndex;
+
+  Scene->Entities            = (entity*)((uint64_t)Scene->Entities - AssetBase);
+  Scene->AnimPlayers         = (Anim::animation_player*)((uint64_t)Scene->AnimPlayers - AssetBase);
+  Scene->ModelIDPaths        = (rid_path_pair*)((uint64_t)Scene->ModelIDPaths - AssetBase);
+  Scene->AnimationIDPaths    = (rid_path_pair*)((uint64_t)Scene->AnimationIDPaths - AssetBase);
+  Scene->MaterialIDPaths     = (rid_path_pair*)((uint64_t)Scene->MaterialIDPaths - AssetBase);
+  Scene->MMControllerIDPaths = (rid_path_pair*)((uint64_t)Scene->MMControllerIDPaths - AssetBase);
 
   uint32_t TotalSize = GameState->TemporaryMemStack->GetUsedSize();
 
@@ -189,10 +224,11 @@ ImportScene(game_state* GameState, const char* Path)
     Scene->Entities[e].MaterialIDs = (rid*)((uint64_t)Scene->Entities[e].MaterialIDs + AssetBase);
   }
 
-  Scene->AnimPlayers      = (Anim::animation_player*)((uint64_t)Scene->AnimPlayers + AssetBase);
-  Scene->ModelIDPaths     = (rid_path_pair*)((uint64_t)Scene->ModelIDPaths + AssetBase);
-  Scene->AnimationIDPaths = (rid_path_pair*)((uint64_t)Scene->AnimationIDPaths + AssetBase);
-  Scene->MaterialIDPaths  = (rid_path_pair*)((uint64_t)Scene->MaterialIDPaths + AssetBase);
+  Scene->AnimPlayers         = (Anim::animation_player*)((uint64_t)Scene->AnimPlayers + AssetBase);
+  Scene->ModelIDPaths        = (rid_path_pair*)((uint64_t)Scene->ModelIDPaths + AssetBase);
+  Scene->AnimationIDPaths    = (rid_path_pair*)((uint64_t)Scene->AnimationIDPaths + AssetBase);
+  Scene->MaterialIDPaths     = (rid_path_pair*)((uint64_t)Scene->MaterialIDPaths + AssetBase);
+  Scene->MMControllerIDPaths = (rid_path_pair*)((uint64_t)Scene->MMControllerIDPaths + AssetBase);
 
   // Apply saved rid and path pairings to resource manager
   GameState->Resources.WipeAllModelData();
@@ -200,9 +236,6 @@ ImportScene(game_state* GameState, const char* Path)
   GameState->Resources.WipeAllTextureData();
   GameState->Resources.WipeAllMaterialData();
   GameState->Resources.WipeAllMMControllerData();
-
-  // Clear MMData
-  GameState->MMEntityData.Count = 0;
 
   RegisterDebugModels(GameState);
   for(int i = 0; i < Scene->ModelCount; i++)
@@ -222,6 +255,12 @@ ImportScene(game_state* GameState, const char* Path)
     assert(Scene->MaterialIDPaths[i].RID.Value > 0);
     GameState->Resources.AssociateMaterialIDToPath(Scene->MaterialIDPaths[i].RID,
                                                    Scene->MaterialIDPaths[i].Path.Name);
+  }
+  for(int i = 0; i < Scene->MMControllerCount; i++)
+  {
+    assert(Scene->MMControllerIDPaths[i].RID.Value > 0);
+    GameState->Resources.AssociateMMControllerIDToPath(Scene->MMControllerIDPaths[i].RID,
+                                                       Scene->MMControllerIDPaths[i].Path.Name);
   }
 
   // Apply loaded scene to game state
@@ -243,8 +282,11 @@ ImportScene(game_state* GameState, const char* Path)
       for(int a = 0; a < GameState->Entities[e].AnimPlayer->AnimStateCount; a++)
       {
         GameState->Entities[e].AnimPlayer->Animations[a] = NULL;
-        GameState->Resources.Animations.AddReference(
-          GameState->Entities[e].AnimPlayer->AnimationIDs[a]);
+        if(GameState->Entities[e].AnimPlayer->AnimationIDs[a].Value > 0)
+        {
+          GameState->Resources.Animations.AddReference(
+            GameState->Entities[e].AnimPlayer->AnimationIDs[a]);
+        }
       }
 
       assert(Model->Skeleton);
@@ -269,11 +311,22 @@ ImportScene(game_state* GameState, const char* Path)
   }
   GameState->EntityCount = Scene->EntityCount;
 
-  // Saving camera and light parameters
+  memcpy(&GameState->MMEntityData, &Scene->MMEntityData, sizeof(mm_entity_data));
+  memcpy(&GameState->SplineSystem, &Scene->SplineSystem, sizeof(spline_system));
+
+  for(int c = 0; c < GameState->MMEntityData.Count; c++)
+  {
+    GameState->Resources.MMControllers.AddReference(GameState->MMEntityData.MMControllerRIDs[c]);
+    mm_controller_data* MMController =
+      GameState->Resources.GetMMController(GameState->MMEntityData.MMControllerRIDs[c]);
+    GameState->Resources.AddMMControllerAnimationReferences(MMController);
+  }
+
+  // Loading camera and light parameters
   GameState->Camera              = Scene->Camera;
   GameState->R.LightPosition     = Scene->LightPosition;
   GameState->CurrentMaterialID   = { 0 };
-  GameState->SelectedEntityIndex = -1;
+  GameState->SelectedEntityIndex = Scene->SelectedEntityIndex;
 
   return;
 }

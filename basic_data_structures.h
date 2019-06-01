@@ -453,6 +453,13 @@ struct circular_stack
     return m_Entries[SampleIndex];
   }
 
+  T& operator[](int Index)
+  {
+    assert(Index < Count);
+    int SampleIndex = (m_StartIndex + Index) % Capacity;
+    return m_Entries[SampleIndex];
+  }
+
   bool
   Full() const
   {

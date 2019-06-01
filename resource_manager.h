@@ -74,8 +74,6 @@ namespace Resource
 
     GLuint DefaultShaderID;
 
-    void AddMMControllerAnimationReferences(mm_controller_data* Controller);
-
   public:
     Memory::heap_allocator   ModelHeap;
     Memory::heap_allocator   AnimationHeap;
@@ -110,6 +108,7 @@ namespace Resource
 
     rid UpdateOrCreateMMController(mm_controller_data* ControllerData, size_t Size,
                                    const char* Path);
+    void AddMMControllerAnimationReferences(mm_controller_data* Controller);
 
     rid CreateMaterial(material Material, const char* Path);
 
@@ -124,6 +123,7 @@ namespace Resource
     bool AssociateAnimationIDToPath(rid RID, const char* Path);
     bool AssociateTextureIDToPath(rid RID, const char* Path);
     bool AssociateMaterialIDToPath(rid RID, const char* Path);
+    bool AssociateMMControllerIDToPath(rid RID, const char* Path);
 
     bool GetModelPathRID(rid* RID, const char* Path);
     bool GetTexturePathRID(rid* RID, const char* Path);
