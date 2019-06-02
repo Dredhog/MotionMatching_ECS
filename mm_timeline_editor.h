@@ -165,7 +165,7 @@ MMTimelineWindow(mm_timeline_state* TimelineState, blend_stack BlendStack,
   static int OrderByOption = 0;
   static int RangeScaleOption;
   // static bool ShowAvoidedRegions  = true;
-  static bool ShowAnimationNames  = false;
+  static bool ShowAnimationNames  = true;
   static bool ShowUnusableRegions = true;
   static int  TimelineEditorMode  = 0;
 

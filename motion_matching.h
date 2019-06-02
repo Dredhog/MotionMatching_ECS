@@ -6,6 +6,7 @@
 #include "rid.h"
 #include "anim.h"
 #include "file_queries.h"
+#include "misc.h"
 
 #define MM_POINT_COUNT 3
 #define MM_COMPARISON_BONE_COUNT 2
@@ -104,18 +105,19 @@ ResetMMParamsToDefault(mm_params* Params)
 {
   memset(Params, 0, sizeof(mm_params));
   Params->DynamicParams.BonePCoefficient        = 1.0f;
-  Params->DynamicParams.BoneVCoefficient        = 0.02f;
-  Params->DynamicParams.TrajPCoefficient        = 0.06f;
+  Params->DynamicParams.BoneVCoefficient        = 0.05f;
+  Params->DynamicParams.TrajPCoefficient        = 0.6f;
   Params->DynamicParams.TrajVCoefficient        = 0.0f;
-  Params->DynamicParams.TrajAngleCoefficient    = 0.0f;
-  Params->DynamicParams.TrajectoryTimeHorizon   = 1.0f;
-  Params->DynamicParams.MinTimeOffsetThreshold  = 0.2f;
+  Params->DynamicParams.TrajAngleCoefficient    = 0.15f;
+  Params->DynamicParams.TrajectoryTimeHorizon   = 0.45f;
   Params->DynamicParams.BlendInTime             = 0.2f;
+  Params->DynamicParams.MinTimeOffsetThreshold  = 0.25f;
   Params->DynamicParams.MatchMirroredAnimations = false;
   Params->FixedParams.MetadataSamplingFrequency = 30.0f;
 	for(int i = 0; i < MM_POINT_COUNT; i++)
 	{
-    Params->DynamicParams.TrajectoryWeights[i] = 1.0f;
+    Params->DynamicParams.TrajectoryWeights[i] =
+      ClampFloat(0, 0.1f + float(i) / float(MM_POINT_COUNT - 1), 1);
   }
 }
 

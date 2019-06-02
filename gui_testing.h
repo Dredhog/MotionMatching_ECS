@@ -1405,9 +1405,9 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
 
               bool RemovedMatchingAnimPlayer = false;
               // Actual UI
-              int32_t     MMControllerIndex           = -1;
+              int32_t     MMEntityIndex               = -1;
               static bool s_ShowMMControllerComponent = true;
-              if((MMControllerIndex = GetEntityMMDataIndex(SelectedEntityIndex, &MMEntityData)) ==
+              if((MMEntityIndex = GetEntityMMDataIndex(SelectedEntityIndex, &MMEntityData)) ==
                  -1)
               {
                 if(MMEntityData.Count < MM_CONTROLLER_MAX_COUNT &&
@@ -1434,7 +1434,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 if(s_ShowMMControllerComponent)
                 {
                   mm_aos_entity_data MMEntity =
-                    GetAOSMMDataAtIndex(MMControllerIndex, &MMEntityData);
+                    GetAOSMMDataAtIndex(MMEntityIndex, &MMEntityData);
 
                   {
                     // Pick the mm controller
@@ -1452,8 +1452,8 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                         UI::PushColor(UI::COLOR_ButtonNormal, vec4{ 0.8f, 0.8f, 0.4f, 1 });
                         UI::PushColor(UI::COLOR_ButtonHovered, vec4{ 1, 1, 0.6f, 1 });
                       }
-                      UI::PushID(s_ShowMMControllerComponent);
-                      ClickedAdd = UI::Button("Add");
+                      UI::PushID(&s_ShowMMControllerComponent);
+                      ClickedAdd = UI::Button("Set");
                       UI::PopID();
                       if(ShownPathIndex != UsedPathIndex)
                       {
@@ -1494,8 +1494,21 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                   }
 
                   char TempBuffer[40];
-                  sprintf(TempBuffer, "MM Controller Index: %d", MMControllerIndex);
+
+                  if(MMEntity.MMControllerRID->Value > 0)
+                  {
+                    path    MMControllerPath;
+                    int32_t ControllerPathIndex =
+                      Resources->GetMMControllerPathIndex(*MMEntity.MMControllerRID);
+                    MMControllerPath = Resources->MMControllerPaths[ControllerPathIndex];
+                    char TempBuffer[40];
+                    sprintf(TempBuffer, "Attached: %s", strrchr(MMControllerPath.Name, '/') + 1);
+                    UI::Text(TempBuffer);
+                  }
+
+                  sprintf(TempBuffer, "MM Entity Index: %d", MMEntityIndex);
                   UI::Text(TempBuffer);
+
 
                   static bool s_ShowInputControlParameters = false;
                   if(UI::TreeNode("Movement Control Options", &s_ShowInputControlParameters))
@@ -1537,7 +1550,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
                 }
                 if(RemovedMatchingAnimPlayer)
                 {
-                  RemoveMMControllerDataAtIndex(Entities, MMControllerIndex, Resources,
+                  RemoveMMControllerDataAtIndex(Entities, MMEntityIndex, Resources,
                                                 &MMEntityData);
                 }
               }
