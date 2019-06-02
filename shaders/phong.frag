@@ -132,7 +132,7 @@ main()
   float shadow = ShadowCalculation(frag.position,  cascadeIndex, normal,
         (cascadeIndex == 0) ? shadowMap_0 :
                              (cascadeIndex == 1) ? shadowMap_1 :
-																					(cascadeIndex == 2) ? shadowMap_2 : shadowMap_3);
+			                           (cascadeIndex == 2) ? shadowMap_2 : shadowMap_3);
   float lighting = 1.0f - shadow;
 
   vec3 point_half_vector = normalize(lightDir + viewDir);
