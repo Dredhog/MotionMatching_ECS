@@ -22,6 +22,9 @@ namespace Texture
       glBindTexture(GL_TEXTURE_2D, Texture);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DestSurface->w, DestSurface->h, 0, GL_RGBA,
                    GL_UNSIGNED_BYTE, DestSurface->pixels);
+      float MaxSupportedAnisotropy;
+      glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &MaxSupportedAnisotropy);
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, MaxSupportedAnisotropy);
       glGenerateMipmap(GL_TEXTURE_2D);
       glBindTexture(GL_TEXTURE_2D, 0);
 

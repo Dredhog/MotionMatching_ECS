@@ -1,4 +1,5 @@
 #include "camera.h"
+#define _USE_MATH_DEFINES
 #include "math.h"
 
 const vec3 YAxis = { 0, 1, 0 };

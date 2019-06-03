@@ -361,7 +361,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       for(int k = 0; k < SubdivisionCount; k++)
       {
         float t            = float(k + 1) / SubdivisionCount;
-        vec3  CurrentPoint = Spline.CatmullRomPoint(j, t, Loop % Spline.Waypoints.Count);
+        vec3  CurrentPoint = Spline.CatmullRomPoint(j % Spline.Waypoints.Count, t, Loop);
         Debug::PushLine(PreviousPoint + VerticalSplineOffset, CurrentPoint + VerticalSplineOffset,
                         { 1, 0.2f, 0.2f, 1 }, GameState->OverlaySplines);
         PreviousPoint = CurrentPoint;
