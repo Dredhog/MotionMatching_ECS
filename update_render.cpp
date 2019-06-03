@@ -91,6 +91,43 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     }
   }
 
+	//Entity keyboard selection
+  {
+    bool NoEntitySelected = (GameState->SelectedEntityIndex < 0 ||
+                             GameState->SelectedEntityIndex >= GameState->EntityCount);
+    if(Input->j.EndedDown && Input->j.Changed)
+    {
+      if(NoEntitySelected && GameState->EntityCount > 0)
+      {
+        GameState->SelectedEntityIndex = GameState->EntityCount - 1;
+        GameState->SelectedMeshIndex=0;
+      }
+      else if(GameState->SelectedEntityIndex > 0)
+      {
+        GameState->SelectedEntityIndex--;
+        GameState->SelectedMeshIndex=0;
+      }
+    }
+    else if(Input->k.EndedDown && Input->k.Changed)
+    {
+      if(NoEntitySelected && GameState->EntityCount > 0)
+      {
+        GameState->SelectedEntityIndex = 0;
+        GameState->SelectedMeshIndex=0;
+      }
+      else if(GameState->SelectedEntityIndex < GameState->EntityCount - 1)
+      {
+        GameState->SelectedEntityIndex++;
+        GameState->SelectedMeshIndex=0;
+      }
+    }
+    else if(Input->v.EndedDown && Input->v.Changed)
+    {
+			GameState->SelectedEntityIndex = -1;
+			GameState->SelectedEntityIndex = -1;
+		}
+  }
+
   {
     if(Input->f.EndedDown && Input->f.Changed)
     {

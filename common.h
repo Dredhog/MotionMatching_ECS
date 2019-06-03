@@ -44,7 +44,7 @@ struct game_input
   bool ToggledEditorMode;
 
   union {
-    game_button_state Buttons[32];
+    game_button_state Buttons[34];
     struct
     {
       game_button_state a;
@@ -56,6 +56,8 @@ struct game_input
       game_button_state g;
       game_button_state h;
       game_button_state i;
+      game_button_state j;
+      game_button_state k;
       game_button_state m;
       game_button_state n;
       game_button_state o;

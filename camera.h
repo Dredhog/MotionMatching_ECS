@@ -19,6 +19,9 @@ struct camera
   float MaxTiltAngle;
 
   bool  OrbitSelected;
+	//bool Padding0;
+	//bool Padding1;
+	//bool Padding2;
   float OrbitRadius;
   vec2  OrbitRotation;
 

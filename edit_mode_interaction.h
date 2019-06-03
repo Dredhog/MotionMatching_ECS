@@ -14,10 +14,11 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
     }
     if(GameState->CurrentMaterialID.Value <= 0)
     {
+			//TODO(Lukas) replace this garbage
       if(GameState->Resources.MaterialPathCount > 0)
       {
         GameState->CurrentMaterialID =
-          GameState->Resources.RegisterMaterial(GameState->Resources.MaterialPaths[0].Name);
+          GameState->Resources.ObtainMaterialPathRID(GameState->Resources.MaterialPaths[0].Name);
       }
       else
       {
@@ -85,6 +86,10 @@ EditWorldAndInteractWithGUI(game_state* GameState, const game_input* Input)
     GameState->SelectedEntityIndex = (uint32_t)IDColor[0];
     GameState->SelectedMeshIndex   = (uint32_t)IDColor[1];
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		if(GameState->SelectedEntityIndex < 0 || GameState->SelectedEntityIndex >= GameState->EntityCount)
+		{
+			GameState->SelectedEntityIndex = -1;
+    }
   }
 
   {

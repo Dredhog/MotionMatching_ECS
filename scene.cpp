@@ -307,6 +307,7 @@ ImportScene(game_state* GameState, const char* Path)
     for(int m = 0; m < Model->MeshCount; m++)
     {
       GameState->Entities[e].MaterialIDs[m] = Scene->Entities[e].MaterialIDs[m];
+      assert(GameState->Resources.Materials.Get(GameState->Entities[e].MaterialIDs[m], NULL, NULL));
     }
   }
   GameState->EntityCount = Scene->EntityCount;
