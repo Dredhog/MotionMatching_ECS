@@ -65,8 +65,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 		//TODO(Lukas) MOVE THIS WHRE IT'S MORE APPROPIATE
 		glEnable(GL_LINE_SMOOTH);
-		glLineWidth(2);
-		//glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+		glLineWidth(3);
+		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     if(!GameState->UpdatePathList)
     {
@@ -617,8 +617,9 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
       }
       else
       {
-        assert(Controller->BlendFunc == NULL);
-        Anim::UpdatePlayer(Controller, Input->dt, Controller->BlendFunc);
+        //assert(Controller->BlendFunc == NULL);
+				float Proxydt = Input->dt;
+        Anim::UpdatePlayer(Controller, Input->dt, Controller->BlendFunc, &Proxydt);
       }
 
       // TODO(Lukas): remove most parts of this code as it is repeated multiple times in different
@@ -659,6 +660,8 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
           }
 
           mat4 Mat4InvRoot = Math::Mat4Ident();
+          float XMirrorScale      = CurrentState->Mirror ? -1 : 1;
+          mat4  MirrorScaleMatrix = Math::Mat4Scale(XMirrorScale, 1, 1);
 
           // Transform current pose into the space of the root bone
           if(GameState->PreviewAnimationsInRootSpace)
@@ -672,9 +675,26 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
               TransformToMat4(
                 CurrentAnimation->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount +
                                              HipBoneIndex]) /*)*/;
+            Mat4Hips = Math::MulMat4(MirrorScaleMatrix, Mat4Hips);
 
             Anim::GetRootAndInvRootMatrices(&Mat4Root, &Mat4InvRoot, Mat4Hips);
           }
+
+
+#if 1
+          if(!GameState->PreviewAnimationsInRootSpace)
+          {
+            int32_t HipBoneIndex = 0;
+            vec3    RootP =
+              CurrentAnimation
+                ->Transforms[PrevKeyframeIndex * CurrentAnimation->ChannelCount + HipBoneIndex]
+                .T;
+            RootP.Y = 0;
+            RootP.X *= XMirrorScale;
+            Debug::PushWireframeSphere(RootP, 0.02f, { 1, 0, 0, 1 });
+          }
+#endif
+
 
           int FutureTrajectoryPointCount = (int)(GameState->MMDebug.TrajectoryDuration /
                                                  (AnimDuration / CurrentAnimation->KeyframeCount));
@@ -695,14 +715,15 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 .T;
 
             LocalHipPositionA =
-              Math::MulMat4Vec4(Mat4InvRoot, { LocalHipPositionA.X, LocalHipPositionA.Y,
-                                               LocalHipPositionA.Z, 1 })
+              Math::MulMat4Vec4(Mat4InvRoot, { XMirrorScale * LocalHipPositionA.X,
+                                               LocalHipPositionA.Y, LocalHipPositionA.Z, 1 })
                 .XYZ;
             LocalHipPositionB =
-              Math::MulMat4Vec4(Mat4InvRoot, { LocalHipPositionB.X, LocalHipPositionB.Y,
-                                               LocalHipPositionB.Z, 1 })
+              Math::MulMat4Vec4(Mat4InvRoot, { XMirrorScale * LocalHipPositionB.X,
+                                               LocalHipPositionB.Y, LocalHipPositionB.Z, 1 })
                 .XYZ;
 
+            const bool OverlayTrajectories = false;
             if(GameState->MMDebug.ShowHipTrajectories)
             {
               vec3 HipPositionA = Math::MulMat4Vec4(CurrentEntityModelMatrix,
@@ -713,7 +734,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                                     { LocalHipPositionB.X, LocalHipPositionB.Y,
                                                       LocalHipPositionB.Z, 1 })
                                     .XYZ;
-              Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 });
+              Debug::PushLine(HipPositionA, HipPositionB, { 0, 0, 1, 1 }, OverlayTrajectories);
             }
 
             if(GameState->MMDebug.ShowRootTrajectories)
@@ -726,7 +747,7 @@ GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                 Math::MulMat4Vec4(CurrentEntityModelMatrix,
                                   { LocalHipPositionB.X, 0, LocalHipPositionB.Z, 1 })
                   .XYZ;
-              Debug::PushLine(RootPositionA, RootPositionB, { 0, 1, 1, 1 });
+              Debug::PushLine(RootPositionA, RootPositionB, { 1, 0, 0, 1 }, OverlayTrajectories);
             }
           }
         }

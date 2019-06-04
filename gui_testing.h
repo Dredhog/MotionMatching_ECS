@@ -1394,6 +1394,54 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
               // s_ShowAnimationEditor = true;
             }
 #endif
+            // TODO(Lukas) Remove this flaming garbage!!!
+						//if(GameState->ShowDebugFeatures)
+            {
+              if(GetEntityMMDataIndex(GameState->SelectedEntityIndex, &GameState->MMEntityData) ==
+                 -1)
+              {
+                static bool    Mirror                 = false;
+                static bool    Loop                   = false;
+                static int32_t SelectedAnimationIndex = -1;
+                UI::Combo("Animation", &SelectedAnimationIndex, GameState->Resources.AnimationPaths,
+                          GameState->Resources.AnimationPathCount, PathArrayToString);
+                bool ClickedAddAnimation = UI::Button("Start");
+                UI::SameLine();
+                UI::Checkbox("Mirror", &Mirror);
+                UI::SameLine();
+                UI::Checkbox("Loop", &Loop);
+                UI::Checkbox("Preview In Root Space", &GameState->PreviewAnimationsInRootSpace);
+                bool ClickedStop = (SelectedEntity->AnimPlayer->AnimationIDs[0].Value > 0)
+                                     ? UI::Button("Stop")
+                                     : false;
+                if(SelectedAnimationIndex >= 0 && ClickedAddAnimation)
+                {
+                  rid NewRID = GameState->Resources.ObtainAnimationPathRID(
+                    GameState->Resources.AnimationPaths[SelectedAnimationIndex].Name);
+                  if(GameState->Resources.GetAnimation(NewRID)->ChannelCount ==
+                     SelectedEntity->AnimPlayer->Skeleton->BoneCount)
+                  {
+                    if(SelectedEntity->AnimPlayer->AnimationIDs[0].Value > 0)
+                    {
+                      GameState->Resources.Animations.RemoveReference(
+                        SelectedEntity->AnimPlayer->AnimationIDs[0]);
+                    }
+                    Anim::SetAnimation(SelectedEntity->AnimPlayer, NewRID, 0);
+                    SelectedEntity->AnimPlayer->AnimStateCount = 1;
+                    Anim::StartAnimationAtGlobalTime(SelectedEntity->AnimPlayer, 0, Loop, 0);
+                    SelectedEntity->AnimPlayer->States[0].Mirror = Mirror;
+                    SelectedEntity->AnimPlayer->BlendFunc        = Anim::PreviewBlendFunc;
+                    GameState->Resources.Animations.AddReference(NewRID);
+                  }
+                }
+                else if(ClickedStop && SelectedEntity->AnimPlayer->AnimationIDs[0].Value > 0)
+                {
+                  RemoveReferencesAndResetAnimPlayer(&GameState->Resources,
+                                                     SelectedEntity->AnimPlayer);
+                }
+              }
+            }
+
             {
               // Outside data used
               mm_entity_data&             MMEntityData        = GameState->MMEntityData;

@@ -124,4 +124,6 @@ namespace Anim
   float GetAnimDuration(const Anim::animation* Animation);
   void  GenerateSkeletonMirroringInfo(Anim::skeleton_mirror_info* OutMirrorInfo,
                                       const Anim::skeleton*       Skeleton);
+
+  void PreviewBlendFunc(animation_player* AnimPlayer, void* UserData);
 }

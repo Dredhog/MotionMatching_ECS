@@ -474,3 +474,23 @@ Anim::GenerateSkeletonMirroringInfo(Anim::skeleton_mirror_info* OutMirrorInfo,
     RemainingBoneIndices.Remove(i);
   }
 }
+
+void
+Anim::PreviewBlendFunc(animation_player* AnimPlayer, void* UserData)
+{
+  float dt = *(float*)UserData;
+  AnimPlayer->GlobalTimeSec += dt;
+  static skeleton*            LastUsedSkeleton = NULL;
+  static skeleton_mirror_info MirrorInfo       = {};
+  if(AnimPlayer->Skeleton != LastUsedSkeleton)
+  {
+    Anim::GenerateSkeletonMirroringInfo(&MirrorInfo, AnimPlayer->Skeleton);
+    LastUsedSkeleton = AnimPlayer->Skeleton;
+    if(LastUsedSkeleton->BoneCount != 67)
+    {
+      MirrorInfo.PairCount -= 4;
+    }
+  }
+  assert(AnimPlayer->AnimStateCount > 0);
+  Anim::SampleAtGlobalTime(AnimPlayer, 0, 0, AnimPlayer->States[0].Mirror ? &MirrorInfo : NULL);
+}

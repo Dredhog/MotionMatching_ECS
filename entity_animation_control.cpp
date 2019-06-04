@@ -731,7 +731,7 @@ void
 DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settings DebugSettings,
               vec3 BoneColor, vec3 VelocityColor, vec3 TrajectoryColor, vec3 DirectionColor)
 {
-	const vec3 VerticalOffset{0, 0.01f, 0};
+	const vec3 VerticalOffset{0, 0.005f, 0};
   for(int i = 0; i < MM_COMPARISON_BONE_COUNT; i++)
   {
     vec4 HomogLocalBoneP = { AnimGoal.BonePs[i], 1 };
@@ -746,7 +746,7 @@ DrawFrameInfo(mm_frame_info AnimGoal, mat4 CoordinateFrame, mm_info_debug_settin
     }
     if(DebugSettings.ShowBoneVelocities)
     {
-      Debug::PushLine(WorldBoneP+VerticalOffset, WorldVEnd+VerticalOffset, { VelocityColor, 1 }, DebugSettings.Overlay);
+      Debug::PushLine(WorldBoneP, WorldVEnd, { VelocityColor, 1 });
       Debug::PushWireframeSphere(WorldVEnd, 0.01f, { VelocityColor, 1 });
     }
   }
