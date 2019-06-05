@@ -232,10 +232,12 @@ ImportScene(game_state* GameState, const char* Path)
 
   // Apply saved rid and path pairings to resource manager
   GameState->Resources.WipeAllModelData();
-  GameState->Resources.WipeAllAnimationData();
   GameState->Resources.WipeAllTextureData();
   GameState->Resources.WipeAllMaterialData();
+  // NOTE(Lukas) currently all animation frees have to happen after the controller frees as they
+  // remove references which results in -1 rids in animations
   GameState->Resources.WipeAllMMControllerData();
+  GameState->Resources.WipeAllAnimationData();
 
   RegisterDebugModels(GameState);
   for(int i = 0; i < Scene->ModelCount; i++)
@@ -320,7 +322,6 @@ ImportScene(game_state* GameState, const char* Path)
     GameState->Resources.MMControllers.AddReference(GameState->MMEntityData.MMControllerRIDs[c]);
     mm_controller_data* MMController =
       GameState->Resources.GetMMController(GameState->MMEntityData.MMControllerRIDs[c]);
-    GameState->Resources.AddMMControllerAnimationReferences(MMController);
   }
 
   // Loading camera and light parameters

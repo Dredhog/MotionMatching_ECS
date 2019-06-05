@@ -1395,7 +1395,7 @@ EntityGUI(game_state* GameState, bool& s_ShowEntityTools)
             }
 #endif
             // TODO(Lukas) Remove this flaming garbage!!!
-						//if(GameState->ShowDebugFeatures)
+            if(GameState->ShowDebugFeatures)
             {
               if(GetEntityMMDataIndex(GameState->SelectedEntityIndex, &GameState->MMEntityData) ==
                  -1)

@@ -349,7 +349,7 @@ namespace Resource
   {
     this->Animations.Reset();
     this->AnimationHeap.Clear();
-    // this->AnimationStack.NullifyClear();
+    //this->AnimationStack.NullifyClear();
   }
 
   void
