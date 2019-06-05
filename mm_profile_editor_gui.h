@@ -8,6 +8,34 @@ const char* BoneArrayToString(const void* Data, int Index);
 
 #define TEMPLATE_NAME_MAX_LENGTH 200
 
+bool
+IsProfileMirrorInfoValid(mm_params* Params)
+{
+	if(Params->DynamicParams.MatchMirroredAnimations)
+	{
+    for(int i = 0; i < Params->FixedParams.ComparisonBoneIndices.Count; i++)
+    {
+      int32_t CurrentBoneIndex = Params->FixedParams.ComparisonBoneIndices[i];
+      bool Result = false;
+      for(int p = 0; p < Params->DynamicParams.MirrorInfo.PairCount; p++)
+      {
+        Anim::int32_pair BoneIndexPair = Params->DynamicParams.MirrorInfo.BoneMirrorIndices[p];
+        if(BoneIndexPair.a == CurrentBoneIndex || BoneIndexPair.b == CurrentBoneIndex)
+        {
+          Result = true;
+          break;
+        }
+      }
+
+			if(Result == false)
+			{
+        return false;
+      }
+		}
+  }
+  return true;
+}
+
 // Note(Lukas) the Params have to have the names for this to export correctly
 inline void
 ExportAndSetMMController(Memory::stack_allocator* Alloc, Resource::resource_manager* Resources,
@@ -363,7 +391,8 @@ MMControllerEditorGUI(rid* OutNewControllerRID, mm_profile_editor* MMEditor,
       UI::PopColor();
     }
 
-    if(0 < MMEditor->ActiveProfile.AnimPaths.Count)
+    if(0 < MMEditor->ActiveProfile.AnimPaths.Count &&
+       IsProfileMirrorInfoValid(&MMEditor->ActiveProfile))
     {
       UI::SameLine();
 
