@@ -615,9 +615,8 @@ SimulateDynamics(physics_world* World)
     ODE(World->RigidBodies, World->RBCount, World->Constraints.Elements, World->Constraints.Count,
         0.0f, (FRAME_TIME_MS / 1000.0f), DYDT_PGS, World->Params.PGSIterationCount, UpdateState,
         &World->Params, &World->Switches);
-		//Visualize constraints
-		{
-
-		}
+    // Visualize constraints
+    {
+    }
   }
 }
